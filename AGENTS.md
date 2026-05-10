@@ -1,4 +1,6 @@
 <!-- SPECKIT START -->
+Current Spec Kit plan: `specs/001-library-foundation/plan.md`
+
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan.
 <!-- SPECKIT END -->
@@ -16,10 +18,10 @@ target architecture.
   and experiment behavior.
 - `legacy/fed_trpo` is a reference for federated RL, PPO/TRPO, CityLearn,
   sweep configs, and SLURM/W&B workflows.
+- New reusable library code belongs under `src/open_energy_lab`, with tests
+  under `tests`.
 - New reusable library code must not be added to `legacy/*` unless a spec
   explicitly authorizes a migration or legacy-maintenance change.
-- The target library package path is intentionally unset until the foundation
-  feature defines it.
 
 ## Migration Rules
 
@@ -29,6 +31,8 @@ target architecture.
   documented equations to validate it.
 - Treat heavyweight dependencies as optional or isolated unless the active spec
   explicitly makes them core dependencies.
+- Keep simulator, TPM, RL, optimization, weather, planning, control, notebook,
+  W&B, GPU/SLURM, and Rust behavior migrations out of foundation-only work.
 
 ## Useful Checks
 
