@@ -25,6 +25,11 @@ without copying legacy structure or preserving known bad practices by default.
 - Q: What should the first migration priority be? -> A: Simulation module first; energy primitives are components of the simulator module.
 - Q: What artifact policy should the foundation use? -> A: Fixtures allowed; small curated generated artifacts may live under `tests/fixtures` with provenance and regeneration notes, while notebooks remain examples or references.
 - Q: What planning/control scope boundary should the foundation use? -> A: Interfaces only; define future planning/control concepts as interfaces or contracts, with implementations coming in later migrations.
+- Q: How much of the long-term module roadmap should the foundation capture? -> A: Add roadmap modules: simulator first, then core methods, planning, control, and visualization as future module areas.
+- Q: What simulator composition model should the foundation prefer? -> A: Component graph; simulator scenarios are composed from typed components and connections such as buildings, loads, storage, generators, markets, and networks.
+- Q: What data source policy should the foundation use? -> A: Synthetic plus adapters; synthetic data is first-class, and real data comes through template-based ingestion plus optional source adapters such as ENTSO-E.
+- Q: What TorchRL environment boundary should the foundation use? -> A: Optional adapter; simulator core stays independent, and TorchRL compatibility is provided through an optional wrapper or adapter.
+- Q: What near-term use case should drive the first simulator validation target? -> A: Battery arbitrage; prioritize battery, price signal, and market arbitrage scenarios.
 
 ## Scope Classification *(mandatory)*
 
@@ -125,6 +130,11 @@ inputs, and acceptable tolerances before implementation begins.
 - **FR-014**: The foundation MUST not migrate algorithms, training loops, optimization models, simulator internals, or notebooks as part of this feature.
 - **FR-015**: The foundation MUST identify the simulator module as the first likely migration area, with energy primitives such as batteries, PV, load, tariffs, time grids, units, and scenarios treated as simulator components unless a future spec changes that boundary.
 - **FR-016**: The foundation MUST define planning/control scope as interfaces or contracts only; concrete planners, controllers, RL agents, optimization models, and training loops must be introduced by later migration or capability specs.
+- **FR-017**: The foundation MUST record a non-binding module roadmap with simulator first, followed by future core methods, planning, control, and visualization module areas; roadmap order may change through later specs.
+- **FR-018**: The foundation MUST define the simulator composition direction as a component graph where scenarios are composed from typed components and connections, including buildings, loads, storage, generators, markets, and networks.
+- **FR-019**: The foundation MUST define data sources as synthetic-first with adapters: synthetic data generation is first-class, and real data ingestion must use template specifications and optional source adapters such as ENTSO-E.
+- **FR-020**: The foundation MUST define TorchRL compatibility as an optional simulator adapter or wrapper; simulator core imports must not require TorchRL.
+- **FR-021**: The foundation MUST identify battery arbitrage as the near-term use-case driver for the first simulator validation target, focusing on battery, price signal, and market arbitrage scenarios.
 
 ### Legacy Reference Requirements *(include for migration features)*
 
@@ -137,7 +147,15 @@ inputs, and acceptable tolerances before implementation begins.
 
 - **Library Package**: The unified Python package namespace and source tree for reusable Open Energy Lab behavior.
 - **Simulator Module**: The future library area responsible for simulation concepts and energy primitives, including batteries, PV, load, tariffs, time grids, units, and scenarios.
+- **Component Graph**: A simulator scenario model composed from typed components and their connections, such as buildings, loads, storage, generators, markets, and networks.
+- **Data Source Adapter**: An optional integration that converts external or real-world data into simulator-compatible templates. ENTSO-E is a future adapter example, not a core dependency.
+- **TorchRL Adapter**: An optional wrapper that exposes simulator scenarios as TorchRL-compatible environments for control tasks without making TorchRL a simulator-core dependency.
+- **Battery Arbitrage Case**: The near-term validation use case for the simulator roadmap, centered on battery operation against price signals and market arbitrage objectives.
+- **Core Methods Module**: A future area for reusable task methods such as TPM, RL, MPC, optimization-based methods, and rule-based approaches. It is a roadmap area and does not imply a fixed dependency baseline.
+- **Planning Module**: A future area for investment planning and capacity expansion experiments, including TPM-based planning and scenario-enumeration approaches.
+- **Control Module**: A future area for energy management, demand response, battery arbitrage, frequency regulation, and individual or federated control tasks.
 - **Planning/Control Interface**: A future contract for policies, controllers, planners, environments, or optimization entry points. The foundation may name these concepts, but implementations are out of scope.
+- **Visualization Module**: A lower-priority future area for inspecting simulator and control-task behavior.
 - **Public API Surface**: The documented `open_energy_lab.*` imports, functions, classes, commands, and schemas that users may rely on across migrations. Experimental or private modules are not stable until explicitly promoted.
 - **Optional Capability**: A feature area that may require extra dependencies, external services, solver licenses, GPU hardware, SLURM, or experiment tracking.
 - **Legacy Reference**: A source path under `legacy/old_tpm` or `legacy/fed_trpo` used as evidence for behavior, data shape, equations, commands, or experiment practice.
@@ -168,6 +186,11 @@ inputs, and acceptable tolerances before implementation begins.
 - `open_energy_lab` is the default package namespace because it matches the repository name in conventional Python form.
 - `src/open_energy_lab` and `tests` are acceptable target paths for a Python library foundation.
 - The first migration is expected to define a simulator module, with energy primitives housed inside that module rather than as independent top-level package areas.
+- Simulator scenarios are expected to be represented as component graphs rather than hard-coded single-case structures.
+- Synthetic data generation is first-class; real data is incorporated through documented templates and optional adapters rather than direct dependency on a specific external data source.
+- TorchRL compatibility should be provided through an optional adapter so simulator core remains usable without TorchRL installed.
+- Battery arbitrage is the first intended simulator validation use case; cooling demand response, frequency regulation, federated microgrid control, and investment planning remain future roadmap use cases.
+- The long-term roadmap includes simulator, core methods, planning, control, and visualization modules, but this foundation does not require implementing them all immediately.
 - Planning/control concepts should be defined as future-facing interfaces or contracts before concrete planners, controllers, RL agents, or optimization models are migrated.
 - Small curated generated artifacts may be committed as test fixtures when they are needed for validation and include provenance plus regeneration notes.
 - Some legacy validation may not run in every local environment because of solver licenses, GPU/SLURM requirements, W&B access, or missing generated datasets.
