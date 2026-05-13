@@ -73,6 +73,26 @@ basic import and testing fragile.
 for experiments but too expensive for ordinary library use. A strict
 stdlib-only rule would block legitimate future capabilities.
 
+## Decision: Use Conda for the Base Environment and uv for Python Dependencies
+
+**Decision**: Define `environment.yml` as a minimal conda environment containing
+Python, uv, and basic bootstrapping tools only. Define `pyproject.toml` as the
+uv-compatible Python project configuration with no runtime dependencies in the
+foundation and a dev dependency group for pytest.
+
+**Rationale**: Conda is a practical boundary for research environments and
+future native/system-level dependencies, while uv gives faster, reproducible
+Python dependency management, editable installs, locking, and command
+execution. Keeping the foundation environment minimal prevents solver, RL,
+notebook, W&B, GPU, SLURM, and Rust tooling from becoming implicit core
+requirements.
+
+**Alternatives considered**: Conda-only dependency management is familiar but
+less aligned with modern Python packaging and lock workflows. uv-only
+environments are lighter but do not give the preferred conda boundary for
+future research stacks. Adding heavy optional dependencies now would violate
+the foundation dependency policy.
+
 ## Decision: Require Reproducible Migration Evidence
 
 **Decision**: Future migrations must cite exact legacy paths and provide

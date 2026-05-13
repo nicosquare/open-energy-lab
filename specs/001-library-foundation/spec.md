@@ -30,11 +30,13 @@ without copying legacy structure or preserving known bad practices by default.
 - Q: What data source policy should the foundation use? -> A: Synthetic plus adapters; synthetic data is first-class, and real data comes through template-based ingestion plus optional source adapters such as ENTSO-E.
 - Q: What TorchRL environment boundary should the foundation use? -> A: Optional adapter; simulator core stays independent, and TorchRL compatibility is provided through an optional wrapper or adapter.
 - Q: What near-term use case should drive the first simulator validation target? -> A: Battery arbitrage; prioritize battery, price signal, and market arbitrage scenarios.
+- Q: What environment and package-management policy should the foundation use? -> A: Conda defines the minimal base research environment with Python and uv; uv manages Python project dependencies, dev dependencies, editable installs, locking, and command execution.
 
 ## Scope Classification *(mandatory)*
 
 - **Feature type**: Foundation
 - **Target surface**: Public library API, source layout, test layout, dependency policy, migration governance, validation strategy, and research artifact handling
+- **Environment strategy**: Minimal conda environment plus uv-managed Python project dependencies
 - **Legacy reference paths**: `legacy/old_tpm`, `legacy/fed_trpo`
 - **New-code location**: `src/open_energy_lab` for the unified library package, with tests under `tests`
 
@@ -135,6 +137,7 @@ inputs, and acceptable tolerances before implementation begins.
 - **FR-019**: The foundation MUST define data sources as synthetic-first with adapters: synthetic data generation is first-class, and real data ingestion must use template specifications and optional source adapters such as ENTSO-E.
 - **FR-020**: The foundation MUST define TorchRL compatibility as an optional simulator adapter or wrapper; simulator core imports must not require TorchRL.
 - **FR-021**: The foundation MUST identify battery arbitrage as the near-term use-case driver for the first simulator validation target, focusing on battery, price signal, and market arbitrage scenarios.
+- **FR-022**: The foundation MUST define a minimal conda environment and uv-based Python package-management workflow where conda provides the interpreter/base environment and uv manages project dependencies, dev dependencies, locking, editable installation, and command execution.
 
 ### Legacy Reference Requirements *(include for migration features)*
 
@@ -168,6 +171,7 @@ inputs, and acceptable tolerances before implementation begins.
 - **Optional dependencies**: Solver-backed optimization, SPN/MIO, RL training, CityLearn environments, W&B logging, notebooks, GPU workflows, and Rust parity tooling must be isolated as optional capabilities unless a future spec explicitly promotes one to core.
 - **External services**: W&B and any data APIs must be optional and documented with offline or disabled behavior where practical.
 - **Hardware assumptions**: GPU and SLURM workflows must be treated as execution environments for selected research workflows, not requirements for using the core library.
+- **Environment tooling**: The foundation uses conda for the minimal base research environment and uv for Python project dependency management. Heavy optional stacks must not be added to the base environment.
 
 ## Success Criteria *(mandatory)*
 
@@ -195,3 +199,4 @@ inputs, and acceptable tolerances before implementation begins.
 - Small curated generated artifacts may be committed as test fixtures when they are needed for validation and include provenance plus regeneration notes.
 - Some legacy validation may not run in every local environment because of solver licenses, GPU/SLURM requirements, W&B access, or missing generated datasets.
 - Rust code in `legacy/old_tpm` is useful reference material, but the initial unified library foundation is Python-first.
+- The base development environment should stay minimal: Python, uv, and only foundation development dependencies such as pytest.

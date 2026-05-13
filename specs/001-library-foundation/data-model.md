@@ -73,6 +73,24 @@ Capabilities only through documented boundaries.
 - Solver-backed, W&B, GPU/SLURM, TorchRL, notebook, real-data API, and Rust
   workflows are optional unless a future spec explicitly promotes them.
 
+## Environment Definition
+
+**Fields**: `environment_file`, `package_manager`, `python_version`,
+`base_dependencies`, `dev_dependencies`, `lockfile`, `excluded_dependencies`.
+
+**Relationships**: Supports Library Package, Optional Capabilities, and
+Dependency Classification Records.
+
+**Validation rules**:
+
+- The base environment is declared in `environment.yml`.
+- Conda provides the base research environment and Python interpreter.
+- uv manages Python project dependencies, dev dependencies, editable
+  installation, locking, and command execution.
+- The foundation base environment includes Python, uv, and bootstrapping tools
+  only.
+- Heavy optional stacks must not be added to the foundation base environment.
+
 ## Dependency Classification Record
 
 **Fields**: `dependency_name`, `classification`, `used_by`, `rationale`,

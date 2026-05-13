@@ -8,6 +8,7 @@ Use this contract before moving selected behavior from `legacy/*` into
 ```text
 Migration name:
 Target module path:
+Validation/test path:
 Target API maturity:
 Legacy source paths:
 Behavior to preserve:

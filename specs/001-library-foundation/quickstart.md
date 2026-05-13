@@ -23,7 +23,9 @@ Confirm the foundation decisions:
 ## Expected Scaffold After Foundation Implementation
 
 ```text
+environment.yml
 pyproject.toml
+uv.lock
 src/open_energy_lab/
 tests/unit/
 tests/integration/
@@ -37,11 +39,23 @@ The scaffold may include empty package modules, README files, and import tests,
 but it must not contain simulator, TPM, RL, optimization, weather, planning, or
 control implementations.
 
+## Create the Foundation Environment
+
+```bash
+conda env create -f environment.yml
+conda activate open-energy-lab
+uv sync --dev
+```
+
+The conda environment should include only Python, uv, and bootstrapping tools.
+Python project dependencies, dev dependencies, editable installs, locking, and
+command execution are handled by uv.
+
 ## Verify the Scaffold After Tasks Are Implemented
 
 ```bash
-python -m pytest tests/unit
-python -c "import open_energy_lab"
+uv run pytest tests/unit
+uv run python -c "import open_energy_lab"
 ```
 
 These checks should pass without installing solver stacks, TorchRL, PyTorch,
