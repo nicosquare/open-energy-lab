@@ -125,7 +125,7 @@ inputs, and acceptable tolerances before implementation begins.
 - **FR-007**: The foundation MUST define a parity-validation policy requiring tests, fixtures, deterministic configs, documented equations, snapshots, or reproducible smoke checks before migrating behavior.
 - **FR-008**: The foundation MUST define a per-migration dependency policy: no core dependency baseline is fixed now, and each migration must propose and justify whether needed dependencies are core, optional, external-service-backed, hardware-bound, or legacy-only.
 - **FR-009**: The foundation MUST define rules for notebooks: notebooks may be references, examples, or exploratory material, but reusable behavior must be migrated into library modules before it is treated as product code.
-- **FR-010**: The foundation MUST define rules for generated data and model artifacts: small curated generated artifacts may live under `tests/fixtures` only when they include provenance and regeneration notes; notebooks remain examples or references rather than product code.
+- **FR-010**: The foundation MUST define rules for generated data and model artifacts: small curated generated artifacts may live under `tests/fixtures` only when they include provenance and regeneration notes.
 - **FR-011**: The foundation MUST define rules for solver-backed optimization, including how unavailable commercial solvers are handled in validation and documentation.
 - **FR-012**: The foundation MUST define rules for W&B logging, GPU/SLURM workflows, and other environment-specific research workflows so they remain optional and documented.
 - **FR-013**: The foundation MUST define how Rust reference code may be used for parity, performance comparison, or future bindings without making Rust mandatory for ordinary Python library imports.
@@ -178,7 +178,7 @@ inputs, and acceptable tolerances before implementation begins.
 ### Measurable Outcomes
 
 - **SC-001**: A reviewer can determine the target package namespace, source layout, and test layout for future library work in under 5 minutes.
-- **SC-002**: A future migration spec can be checked against a documented legacy-reference, parity-validation, and API-promotion policy with no unresolved ambiguity about required evidence.
+- **SC-002**: A future migration spec can be checked against documented required fields for legacy source paths, preserved/improved/rejected behavior, validation evidence, tolerances, target API maturity, and API-promotion status.
 - **SC-003**: Core library import expectations are documented so that optional solver, training, logging, notebook, GPU, and cluster workflows can be identified before they become mandatory dependencies.
 - **SC-004**: At least 90% of future migration tasks can cite a target library path and a validation path without adding code to `legacy/*`.
 - **SC-005**: The foundation explicitly identifies that no algorithms are migrated by this feature, preventing scope creep into simulator, SPN, optimization, or RL implementation work.
