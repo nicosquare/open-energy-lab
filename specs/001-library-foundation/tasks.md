@@ -17,11 +17,11 @@
 
 **Purpose**: Establish conda/uv environment, packaging, source, test, and documentation locations for the foundation scaffold.
 
-- [ ] T001 Create `environment.yml` with conda environment name `open-energy-lab`, Python `3.11`, uv, pip, conda-forge channel, and no heavy research dependencies
-- [ ] T002 Create `pyproject.toml` with uv-compatible project metadata, project name, Python `>=3.11`, `src` package discovery, pytest dev dependency group, pytest settings, and no runtime dependencies
-- [ ] T003 [P] Create package typing marker `src/open_energy_lab/py.typed`
-- [ ] T004 [P] Create test layout marker READMEs in `tests/unit/README.md`, `tests/integration/README.md`, and `tests/parity/README.md`
-- [ ] T005 [P] Create documentation layout marker READMEs in `docs/architecture/README.md` and `docs/migration/README.md`
+- [X] T001 Create `environment.yml` with conda environment name `open-energy-lab`, Python `3.11`, uv, pip, conda-forge channel, and no heavy research dependencies
+- [X] T002 Create `pyproject.toml` with uv-compatible project metadata, project name, Python `>=3.11`, `src` package discovery, pytest dev dependency group, pytest settings, and no runtime dependencies
+- [X] T003 [P] Create package typing marker `src/open_energy_lab/py.typed`
+- [X] T004 [P] Create test layout marker READMEs in `tests/unit/README.md`, `tests/integration/README.md`, and `tests/parity/README.md`
+- [X] T005 [P] Create documentation layout marker READMEs in `docs/architecture/README.md` and `docs/migration/README.md`
 
 ---
 
