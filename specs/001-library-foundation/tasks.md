@@ -31,8 +31,8 @@
 
 **Critical**: These tasks must complete before user-story implementation because they define repository-wide artifact and generated-output boundaries.
 
-- [ ] T006 Create fixture provenance template and allowed/disallowed artifact rules in `tests/fixtures/README.md`
-- [ ] T007 [P] Update `.gitignore` to exclude local research outputs such as W&B runs, checkpoints, solver caches, notebook checkpoints, generated data dumps, and local conda/uv environment directories
+- [X] T006 Create fixture provenance template and allowed/disallowed artifact rules in `tests/fixtures/README.md`
+- [X] T007 [P] Update `.gitignore` to exclude local research outputs such as W&B runs, checkpoints, solver caches, notebook checkpoints, generated data dumps, and local conda/uv environment directories
 
 **Checkpoint**: Repository has the target directories and artifact guardrails needed by all stories.
 
