@@ -52,9 +52,9 @@
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Implement stable package metadata and public boundary docstring in `src/open_energy_lab/__init__.py`
-- [ ] T012 [P] [US1] Implement experimental API boundary docstring in `src/open_energy_lab/experimental/__init__.py`
-- [ ] T013 [P] [US1] Create docstring-only roadmap module scaffolds in `src/open_energy_lab/simulator/__init__.py`, `src/open_energy_lab/core/__init__.py`, `src/open_energy_lab/planning/__init__.py`, `src/open_energy_lab/control/__init__.py`, and `src/open_energy_lab/visualization/__init__.py`
+- [X] T011 [US1] Implement stable package metadata and public boundary docstring in `src/open_energy_lab/__init__.py`
+- [X] T012 [P] [US1] Implement experimental API boundary docstring in `src/open_energy_lab/experimental/__init__.py`
+- [X] T013 [P] [US1] Create docstring-only roadmap module scaffolds in `src/open_energy_lab/simulator/__init__.py`, `src/open_energy_lab/core/__init__.py`, `src/open_energy_lab/planning/__init__.py`, `src/open_energy_lab/control/__init__.py`, and `src/open_energy_lab/visualization/__init__.py`
 - [ ] T014 [US1] Create foundation architecture documentation in `docs/architecture/foundation.md` covering `src/open_energy_lab`, `tests`, conda/uv environment strategy, roadmap modules, planning/control as future interface-only areas, and `legacy/*` reference boundaries
 - [ ] T015 [US1] Create public API maturity documentation in `docs/migration/api-maturity.md` covering stable, experimental, private, promotion, and deprecation rules
 - [ ] T016 [US1] Update `README.md` with the target layout, conda/uv setup commands, foundation documentation links, legacy-reference boundary, and local scaffold validation commands
