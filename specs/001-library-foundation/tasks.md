@@ -48,7 +48,7 @@
 
 - [X] T008 [P] [US1] Add root import contract test in `tests/unit/test_import_contract.py` verifying `import open_energy_lab` works through `uv run` and does not import optional research stacks
 - [X] T009 [P] [US1] Add module scaffold test in `tests/unit/test_module_scaffold.py` verifying `src/open_energy_lab/experimental`, `src/open_energy_lab/simulator`, `src/open_energy_lab/core`, `src/open_energy_lab/planning`, `src/open_energy_lab/control`, and `src/open_energy_lab/visualization` are importable scaffold packages
-- [ ] T010 [P] [US1] Add legacy isolation test in `tests/unit/test_no_legacy_imports.py` verifying `src/open_energy_lab` contains no imports from `legacy/*`
+- [X] T010 [P] [US1] Add legacy isolation test in `tests/unit/test_no_legacy_imports.py` verifying `src/open_energy_lab` contains no imports from `legacy/*`
 
 ### Implementation for User Story 1
 
