@@ -51,16 +51,43 @@ The conda environment should include only Python, uv, and bootstrapping tools.
 Python project dependencies, dev dependencies, editable installs, locking, and
 command execution are handled by uv.
 
+If your local conda configuration still points at default Anaconda channels and
+blocks `conda env create`, create the same minimal environment directly from
+conda-forge and then continue with `uv sync --dev`:
+
+```bash
+conda create -y -n open-energy-lab --override-channels -c conda-forge python=3.11 uv pip
+conda activate open-energy-lab
+uv sync --dev
+```
+
 ## Verify the Scaffold After Tasks Are Implemented
 
 ```bash
 uv run pytest tests/unit
 uv run python -c "import open_energy_lab"
+rg "from legacy|import legacy" src/open_energy_lab tests/unit
 ```
 
 These checks should pass without installing solver stacks, TorchRL, PyTorch,
 CityLearn, SPFlow, W&B, Jupyter, Rust tooling, GPU support, SLURM tooling, or
 external data API credentials.
+
+Expected result for the legacy-import scan: no matches.
+
+## Checks Intentionally Not Run
+
+The foundation feature does not run or require:
+
+- Solver-backed optimization checks that depend on commercial licenses.
+- W&B, notebook, GPU, SLURM, or external data API workflows.
+- Rust parity or legacy simulator execution.
+- Parity cases for migrated behavior, because no algorithms are migrated in
+  this feature.
+
+The dedicated unit test for legacy-import isolation is not part of the current
+completed scaffold and remains a separate task if you want that guardrail
+implemented directly in `tests/unit`.
 
 ## Prepare a Future Migration Spec
 
