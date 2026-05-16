@@ -1,0 +1,6 @@
+[submodule "resources/old_tpm"]
+	path = legacy/old_tpm
+	url = git@github.com:MohannadTak/Rust-Energy.git
+[submodule "legacy/fed_trpo"]
+	path = legacy/fed_trpo
+	url = git@github.com:Optimization-and-Machine-Learning-Lab/energy_fed_trpo.git

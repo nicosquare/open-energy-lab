@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "open-energy-lab"
+version = "0.1.0"
+description = "Unified research library foundation for Open Energy Lab."
+readme = "README.md"
+requires-python = ">=3.11"
+# Keep the foundation runtime surface minimal; optional extras are deferred to
+# future capability specs.
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/open_energy_lab"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+pythonpath = ["src"]
+addopts = "-ra"

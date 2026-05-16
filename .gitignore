@@ -216,3 +216,31 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Open Energy Lab local research outputs
+wandb/
+**/wandb/
+.wandb/
+runs/
+outputs/
+artifacts/
+checkpoints/
+*.ckpt
+*.pt
+*.pth
+solver-cache/
+solver-caches/
+solver_cache/
+solver_caches/
+.solver-cache/
+gurobi.log
+*.gurobi.log
+.ipynb_checkpoints/
+generated-data/
+generated_data/
+data/generated/
+.conda/
+.conda-env/
+conda-env/
+.uv/
+.uv-cache/

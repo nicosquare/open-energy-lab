@@ -1,0 +1,7 @@
+name: open-energy-lab
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - uv
+  - pip
