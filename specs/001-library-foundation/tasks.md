@@ -71,9 +71,9 @@
 
 ### Tests for User Story 2
 
-- [ ] T017 [P] [US2] Add optional dependency boundary test in `tests/unit/test_optional_dependency_boundaries.py` checking that `import open_energy_lab` does not load known heavy optional Python modules such as `torch`, `torchrl`, `citylearn`, `pyomo`, `gurobipy`, `docplex`, `spflow`, `wandb`, or `jupyter`
-- [ ] T018 [P] [US2] Add dependency policy documentation test in `tests/unit/test_dependency_policy_docs.py` checking `docs/migration/dependency-policy.md` contains `core`, `optional`, `external-service-backed`, `hardware-bound`, and `legacy-only`
-- [ ] T019 [P] [US2] Add environment policy documentation test in `tests/unit/test_environment_policy_docs.py` checking `environment.yml`, `pyproject.toml`, and `docs/migration/environment-assumptions.md` document conda as the base environment and uv as the Python package manager
+- [X] T017 [P] [US2] Add optional dependency boundary test in `tests/unit/test_optional_dependency_boundaries.py` checking that `import open_energy_lab` does not load known heavy optional Python modules such as `torch`, `torchrl`, `citylearn`, `pyomo`, `gurobipy`, `docplex`, `spflow`, `wandb`, or `jupyter`
+- [X] T018 [P] [US2] Add dependency policy documentation test in `tests/unit/test_dependency_policy_docs.py` checking `docs/migration/dependency-policy.md` contains `core`, `optional`, `external-service-backed`, `hardware-bound`, and `legacy-only`
+- [X] T019 [P] [US2] Add environment policy documentation test in `tests/unit/test_environment_policy_docs.py` checking `environment.yml`, `pyproject.toml`, and `docs/migration/environment-assumptions.md` document conda as the base environment and uv as the Python package manager
 
 ### Implementation for User Story 2
 
