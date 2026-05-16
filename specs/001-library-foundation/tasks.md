@@ -113,9 +113,9 @@
 
 **Purpose**: Validate the complete foundation scaffold and align the Spec Kit quickstart with implemented commands.
 
-- [ ] T031 Run `conda env create -f environment.yml` only if the `open-energy-lab` environment does not already exist, then run `conda activate open-energy-lab`
-- [ ] T032 Run `uv sync --dev` to resolve the foundation dev environment and create or update `uv.lock`
-- [ ] T033 Run `uv run pytest tests/unit` to validate all foundation unit tests under `tests/unit`
+- [X] T031 Run `conda env create -f environment.yml` only if the `open-energy-lab` environment does not already exist, then run `conda activate open-energy-lab`
+- [X] T032 Run `uv sync --dev` to resolve the foundation dev environment and create or update `uv.lock`
+- [X] T033 Run `uv run pytest tests/unit` to validate all foundation unit tests under `tests/unit`
 - [ ] T034 Run `uv run python -c "import open_energy_lab"` from the repository root to verify `src/open_energy_lab` imports without optional dependencies
 - [ ] T035 Run `rg "from legacy|import legacy" src/open_energy_lab tests/unit` and confirm no target package or unit test imports from `legacy/*`
 - [ ] T036 Review `docs/architecture/foundation.md` and `docs/migration/simulator-preparation.md` to confirm planning/control remain interface-only and no simulator, TPM, RL, optimization, weather, notebook, W&B, GPU/SLURM, Rust binding, or legacy algorithm implementation scope is introduced
