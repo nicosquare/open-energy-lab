@@ -99,10 +99,12 @@
 
 ### Implementation for User Story 3
 
-- [ ] T026 [US3] Create parity validation documentation in `docs/migration/parity-validation.md` from `specs/001-library-foundation/contracts/migration-spec.md`
-- [ ] T027 [US3] Create fixture provenance documentation in `docs/migration/fixture-provenance.md` from `specs/001-library-foundation/contracts/fixture-provenance.md` and align it with `tests/fixtures/README.md`
+- [X] T026 [US3] Create parity validation documentation in `docs/migration/parity-validation.md` from `specs/001-library-foundation/contracts/migration-spec.md`
+- [X] T027 [US3] Create fixture provenance documentation in `docs/migration/fixture-provenance.md` from `specs/001-library-foundation/contracts/fixture-provenance.md` and align it with `tests/fixtures/README.md`
 - [ ] T028 [P] [US3] Create reusable migration spec template in `docs/migration/migration-spec-template.md` with required sections from `specs/001-library-foundation/contracts/migration-spec.md`, including target module path and validation/test path
 - [ ] T029 [P] [US3] Create next simulator migration preparation documentation in `docs/migration/simulator-preparation.md` from `specs/001-library-foundation/contracts/simulator-preparation.md` without adding simulator implementation
+- [X] T028 [P] [US3] Create reusable migration spec template in `docs/migration/migration-spec-template.md` with required sections from `specs/001-library-foundation/contracts/migration-spec.md`, including target module path and validation/test path
+- [X] T029 [P] [US3] Create next simulator migration preparation documentation in `docs/migration/simulator-preparation.md` from `specs/001-library-foundation/contracts/simulator-preparation.md` without adding simulator implementation
 - [ ] T030 [US3] Update `tests/parity/README.md` with the future parity strategy, legacy-reference policy, and statement that no migrated parity cases exist in this foundation feature
 
 **Checkpoint**: User Story 3 is complete when future migrations have documented templates and validation policies but no legacy algorithm behavior has been migrated.
