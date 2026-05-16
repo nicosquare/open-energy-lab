@@ -94,8 +94,8 @@
 
 ### Tests for User Story 3
 
-- [ ] T024 [P] [US3] Add migration policy documentation test in `tests/unit/test_migration_policy_docs.py` checking `docs/migration/parity-validation.md`, `docs/migration/migration-spec-template.md`, and `docs/migration/simulator-preparation.md` cover target module path, validation/test path, legacy paths, behavior to preserve/improve/reject, validation evidence, tolerances, and out-of-scope algorithm migration
-- [ ] T025 [P] [US3] Add fixture provenance documentation test in `tests/unit/test_fixture_provenance_docs.py` checking `docs/migration/fixture-provenance.md` and `tests/fixtures/README.md` include origin, generation command, seed, input data, expected output or invariant, tolerance, license/access notes, and refresh policy
+- [X] T024 [P] [US3] Add migration policy documentation test in `tests/unit/test_migration_policy_docs.py` checking `docs/migration/parity-validation.md`, `docs/migration/migration-spec-template.md`, and `docs/migration/simulator-preparation.md` cover target module path, validation/test path, legacy paths, behavior to preserve/improve/reject, validation evidence, tolerances, and out-of-scope algorithm migration
+- [X] T025 [P] [US3] Add fixture provenance documentation test in `tests/unit/test_fixture_provenance_docs.py` checking `docs/migration/fixture-provenance.md` and `tests/fixtures/README.md` include origin, generation command, seed, input data, expected output or invariant, tolerance, license/access notes, and refresh policy
 
 ### Implementation for User Story 3
 
