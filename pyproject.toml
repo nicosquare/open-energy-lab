@@ -8,6 +8,8 @@ version = "0.1.0"
 description = "Unified research library foundation for Open Energy Lab."
 readme = "README.md"
 requires-python = ">=3.11"
+# Keep the foundation runtime surface minimal; optional extras are deferred to
+# future capability specs.
 dependencies = []
 
 [dependency-groups]

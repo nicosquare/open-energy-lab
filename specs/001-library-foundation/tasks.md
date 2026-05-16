@@ -77,10 +77,10 @@
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Create dependency classification documentation in `docs/migration/dependency-policy.md` from `specs/001-library-foundation/contracts/dependency-classification.md`
-- [ ] T021 [US2] Update `pyproject.toml` to keep runtime dependencies empty or minimal, define pytest as a dev dependency, and defer optional extras until a future implemented capability spec requires them
-- [ ] T022 [P] [US2] Create environment assumptions documentation in `docs/migration/environment-assumptions.md` for conda/uv usage, solver-backed optimization, W&B logging, GPU/SLURM workflows, external data APIs, notebooks, and Rust reference tooling
-- [ ] T023 [US2] Update `README.md` to state that foundation imports do not require optional research dependencies or external services
+- [X] T020 [US2] Create dependency classification documentation in `docs/migration/dependency-policy.md` from `specs/001-library-foundation/contracts/dependency-classification.md`
+- [X] T021 [US2] Update `pyproject.toml` to keep runtime dependencies empty or minimal, define pytest as a dev dependency, and defer optional extras until a future implemented capability spec requires them
+- [X] T022 [P] [US2] Create environment assumptions documentation in `docs/migration/environment-assumptions.md` for conda/uv usage, solver-backed optimization, W&B logging, GPU/SLURM workflows, external data APIs, notebooks, and Rust reference tooling
+- [X] T023 [US2] Update `README.md` to state that foundation imports do not require optional research dependencies or external services
 
 **Checkpoint**: User Story 2 is complete when dependency and environment policy documentation exists and import tests prove the core scaffold does not load optional stacks.
 

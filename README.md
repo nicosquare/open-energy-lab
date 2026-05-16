@@ -53,6 +53,8 @@ external data APIs.
 
 - [Foundation architecture](docs/architecture/foundation.md)
 - [API maturity policy](docs/migration/api-maturity.md)
+- [Dependency policy](docs/migration/dependency-policy.md)
+- [Environment assumptions](docs/migration/environment-assumptions.md)
 - [Fixture provenance rules](tests/fixtures/README.md)
 - [Active Spec Kit plan](specs/001-library-foundation/plan.md)
 
