@@ -199,6 +199,33 @@ Optional reference check when the legacy environment is locally runnable:
 cd legacy/old_tpm && python scripts/test_battery_consistency.py
 ```
 
+## Final Validation Outcomes
+
+Phase 6 validation for this feature is:
+
+```bash
+uv run pytest tests/unit/simulator tests/integration/simulator tests/unit/test_optional_dependency_boundaries.py
+uv run python -c "import open_energy_lab.simulator"
+rg "from legacy|import legacy" src/open_energy_lab/simulator tests/unit/simulator tests/integration/simulator -g '!tests/unit/simulator/test_no_legacy_imports.py'
+```
+
+Observed outcome at feature completion:
+
+- the pytest command passed
+- `import open_energy_lab.simulator` passed
+- the legacy-import scan returned no matches in simulator source or runtime
+  tests when excluding the guard test file that intentionally contains the scan
+  strings
+
+Legacy reference check outcome:
+
+- `cd legacy/old_tpm && python scripts/test_battery_consistency.py` did not run
+  successfully in the default workspace environment
+- current failure: `ModuleNotFoundError: No module named 'storage'`
+- interpretation: the legacy script still depends on local import-path setup
+  that is outside this MVP's required environment
+- status for this feature: documented skip, not a blocker
+
 ## Checks Intentionally Out of Scope
 
 This feature should not require or run:

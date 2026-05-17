@@ -29,3 +29,35 @@ tolerances, and provenance visible to reviewers.
 No migrated parity cases exist in this foundation feature. This directory is a
 placeholder for future migration specs rather than a home for algorithm
 migration in the current scope.
+
+## Battery Arbitrage MVP Stance
+
+For `specs/002-battery-arbitrage-mvp`, parity is intentionally narrow rather
+than broad end-to-end replay against the legacy simulator.
+
+The exact legacy evidence used for this MVP is:
+
+- `legacy/old_tpm/scripts/test_battery_consistency.py`
+- `legacy/old_tpm/src_py/legacy/storage.py`
+- `legacy/old_tpm/src_py/simulator/common/battery.py`
+- `legacy/old_tpm/src_py/simulator/common/pricing.py`
+- `legacy/old_tpm/src_py/simulator/common/time.py`
+
+This feature relies on targeted deterministic invariants instead of a full
+legacy parity suite because:
+
+- the migrated scope is one synthetic battery-arbitrage case, not the broader
+  simulator stack
+- the validated behavior is battery physics, timestep alignment, discounted
+  export settlement, and deterministic policy execution
+- the legacy script environment is not self-contained from the repository root
+  and currently fails with `ModuleNotFoundError: storage`
+
+The current battery-arbitrage parity evidence is therefore:
+
+- unit tests for battery transition, pricing, scenario assembly, and
+  settlement contracts
+- one deterministic integration fixture covering explicit dispatch and
+  `price_threshold` execution
+- documented `1e-6` tolerance-backed invariants rather than a broad snapshot or
+  whole-simulator replay
