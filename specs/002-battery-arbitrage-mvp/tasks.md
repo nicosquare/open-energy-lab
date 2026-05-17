@@ -95,8 +95,8 @@
 
 ### Tests for User Story 3
 
-- [ ] T025 [P] [US3] Extend optional dependency boundary coverage in `tests/unit/test_optional_dependency_boundaries.py` to verify `import open_energy_lab.simulator` does not load heavy optional stacks such as `torch`, `torchrl`, `citylearn`, `pyomo`, `gurobipy`, `docplex`, or `wandb`
-- [ ] T026 [P] [US3] Add simulator legacy-isolation test in `tests/unit/simulator/test_no_legacy_imports.py` scanning `src/open_energy_lab/simulator` for imports from `legacy/*`
+- [X] T025 [P] [US3] Extend optional dependency boundary coverage in `tests/unit/test_optional_dependency_boundaries.py` to verify `import open_energy_lab.simulator` does not load heavy optional stacks such as `torch`, `torchrl`, `citylearn`, `pyomo`, `gurobipy`, `docplex`, or `wandb`
+- [X] T026 [P] [US3] Add simulator legacy-isolation test in `tests/unit/simulator/test_no_legacy_imports.py` scanning `src/open_energy_lab/simulator` for imports from `legacy/*`
 
 ### Implementation for User Story 3
 
