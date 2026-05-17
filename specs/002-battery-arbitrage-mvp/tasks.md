@@ -53,8 +53,8 @@
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Implement import/export price signal and `price_threshold` policy types in `src/open_energy_lab/simulator/pricing.py`
-- [ ] T013 [US1] Implement scenario entities, assembly validation, and component-graph composition in `src/open_energy_lab/simulator/scenario.py`
+- [X] T012 [US1] Implement import/export price signal and `price_threshold` policy types in `src/open_energy_lab/simulator/pricing.py`
+- [X] T013 [US1] Implement scenario entities, assembly validation, and component-graph composition in `src/open_energy_lab/simulator/scenario.py`
 - [ ] T014 [US1] Update `src/open_energy_lab/simulator/__init__.py` to export scenario and pricing surfaces at the stable package location while keeping concrete arbitrage types experimental
 - [ ] T015 [US1] Update `docs/migration/battery-arbitrage-mvp.md` with implemented scenario-assembly semantics, exact legacy references, and explicit planning/control non-goals
 - [ ] T016 [US1] Update `specs/002-battery-arbitrage-mvp/quickstart.md` with scenario-assembly usage and the `uv run pytest tests/unit/simulator/test_scenario.py tests/unit/simulator/test_pricing.py` command

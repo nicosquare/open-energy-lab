@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from open_energy_lab.simulator._graph import ComponentGraph
+from open_energy_lab.simulator._graph import ComponentGraph, Connection, Relation
 from open_energy_lab.simulator._units import (
     DEFAULT_ABSOLUTE_TOLERANCE,
     POSITIVE_DISPATCH_MEANING,
@@ -155,9 +155,9 @@ def test_valid_dispatch_scenario_builds_required_component_graph() -> None:
     assert "time_grid" in graph.components
     assert "battery" in graph.components
     assert "price_signal" in graph.components
-    assert graph.has_connection("time_grid", "price_signal", "aligns")
-    assert graph.has_connection("time_grid", "dispatch_requests", "aligns")
-    assert graph.has_connection("dispatch_requests", "battery", "requests")
+    assert graph.has_connection("time_grid", "price_signal", Relation.ALIGNS)
+    assert graph.has_connection("time_grid", "dispatch_requests", Relation.ALIGNS)
+    assert graph.has_connection("dispatch_requests", "battery", Relation.REQUESTS)
     assert scenario.numeric_tolerance == DEFAULT_ABSOLUTE_TOLERANCE
 
 
@@ -183,6 +183,11 @@ def test_valid_rule_policy_scenario_builds_required_component_graph() -> None:
 
     assert isinstance(graph, ComponentGraph)
     assert "rule_policy" in graph.components
-    assert graph.has_connection("time_grid", "rule_policy", "aligns")
-    assert graph.has_connection("price_signal", "rule_policy", "drives")
-    assert graph.has_connection("rule_policy", "battery", "requests")
+    assert graph.has_connection("time_grid", "rule_policy", Relation.ALIGNS)
+    assert graph.has_connection("price_signal", "rule_policy", Relation.DRIVES)
+    assert graph.has_connection("rule_policy", "battery", Relation.REQUESTS)
+
+
+def test_connection_rejects_unknown_relation() -> None:
+    with pytest.raises(ValueError, match="'unknown' is not a valid Relation"):
+        Connection(source="time_grid", target="price_signal", relation="unknown")

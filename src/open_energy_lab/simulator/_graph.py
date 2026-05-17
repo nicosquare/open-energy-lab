@@ -7,6 +7,18 @@ them, but it does not need a general-purpose graph engine.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
+
+
+class Relation(str, Enum):
+    """Allowed directed relationships between MVP simulator components."""
+
+    ALIGNS = "aligns"
+    REQUESTS = "requests"
+    DRIVES = "drives"
+    PRICES = "prices"
+    SETTLES = "settles"
+    PRODUCES = "produces"
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,7 +35,10 @@ class Connection:
 
     source: str
     target: str
-    relation: str
+    relation: Relation
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "relation", Relation(self.relation))
 
 
 @dataclass(slots=True)
@@ -45,9 +60,12 @@ class ComponentGraph:
             raise ValueError(f"unknown target component: {connection.target}")
         self.connections.append(connection)
 
-    def has_connection(self, source: str, target: str, relation: str) -> bool:
+    def has_connection(self, source: str, target: str, relation: Relation | str) -> bool:
+        expected_relation = Relation(relation)
         return any(
-            item.source == source and item.target == target and item.relation == relation
+            item.source == source
+            and item.target == target
+            and item.relation == expected_relation
             for item in self.connections
         )
 
@@ -59,9 +77,9 @@ class ComponentGraph:
         ]
         if missing:
             formatted = ", ".join(
-                f"{item.source}->{item.target} ({item.relation})" for item in missing
+                f"{item.source}->{item.target} ({item.relation.value})" for item in missing
             )
             raise ValueError(f"missing required connections: {formatted}")
 
 
-__all__ = ["ComponentGraph", "ComponentRef", "Connection"]
+__all__ = ["ComponentGraph", "ComponentRef", "Connection", "Relation"]
