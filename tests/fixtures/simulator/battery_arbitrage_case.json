@@ -1,0 +1,30 @@
+{
+  "case_id": "battery-arbitrage-mvp-shell",
+  "status": "placeholder",
+  "purpose": "Deterministic synthetic battery arbitrage fixture shell for Phase 1 setup.",
+  "notes": [
+    "This placeholder will be finalized in T023.",
+    "The completed fixture should define one time grid, one import-price series, one discounted export ratio, and either explicit dispatch requests or a price-threshold policy."
+  ],
+  "time_grid": {
+    "num_steps": 0,
+    "time_step_hours": 0.0
+  },
+  "battery": {
+    "capacity_kwh": 0.0,
+    "max_charge_kw": 0.0,
+    "max_discharge_kw": 0.0,
+    "charge_efficiency": 1.0,
+    "discharge_efficiency": 1.0,
+    "initial_soc": 0.0
+  },
+  "pricing": {
+    "import_prices": [],
+    "export_price_ratio": 0.0
+  },
+  "dispatch_requests_kw": [],
+  "rule_policy": null,
+  "validation": {
+    "numeric_tolerance": 1e-06
+  }
+}

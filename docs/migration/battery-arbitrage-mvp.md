@@ -1,0 +1,52 @@
+# Battery Arbitrage MVP Migration Note
+
+This note records the selected legacy evidence and intended migration boundary
+for the first simulator capability under `src/open_energy_lab/simulator`.
+
+## Target
+
+- Target module path: `src/open_energy_lab/simulator`
+- Initial validation paths:
+  - `tests/unit/simulator/`
+  - `tests/integration/simulator/`
+  - `tests/fixtures/simulator/battery_arbitrage_case.json`
+
+## Exact Legacy Reference Files
+
+- `legacy/old_tpm/src_py/simulator/common/battery.py`
+- `legacy/old_tpm/src_py/simulator/common/pricing.py`
+- `legacy/old_tpm/src_py/simulator/common/time.py`
+- `legacy/old_tpm/src_py/simulator/common/specs.py`
+- `legacy/fed_trpo/src/custom/building.py`
+
+## Behavior To Preserve
+
+- battery capacity bounds
+- battery charge and discharge power limits
+- charge and discharge efficiency semantics
+- explicit timestep-in-hours treatment
+- step-start tariff alignment
+- deterministic validation with documented numeric tolerance
+
+## Behavior To Improve
+
+- one explicit SOC convention based on fractions in `[0.0, 1.0]`
+- explicit discounted export settlement relative to import prices
+- a typed scenario surface with explicit component relationships
+- support for explicit dispatch requests and one built-in deterministic
+  `price_threshold` rule
+- test-local synthetic fixtures with provenance notes
+
+## Behavior To Reject
+
+- wholesale copying of legacy simulator structure
+- mandatory TorchRL, CityLearn, solver, W&B, notebook, GPU/SLURM, or Rust
+  dependencies in simulator-core imports
+- broad building, weather, or full-city simulation scope in the MVP
+- undocumented assumptions about signs, units, tolerances, or settlement rules
+
+## Explicit Non-Goals
+
+This MVP does not implement planning, control, RL training, solver-backed
+optimization, notebook workflows, W&B integrations, GPU/SLURM execution,
+weather migration, ENTSO-E adapters, or Rust bindings.

@@ -17,10 +17,10 @@
 
 **Purpose**: Establish feature-specific directories, fixture locations, and migration notes before simulator implementation starts.
 
-- [ ] T001 Create simulator marker READMEs in `tests/unit/simulator/README.md`, `tests/integration/simulator/README.md`, and `tests/fixtures/simulator/README.md`
-- [ ] T002 [P] Create deterministic fixture shell in `tests/fixtures/simulator/battery_arbitrage_case.json`
-- [ ] T003 [P] Create feature migration note in `docs/migration/battery-arbitrage-mvp.md` naming the exact legacy reference files and the intended preserved/improved/rejected scope
-- [ ] T004 [P] Update `tests/fixtures/README.md` to register `tests/fixtures/simulator/` and the provenance requirements for `tests/fixtures/simulator/battery_arbitrage_case.json`
+- [X] T001 Create simulator marker READMEs in `tests/unit/simulator/README.md`, `tests/integration/simulator/README.md`, and `tests/fixtures/simulator/README.md`
+- [X] T002 [P] Create deterministic fixture shell in `tests/fixtures/simulator/battery_arbitrage_case.json`
+- [X] T003 [P] Create feature migration note in `docs/migration/battery-arbitrage-mvp.md` naming the exact legacy reference files and the intended preserved/improved/rejected scope
+- [X] T004 [P] Update `tests/fixtures/README.md` to register `tests/fixtures/simulator/` and the provenance requirements for `tests/fixtures/simulator/battery_arbitrage_case.json`
 
 ---
 
