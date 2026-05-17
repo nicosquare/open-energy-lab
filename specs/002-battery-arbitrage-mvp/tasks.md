@@ -71,9 +71,9 @@
 
 ### Tests for User Story 2
 
-- [ ] T017 [P] [US2] Add battery state-transition tests in `tests/unit/simulator/test_battery.py` covering power limits, capacity limits, efficiencies, and `1e-6` tolerance behavior
-- [ ] T018 [P] [US2] Add settlement tests in `tests/unit/simulator/test_objective.py` covering discounted export accounting and per-step versus total settlement sums
-- [ ] T019 [P] [US2] Add deterministic integration trace tests in `tests/integration/simulator/test_battery_arbitrage_trace.py` covering explicit-dispatch and `price_threshold` evaluation paths against the shared fixture
+- [X] T017 [P] [US2] Add battery state-transition tests in `tests/unit/simulator/test_battery.py` covering power limits, capacity limits, efficiencies, and `1e-6` tolerance behavior
+- [X] T018 [P] [US2] Add settlement tests in `tests/unit/simulator/test_objective.py` covering discounted export accounting and per-step versus total settlement sums
+- [X] T019 [P] [US2] Add deterministic integration trace tests in `tests/integration/simulator/test_battery_arbitrage_trace.py` covering explicit-dispatch and `price_threshold` evaluation paths against the shared fixture
 
 ### Implementation for User Story 2
 
