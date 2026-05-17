@@ -28,6 +28,9 @@ Refresh policy:
 - Small legacy output snapshots with documented provenance.
 - Minimal configs needed to reproduce a validation case.
 - Expected values derived from documented equations or invariants.
+- Small simulator fixtures under `tests/fixtures/simulator/`, including the
+  battery arbitrage MVP fixture shell in
+  `tests/fixtures/simulator/battery_arbitrage_case.json`.
 
 ## Disallowed by Default
 
@@ -48,3 +51,16 @@ tolerances, license/access notes, and a refresh policy.
 If generation requires a commercial solver, GPU, SLURM, W&B, network API, or
 other unavailable environment, document the limitation and provide a smaller
 local smoke fixture when practical.
+
+## Simulator Fixture Notes
+
+`tests/fixtures/simulator/` is reserved for deterministic simulator validation
+cases. For the battery arbitrage MVP, the committed fixture should remain
+synthetic and small enough for routine review, and it must record:
+
+- exact legacy evidence files consulted
+- whether the case uses explicit dispatch requests or the built-in
+  `price_threshold` policy
+- the discounted export settlement rule
+- the default absolute numeric tolerance (`1e-6`) unless a stricter case is
+  documented

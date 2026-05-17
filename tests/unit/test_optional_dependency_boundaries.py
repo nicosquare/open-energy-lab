@@ -29,3 +29,15 @@ def test_root_import_does_not_load_optional_research_stacks() -> None:
     optional_modules_loaded = OPTIONAL_RESEARCH_MODULES & loaded_by_import
 
     assert optional_modules_loaded == set()
+
+
+def test_simulator_import_does_not_load_optional_research_stacks() -> None:
+    """The simulator package import must stay isolated from heavy optional stacks."""
+    loaded_before_import = set(sys.modules)
+
+    importlib.import_module("open_energy_lab.simulator")
+
+    loaded_by_import = set(sys.modules) - loaded_before_import
+    optional_modules_loaded = OPTIONAL_RESEARCH_MODULES & loaded_by_import
+
+    assert optional_modules_loaded == set()
