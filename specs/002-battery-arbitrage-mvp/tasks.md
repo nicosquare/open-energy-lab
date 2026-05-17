@@ -79,9 +79,9 @@
 
 - [X] T020 [P] [US2] Implement battery component and state-transition logic in `src/open_energy_lab/simulator/battery.py`
 - [X] T021 [P] [US2] Implement discounted-export settlement logic in `src/open_energy_lab/simulator/objective.py`
-- [ ] T022 [US2] Extend `src/open_energy_lab/simulator/scenario.py` with feasible trace evaluation for explicit dispatch requests and the built-in `price_threshold` policy
-- [ ] T023 [US2] Finalize deterministic fixture contents in `tests/fixtures/simulator/battery_arbitrage_case.json`
-- [ ] T024 [US2] Update `tests/fixtures/simulator/README.md` and `docs/migration/battery-arbitrage-mvp.md` with fixture provenance, exact legacy evidence, deterministic invariants, and `1e-6` tolerance rationale
+- [X] T022 [US2] Extend `src/open_energy_lab/simulator/scenario.py` with feasible trace evaluation for explicit dispatch requests and the built-in `price_threshold` policy
+- [X] T023 [US2] Finalize deterministic fixture contents in `tests/fixtures/simulator/battery_arbitrage_case.json`
+- [X] T024 [US2] Update `tests/fixtures/simulator/README.md` and `docs/migration/battery-arbitrage-mvp.md` with fixture provenance, exact legacy evidence, deterministic invariants, and `1e-6` tolerance rationale
 
 **Checkpoint**: User Story 2 is complete when the simulator produces deterministic battery traces and discounted-export settlement outcomes that can be checked from a small committed fixture without solver or external-data dependencies.
 

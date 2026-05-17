@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from ._units import (
     DEFAULT_ABSOLUTE_TOLERANCE,
     is_close,
     validate_positive_time_step_hours,
 )
-from .scenario import BatteryComponent
+
+if TYPE_CHECKING:
+    from .scenario import BatteryComponent
 
 
 @dataclass(slots=True)

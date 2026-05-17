@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from ._graph import ComponentGraph, ComponentRef, Connection, Relation
 from ._units import (
@@ -16,6 +17,9 @@ from .pricing import (
     DeterministicRulePolicy,
     PriceSignal,
 )
+
+if TYPE_CHECKING:
+    from .battery import BatteryState
 
 
 @dataclass(slots=True)
@@ -81,6 +85,19 @@ class DispatchRequestSeries:
 
 
 @dataclass(slots=True)
+class SimulationTrace:
+    """Deterministic trace produced from one scenario execution path."""
+
+    states: list["BatteryState"]
+    requested_power_kw: list[float]
+    realized_power_kw: list[float]
+    energy_delta_kwh: list[float]
+    step_settlement: list[float]
+    total_settlement: float
+    constraint_events: list[str]
+
+
+@dataclass(slots=True)
 class ArbitrageScenario:
     """Aggregate root for the first arbitrage scenario surface."""
 
@@ -137,10 +154,72 @@ class ArbitrageScenario:
 
         return graph
 
+    def evaluate_trace(self) -> SimulationTrace:
+        """Evaluate one deterministic dispatch or built-in policy trace."""
+
+        from .battery import apply_power_request, build_initial_state
+        from .objective import evaluate_arbitrage_settlement
+
+        self.validate()
+        if self.dispatch_requests is not None:
+            requested_power_kw = list(self.dispatch_requests.requested_power_kw)
+        else:
+            assert self.rule_policy is not None
+            requested_power_kw = []
+            for price in self.price_signal.import_prices:
+                action = self.rule_policy.action_for_price(price)
+                if action == "charge":
+                    requested_power_kw.append(self.battery.max_charge_kw)
+                elif action == "discharge":
+                    requested_power_kw.append(-self.battery.max_discharge_kw)
+                else:
+                    requested_power_kw.append(0.0)
+
+        current_state = build_initial_state(self.battery)
+        states: list[BatteryState] = []
+        realized_power_kw: list[float] = []
+        energy_delta_kwh: list[float] = []
+        constraint_events: list[str] = []
+
+        for step_index, requested_power in enumerate(requested_power_kw):
+            transition = apply_power_request(
+                component=self.battery,
+                state=current_state,
+                requested_power_kw=requested_power,
+                time_step_hours=self.time_grid.time_step_hours,
+                step_index=step_index,
+            )
+            if abs(transition.realized_power_kw - requested_power) > self.numeric_tolerance:
+                constraint_events.append(
+                    f"step {step_index}: requested {requested_power} kW, realized {transition.realized_power_kw} kW"
+                )
+            current_state = transition.state
+            states.append(current_state)
+            realized_power_kw.append(transition.realized_power_kw)
+            energy_delta_kwh.append(transition.energy_delta_kwh)
+
+        settlement = evaluate_arbitrage_settlement(
+            realized_power_kw=realized_power_kw,
+            time_step_hours=self.time_grid.time_step_hours,
+            price_signal=self.price_signal,
+            objective=self.objective,
+        )
+
+        return SimulationTrace(
+            states=states,
+            requested_power_kw=requested_power_kw,
+            realized_power_kw=realized_power_kw,
+            energy_delta_kwh=energy_delta_kwh,
+            step_settlement=settlement.step_settlement,
+            total_settlement=settlement.total_settlement,
+            constraint_events=constraint_events,
+        )
+
 
 __all__ = [
     "ArbitrageScenario",
     "BatteryComponent",
     "DispatchRequestSeries",
+    "SimulationTrace",
     "TimeGrid",
 ]

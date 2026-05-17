@@ -92,3 +92,38 @@ The current scenario assembly also does not implement:
 - closed-loop control policies beyond the deterministic `price_threshold` rule
 - multi-battery or multi-building composition
 - weather, PV, or demand-model components
+
+## Deterministic Fixture and Invariants
+
+The current US2 validation fixture is
+`tests/fixtures/simulator/battery_arbitrage_case.json`.
+
+It captures two deterministic execution paths over the same 3-step synthetic
+scenario:
+
+- explicit dispatch: `[1.0, 0.0, -1.0]` kW
+- built-in `price_threshold` rule with threshold `0.2`, yielding
+  `[5.0, 0.0, -5.0]` kW requests
+
+The fixture preserves targeted evidence from:
+
+- `legacy/old_tpm/scripts/test_battery_consistency.py`
+- `legacy/old_tpm/src_py/legacy/storage.py`
+- `legacy/old_tpm/src_py/simulator/common/battery.py`
+- `legacy/old_tpm/src_py/simulator/common/pricing.py`
+- `legacy/old_tpm/src_py/simulator/common/time.py`
+
+The current deterministic invariants are:
+
+- SOC remains inside `[0.0, 1.0]`
+- realized power does not exceed configured charge/discharge limits
+- charge and discharge efficiency losses are reflected in stored-energy changes
+- total settlement equals the sum of the step-settlement values
+- export settlement uses the discounted export-price ratio
+- repeated `price_threshold` evaluation from the same inputs produces the same
+  trace
+
+The numeric comparison policy remains absolute tolerance `1e-6`. That value is
+strict enough to catch drift in the battery and settlement math while still
+matching the small floating-point tolerance expected by the selected legacy
+battery consistency evidence.
