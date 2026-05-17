@@ -39,6 +39,38 @@ for the first simulator capability under `src/open_energy_lab/simulator`.
   `price_threshold` rule
 - test-local synthetic fixtures with provenance notes
 
+## Implemented Scenario-Assembly Semantics
+
+The current US1 implementation provides:
+
+- a stable package location at `open_energy_lab.simulator`
+- experimental concrete arbitrage types exported from that package:
+  - `TimeGrid`
+  - `BatteryComponent`
+  - `DispatchRequestSeries`
+  - `PriceSignal`
+  - `DeterministicRulePolicy`
+  - `ArbitrageObjectiveRepresentation`
+  - `ArbitrageScenario`
+- a required scenario core of time grid, battery, price signal, and objective
+- exactly one execution input per scenario validation path:
+  - explicit `DispatchRequestSeries`, or
+  - built-in deterministic `price_threshold` policy
+- fail-fast validation for:
+  - non-positive timestep duration
+  - invalid battery bounds or efficiency values
+  - dispatch length mismatches
+  - missing or duplicated execution-path inputs
+  - missing discounted-export semantics
+  - mismatched objective versus price-signal export ratios
+- explicit component-graph wiring with validated relation vocabulary:
+  - `aligns`
+  - `requests`
+  - `drives`
+  - `prices`
+  - `settles`
+  - `produces`
+
 ## Behavior To Reject
 
 - wholesale copying of legacy simulator structure
@@ -52,3 +84,11 @@ for the first simulator capability under `src/open_energy_lab/simulator`.
 This MVP does not implement planning, control, RL training, solver-backed
 optimization, notebook workflows, W&B integrations, GPU/SLURM execution,
 weather migration, ENTSO-E adapters, or Rust bindings.
+
+The current scenario assembly also does not implement:
+
+- automatic dispatch optimization
+- planning APIs
+- closed-loop control policies beyond the deterministic `price_threshold` rule
+- multi-battery or multi-building composition
+- weather, PV, or demand-model components

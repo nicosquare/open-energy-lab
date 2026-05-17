@@ -84,6 +84,64 @@ enough if it proves the contracts. That scenario may use explicit dispatch
 requests or the built-in `price_threshold` policy, but the validation path must
 state which mode it is using.
 
+## Current US1 Scenario Assembly Usage
+
+The stable import location is `open_energy_lab.simulator`. The concrete
+battery-arbitrage types exported there are still experimental.
+
+```python
+from open_energy_lab.simulator import (
+    ArbitrageObjectiveRepresentation,
+    ArbitrageScenario,
+    BatteryComponent,
+    DispatchRequestSeries,
+    PriceSignal,
+    TimeGrid,
+)
+
+grid = TimeGrid(num_steps=3, time_step_hours=1.0)
+scenario = ArbitrageScenario(
+    scenario_id="example-dispatch-scenario",
+    time_grid=grid,
+    battery=BatteryComponent(
+        name="battery",
+        capacity_kwh=10.0,
+        max_charge_kw=5.0,
+        max_discharge_kw=5.0,
+        charge_efficiency=0.95,
+        discharge_efficiency=0.95,
+        initial_soc=0.5,
+    ),
+    price_signal=PriceSignal(
+        currency="USD",
+        unit_rate_name="energy-price",
+        import_prices=[0.10, 0.20, 0.30],
+        export_price_ratio=0.8,
+        interpretation="discounted export relative to import prices",
+        time_alignment="step-start",
+        time_grid=grid,
+    ),
+    dispatch_requests=DispatchRequestSeries(
+        requested_power_kw=[1.0, 0.0, -1.0],
+        sign_convention="charge",
+        source="quickstart",
+    ),
+    objective=ArbitrageObjectiveRepresentation(
+        objective_name="arbitrage",
+        settlement_basis="grid-settlement",
+        allow_export=True,
+        export_price_ratio=0.8,
+    ),
+)
+
+graph = scenario.validate()
+assert graph.has_connection("time_grid", "price_signal", "aligns")
+```
+
+The alternative US1 execution path is the built-in deterministic
+`price_threshold` rule policy. A scenario must provide exactly one of explicit
+dispatch requests or the rule policy.
+
 ## Expected Checks After Tasks Exist
 
 ```bash
@@ -94,6 +152,12 @@ rg "from legacy|import legacy" src/open_energy_lab/simulator tests/unit tests/in
 
 Expected result for the legacy-import scan: no matches in new library modules
 or their default tests.
+
+The focused US1 validation command is:
+
+```bash
+uv run pytest tests/unit/simulator/test_scenario.py tests/unit/simulator/test_pricing.py
+```
 
 Optional reference check when the legacy environment is locally runnable:
 

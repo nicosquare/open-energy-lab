@@ -33,7 +33,17 @@ def test_simulator_import_stays_lightweight() -> None:
     module_file = Path(module.__file__).resolve()
     assert module_file.name == "__init__.py"
     assert module_file.parent.name == "simulator"
-    assert module.__all__ == []
+    assert module.__all__ == [
+        "ArbitrageObjectiveRepresentation",
+        "ArbitrageScenario",
+        "BatteryComponent",
+        "DeterministicRulePolicy",
+        "DispatchRequestSeries",
+        "PriceSignal",
+        "TimeGrid",
+    ]
+    assert module.ArbitrageScenario.__module__ == "open_energy_lab.simulator.scenario"
+    assert module.PriceSignal.__module__ == "open_energy_lab.simulator.pricing"
 
 
 def test_internal_foundation_helpers_import_without_optional_stacks() -> None:
