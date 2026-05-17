@@ -48,8 +48,8 @@
 
 ### Tests for User Story 1
 
-- [ ] T010 [P] [US1] Add scenario assembly tests in `tests/unit/simulator/test_scenario.py` covering time-grid validation, required components, and mutually exclusive dispatch-versus-policy inputs
-- [ ] T011 [P] [US1] Add pricing and deterministic policy tests in `tests/unit/simulator/test_pricing.py` covering step-start import prices, discounted export ratio, and `price_threshold` charge/hold/discharge behavior
+- [X] T010 [P] [US1] Add scenario assembly tests in `tests/unit/simulator/test_scenario.py` covering time-grid validation, required components, and mutually exclusive dispatch-versus-policy inputs
+- [X] T011 [P] [US1] Add pricing and deterministic policy tests in `tests/unit/simulator/test_pricing.py` covering step-start import prices, discounted export ratio, and `price_threshold` charge/hold/discharge behavior
 
 ### Implementation for User Story 1
 
