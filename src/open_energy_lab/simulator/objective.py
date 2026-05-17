@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from ._units import validate_positive_time_step_hours
-from .pricing import ArbitrageObjectiveRepresentation, PriceSignal
+
+if TYPE_CHECKING:
+    from .pricing import ArbitrageObjectiveRepresentation, PriceSignal
 
 
 @dataclass(slots=True)

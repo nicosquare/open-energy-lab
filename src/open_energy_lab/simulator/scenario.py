@@ -12,14 +12,14 @@ from ._units import (
     validate_positive_time_step_hours,
     validate_soc_fraction,
 )
-from .pricing import (
-    ArbitrageObjectiveRepresentation,
-    DeterministicRulePolicy,
-    PriceSignal,
-)
 
 if TYPE_CHECKING:
     from .battery import BatteryState
+    from .pricing import (
+        ArbitrageObjectiveRepresentation,
+        DeterministicRulePolicy,
+        PriceSignal,
+    )
 
 
 @dataclass(slots=True)

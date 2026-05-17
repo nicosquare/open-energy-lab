@@ -100,8 +100,8 @@
 
 ### Implementation for User Story 3
 
-- [ ] T027 [US3] Audit and tighten simulator imports and `__all__` definitions in `src/open_energy_lab/simulator/__init__.py`, `src/open_energy_lab/simulator/pricing.py`, `src/open_energy_lab/simulator/scenario.py`, `src/open_energy_lab/simulator/battery.py`, and `src/open_energy_lab/simulator/objective.py`
-- [ ] T028 [US3] Update `docs/migration/battery-arbitrage-mvp.md` and `specs/002-battery-arbitrage-mvp/quickstart.md` with the final dependency classification, stable-versus-experimental API boundary, and adapter non-goals
+- [X] T027 [US3] Audit and tighten simulator imports and `__all__` definitions in `src/open_energy_lab/simulator/__init__.py`, `src/open_energy_lab/simulator/pricing.py`, `src/open_energy_lab/simulator/scenario.py`, `src/open_energy_lab/simulator/battery.py`, and `src/open_energy_lab/simulator/objective.py`
+- [X] T028 [US3] Update `docs/migration/battery-arbitrage-mvp.md` and `specs/002-battery-arbitrage-mvp/quickstart.md` with the final dependency classification, stable-versus-experimental API boundary, and adapter non-goals
 
 **Checkpoint**: User Story 3 is complete when the simulator package imports cleanly in the foundation environment and its boundary against heavy research stacks and `legacy/*` is test-backed and documented.
 

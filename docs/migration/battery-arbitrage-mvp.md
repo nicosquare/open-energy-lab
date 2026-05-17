@@ -127,3 +127,57 @@ The numeric comparison policy remains absolute tolerance `1e-6`. That value is
 strict enough to catch drift in the battery and settlement math while still
 matching the small floating-point tolerance expected by the selected legacy
 battery consistency evidence.
+
+## Final Dependency Boundary
+
+The current simulator-core dependency classification is:
+
+- core:
+  - `src/open_energy_lab/simulator/__init__.py`
+  - `src/open_energy_lab/simulator/_units.py`
+  - `src/open_energy_lab/simulator/_graph.py`
+  - `src/open_energy_lab/simulator/pricing.py`
+  - `src/open_energy_lab/simulator/scenario.py`
+  - `src/open_energy_lab/simulator/battery.py`
+  - `src/open_energy_lab/simulator/objective.py`
+- optional:
+  - future TorchRL, PyTorch, CityLearn, or notebook-facing adapters
+- external-service-backed:
+  - future tariff/data adapters such as ENTSO-E integrations
+- hardware-bound:
+  - future GPU, SLURM, or solver-backed execution paths
+- legacy-only:
+  - `legacy/old_tpm/*`
+  - `legacy/fed_trpo/*`
+
+The stable package boundary is `open_energy_lab.simulator`.
+
+The following exported concrete types remain experimental even though the
+package location is stable:
+
+- `TimeGrid`
+- `BatteryComponent`
+- `DispatchRequestSeries`
+- `PriceSignal`
+- `DeterministicRulePolicy`
+- `ArbitrageObjectiveRepresentation`
+- `ArbitrageScenario`
+
+The simulator-core modules are now audited to keep imports limited to the
+standard library plus local simulator modules. Optional research stacks and
+legacy modules are excluded from default import paths and are covered by
+boundary tests.
+
+## Adapter Non-Goals
+
+This feature still does not add:
+
+- TorchRL adapters
+- PyTorch-native tensor execution paths
+- CityLearn environment wrappers
+- solver-backed optimization adapters
+- notebook execution helpers
+- W&B instrumentation adapters
+- GPU or SLURM runtime integration
+- real-data tariff ingestion adapters
+- Rust bindings or Rust-backed execution surfaces

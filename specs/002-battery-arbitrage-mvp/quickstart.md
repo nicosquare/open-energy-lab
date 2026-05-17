@@ -159,6 +159,40 @@ The focused US1 validation command is:
 uv run pytest tests/unit/simulator/test_scenario.py tests/unit/simulator/test_pricing.py
 ```
 
+The focused US3 boundary validation commands are:
+
+```bash
+uv run pytest tests/unit/test_optional_dependency_boundaries.py tests/unit/simulator/test_import_boundary.py tests/unit/simulator/test_no_legacy_imports.py
+uv run python -c "import open_energy_lab.simulator"
+```
+
+## Final Package Boundary
+
+`open_energy_lab.simulator` is now the stable import location for simulator
+work, but the concrete arbitrage-facing types exported there are still
+experimental.
+
+Current simulator-core modules are limited to the standard library plus local
+simulator imports:
+
+- `open_energy_lab.simulator`
+- `open_energy_lab.simulator._units`
+- `open_energy_lab.simulator._graph`
+- `open_energy_lab.simulator.pricing`
+- `open_energy_lab.simulator.scenario`
+- `open_energy_lab.simulator.battery`
+- `open_energy_lab.simulator.objective`
+
+Optional adapters remain out of scope for this feature:
+
+- TorchRL or PyTorch integrations
+- CityLearn wrappers
+- solver-backed optimizers
+- notebook or W&B workflows
+- GPU or SLURM execution helpers
+- external tariff/data ingestion adapters
+- Rust bindings
+
 Optional reference check when the legacy environment is locally runnable:
 
 ```bash
