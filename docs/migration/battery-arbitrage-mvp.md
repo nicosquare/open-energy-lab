@@ -13,6 +13,8 @@ for the first simulator capability under `src/open_energy_lab/simulator`.
 
 ## Exact Legacy Reference Files
 
+- `legacy/old_tpm/src_py/legacy/storage.py`
+- `legacy/old_tpm/scripts/test_battery_consistency.py`
 - `legacy/old_tpm/src_py/simulator/common/battery.py`
 - `legacy/old_tpm/src_py/simulator/common/pricing.py`
 - `legacy/old_tpm/src_py/simulator/common/time.py`

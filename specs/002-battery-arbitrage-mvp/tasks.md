@@ -30,11 +30,11 @@
 
 **Critical**: These tasks must complete before user-story implementation because they define common units, graph structure, import expectations, and migration-note checks used by the whole MVP.
 
-- [ ] T005 Create shared unit, sign-convention, and default-tolerance helpers in `src/open_energy_lab/simulator/_units.py`
-- [ ] T006 Create internal component-graph primitives in `src/open_energy_lab/simulator/_graph.py`
-- [ ] T007 Update `src/open_energy_lab/simulator/__init__.py` to keep the package import-light and mark concrete arbitrage surfaces as experimental under the stable `open_energy_lab.simulator` location
-- [ ] T008 [P] Add simulator import-boundary smoke test in `tests/unit/simulator/test_import_boundary.py`
-- [ ] T009 [P] Add migration-note documentation test in `tests/unit/simulator/test_migration_notes.py` checking `docs/migration/battery-arbitrage-mvp.md` contains exact legacy files plus preserved/improved/rejected behavior
+- [X] T005 Create shared unit, sign-convention, and default-tolerance helpers in `src/open_energy_lab/simulator/_units.py`
+- [X] T006 Create internal component-graph primitives in `src/open_energy_lab/simulator/_graph.py`
+- [X] T007 Update `src/open_energy_lab/simulator/__init__.py` to keep the package import-light and mark concrete arbitrage surfaces as experimental under the stable `open_energy_lab.simulator` location
+- [X] T008 [P] Add simulator import-boundary smoke test in `tests/unit/simulator/test_import_boundary.py`
+- [X] T009 [P] Add migration-note documentation test in `tests/unit/simulator/test_migration_notes.py` checking `docs/migration/battery-arbitrage-mvp.md` contains exact legacy files plus preserved/improved/rejected behavior
 
 **Checkpoint**: Shared simulator conventions and migration-note guardrails exist before scenario-specific work begins.
 
