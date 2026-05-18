@@ -50,13 +50,13 @@
 
 - [ ] T010 [P] [US1] Add deterministic load component tests in `tests/unit/simulator/test_load.py`
 - [ ] T011 [P] [US1] Add weather component tests in `tests/unit/simulator/test_weather.py` covering human-readable field names, TMY label mappings, required weather subset handling, and deferred-field behavior
-- [ ] T012 [P] [US1] Add PV component tests in `tests/unit/simulator/test_pv.py` covering weather-driven generation inputs, irradiance selection, and temperature-coefficient handling
+- [ ] T012 [P] [US1] Add PV component tests in `tests/unit/simulator/test_pv.py` covering weather-driven generation inputs, irradiance selection, and deterministic PV derivation behavior
 - [ ] T013 [P] [US1] Add multi-component scenario assembly tests in `tests/unit/simulator/test_multi_component_scenario.py` covering aligned series validation, explicit graph shape, and mutually exclusive dispatch-versus-policy inputs
 
 ### Implementation for User Story 1
 
 - [ ] T014 [US1] Implement deterministic load profile types in `src/open_energy_lab/simulator/load.py`
-- [ ] T015 [US1] Implement weather component types and TMY label-mapping behavior in `src/open_energy_lab/simulator/weather.py`
+- [ ] T015 [US1] Implement weather component types with human-readable field names and TMY label-mapping behavior in `src/open_energy_lab/simulator/weather.py`
 - [ ] T016 [US1] Implement PV component types and deterministic weather-driven generation helpers in `src/open_energy_lab/simulator/pv.py`
 - [ ] T017 [US1] Extend `src/open_energy_lab/simulator/scenario.py` with battery + load + weather + PV assembly and explicit component-graph wiring
 - [ ] T018 [US1] Update `src/open_energy_lab/simulator/__init__.py` to export the new experimental multi-component surfaces from the stable `open_energy_lab.simulator` package boundary

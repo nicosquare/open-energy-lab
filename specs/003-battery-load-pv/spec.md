@@ -27,7 +27,7 @@ external data integration.
 - Q: Should weather remain out of scope for the battery + load + PV MVP? → A: No. This spec should migrate the weather model needed for PV behavior.
 - Q: How broad should the weather-model migration be in this spec? → A: Migrate only the minimal weather model needed to generate deterministic PV output for the MVP scenarios.
 - Q: In this spec, what inputs should the built-in deterministic battery rule use? → A: The built-in deterministic battery rule still uses price only; load and PV affect the resulting net-grid trace, not the rule itself.
-- Q: What naming rule should the weather component follow for TMY-style variables in this MVP? → A: The MVP weather component uses exact TMY variable names for the subset it includes, and documents the remaining standard TMY fields as deferred.
+- Q: What naming rule should the weather component follow for TMY-style variables in this MVP? → A: The MVP weather component uses human-readable field names with explicit mappings to canonical TMY source labels, and documents the remaining standard TMY fields as deferred.
 
 ## Scope Classification *(mandatory)*
 
@@ -59,20 +59,21 @@ next meaningful step is to add the smallest multi-component case that exercises
 component composition and net-grid accounting.
 
 **Independent Test**: A reviewer can assemble a typed scenario containing a
-time grid, battery, load profile, PV profile, price profile, and grid
-accounting rules, then verify that the scenario structure makes all component
-relationships explicit.
+time grid, battery, load profile, weather inputs, weather-derived PV behavior,
+price profile, and grid accounting rules, then verify that the scenario
+structure makes all component relationships explicit.
 
 **Acceptance Scenarios**:
 
-1. **Given** a deterministic time grid, battery, load profile, PV profile, and
-   price profile, **When** a scenario is assembled, **Then** the resulting
-   scenario expresses battery, load, PV, and grid relationships through typed
-   simulator concepts and explicit component links.
+1. **Given** a deterministic time grid, battery, load profile, weather inputs,
+   weather-derived PV behavior, and price profile, **When** a scenario is
+   assembled, **Then** the resulting scenario expresses weather, battery, load,
+   PV, and grid relationships through typed simulator concepts and explicit
+   component links.
 2. **Given** a reviewer inspecting the composed scenario, **When** they trace
-   component relationships, **Then** they can identify how load, PV, battery,
-   and net-grid accounting interact without inferring hidden behavior from
-   hard-coded case logic.
+   component relationships, **Then** they can identify how weather drives PV
+   and how load, PV, battery, and net-grid accounting interact without
+   inferring hidden behavior from hard-coded case logic.
 
 ---
 
@@ -147,7 +148,8 @@ workflows, external tariff APIs, or legacy runtime imports.
 
 - **FR-001**: The feature MUST extend the simulator MVP under
   `src/open_energy_lab/simulator` to represent a deterministic scenario with
-  battery storage, exogenous load, exogenous PV, and net-grid accounting.
+  battery storage, exogenous load, weather-derived PV generation, and net-grid
+  accounting.
 - **FR-002**: The feature MUST define typed simulator concepts for load or
   demand, PV or generation, weather behavior needed to drive PV, and net-grid
   import/export behavior on the same time grid used by the battery and price
@@ -212,11 +214,11 @@ workflows, external tariff APIs, or legacy runtime imports.
   weather inputs and transformation logic needed to generate deterministic PV
   output for the MVP scenarios, and MUST defer unrelated weather consumers and
   broader weather-system behavior to later migrations.
-- **FR-017b**: Any weather variables included in the MVP MUST preserve their
-  exact TMY-style field names from the reference weather source rather than
-  being renamed into a new internal vocabulary, and standard TMY fields not
-  required by the first PV derivation MUST be documented as deferred rather
-  than invented or aliased as core MVP inputs.
+- **FR-017b**: Any weather variables included in the MVP MUST use
+  human-readable field names while carrying explicit mappings to their
+  canonical TMY source labels, and standard TMY fields not required by the
+  first PV derivation MUST be documented as deferred rather than invented or
+  aliased as core MVP inputs.
 
 ### Legacy Reference Requirements *(include for migration features)*
 
@@ -244,16 +246,16 @@ workflows, external tariff APIs, or legacy runtime imports.
 - **Load Component**: Exogenous demand profile aligned to the time grid,
   representing consumption that contributes to net-grid import or reduces
   available export.
-- **PV Component**: Exogenous deterministic generation profile aligned to the
-  time grid, representing available local generation that offsets load or
+- **PV Component**: Deterministic weather-derived generation profile aligned to
+  the time grid, representing available local generation that offsets load or
   creates export.
 - **Weather Component**: Time-aligned weather inputs and derived behavior
   needed to produce deterministic PV generation in the migrated simulator
   scenario, limited to the smallest weather scope required by this MVP. The
-  included subset MUST preserve exact TMY-style variable names such as
-  `Date & time (UTC)`, `T2m [°C]`, and irradiance fields when those variables
-  are part of the MVP subset; other standard TMY variables remain deferred
-  until a later weather expansion requires them.
+  included subset MUST use human-readable field names with explicit mappings to
+  canonical TMY source labels such as `Date & time (UTC)`, `T2m [°C]`, and
+  irradiance fields; other standard TMY variables remain deferred until a
+  later weather expansion requires them.
 - **Net Grid Trace**: Per-step import/export results derived from load, PV, and
   battery behavior, expressed as one net-grid value per timestep plus any
   associated settlement values or invariants.
@@ -304,9 +306,9 @@ workflows, external tariff APIs, or legacy runtime imports.
 - The weather component migrated here is intentionally limited to the PV
   generation path and is expected to be extended by later dedicated weather
   migrations if broader weather behavior is needed.
-- The MVP weather subset keeps exact TMY-style variable names for included
-  fields and defers unused standard TMY fields instead of renaming them into a
-  new schema.
+- The MVP weather subset uses human-readable field names with explicit TMY
+  source-label mappings for included fields and defers unused standard TMY
+  fields.
 - The existing battery-arbitrage semantics for battery constraints, timestep
   handling, and explicit settlement remain the baseline unless this feature
   documents a specific extension.
