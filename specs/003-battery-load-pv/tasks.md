@@ -17,10 +17,10 @@
 
 **Purpose**: Establish feature-specific fixture, provenance, and migration-note scaffolding before simulator implementation starts.
 
-- [ ] T001 Create deterministic fixture shell in `tests/fixtures/simulator/battery_load_pv_case.json`
-- [ ] T002 [P] Create feature migration note in `docs/migration/battery-load-pv-mvp.md` naming the exact legacy reference files plus the intended preserved/improved/rejected scope
-- [ ] T003 [P] Update `tests/fixtures/simulator/README.md` with provenance requirements for `tests/fixtures/simulator/battery_load_pv_case.json`
-- [ ] T004 [P] Update `tests/fixtures/README.md` to register `tests/fixtures/simulator/battery_load_pv_case.json` and the human-readable weather-field plus TMY-label mapping expectation
+- [X] T001 Create deterministic fixture shell in `tests/fixtures/simulator/battery_load_pv_case.json`
+- [X] T002 [P] Create feature migration note in `docs/migration/battery-load-pv-mvp.md` naming the exact legacy reference files plus the intended preserved/improved/rejected scope
+- [X] T003 [P] Update `tests/fixtures/simulator/README.md` with provenance requirements for `tests/fixtures/simulator/battery_load_pv_case.json`
+- [X] T004 [P] Update `tests/fixtures/README.md` to register `tests/fixtures/simulator/battery_load_pv_case.json` and the human-readable weather-field plus TMY-label mapping expectation
 
 ---
 

@@ -1,0 +1,123 @@
+{
+  "case_id": "battery-load-pv-mvp-shell",
+  "status": "shell",
+  "purpose": "Deterministic synthetic battery + load + weather + PV fixture shell for the multi-component simulator MVP.",
+  "origin": {
+    "author": "OpenAI Codex",
+    "construction": "Phase 1 shell authored from the 003-battery-load-pv contracts and data model. Fill concrete numeric expectations during US2 trace finalization.",
+    "seed": null,
+    "refresh_policy": "Refresh only when the documented load, weather-to-PV, net-grid settlement, or battery semantics intentionally change."
+  },
+  "legacy_references": [
+    "legacy/old_tpm/src_py/legacy/storage.py",
+    "legacy/old_tpm/scripts/test_battery_consistency.py",
+    "legacy/old_tpm/src_py/simulator/common/battery.py",
+    "legacy/old_tpm/src_py/simulator/common/pricing.py",
+    "legacy/old_tpm/src_py/simulator/common/time.py",
+    "legacy/old_tpm/src_py/simulator/common/specs.py",
+    "legacy/fed_trpo/src/custom/building.py"
+  ],
+  "time_grid": {
+    "num_steps": 0,
+    "time_step_hours": 1.0
+  },
+  "battery": {
+    "name": "battery",
+    "capacity_kwh": 0.0,
+    "max_charge_kw": 0.0,
+    "max_discharge_kw": 0.0,
+    "charge_efficiency": 1.0,
+    "discharge_efficiency": 1.0,
+    "initial_soc": 0.0,
+    "min_soc": 0.0,
+    "max_soc": 1.0
+  },
+  "load": {
+    "name": "load",
+    "demand_kw": []
+  },
+  "weather": {
+    "name": "weather",
+    "timestamp_utc": {
+      "tmy_label": "Date & time (UTC)",
+      "values": []
+    },
+    "dry_bulb_air_temperature_c": {
+      "tmy_label": "T2m [°C]",
+      "values": []
+    },
+    "global_horizontal_irradiance_w_per_m2": {
+      "tmy_label": "G(h) [W/m2]",
+      "values": []
+    },
+    "deferred_tmy_fields": [
+      {
+        "field_name": "relative_humidity_pct",
+        "tmy_label": "RH [%]"
+      },
+      {
+        "field_name": "infrared_radiation_downwards_w_per_m2",
+        "tmy_label": "IR(h) [W/m2]"
+      },
+      {
+        "field_name": "windspeed_10m_m_per_s",
+        "tmy_label": "WS10m [m/s]"
+      },
+      {
+        "field_name": "wind_direction_10m_deg",
+        "tmy_label": "WD10m [°]"
+      },
+      {
+        "field_name": "surface_air_pressure_pa",
+        "tmy_label": "SP [Pa]"
+      }
+    ]
+  },
+  "pv": {
+    "name": "pv",
+    "rated_power_kw": 0.0,
+    "temperature_coefficient_pct_per_c": 0.0,
+    "reference_irradiance_w_per_m2": 1000.0,
+    "reference_temperature_c": 25.0,
+    "generation_cap_kw": null,
+    "derivation_name": "fill-during-implementation"
+  },
+  "pricing": {
+    "currency": "USD",
+    "unit_rate_name": "energy-price",
+    "import_prices": [],
+    "export_price_ratio": 0.0,
+    "interpretation": "discounted export relative to import prices",
+    "time_alignment": "step-start"
+  },
+  "dispatch_case": {
+    "dispatch_requests_kw": [],
+    "expected_trace": null,
+    "validation": {
+      "numeric_tolerance": 1e-06,
+      "expected_invariants": [
+        "SOC remains within [0.0, 1.0]",
+        "realized battery power stays within configured limits",
+        "net_grid_power_kw equals load_kw + realized_battery_power_kw - pv_generation_kw",
+        "total settlement equals the sum of per-step settlement values"
+      ]
+    }
+  },
+  "policy_case": {
+    "policy_name": "price_threshold",
+    "price_threshold": null,
+    "below_threshold_action": "charge",
+    "above_threshold_action": "discharge",
+    "at_threshold_action": "hold",
+    "expected_trace": null,
+    "validation": {
+      "numeric_tolerance": 1e-06,
+      "expected_invariants": [
+        "weather-driven PV output is deterministic from the same inputs",
+        "the built-in rule remains price-only even when load and PV are present",
+        "net-grid import/export direction follows the sign of the net-grid value",
+        "repeated evaluation from the same inputs returns the same trace"
+      ]
+    }
+  }
+}

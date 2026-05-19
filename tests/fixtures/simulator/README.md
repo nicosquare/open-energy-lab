@@ -1,12 +1,12 @@
 # Simulator Fixtures
 
 Fixtures in this directory support deterministic simulator validation for the
-battery arbitrage MVP.
+battery arbitrage MVP and the battery + load + PV migration that builds on it.
 
-The first committed fixture is expected to be
-`tests/fixtures/simulator/battery_arbitrage_case.json`, a small synthetic case
-used by unit and integration tests for scenario assembly, battery trace
-evaluation, and discounted export settlement.
+Committed simulator fixtures currently include:
+
+- `tests/fixtures/simulator/battery_arbitrage_case.json`
+- `tests/fixtures/simulator/battery_load_pv_case.json`
 
 Each committed simulator fixture must include:
 
@@ -43,3 +43,30 @@ simulator fixture.
 - numeric tolerance: absolute `1e-6`
 - refresh policy: update only when the documented timestep, battery, policy, or
   discounted-settlement semantics intentionally change
+
+## Battery Load PV Fixture Shell
+
+`tests/fixtures/simulator/battery_load_pv_case.json` is the Phase 1 fixture
+shell for the next simulator migration.
+
+- source: manually authored from the `003-battery-load-pv` contracts and data
+  model
+- author: OpenAI Codex
+- seed: none
+- why it is committed: it fixes the intended multi-component fixture shape
+  before simulator implementation lands
+- exact legacy evidence:
+  - `legacy/old_tpm/src_py/legacy/storage.py`
+  - `legacy/old_tpm/scripts/test_battery_consistency.py`
+  - `legacy/old_tpm/src_py/simulator/common/battery.py`
+  - `legacy/old_tpm/src_py/simulator/common/pricing.py`
+  - `legacy/old_tpm/src_py/simulator/common/time.py`
+  - `legacy/old_tpm/src_py/simulator/common/specs.py`
+  - `legacy/fed_trpo/src/custom/building.py`
+- required provenance and schema expectations:
+  - weather fields use human-readable names
+  - each included weather field carries its canonical TMY source label
+  - unused standard TMY fields are documented as deferred, not silently dropped
+  - later numeric expectations must stay small, deterministic, and reviewable
+- refresh policy: finalize during US2, then update only when the documented
+  load, weather-to-PV, battery, or settlement semantics intentionally change
