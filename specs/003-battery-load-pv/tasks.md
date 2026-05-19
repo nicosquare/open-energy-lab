@@ -30,11 +30,11 @@
 
 **Critical**: These tasks must complete before user-story implementation because they define the shared weather-field vocabulary, component relationship support, import expectations, and migration-note checks used across the feature.
 
-- [ ] T005 Create shared weather field metadata and TMY-label mapping helpers in `src/open_energy_lab/simulator/_weather_schema.py`
-- [ ] T006 Extend internal component-graph relation coverage for load, weather, PV, net-grid, and settlement links in `src/open_energy_lab/simulator/_graph.py`
-- [ ] T007 [P] Add weather schema contract tests in `tests/unit/simulator/test_weather_schema.py` covering human-readable field names, canonical TMY source labels, and deferred standard weather fields
-- [ ] T008 [P] Add migration-note documentation test in `tests/unit/simulator/test_battery_load_pv_migration_notes.py` checking `docs/migration/battery-load-pv-mvp.md` contains exact legacy files plus preserved/improved/rejected behavior
-- [ ] T009 [P] Update `tests/unit/simulator/test_import_boundary.py` to reserve the import-light module boundary for `open_energy_lab.simulator.load`, `open_energy_lab.simulator.weather`, and `open_energy_lab.simulator.pv`
+- [X] T005 Create shared weather field metadata and TMY-label mapping helpers in `src/open_energy_lab/simulator/_weather_schema.py`
+- [X] T006 Extend internal component-graph relation coverage for load, weather, PV, net-grid, and settlement links in `src/open_energy_lab/simulator/_graph.py`
+- [X] T007 [P] Add weather schema contract tests in `tests/unit/simulator/test_weather_schema.py` covering human-readable field names, canonical TMY source labels, and deferred standard weather fields
+- [X] T008 [P] Add migration-note documentation test in `tests/unit/simulator/test_battery_load_pv_migration_notes.py` checking `docs/migration/battery-load-pv-mvp.md` contains exact legacy files plus preserved/improved/rejected behavior
+- [X] T009 [P] Update `tests/unit/simulator/test_import_boundary.py` to reserve the import-light module boundary for `open_energy_lab.simulator.load`, `open_energy_lab.simulator.weather`, and `open_energy_lab.simulator.pv`
 
 **Checkpoint**: Shared weather-schema conventions, graph support, and migration-note guardrails exist before scenario-specific work begins.
 

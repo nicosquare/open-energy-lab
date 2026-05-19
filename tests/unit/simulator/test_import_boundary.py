@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import sys
 from pathlib import Path
 
@@ -59,3 +60,28 @@ def test_internal_foundation_helpers_import_without_optional_stacks() -> None:
     assert units.DEFAULT_ABSOLUTE_TOLERANCE == 1e-6
     assert units.POSITIVE_DISPATCH_MEANING == "charge"
     assert graph.ComponentGraph.__name__ == "ComponentGraph"
+    assert graph.Relation.DERIVES.value == "derives"
+    assert graph.Relation.FEEDS.value == "feeds"
+
+
+def test_future_multi_component_modules_reserve_import_light_boundary() -> None:
+    package = importlib.import_module("open_energy_lab.simulator")
+    package_dir = Path(package.__file__).resolve().parent
+
+    for module_name in (
+        "open_energy_lab.simulator.load",
+        "open_energy_lab.simulator.weather",
+        "open_energy_lab.simulator.pv",
+    ):
+        loaded_before_import = set(sys.modules)
+        module_spec = importlib.util.find_spec(module_name)
+        if module_spec is None:
+            assert module_name not in sys.modules
+            continue
+
+        importlib.import_module(module_name)
+        loaded_by_import = set(sys.modules) - loaded_before_import
+        optional_modules_loaded = OPTIONAL_RESEARCH_MODULES & loaded_by_import
+        assert optional_modules_loaded == set()
+        assert module_spec.origin is not None
+        assert Path(module_spec.origin).resolve().parent == package_dir
