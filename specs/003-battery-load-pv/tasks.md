@@ -48,10 +48,10 @@
 
 ### Tests for User Story 1
 
-- [ ] T010 [P] [US1] Add deterministic load component tests in `tests/unit/simulator/test_load.py`
-- [ ] T011 [P] [US1] Add weather component tests in `tests/unit/simulator/test_weather.py` covering human-readable field names, TMY label mappings, required weather subset handling, and deferred-field behavior
-- [ ] T012 [P] [US1] Add PV component tests in `tests/unit/simulator/test_pv.py` covering weather-driven generation inputs, irradiance selection, and deterministic PV derivation behavior
-- [ ] T013 [P] [US1] Add multi-component scenario assembly tests in `tests/unit/simulator/test_multi_component_scenario.py` covering aligned series validation, explicit graph shape, and mutually exclusive dispatch-versus-policy inputs
+- [X] T010 [P] [US1] Add deterministic load component tests in `tests/unit/simulator/test_load.py`
+- [X] T011 [P] [US1] Add weather component tests in `tests/unit/simulator/test_weather.py` covering human-readable field names, TMY label mappings, required weather subset handling, and deferred-field behavior
+- [X] T012 [P] [US1] Add PV component tests in `tests/unit/simulator/test_pv.py` covering weather-driven generation inputs, irradiance selection, and deterministic PV derivation behavior
+- [X] T013 [P] [US1] Add multi-component scenario assembly tests in `tests/unit/simulator/test_multi_component_scenario.py` covering aligned series validation, explicit graph shape, and mutually exclusive dispatch-versus-policy inputs
 
 ### Implementation for User Story 1
 
