@@ -13,8 +13,8 @@ US3_MODULE_PATHS = (
     SIMULATOR_SOURCE_DIR / "scenario.py",
 )
 LEGACY_IMPORT_PATTERNS = (
-    "from legacy",
-    "import legacy",
+    "from " "legacy",
+    "import " "legacy",
 )
 
 

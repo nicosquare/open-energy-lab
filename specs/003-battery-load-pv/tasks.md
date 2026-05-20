@@ -112,12 +112,12 @@
 
 **Purpose**: Run the feature-level validation commands and finalize parity and quickstart notes that cut across stories.
 
-- [ ] T030 [P] Update `tests/parity/README.md` with the battery load PV MVP parity stance, the exact weather/PV evidence sources, and why targeted invariants replace a broad end-to-end parity suite
-- [ ] T031 Run `uv run pytest tests/unit/simulator tests/integration/simulator tests/unit/test_optional_dependency_boundaries.py`
-- [ ] T032 Run `uv run python -c "import open_energy_lab.simulator"` from the repository root
-- [ ] T033 Run `rg "from legacy|import legacy" src/open_energy_lab/simulator tests/unit/simulator tests/integration/simulator`
-- [ ] T034 Run `cd legacy/old_tpm && python scripts/test_battery_consistency.py` if local prerequisites allow it, otherwise document the skip in `specs/003-battery-load-pv/quickstart.md`
-- [ ] T035 Update `specs/003-battery-load-pv/quickstart.md` with final validation commands, the legacy-check outcome or skip reason, and any intentionally omitted checks
+- [X] T030 [P] Update `tests/parity/README.md` with the battery load PV MVP parity stance, the exact weather/PV evidence sources, and why targeted invariants replace a broad end-to-end parity suite
+- [X] T031 Run `uv run pytest tests/unit/simulator tests/integration/simulator tests/unit/test_optional_dependency_boundaries.py`
+- [X] T032 Run `uv run python -c "import open_energy_lab.simulator"` from the repository root
+- [X] T033 Run `rg "from legacy|import legacy" src/open_energy_lab/simulator tests/unit/simulator tests/integration/simulator`
+- [X] T034 Run `cd legacy/old_tpm && python scripts/test_battery_consistency.py` if local prerequisites allow it, otherwise document the skip in `specs/003-battery-load-pv/quickstart.md`
+- [X] T035 Update `specs/003-battery-load-pv/quickstart.md` with final validation commands, the legacy-check outcome or skip reason, and any intentionally omitted checks
 
 ---
 

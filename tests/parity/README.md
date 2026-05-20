@@ -61,3 +61,39 @@ The current battery-arbitrage parity evidence is therefore:
   `price_threshold` execution
 - documented `1e-6` tolerance-backed invariants rather than a broad snapshot or
   whole-simulator replay
+
+## Battery Load PV MVP Stance
+
+For `specs/003-battery-load-pv`, parity is also intentionally narrow rather
+than broad end-to-end replay against the legacy simulator.
+
+The exact legacy weather/PV/grid evidence used for this MVP is:
+
+- `legacy/old_tpm/src_py/legacy/storage.py`
+- `legacy/old_tpm/scripts/test_battery_consistency.py`
+- `legacy/old_tpm/src_py/simulator/common/battery.py`
+- `legacy/old_tpm/src_py/simulator/common/pricing.py`
+- `legacy/old_tpm/src_py/simulator/common/time.py`
+- `legacy/old_tpm/src_py/simulator/common/specs.py`
+- `legacy/fed_trpo/src/custom/building.py`
+
+This feature relies on targeted deterministic invariants instead of a broad
+legacy parity suite because:
+
+- the migrated scope is one synthetic battery + load + weather + PV case, not
+  the broader legacy simulator or building stack
+- the validated behavior is battery physics, weather-driven PV derivation,
+  one-net grid accounting, discounted export settlement, and deterministic
+  policy execution
+- the cited legacy battery script is reference-only evidence here and does not
+  provide additional value for the new library validation in the current
+  repository environment
+
+The current battery-load-PV parity evidence is therefore:
+
+- unit tests for load, weather, PV, multi-component scenario assembly,
+  settlement, and import-boundary contracts
+- one deterministic integration fixture covering explicit dispatch and
+  `price_threshold` execution against the same energy-balance rules
+- documented `1e-6` tolerance-backed invariants rather than a broad snapshot or
+  whole-simulator replay

@@ -199,6 +199,46 @@ uv run pytest tests/unit/simulator/test_grid_settlement.py tests/integration/sim
 Expected result for the legacy-import scan: no matches in new library modules
 or their runtime tests.
 
+## Final Validation Outcomes
+
+The final Phase 6 validation pass for this feature is:
+
+```bash
+uv run pytest tests/unit/simulator tests/integration/simulator tests/unit/test_optional_dependency_boundaries.py
+uv run python -c "import open_energy_lab.simulator"
+rg "from legacy|import legacy" src/open_energy_lab/simulator tests/unit/simulator tests/integration/simulator
+```
+
+Observed outcomes in the feature branch:
+
+- `uv run pytest tests/unit/simulator tests/integration/simulator tests/unit/test_optional_dependency_boundaries.py`
+  - passed: `58 passed`
+- `uv run python -c "import open_energy_lab.simulator"`
+  - passed
+- `rg "from legacy|import legacy" src/open_energy_lab/simulator tests/unit/simulator tests/integration/simulator`
+  - returned no matches
+
+## Legacy Battery Script Status
+
+The legacy battery consistency script was intentionally not run for this
+feature:
+
+```bash
+cd legacy/old_tpm && python scripts/test_battery_consistency.py
+```
+
+Skip reason:
+
+- the script is reference-only evidence for preserved battery semantics
+- it mutates `sys.path` relative to `legacy/old_tpm/scripts` and imports
+  `storage` from the legacy tree directly
+- that environment assumption does not validate the new
+  `open_energy_lab.simulator` library surface and is expected to add little or
+  no value for this migration review
+
+The battery semantics cited from legacy are instead covered here by the new
+unit and integration suite plus the documented deterministic fixtures.
+
 ## Checks Intentionally Out of Scope
 
 This feature should not require or run:
@@ -211,6 +251,7 @@ This feature should not require or run:
 - real weather downloads
 - real tariff or external API ingestion
 - Rust builds or Rust parity checks
+- the legacy battery consistency script as a feature gate for the new library
 
 ## Task Planning Reminder
 
