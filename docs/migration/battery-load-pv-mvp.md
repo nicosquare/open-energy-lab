@@ -57,17 +57,19 @@ for the deterministic battery + load + weather + PV simulator MVP under
 - feeder/network physics, outage logic, or multi-building composition in the
   MVP
 
-## Initial Fixture Direction
+## Shared Fixture Direction
 
-`tests/fixtures/simulator/battery_load_pv_case.json` starts as a structural
-shell in Phase 1 and will be finalized later with deterministic numeric values
-and invariant-backed expectations for:
+`tests/fixtures/simulator/battery_load_pv_case.json` is now the active shared
+validation case for this migration. It contains:
 
 - one explicit-dispatch execution path
 - one built-in `price_threshold` execution path
 - weather inputs using human-readable field names plus TMY label mappings
-- derived PV output
-- net-grid trace and settlement expectations
+- derived PV output checked against the current implementation
+- one-net grid traces and discounted settlement expectations
+
+The fixture remains synthetic and intentionally small so reviewers can inspect
+all inputs and expected traces directly.
 
 ## Implemented US1 Assembly Semantics
 
@@ -102,6 +104,37 @@ The current US1 implementation now provides:
 
 These types remain experimental even though `open_energy_lab.simulator` is the
 stable package location.
+
+## Implemented US2 Trace and Fixture Semantics
+
+The current US2 implementation finalizes deterministic trace evaluation and the
+shared fixture around the following trusted invariants:
+
+- `pv_generation_kw` is derived deterministically from the configured weather
+  inputs and PV metadata
+- `net_grid_power_kw = load_kw + realized_battery_power_kw - pv_generation_kw`
+- `net_grid_energy_kwh = net_grid_power_kw * time_step_hours`
+- positive net-grid values mean import and negative values mean export
+- `total_settlement == sum(step_settlement)` within absolute tolerance `1e-6`
+- export settlement uses the same discounted export-price ratio already
+  established by the battery-arbitrage MVP
+- repeated evaluation from the same inputs reproduces the same trace
+
+The finalized fixture was manually authored and then checked against the
+current implementation with `uv run python -c` trace calculations. It is not a
+legacy replay artifact.
+
+## Tolerance Rationale
+
+The default absolute tolerance remains `1e-6`.
+
+This is still the right boundary for the battery + load + PV MVP because:
+
+- it matches the completed battery-arbitrage MVP
+- it remains aligned with the cited legacy battery-consistency evidence
+- it comfortably absorbs ordinary floating-point round-off from battery
+  efficiency math, discounted settlement arithmetic, and temperature-adjusted
+  PV derivation without hiding meaningful behavioral drift
 
 ## Explicit Non-Goals
 

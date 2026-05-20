@@ -1,12 +1,12 @@
 {
-  "case_id": "battery-load-pv-mvp-shell",
-  "status": "shell",
-  "purpose": "Deterministic synthetic battery + load + weather + PV fixture shell for the multi-component simulator MVP.",
+  "case_id": "battery-load-pv-mvp-v1",
+  "status": "active",
+  "purpose": "Deterministic synthetic battery + load + weather + PV fixture for explicit-dispatch and price-threshold net-grid validation.",
   "origin": {
     "author": "OpenAI Codex",
-    "construction": "Phase 1 shell authored from the 003-battery-load-pv contracts and data model. Fill concrete numeric expectations during US2 trace finalization.",
+    "construction": "Manually authored from the US1-US2 simulator contracts and then checked against the current implementation with uv run python -c trace calculations.",
     "seed": null,
-    "refresh_policy": "Refresh only when the documented load, weather-to-PV, net-grid settlement, or battery semantics intentionally change."
+    "refresh_policy": "Refresh only when the documented battery math, weather-to-PV derivation, price-threshold policy, timestep semantics, or discounted-export settlement rules intentionally change."
   },
   "legacy_references": [
     "legacy/old_tpm/src_py/legacy/storage.py",
@@ -18,37 +18,53 @@
     "legacy/fed_trpo/src/custom/building.py"
   ],
   "time_grid": {
-    "num_steps": 0,
+    "num_steps": 3,
     "time_step_hours": 1.0
   },
   "battery": {
     "name": "battery",
-    "capacity_kwh": 0.0,
-    "max_charge_kw": 0.0,
-    "max_discharge_kw": 0.0,
-    "charge_efficiency": 1.0,
-    "discharge_efficiency": 1.0,
-    "initial_soc": 0.0,
+    "capacity_kwh": 10.0,
+    "max_charge_kw": 5.0,
+    "max_discharge_kw": 5.0,
+    "charge_efficiency": 0.95,
+    "discharge_efficiency": 0.95,
+    "initial_soc": 0.5,
     "min_soc": 0.0,
     "max_soc": 1.0
   },
   "load": {
     "name": "load",
-    "demand_kw": []
+    "demand_kw": [
+      2.0,
+      1.5,
+      0.5
+    ]
   },
   "weather": {
     "name": "weather",
     "timestamp_utc": {
       "tmy_label": "Date & time (UTC)",
-      "values": []
+      "values": [
+        "2026-01-01T00:00:00Z",
+        "2026-01-01T01:00:00Z",
+        "2026-01-01T02:00:00Z"
+      ]
     },
     "dry_bulb_air_temperature_c": {
       "tmy_label": "T2m [°C]",
-      "values": []
+      "values": [
+        25.0,
+        26.0,
+        27.0
+      ]
     },
     "global_horizontal_irradiance_w_per_m2": {
       "tmy_label": "G(h) [W/m2]",
-      "values": []
+      "values": [
+        0.0,
+        500.0,
+        1000.0
+      ]
     },
     "deferred_tmy_fields": [
       {
@@ -75,41 +91,136 @@
   },
   "pv": {
     "name": "pv",
-    "rated_power_kw": 0.0,
-    "temperature_coefficient_pct_per_c": 0.0,
+    "rated_power_kw": 4.0,
+    "temperature_coefficient_pct_per_c": -0.4,
     "reference_irradiance_w_per_m2": 1000.0,
     "reference_temperature_c": 25.0,
     "generation_cap_kw": null,
-    "derivation_name": "fill-during-implementation"
+    "derivation_name": "ghi-linear-temperature-adjusted"
   },
   "pricing": {
     "currency": "USD",
     "unit_rate_name": "energy-price",
-    "import_prices": [],
-    "export_price_ratio": 0.0,
+    "import_prices": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "export_price_ratio": 0.8,
     "interpretation": "discounted export relative to import prices",
     "time_alignment": "step-start"
   },
   "dispatch_case": {
-    "dispatch_requests_kw": [],
-    "expected_trace": null,
+    "dispatch_requests_kw": [
+      1.0,
+      0.0,
+      -1.0
+    ],
+    "expected_trace": {
+      "requested_power_kw": [
+        1.0,
+        0.0,
+        -1.0
+      ],
+      "realized_power_kw": [
+        1.0,
+        0.0,
+        -1.0
+      ],
+      "soc": [
+        0.595,
+        0.595,
+        0.4897368421052632
+      ],
+      "pv_generation_kw": [
+        0.0,
+        1.992,
+        3.968
+      ],
+      "net_grid_power_kw": [
+        3.0,
+        -0.492,
+        -4.468
+      ],
+      "net_grid_energy_kwh": [
+        3.0,
+        -0.492,
+        -4.468
+      ],
+      "direction": [
+        "import",
+        "export",
+        "export"
+      ],
+      "step_settlement": [
+        -0.3,
+        0.07872,
+        1.07232
+      ],
+      "total_settlement": 0.85104,
+      "constraint_events": []
+    },
     "validation": {
       "numeric_tolerance": 1e-06,
       "expected_invariants": [
         "SOC remains within [0.0, 1.0]",
         "realized battery power stays within configured limits",
         "net_grid_power_kw equals load_kw + realized_battery_power_kw - pv_generation_kw",
-        "total settlement equals the sum of per-step settlement values"
+        "total settlement equals the sum of per-step settlement values",
+        "export settlement uses the discounted export-price ratio"
       ]
     }
   },
   "policy_case": {
     "policy_name": "price_threshold",
-    "price_threshold": null,
+    "price_threshold": 0.2,
     "below_threshold_action": "charge",
     "above_threshold_action": "discharge",
     "at_threshold_action": "hold",
-    "expected_trace": null,
+    "expected_trace": {
+      "requested_power_kw": [
+        5.0,
+        0.0,
+        -5.0
+      ],
+      "realized_power_kw": [
+        5.0,
+        0.0,
+        -5.0
+      ],
+      "soc": [
+        0.975,
+        0.975,
+        0.44868421052631574
+      ],
+      "pv_generation_kw": [
+        0.0,
+        1.992,
+        3.968
+      ],
+      "net_grid_power_kw": [
+        7.0,
+        -0.492,
+        -8.468
+      ],
+      "net_grid_energy_kwh": [
+        7.0,
+        -0.492,
+        -8.468
+      ],
+      "direction": [
+        "import",
+        "export",
+        "export"
+      ],
+      "step_settlement": [
+        -0.7,
+        0.07872,
+        2.03232
+      ],
+      "total_settlement": 1.41104,
+      "constraint_events": []
+    },
     "validation": {
       "numeric_tolerance": 1e-06,
       "expected_invariants": [

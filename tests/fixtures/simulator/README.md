@@ -44,17 +44,19 @@ simulator fixture.
 - refresh policy: update only when the documented timestep, battery, policy, or
   discounted-settlement semantics intentionally change
 
-## Battery Load PV Fixture Shell
+## Battery Load PV Fixture
 
-`tests/fixtures/simulator/battery_load_pv_case.json` is the Phase 1 fixture
-shell for the next simulator migration.
+`tests/fixtures/simulator/battery_load_pv_case.json` is the active shared
+fixture for the deterministic battery + load + weather + PV MVP.
 
 - source: manually authored from the `003-battery-load-pv` contracts and data
-  model
+  model, then checked against the current implementation with `uv run python -c`
+  trace calculations
 - author: OpenAI Codex
 - seed: none
-- why it is committed: it fixes the intended multi-component fixture shape
-  before simulator implementation lands
+- why it is committed: it is small, reviewable, deterministic, and exercises
+  both explicit-dispatch and built-in `price_threshold` execution paths over
+  the same weather-driven PV and one-net settlement rules
 - exact legacy evidence:
   - `legacy/old_tpm/src_py/legacy/storage.py`
   - `legacy/old_tpm/scripts/test_battery_consistency.py`
@@ -63,10 +65,22 @@ shell for the next simulator migration.
   - `legacy/old_tpm/src_py/simulator/common/time.py`
   - `legacy/old_tpm/src_py/simulator/common/specs.py`
   - `legacy/fed_trpo/src/custom/building.py`
-- required provenance and schema expectations:
+- schema and provenance expectations:
   - weather fields use human-readable names
   - each included weather field carries its canonical TMY source label
   - unused standard TMY fields are documented as deferred, not silently dropped
-  - later numeric expectations must stay small, deterministic, and reviewable
-- refresh policy: finalize during US2, then update only when the documented
-  load, weather-to-PV, battery, or settlement semantics intentionally change
+  - expected traces were verified against the current implementation rather than
+    copied from a legacy runtime
+- expected invariants:
+  - SOC stays within `[0.0, 1.0]`
+  - realized battery power respects the configured limits
+  - `net_grid_power_kw == load_kw + realized_battery_power_kw - pv_generation_kw`
+  - import/export direction follows the sign of the net-grid value
+  - total settlement equals the sum of the step settlement values
+  - export settlement uses the discounted export-price ratio
+- numeric tolerance: absolute `1e-6`
+- tolerance rationale: this matches the prior battery-arbitrage MVP and the
+  cited legacy battery-consistency evidence, while still absorbing ordinary
+  floating-point round-off from efficiency and temperature-adjusted PV math
+- refresh policy: update only when the documented load, weather-to-PV, battery,
+  price-threshold, or settlement semantics intentionally change
