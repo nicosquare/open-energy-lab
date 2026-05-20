@@ -18,8 +18,8 @@ Confirm the intended boundary:
 - target code stays under `src/open_energy_lab/simulator`
 - the new case adds load, minimal weather inputs, PV derivation, and net-grid
   accounting
-- the included weather fields keep exact TMY-style names instead of a renamed
-  internal schema
+- the included weather fields use human-readable names with explicit TMY
+  source-label mappings
 - battery physics, timestep rules, export discount semantics, and the
   `price_threshold` rule remain aligned with the completed battery-arbitrage MVP
 - optimization, MPC, RL, CityLearn runtime, broader weather migration,
@@ -39,7 +39,7 @@ Before implementation, make sure the contracts agree on:
 - energy in `kWh`
 - power in `kW`
 - timestep duration in hours
-- exact TMY-style names for the included weather fields
+- human-readable weather-field names plus canonical TMY source labels
 - positive battery dispatch request meaning charge
 - positive net-grid value meaning import
 - one signed net-grid value per step only
@@ -60,7 +60,7 @@ sed -n '1888,1924p' legacy/fed_trpo/src/custom/building.py
 
 Use these sources to validate preserved battery and settlement semantics, the
 PV metadata direction, the single-net electricity accounting pattern, and the
-TMY-style weather naming expectation. Do not copy broad building or CityLearn
+weather-field mapping expectation. Do not copy broad building or CityLearn
 structure into the new package.
 
 ## Environment
@@ -96,7 +96,7 @@ enough if they prove:
 
 - battery constraints still hold
 - weather drives PV deterministically
-- included weather fields preserve their exact TMY-style names
+- included weather fields preserve their human-readable names and TMY mappings
 - load, PV, and realized battery power produce the documented net-grid trace
 - settlement follows the documented one-net import/export rule
 - both execution modes remain supported if both are implemented in the fixture
@@ -109,20 +109,31 @@ battery-arbitrage surface, for example:
 
 ```python
 from open_energy_lab.simulator import (
+    BatteryLoadPVScenario,
     BatteryComponent,
     DeterministicRulePolicy,
     DispatchRequestSeries,
+    LoadComponent,
+    PVComponent,
     PriceSignal,
     TimeGrid,
+    WeatherComponent,
 )
-from open_energy_lab.simulator.load import LoadComponent
-from open_energy_lab.simulator.pv import PVComponent
-from open_energy_lab.simulator.weather import WeatherComponent
 ```
 
 The exact exported names can still evolve during implementation, but the
 feature should avoid relocating the package or breaking the existing
 battery-arbitrage entry points without cause.
+
+The current US1 implementation adds:
+
+- `LoadComponent`
+- `WeatherComponent`
+- `PVComponent`
+- `BatteryLoadPVScenario`
+
+These concrete multi-component types are still experimental even though the
+package location is stable.
 
 ## Expected Checks After Tasks Exist
 

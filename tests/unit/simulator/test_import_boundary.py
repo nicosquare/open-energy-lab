@@ -37,14 +37,22 @@ def test_simulator_import_stays_lightweight() -> None:
     assert module.__all__ == [
         "ArbitrageObjectiveRepresentation",
         "ArbitrageScenario",
+        "BatteryLoadPVScenario",
         "BatteryComponent",
         "DeterministicRulePolicy",
         "DispatchRequestSeries",
+        "LoadComponent",
+        "PVComponent",
         "PriceSignal",
         "TimeGrid",
+        "WeatherComponent",
     ]
     assert module.ArbitrageScenario.__module__ == "open_energy_lab.simulator.scenario"
+    assert module.BatteryLoadPVScenario.__module__ == "open_energy_lab.simulator.scenario"
+    assert module.LoadComponent.__module__ == "open_energy_lab.simulator.load"
     assert module.PriceSignal.__module__ == "open_energy_lab.simulator.pricing"
+    assert module.PVComponent.__module__ == "open_energy_lab.simulator.pv"
+    assert module.WeatherComponent.__module__ == "open_energy_lab.simulator.weather"
 
 
 def test_internal_foundation_helpers_import_without_optional_stacks() -> None:

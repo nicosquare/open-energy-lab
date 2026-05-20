@@ -69,6 +69,40 @@ and invariant-backed expectations for:
 - derived PV output
 - net-grid trace and settlement expectations
 
+## Implemented US1 Assembly Semantics
+
+The current US1 implementation now provides:
+
+- a stable package location at `open_energy_lab.simulator`
+- experimental multi-component types available from that package:
+  - `BatteryLoadPVScenario`
+  - `LoadComponent`
+  - `WeatherComponent`
+  - `PVComponent`
+- explicit time-grid alignment checks for load, weather, price, and dispatch
+- one required irradiance-backed weather subset using human-readable field
+  names with canonical TMY source labels such as:
+  - `timestamp_utc` -> `Date & time (UTC)`
+  - `dry_bulb_air_temperature_c` -> `T2m [°C]`
+  - `global_horizontal_irradiance_w_per_m2` -> `G(h) [W/m2]`
+- deferred standard weather fields recorded explicitly rather than treated as
+  implicit runtime requirements
+- deterministic PV derivation from one or more documented irradiance fields,
+  with temperature adjustment relative to the configured reference temperature
+- explicit component-graph wiring for:
+  - `TimeGrid -> LoadComponent`
+  - `TimeGrid -> WeatherComponent`
+  - `WeatherComponent -> PVComponent`
+  - `LoadComponent/PVComponent/SimulationTrace -> NetGridTrace`
+  - `PriceSignal -> NetGridTrace`
+  - `NetGridTrace -> Settlement objective`
+- both execution-path boundaries preserved:
+  - explicit `DispatchRequestSeries`, or
+  - built-in deterministic `price_threshold` rule
+
+These types remain experimental even though `open_energy_lab.simulator` is the
+stable package location.
+
 ## Explicit Non-Goals
 
 This feature does not add:

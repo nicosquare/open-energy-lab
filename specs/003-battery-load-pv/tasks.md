@@ -58,9 +58,9 @@
 - [X] T014 [US1] Implement deterministic load profile types in `src/open_energy_lab/simulator/load.py`
 - [X] T015 [US1] Implement weather component types with human-readable field names and TMY label-mapping behavior in `src/open_energy_lab/simulator/weather.py`
 - [X] T016 [US1] Implement PV component types and deterministic weather-driven generation helpers in `src/open_energy_lab/simulator/pv.py`
-- [ ] T017 [US1] Extend `src/open_energy_lab/simulator/scenario.py` with battery + load + weather + PV assembly and explicit component-graph wiring
-- [ ] T018 [US1] Update `src/open_energy_lab/simulator/__init__.py` to export the new experimental multi-component surfaces from the stable `open_energy_lab.simulator` package boundary
-- [ ] T019 [US1] Update `docs/migration/battery-load-pv-mvp.md` and `specs/003-battery-load-pv/quickstart.md` with implemented assembly semantics, weather-field mappings, and explicit multi-component scope boundaries
+- [X] T017 [US1] Extend `src/open_energy_lab/simulator/scenario.py` with battery + load + weather + PV assembly and explicit component-graph wiring
+- [X] T018 [US1] Update `src/open_energy_lab/simulator/__init__.py` to export the new experimental multi-component surfaces from the stable `open_energy_lab.simulator` package boundary
+- [X] T019 [US1] Update `docs/migration/battery-load-pv-mvp.md` and `specs/003-battery-load-pv/quickstart.md` with implemented assembly semantics, weather-field mappings, and explicit multi-component scope boundaries
 
 **Checkpoint**: User Story 1 is complete when a reviewer can assemble a typed battery + load + PV scenario with explicit component links and inspect the intended boundary without broader simulator subsystems.
 

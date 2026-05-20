@@ -15,11 +15,14 @@ from ._units import (
 
 if TYPE_CHECKING:
     from .battery import BatteryState
+    from .load import LoadComponent
+    from .pv import PVComponent
     from .pricing import (
         ArbitrageObjectiveRepresentation,
         DeterministicRulePolicy,
         PriceSignal,
     )
+    from .weather import WeatherComponent
 
 
 @dataclass(slots=True)
@@ -216,8 +219,79 @@ class ArbitrageScenario:
         )
 
 
+@dataclass(slots=True)
+class BatteryLoadPVScenario:
+    """Aggregate root for the deterministic battery + load + weather + PV MVP."""
+
+    scenario_id: str
+    time_grid: TimeGrid
+    battery: BatteryComponent
+    load: "LoadComponent"
+    weather: "WeatherComponent"
+    pv: "PVComponent"
+    price_signal: PriceSignal
+    objective: ArbitrageObjectiveRepresentation
+    dispatch_requests: DispatchRequestSeries | None = None
+    rule_policy: DeterministicRulePolicy | None = None
+    numeric_tolerance: float = DEFAULT_ABSOLUTE_TOLERANCE
+
+    def validate(self) -> ComponentGraph:
+        if (self.dispatch_requests is None) == (self.rule_policy is None):
+            raise ValueError("exactly one of dispatch_requests or rule_policy must be provided")
+
+        if self.load.time_grid != self.time_grid:
+            raise ValueError("load component must align to the scenario time grid")
+        if self.weather.time_grid != self.time_grid:
+            raise ValueError("weather component must align to the scenario time grid")
+        if self.price_signal.time_grid != self.time_grid:
+            raise ValueError("price signal must align to the scenario time grid")
+        if self.dispatch_requests is not None:
+            if len(self.dispatch_requests.requested_power_kw) != self.time_grid.num_steps:
+                raise ValueError("dispatch request length must match the time grid")
+
+        if self.objective.allow_export and (
+            self.objective.export_price_ratio != self.price_signal.export_price_ratio
+        ):
+            raise ValueError("objective export discount must match the price signal")
+
+        graph = ComponentGraph()
+        graph.add_component(ComponentRef(name="time_grid", kind="time-grid"))
+        graph.add_component(ComponentRef(name="battery", kind="battery"))
+        graph.add_component(ComponentRef(name="load", kind="load"))
+        graph.add_component(ComponentRef(name="weather", kind="weather"))
+        graph.add_component(ComponentRef(name="pv", kind="pv"))
+        graph.add_component(ComponentRef(name="price_signal", kind="price-signal"))
+        graph.add_component(ComponentRef(name="objective", kind="objective"))
+        graph.add_component(ComponentRef(name="simulation_trace", kind="simulation-trace"))
+        graph.add_component(ComponentRef(name="net_grid_trace", kind="net-grid-trace"))
+
+        graph.add_connection(Connection("time_grid", "load", Relation.ALIGNS))
+        graph.add_connection(Connection("time_grid", "weather", Relation.ALIGNS))
+        graph.add_connection(Connection("time_grid", "price_signal", Relation.ALIGNS))
+        graph.add_connection(Connection("weather", "pv", Relation.DERIVES))
+        graph.add_connection(Connection("battery", "simulation_trace", Relation.PRODUCES))
+        graph.add_connection(Connection("load", "net_grid_trace", Relation.FEEDS))
+        graph.add_connection(Connection("pv", "net_grid_trace", Relation.FEEDS))
+        graph.add_connection(Connection("simulation_trace", "net_grid_trace", Relation.FEEDS))
+        graph.add_connection(Connection("price_signal", "net_grid_trace", Relation.PRICES))
+        graph.add_connection(Connection("net_grid_trace", "objective", Relation.SETTLES))
+
+        if self.dispatch_requests is not None:
+            graph.add_component(ComponentRef(name="dispatch_requests", kind="dispatch"))
+            graph.add_connection(Connection("time_grid", "dispatch_requests", Relation.ALIGNS))
+            graph.add_connection(Connection("dispatch_requests", "battery", Relation.REQUESTS))
+        else:
+            graph.add_component(ComponentRef(name="rule_policy", kind="policy"))
+            graph.add_connection(Connection("time_grid", "rule_policy", Relation.ALIGNS))
+            graph.add_connection(Connection("price_signal", "rule_policy", Relation.DRIVES))
+            graph.add_connection(Connection("rule_policy", "battery", Relation.REQUESTS))
+
+        return graph
+
+
 __all__ = [
     "ArbitrageScenario",
+    "BatteryLoadPVScenario",
     "BatteryComponent",
     "DispatchRequestSeries",
     "SimulationTrace",

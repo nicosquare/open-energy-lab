@@ -94,12 +94,19 @@ def _pv() -> PVComponent:
 def test_multi_component_scenario_rejects_misaligned_load_or_weather_inputs() -> None:
     grid = TimeGrid(num_steps=3, time_step_hours=1.0)
     wrong_grid = TimeGrid(num_steps=2, time_step_hours=1.0)
+    misaligned_load = LoadComponent(
+        name="load",
+        demand_kw=[2.0, 1.5],
+        interpretation="exogenous-consumption",
+        time_grid=wrong_grid,
+        source="synthetic-fixture",
+    )
 
     scenario = BatteryLoadPVScenario(
         scenario_id="invalid-alignment",
         time_grid=grid,
         battery=_battery(),
-        load=_load(wrong_grid),
+        load=misaligned_load,
         weather=_weather(grid),
         pv=_pv(),
         price_signal=_price_signal(grid),
