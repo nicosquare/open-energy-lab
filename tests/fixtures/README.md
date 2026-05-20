@@ -30,7 +30,8 @@ Refresh policy:
 - Expected values derived from documented equations or invariants.
 - Small simulator fixtures under `tests/fixtures/simulator/`, including the
   battery arbitrage MVP fixture shell in
-  `tests/fixtures/simulator/battery_arbitrage_case.json`.
+  `tests/fixtures/simulator/battery_arbitrage_case.json` and the battery load
+  PV fixture shell in `tests/fixtures/simulator/battery_load_pv_case.json`.
 
 ## Disallowed by Default
 
@@ -64,3 +65,13 @@ synthetic and small enough for routine review, and it must record:
 - the discounted export settlement rule
 - the default absolute numeric tolerance (`1e-6`) unless a stricter case is
   documented
+
+For the battery load PV MVP fixture shell and its later finalized case, record
+all of the above plus:
+
+- the exact weather-to-PV evidence files consulted
+- human-readable weather field names together with canonical TMY source-label
+  mappings for every included weather field
+- which standard TMY fields are intentionally deferred from the MVP subset
+- whether expected values are placeholders, exact traces, invariant tables, or
+  a mix of those forms during each implementation phase

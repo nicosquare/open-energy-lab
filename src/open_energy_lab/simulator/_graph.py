@@ -14,6 +14,8 @@ class Relation(str, Enum):
     """Allowed directed relationships between MVP simulator components."""
 
     ALIGNS = "aligns"
+    DERIVES = "derives"
+    FEEDS = "feeds"
     REQUESTS = "requests"
     DRIVES = "drives"
     PRICES = "prices"

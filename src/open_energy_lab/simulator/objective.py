@@ -19,6 +19,17 @@ class SettlementResult:
     total_settlement: float
 
 
+@dataclass(slots=True)
+class NetGridSettlementResult:
+    """Per-step and aggregate settlement values for one-net grid accounting."""
+
+    net_grid_power_kw: list[float]
+    net_grid_energy_kwh: list[float]
+    direction: list[str]
+    step_settlement: list[float]
+    total_settlement: float
+
+
 def evaluate_arbitrage_settlement(
     *,
     realized_power_kw: list[float],
@@ -53,4 +64,70 @@ def evaluate_arbitrage_settlement(
     )
 
 
-__all__ = ["SettlementResult", "evaluate_arbitrage_settlement"]
+def evaluate_net_grid_settlement(
+    *,
+    load_kw: list[float],
+    pv_generation_kw: list[float],
+    realized_battery_power_kw: list[float],
+    time_step_hours: float,
+    price_signal: PriceSignal,
+    objective: ArbitrageObjectiveRepresentation,
+) -> NetGridSettlementResult:
+    """Evaluate one-net settlement for battery + load + PV traces."""
+
+    duration_hours = validate_positive_time_step_hours(time_step_hours)
+    expected_steps = price_signal.time_grid.num_steps
+    for values, label in (
+        (load_kw, "load"),
+        (pv_generation_kw, "pv generation"),
+        (realized_battery_power_kw, "realized battery power"),
+    ):
+        if len(values) != expected_steps:
+            raise ValueError(f"{label} length must match the price signal time grid")
+    if objective.allow_export and objective.export_price_ratio != price_signal.export_price_ratio:
+        raise ValueError("objective export discount must match the price signal")
+
+    net_grid_power_kw: list[float] = []
+    net_grid_energy_kwh: list[float] = []
+    direction: list[str] = []
+    step_settlement: list[float] = []
+
+    for step_index, (load_value, pv_value, battery_value) in enumerate(
+        zip(load_kw, pv_generation_kw, realized_battery_power_kw, strict=True)
+    ):
+        net_power_kw = load_value + battery_value - pv_value
+        net_energy_kwh = net_power_kw * duration_hours
+        if net_power_kw > 0.0:
+            direction_value = "import"
+            step_value = -(net_energy_kwh * price_signal.price_at_step(step_index))
+        elif net_power_kw < 0.0:
+            direction_value = "export"
+            export_price = price_signal.export_price_at_step(step_index)
+            if objective.allow_export:
+                step_value = abs(net_energy_kwh) * export_price
+            else:
+                step_value = 0.0
+        else:
+            direction_value = "neutral"
+            step_value = 0.0
+
+        net_grid_power_kw.append(net_power_kw)
+        net_grid_energy_kwh.append(net_energy_kwh)
+        direction.append(direction_value)
+        step_settlement.append(step_value)
+
+    return NetGridSettlementResult(
+        net_grid_power_kw=net_grid_power_kw,
+        net_grid_energy_kwh=net_grid_energy_kwh,
+        direction=direction,
+        step_settlement=step_settlement,
+        total_settlement=sum(step_settlement),
+    )
+
+
+__all__ = [
+    "NetGridSettlementResult",
+    "SettlementResult",
+    "evaluate_arbitrage_settlement",
+    "evaluate_net_grid_settlement",
+]

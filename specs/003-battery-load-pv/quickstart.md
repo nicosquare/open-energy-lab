@@ -1,0 +1,268 @@
+# Quickstart: Deterministic Battery Load PV Scenario MVP
+
+Use this quickstart to review the plan and guide the later implementation. This
+feature extends the battery-arbitrage simulator with deterministic load,
+minimal weather-driven PV, and one-net grid settlement.
+
+## Review the Feature
+
+```bash
+sed -n '1,320p' specs/003-battery-load-pv/spec.md
+sed -n '1,320p' specs/003-battery-load-pv/plan.md
+sed -n '1,260p' specs/003-battery-load-pv/research.md
+sed -n '1,260p' specs/003-battery-load-pv/data-model.md
+```
+
+Confirm the intended boundary:
+
+- target code stays under `src/open_energy_lab/simulator`
+- the new case adds load, minimal weather inputs, PV derivation, and net-grid
+  accounting
+- the included weather fields use human-readable names with explicit TMY
+  source-label mappings
+- battery physics, timestep rules, export discount semantics, and the
+  `price_threshold` rule remain aligned with the completed battery-arbitrage MVP
+- optimization, MPC, RL, CityLearn runtime, broader weather migration,
+  notebooks, W&B, GPU/SLURM, and Rust-bound behavior remain out of scope
+
+## Review the Contracts
+
+```bash
+sed -n '1,220p' specs/003-battery-load-pv/contracts/scenario-contract.md
+sed -n '1,220p' specs/003-battery-load-pv/contracts/weather-pv-contract.md
+sed -n '1,220p' specs/003-battery-load-pv/contracts/grid-settlement-contract.md
+sed -n '1,220p' specs/003-battery-load-pv/contracts/validation-case.md
+```
+
+Before implementation, make sure the contracts agree on:
+
+- energy in `kWh`
+- power in `kW`
+- timestep duration in hours
+- human-readable weather-field names plus canonical TMY source labels
+- positive battery dispatch request meaning charge
+- positive net-grid value meaning import
+- one signed net-grid value per step only
+- default absolute tolerance `1e-6`
+- the built-in deterministic battery rule remaining price-only
+- the weather scope staying limited to the PV derivation path
+
+## Review the Legacy Evidence
+
+```bash
+sed -n '1,260p' legacy/old_tpm/src_py/legacy/storage.py
+sed -n '1,260p' legacy/old_tpm/src_py/simulator/common/battery.py
+sed -n '1,220p' legacy/old_tpm/src_py/simulator/common/pricing.py
+sed -n '1,120p' legacy/old_tpm/src_py/simulator/common/time.py
+sed -n '1,260p' legacy/old_tpm/src_py/simulator/common/specs.py
+sed -n '1888,1924p' legacy/fed_trpo/src/custom/building.py
+```
+
+Use these sources to validate preserved battery and settlement semantics, the
+PV metadata direction, the single-net electricity accounting pattern, and the
+weather-field mapping expectation. Do not copy broad building or CityLearn
+structure into the new package.
+
+## Environment
+
+The feature uses the same base environment as the completed simulator MVP:
+
+```bash
+conda activate open-energy-lab
+uv sync --dev
+```
+
+If the environment is not present yet, review the foundation quickstart first:
+
+```bash
+sed -n '1,200p' specs/001-library-foundation/quickstart.md
+```
+
+## Expected Implementation Targets
+
+After implementation, the main touched areas should be:
+
+```text
+src/open_energy_lab/simulator/
+tests/unit/simulator/
+tests/integration/simulator/
+tests/fixtures/simulator/
+tests/parity/
+docs/migration/
+```
+
+The implementation should stay narrow. One or two deterministic scenarios are
+enough if they prove:
+
+- battery constraints still hold
+- weather drives PV deterministically
+- included weather fields preserve their human-readable names and TMY mappings
+- load, PV, and realized battery power produce the documented net-grid trace
+- settlement follows the documented one-net import/export rule
+- both execution modes remain supported if both are implemented in the fixture
+
+## Planned Extended Surface
+
+The stable import location remains `open_energy_lab.simulator`. This feature is
+expected to add experimental multi-component types alongside the existing
+battery-arbitrage surface, for example:
+
+```python
+from open_energy_lab.simulator import (
+    BatteryLoadPVScenario,
+    BatteryComponent,
+    DeterministicRulePolicy,
+    DispatchRequestSeries,
+    LoadComponent,
+    PVComponent,
+    PriceSignal,
+    TimeGrid,
+    WeatherComponent,
+)
+```
+
+The exact exported names can still evolve during implementation, but the
+feature should avoid relocating the package or breaking the existing
+battery-arbitrage entry points without cause.
+
+The current US1 implementation adds:
+
+- `LoadComponent`
+- `WeatherComponent`
+- `PVComponent`
+- `BatteryLoadPVScenario`
+
+These concrete multi-component types are still experimental even though the
+package location is stable.
+
+The package root now resolves these exports lazily, so
+`import open_energy_lab.simulator` stays narrower than importing every concrete
+module eagerly.
+
+## Final Boundary Notes
+
+Dependency classification for the implemented MVP:
+
+- core:
+  - Python standard library
+  - `src/open_energy_lab/simulator`
+- optional:
+  - none required for simulator-core imports
+- legacy-only evidence:
+  - `legacy/old_tpm/src_py/legacy/storage.py`
+  - `legacy/old_tpm/scripts/test_battery_consistency.py`
+  - `legacy/old_tpm/src_py/simulator/common/battery.py`
+  - `legacy/old_tpm/src_py/simulator/common/pricing.py`
+  - `legacy/old_tpm/src_py/simulator/common/time.py`
+  - `legacy/old_tpm/src_py/simulator/common/specs.py`
+  - `legacy/fed_trpo/src/custom/building.py`
+
+Concrete multi-component API surface that remains experimental:
+
+- `BatteryLoadPVScenario`
+- `LoadComponent`
+- `WeatherComponent`
+- `PVComponent`
+
+Deferred weather-field scope for this MVP:
+
+- required runtime fields:
+  - `timestamp_utc`
+  - `dry_bulb_air_temperature_c`
+  - the irradiance field or fields used by the configured PV derivation
+- documented but deferred standard TMY-backed fields:
+  - `relative_humidity_pct`
+  - `infrared_radiation_downwards_w_per_m2`
+  - `windspeed_10m_m_per_s`
+  - `wind_direction_10m_deg`
+  - `surface_air_pressure_pa`
+
+Heavy research stacks remain outside the simulator-core import path:
+TorchRL, PyTorch, CityLearn, solver stacks, notebooks, W&B, GPU/SLURM
+tooling, and Rust toolchains.
+
+## Expected Checks After Tasks Exist
+
+```bash
+uv run pytest tests/unit/simulator tests/integration/simulator tests/unit/test_optional_dependency_boundaries.py
+uv run python -c "import open_energy_lab.simulator"
+rg "from legacy|import legacy" src/open_energy_lab/simulator tests/unit/simulator tests/integration/simulator
+```
+
+Focused validation commands should include:
+
+```bash
+uv run pytest tests/unit/simulator/test_load.py tests/unit/simulator/test_weather.py tests/unit/simulator/test_pv.py
+uv run pytest tests/unit/simulator/test_grid_settlement.py tests/integration/simulator/test_battery_load_pv_trace.py
+```
+
+Expected result for the legacy-import scan: no matches in new library modules
+or their runtime tests.
+
+## Final Validation Outcomes
+
+The final Phase 6 validation pass for this feature is:
+
+```bash
+uv run pytest tests/unit/simulator tests/integration/simulator tests/unit/test_optional_dependency_boundaries.py
+uv run python -c "import open_energy_lab.simulator"
+rg "from legacy|import legacy" src/open_energy_lab/simulator tests/unit/simulator tests/integration/simulator
+```
+
+Observed outcomes in the feature branch:
+
+- `uv run pytest tests/unit/simulator tests/integration/simulator tests/unit/test_optional_dependency_boundaries.py`
+  - passed: `58 passed`
+- `uv run python -c "import open_energy_lab.simulator"`
+  - passed
+- `rg "from legacy|import legacy" src/open_energy_lab/simulator tests/unit/simulator tests/integration/simulator`
+  - returned no matches
+
+## Legacy Battery Script Status
+
+The legacy battery consistency script was intentionally not run for this
+feature:
+
+```bash
+cd legacy/old_tpm && python scripts/test_battery_consistency.py
+```
+
+Skip reason:
+
+- the script is reference-only evidence for preserved battery semantics
+- it mutates `sys.path` relative to `legacy/old_tpm/scripts` and imports
+  `storage` from the legacy tree directly
+- that environment assumption does not validate the new
+  `open_energy_lab.simulator` library surface and is expected to add little or
+  no value for this migration review
+
+The battery semantics cited from legacy are instead covered here by the new
+unit and integration suite plus the documented deterministic fixtures.
+
+## Checks Intentionally Out of Scope
+
+This feature should not require or run:
+
+- CityLearn environment execution
+- RL training loops
+- MPC or solver-backed planning
+- notebook or W&B workflows
+- GPU or SLURM execution
+- real weather downloads
+- real tariff or external API ingestion
+- Rust builds or Rust parity checks
+- the legacy battery consistency script as a feature gate for the new library
+
+## Task Planning Reminder
+
+When `/speckit-tasks` is generated, make sure it includes:
+
+- tests first for load, weather, PV, and net-grid accounting
+- one or two deterministic multi-component fixtures with provenance notes
+- simulator module creation or extension for load, weather, PV, and the new
+  scenario trace
+- integration tests for both explicit dispatch and `price_threshold` behavior
+  if both modes are represented
+- import-boundary and legacy-isolation checks
+- docs covering preserved, improved, and rejected semantics for load, weather,
+  PV, and net-grid behavior
