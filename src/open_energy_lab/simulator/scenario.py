@@ -101,6 +101,24 @@ class SimulationTrace:
 
 
 @dataclass(slots=True)
+class BatteryLoadPVTrace:
+    """Deterministic trace for the battery + load + weather + PV MVP."""
+
+    states: list["BatteryState"]
+    requested_power_kw: list[float]
+    realized_power_kw: list[float]
+    energy_delta_kwh: list[float]
+    load_kw: list[float]
+    pv_generation_kw: list[float]
+    net_grid_power_kw: list[float]
+    net_grid_energy_kwh: list[float]
+    direction: list[str]
+    step_settlement: list[float]
+    total_settlement: float
+    constraint_events: list[str]
+
+
+@dataclass(slots=True)
 class ArbitrageScenario:
     """Aggregate root for the first arbitrage scenario surface."""
 
@@ -253,6 +271,14 @@ class BatteryLoadPVScenario:
             self.objective.export_price_ratio != self.price_signal.export_price_ratio
         ):
             raise ValueError("objective export discount must match the price signal")
+        missing_irradiance = [
+            field_name
+            for field_name in self.pv.irradiance_field_names
+            if field_name not in self.weather.included_field_names()
+        ]
+        if missing_irradiance:
+            formatted = ", ".join(missing_irradiance)
+            raise ValueError(f"weather inputs required by the PV derivation are missing: {formatted}")
 
         graph = ComponentGraph()
         graph.add_component(ComponentRef(name="time_grid", kind="time-grid"))
@@ -288,9 +314,78 @@ class BatteryLoadPVScenario:
 
         return graph
 
+    def evaluate_trace(self) -> BatteryLoadPVTrace:
+        """Evaluate one deterministic multi-component scenario trace."""
+
+        from .battery import apply_power_request, build_initial_state
+        from .objective import evaluate_net_grid_settlement
+
+        self.validate()
+        if self.dispatch_requests is not None:
+            requested_power_kw = list(self.dispatch_requests.requested_power_kw)
+        else:
+            assert self.rule_policy is not None
+            requested_power_kw = []
+            for price in self.price_signal.import_prices:
+                action = self.rule_policy.action_for_price(price)
+                if action == "charge":
+                    requested_power_kw.append(self.battery.max_charge_kw)
+                elif action == "discharge":
+                    requested_power_kw.append(-self.battery.max_discharge_kw)
+                else:
+                    requested_power_kw.append(0.0)
+
+        current_state = build_initial_state(self.battery)
+        states: list[BatteryState] = []
+        realized_power_kw: list[float] = []
+        energy_delta_kwh: list[float] = []
+        constraint_events: list[str] = []
+
+        for step_index, requested_power in enumerate(requested_power_kw):
+            transition = apply_power_request(
+                component=self.battery,
+                state=current_state,
+                requested_power_kw=requested_power,
+                time_step_hours=self.time_grid.time_step_hours,
+                step_index=step_index,
+            )
+            if abs(transition.realized_power_kw - requested_power) > self.numeric_tolerance:
+                constraint_events.append(
+                    f"step {step_index}: requested {requested_power} kW, realized {transition.realized_power_kw} kW"
+                )
+            current_state = transition.state
+            states.append(current_state)
+            realized_power_kw.append(transition.realized_power_kw)
+            energy_delta_kwh.append(transition.energy_delta_kwh)
+
+        pv_generation_kw = self.pv.derive_generation_kw(self.weather)
+        settlement = evaluate_net_grid_settlement(
+            load_kw=list(self.load.demand_kw),
+            pv_generation_kw=pv_generation_kw,
+            realized_battery_power_kw=realized_power_kw,
+            time_step_hours=self.time_grid.time_step_hours,
+            price_signal=self.price_signal,
+            objective=self.objective,
+        )
+        return BatteryLoadPVTrace(
+            states=states,
+            requested_power_kw=requested_power_kw,
+            realized_power_kw=realized_power_kw,
+            energy_delta_kwh=energy_delta_kwh,
+            load_kw=list(self.load.demand_kw),
+            pv_generation_kw=pv_generation_kw,
+            net_grid_power_kw=settlement.net_grid_power_kw,
+            net_grid_energy_kwh=settlement.net_grid_energy_kwh,
+            direction=settlement.direction,
+            step_settlement=settlement.step_settlement,
+            total_settlement=settlement.total_settlement,
+            constraint_events=constraint_events,
+        )
+
 
 __all__ = [
     "ArbitrageScenario",
+    "BatteryLoadPVTrace",
     "BatteryLoadPVScenario",
     "BatteryComponent",
     "DispatchRequestSeries",

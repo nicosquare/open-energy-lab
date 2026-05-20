@@ -79,8 +79,8 @@
 
 ### Implementation for User Story 2
 
-- [ ] T022 [US2] Extend `src/open_energy_lab/simulator/objective.py` with net-grid settlement helpers for battery + load + PV traces
-- [ ] T023 [US2] Extend `src/open_energy_lab/simulator/scenario.py` with deterministic trace evaluation that derives PV generation, net-grid traces, and settlement from explicit dispatch or `price_threshold` requests
+- [X] T022 [US2] Extend `src/open_energy_lab/simulator/objective.py` with net-grid settlement helpers for battery + load + PV traces
+- [X] T023 [US2] Extend `src/open_energy_lab/simulator/scenario.py` with deterministic trace evaluation that derives PV generation, net-grid traces, and settlement from explicit dispatch or `price_threshold` requests
 - [ ] T024 [US2] Finalize deterministic fixture contents in `tests/fixtures/simulator/battery_load_pv_case.json`
 - [ ] T025 [US2] Update `tests/fixtures/simulator/README.md` and `docs/migration/battery-load-pv-mvp.md` with fixture provenance, exact legacy evidence, energy-balance invariants, and `1e-6` tolerance rationale
 
