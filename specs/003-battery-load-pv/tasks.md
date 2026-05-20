@@ -101,8 +101,8 @@
 
 ### Implementation for User Story 3
 
-- [ ] T028 [US3] Audit and tighten imports plus `TYPE_CHECKING` boundaries in `src/open_energy_lab/simulator/__init__.py`, `src/open_energy_lab/simulator/load.py`, `src/open_energy_lab/simulator/weather.py`, `src/open_energy_lab/simulator/pv.py`, `src/open_energy_lab/simulator/scenario.py`, and `src/open_energy_lab/simulator/objective.py`
-- [ ] T029 [US3] Update `docs/migration/battery-load-pv-mvp.md` and `specs/003-battery-load-pv/quickstart.md` with the final dependency classification, experimental API boundary, and deferred weather-field scope
+- [X] T028 [US3] Audit and tighten imports plus `TYPE_CHECKING` boundaries in `src/open_energy_lab/simulator/__init__.py`, `src/open_energy_lab/simulator/load.py`, `src/open_energy_lab/simulator/weather.py`, `src/open_energy_lab/simulator/pv.py`, `src/open_energy_lab/simulator/scenario.py`, and `src/open_energy_lab/simulator/objective.py`
+- [X] T029 [US3] Update `docs/migration/battery-load-pv-mvp.md` and `specs/003-battery-load-pv/quickstart.md` with the final dependency classification, experimental API boundary, and deferred weather-field scope
 
 **Checkpoint**: User Story 3 is complete when the simulator package imports cleanly in the foundation environment and its boundary against heavy research stacks and `legacy/*` is test-backed and documented.
 

@@ -135,6 +135,52 @@ The current US1 implementation adds:
 These concrete multi-component types are still experimental even though the
 package location is stable.
 
+The package root now resolves these exports lazily, so
+`import open_energy_lab.simulator` stays narrower than importing every concrete
+module eagerly.
+
+## Final Boundary Notes
+
+Dependency classification for the implemented MVP:
+
+- core:
+  - Python standard library
+  - `src/open_energy_lab/simulator`
+- optional:
+  - none required for simulator-core imports
+- legacy-only evidence:
+  - `legacy/old_tpm/src_py/legacy/storage.py`
+  - `legacy/old_tpm/scripts/test_battery_consistency.py`
+  - `legacy/old_tpm/src_py/simulator/common/battery.py`
+  - `legacy/old_tpm/src_py/simulator/common/pricing.py`
+  - `legacy/old_tpm/src_py/simulator/common/time.py`
+  - `legacy/old_tpm/src_py/simulator/common/specs.py`
+  - `legacy/fed_trpo/src/custom/building.py`
+
+Concrete multi-component API surface that remains experimental:
+
+- `BatteryLoadPVScenario`
+- `LoadComponent`
+- `WeatherComponent`
+- `PVComponent`
+
+Deferred weather-field scope for this MVP:
+
+- required runtime fields:
+  - `timestamp_utc`
+  - `dry_bulb_air_temperature_c`
+  - the irradiance field or fields used by the configured PV derivation
+- documented but deferred standard TMY-backed fields:
+  - `relative_humidity_pct`
+  - `infrared_radiation_downwards_w_per_m2`
+  - `windspeed_10m_m_per_s`
+  - `wind_direction_10m_deg`
+  - `surface_air_pressure_pa`
+
+Heavy research stacks remain outside the simulator-core import path:
+TorchRL, PyTorch, CityLearn, solver stacks, notebooks, W&B, GPU/SLURM
+tooling, and Rust toolchains.
+
 ## Expected Checks After Tasks Exist
 
 ```bash

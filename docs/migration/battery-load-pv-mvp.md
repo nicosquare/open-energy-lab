@@ -105,6 +105,10 @@ The current US1 implementation now provides:
 These types remain experimental even though `open_energy_lab.simulator` is the
 stable package location.
 
+The package root now resolves these exported symbols lazily. That keeps
+`import open_energy_lab.simulator` lighter while preserving the same stable
+import location for callers.
+
 ## Implemented US2 Trace and Fixture Semantics
 
 The current US2 implementation finalizes deterministic trace evaluation and the
@@ -135,6 +139,73 @@ This is still the right boundary for the battery + load + PV MVP because:
 - it comfortably absorbs ordinary floating-point round-off from battery
   efficiency math, discounted settlement arithmetic, and temperature-adjusted
   PV derivation without hiding meaningful behavioral drift
+
+## Final Dependency Classification
+
+The final simulator-core dependency boundary for this MVP is:
+
+- core:
+  - Python standard library
+  - `open_energy_lab.simulator` modules under `src/open_energy_lab/simulator`
+- optional:
+  - no optional runtime dependency is required for simulator-core imports in
+    this MVP
+- external-service-backed:
+  - none
+- hardware-bound:
+  - none
+- legacy-only evidence:
+  - `legacy/old_tpm/src_py/legacy/storage.py`
+  - `legacy/old_tpm/scripts/test_battery_consistency.py`
+  - `legacy/old_tpm/src_py/simulator/common/battery.py`
+  - `legacy/old_tpm/src_py/simulator/common/pricing.py`
+  - `legacy/old_tpm/src_py/simulator/common/time.py`
+  - `legacy/old_tpm/src_py/simulator/common/specs.py`
+  - `legacy/fed_trpo/src/custom/building.py`
+
+Heavy research stacks remain explicitly outside the simulator-core import path:
+TorchRL, PyTorch, CityLearn, solver stacks, notebooks, W&B, GPU/SLURM tooling,
+and Rust toolchains.
+
+## Final Experimental API Boundary
+
+For this MVP:
+
+- stable package location:
+  - `open_energy_lab.simulator`
+- stable import intent:
+  - callers may continue importing from `open_energy_lab.simulator`
+- experimental concrete multi-component surface:
+  - `BatteryLoadPVScenario`
+  - `LoadComponent`
+  - `WeatherComponent`
+  - `PVComponent`
+
+These symbols are exported from the stable package root, but their concrete
+multi-component semantics are still experimental and may be refined by later
+simulator migrations.
+
+## Deferred Weather-Field Scope
+
+The MVP keeps weather intentionally narrow.
+
+Included runtime weather fields:
+
+- `timestamp_utc`
+- `dry_bulb_air_temperature_c`
+- one or more irradiance fields needed by the chosen PV derivation
+
+Deferred standard TMY-backed weather fields remain documented but are not
+required runtime inputs in this migration:
+
+- `relative_humidity_pct`
+- `infrared_radiation_downwards_w_per_m2`
+- `windspeed_10m_m_per_s`
+- `wind_direction_10m_deg`
+- `surface_air_pressure_pa`
+
+Broader weather consumers, real weather ingestion, forecast handling, and
+non-PV weather use cases remain future migration work.
 
 ## Explicit Non-Goals
 
