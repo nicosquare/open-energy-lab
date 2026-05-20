@@ -96,8 +96,8 @@
 
 ### Tests for User Story 3
 
-- [ ] T026 [P] [US3] Extend optional dependency boundary coverage in `tests/unit/test_optional_dependency_boundaries.py` to verify `import open_energy_lab.simulator`, `open_energy_lab.simulator.weather`, and `open_energy_lab.simulator.pv` do not load heavy optional stacks
-- [ ] T027 [P] [US3] Extend simulator legacy-isolation coverage in `tests/unit/simulator/test_no_legacy_imports.py` for `src/open_energy_lab/simulator/load.py`, `src/open_energy_lab/simulator/weather.py`, `src/open_energy_lab/simulator/pv.py`, and the extended `src/open_energy_lab/simulator/scenario.py`
+- [X] T026 [P] [US3] Extend optional dependency boundary coverage in `tests/unit/test_optional_dependency_boundaries.py` to verify `import open_energy_lab.simulator`, `open_energy_lab.simulator.weather`, and `open_energy_lab.simulator.pv` do not load heavy optional stacks
+- [X] T027 [P] [US3] Extend simulator legacy-isolation coverage in `tests/unit/simulator/test_no_legacy_imports.py` for `src/open_energy_lab/simulator/load.py`, `src/open_energy_lab/simulator/weather.py`, `src/open_energy_lab/simulator/pv.py`, and the extended `src/open_energy_lab/simulator/scenario.py`
 
 ### Implementation for User Story 3
 
