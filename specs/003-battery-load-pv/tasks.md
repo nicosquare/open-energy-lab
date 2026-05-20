@@ -74,8 +74,8 @@
 
 ### Tests for User Story 2
 
-- [ ] T020 [P] [US2] Add net-grid settlement tests in `tests/unit/simulator/test_grid_settlement.py` covering one-net import/export behavior, discounted export settlement, and per-step versus total settlement sums
-- [ ] T021 [P] [US2] Add deterministic integration trace tests in `tests/integration/simulator/test_battery_load_pv_trace.py` covering explicit-dispatch and `price_threshold` execution paths against the shared fixture
+- [X] T020 [P] [US2] Add net-grid settlement tests in `tests/unit/simulator/test_grid_settlement.py` covering one-net import/export behavior, discounted export settlement, and per-step versus total settlement sums
+- [X] T021 [P] [US2] Add deterministic integration trace tests in `tests/integration/simulator/test_battery_load_pv_trace.py` covering explicit-dispatch and `price_threshold` execution paths against the shared fixture
 
 ### Implementation for User Story 2
 
