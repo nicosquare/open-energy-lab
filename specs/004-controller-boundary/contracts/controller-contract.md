@@ -74,6 +74,10 @@ The controller contract or simulator boundary must reject:
 - any contract shape that requires optional research dependencies at import
   time
 
+Incomplete required current-step context must be reported as a named
+pre-evaluation failure mode so validation can distinguish it from ordinary
+controller proposal errors or simulator-side clamping.
+
 ## Explicitly Rejected Surface
 
 This MVP does not include:

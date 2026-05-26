@@ -1,6 +1,6 @@
 # Implementation Plan: External Controller Boundary MVP
 
-**Branch**: `004-name-controller-boundary` | **Date**: 2026-05-21 | **Spec**: [spec.md](./spec.md)
+**Branch**: `004-name-controller-boundary` | **Date**: 2026-05-22 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/004-controller-boundary/spec.md`
 
 ## Summary
@@ -31,7 +31,7 @@ structures out of the stable core contract.
 **Language/Version**: Python 3.11+ in `src/open_energy_lab`  
 **Primary Dependencies**: Python standard library, existing `open_energy_lab.core` and `open_energy_lab.simulator` modules; `pytest` for validation. Heavy research stacks remain optional and excluded from import-time requirements.  
 **Storage/Data**: Markdown design artifacts plus one or two tiny JSON-compatible deterministic controller fixtures under `tests/fixtures/simulator`; default numeric tolerance remains absolute `1e-6`.  
-**Testing**: `pytest` for `tests/unit/core`, `tests/unit/simulator`, `tests/integration/simulator`, import-boundary checks, and legacy-isolation scans. Legacy checks may be cited but are not required to pass in the default environment.  
+**Testing**: `pytest` for `tests/unit/core`, `tests/unit/simulator`, `tests/integration/simulator`, dedicated regression checks for preserved explicit-dispatch and built-in `price_threshold` paths, import-boundary checks, and legacy-isolation scans. Legacy checks may be cited but are not required to pass in the default environment.  
 **Target Platform**: Local CPU-only research workstation using the existing minimal conda plus uv workflow  
 **Project Type**: Unified research library migration with stable public API in `src/open_energy_lab` and legacy submodules as reference-only evidence  
 **Performance Goals**: One deterministic controller-driven episode over a short horizon such as 6-24 steps should execute in normal unit-test time on CPU. Repeated runs from the same inputs must produce identical controller proposals, realized traces, and aggregate settlement results within absolute tolerance `1e-6`.  
@@ -46,13 +46,13 @@ structures out of the stable core contract.
 
 - **Unified library first**: New reusable code stays under `src/open_energy_lab/core` and `src/open_energy_lab/simulator`, with tests under `tests`.
 - **Legacy reference boundary**: Legacy files are cited as evidence only and will not be edited for this feature.
-- **Validation before migration**: The feature is defined around typed controller contracts, deterministic fixtures, repeated execution checks, import-boundary tests, and explicit `1e-6` tolerance.
+- **Validation before migration**: The feature is defined around typed controller contracts, deterministic fixtures, repeated execution checks, dedicated regression validation for preserved simulator paths, import-boundary tests, named pre-evaluation rejection paths, and explicit `1e-6` tolerance.
 - **Dependency isolation**: RL, CityLearn, TorchRL, reward, and training helpers remain outside the stable controller contract and simulator import paths.
 - **Reproducibility**: Controller context shape, dispatch sign conventions, per-step evaluation loop ownership, scenario coverage, and validation evidence are documented before implementation.
 
 **Post-design status**: PASS
 
-- Design artifacts define a narrow stable controller contract in `open_energy_lab.core`, a simulator-owned deterministic evaluation boundary in `open_energy_lab.simulator`, and a fixture-first validation strategy across both migrated scenario families.
+- Design artifacts define a narrow stable controller contract in `open_energy_lab.core`, a simulator-owned deterministic evaluation boundary in `open_energy_lab.simulator`, a named pre-evaluation rejection path for incomplete context, and a fixture-first validation strategy across both migrated scenario families plus preserved-path regression coverage.
 - No constitution violations require complexity tracking.
 
 ## Project Structure
@@ -147,6 +147,10 @@ Research decisions are captured in [research.md](./research.md). They resolve:
   `BatteryLoadPVScenario` without exposing scenario internals directly
 - what existing simulator semantics remain preserved versus what broader
   control-stack behavior is explicitly rejected
+- how dedicated regression validation keeps the preserved explicit-dispatch and
+  built-in `price_threshold` paths reviewable while controller support is added
+- how incomplete current-step controller context must be rejected as a named
+  pre-evaluation failure mode
 - why deterministic fixtures, import-boundary tests, and legacy-isolation
   checks remain the right validation standard for this migration
 
@@ -159,11 +163,12 @@ Design artifacts are captured in:
 - [contracts/controller-contract.md](./contracts/controller-contract.md):
   required public surface for `open_energy_lab.core`
 - [contracts/simulator-evaluation-contract.md](./contracts/simulator-evaluation-contract.md):
-  simulator-owned evaluation loop, validation, and result guarantees
+  simulator-owned evaluation loop, validation, named rejection behavior, and
+  result guarantees
 - [contracts/scenario-compatibility-contract.md](./contracts/scenario-compatibility-contract.md):
   compatibility rules across `ArbitrageScenario` and `BatteryLoadPVScenario`
 - [contracts/validation-case.md](./contracts/validation-case.md):
-  deterministic fixture and evidence requirements
+  deterministic fixture, preserved-path regression, and evidence requirements
 - [quickstart.md](./quickstart.md): review, implementation, and validation
   commands for the feature
 
@@ -174,12 +179,16 @@ order:
 
 - add contract and import-boundary tests first for `open_energy_lab.core` and
   the new simulator evaluation path
+- add dedicated regression tests for the preserved explicit-dispatch path and
+  preserved built-in `price_threshold` path before controller-runner changes
 - add deterministic controller fixtures and provenance notes under
   `tests/fixtures/simulator`
 - implement `open_energy_lab.core.controller` with typed context, proposal,
   interface, and evaluation-result models
 - implement simulator-side controller evaluation in
   `open_energy_lab.simulator.controller_runner`
+- add explicit incomplete-context rejection handling and validation as a named
+  pre-evaluation failure mode
 - extend package-root exports for `open_energy_lab.core` and
   `open_energy_lab.simulator` while keeping imports lightweight
 - add scenario compatibility tests for both `ArbitrageScenario` and

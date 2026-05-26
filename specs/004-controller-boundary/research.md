@@ -74,7 +74,8 @@ stable boundary is proven.
 
 **Decision**: Reuse the existing deterministic simulator battery, timestep,
 price, and settlement semantics unchanged and layer controller evaluation on
-top of them.
+top of them, with dedicated regression validation for the preserved explicit-
+dispatch path and preserved built-in `price_threshold` path.
 
 **Rationale**: The boundary feature should add control integration, not reopen
 the simulator physics migration. Preserving behavior grounded in
@@ -85,8 +86,25 @@ the simulator physics migration. Preserving behavior grounded in
 the new boundary.
 
 **Alternatives considered**: Replacing explicit dispatch with controller-only
-logic would break existing validation paths. Reworking battery feasibility or
-settlement at the same time would make failures harder to attribute.
+logic would break existing validation paths. Treating preserved paths as
+implicitly covered by controller-runner tests would make regressions easier to
+miss. Reworking battery feasibility or settlement at the same time would make
+failures harder to attribute.
+
+## Decision: Reject Incomplete Current-Step Context Before Controller Execution
+
+**Decision**: Treat incomplete current-step controller context as a named
+pre-evaluation failure mode that must be rejected before controller execution
+or simulator stepping begins.
+
+**Rationale**: The clarified spec now requires dedicated validation for this
+failure path. Rejecting early keeps controller behavior deterministic, makes
+errors easier to attribute, and prevents partial episode execution from hiding
+missing required inputs.
+
+**Alternatives considered**: Letting controllers receive partial context would
+shift validation into user code and weaken the stable contract. Failing later
+during simulator stepping would make diagnosis less precise.
 
 ## Decision: Reject RL Training, CityLearn Action Parsing, and TorchRL Specs from the Stable Core
 
@@ -108,8 +126,8 @@ would miss concrete evidence for why the boundary must stay narrower.
 ## Decision: Validate the Boundary with Deterministic Fixtures and Import Checks
 
 **Decision**: Validate the feature with one or two tiny deterministic
-controller-driven fixtures, repeated-run checks, import-boundary tests, and
-legacy-isolation scans.
+controller-driven fixtures, repeated-run checks, dedicated preserved-path
+regression tests, import-boundary tests, and legacy-isolation scans.
 
 **Rationale**: The feature’s value is interface clarity plus deterministic
 simulator evaluation, not training performance. Focused fixtures are enough to

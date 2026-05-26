@@ -20,6 +20,8 @@ scenario and passed to a controller contract in `open_energy_lab.core`.
   step.
 - `step_inputs` must contain only current-step aligned values allowed by the
   active scenario.
+- all required current-step inputs for the active scenario must be present
+  before controller execution begins
 - The context must not expose full scenario objects or future horizon series.
 
 ## Battery State Snapshot
@@ -115,6 +117,21 @@ controller-driven episode.
 - `constraint_events` must be empty unless clamping or rejection behavior is
   expected.
 
+## Controller Rejection Record
+
+**Fields**: `scenario_id`, `scenario_kind`, `step_index` (optional),
+`failure_name`, `reason`, `missing_inputs` (optional).
+
+**Relationships**: Produced when controller evaluation is rejected before
+controller execution or simulator stepping begins.
+
+**Validation rules**:
+
+- `failure_name` must be stable and explicit for contract-level failures such
+  as incomplete current-step context.
+- `missing_inputs` must name the required inputs that were absent when the
+  failure is caused by incomplete context.
+
 ## Controller Evaluation Result
 
 **Fields**: `scenario_id`, `scenario_kind`, `controller_name`, `step_records`,
@@ -133,6 +150,8 @@ runner. Links controller proposals to realized simulator behavior.
   the active scenario family.
 - `total_settlement` must agree with the underlying simulator trace within the
   configured tolerance.
+- pre-evaluation failures must be represented explicitly rather than inferred
+  from partial traces.
 
 ## Scenario Compatibility
 
@@ -163,5 +182,8 @@ episode works end to end for a supported scenario.
 - Must cite exact legacy source paths used as evidence.
 - Must state whether exact proposals, exact realized traces, invariant
   properties, or both are checked.
+- must state whether the case validates controller-driven execution, preserved
+  explicit-dispatch or built-in-rule regression behavior, or named rejection
+  behavior
 - Must run without optional research stacks, network access, or GPU/SLURM
   tooling.

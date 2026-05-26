@@ -25,6 +25,12 @@ simulator responsibilities explicit, typed, and testable.
 - Q: What public API maturity should the new controller-facing surface have in this MVP? → A: Stable public API in the library namespace.
 - Q: Which boundary should own controller types versus the step-by-step evaluation loop? → A: `open_energy_lab.core` owns controller types and `open_energy_lab.simulator` owns the evaluation loop.
 
+### Session 2026-05-22
+
+- Q: How should preserved explicit-dispatch and built-in `price_threshold` paths be validated in this MVP? → A: Dedicated regression validation must cover both preserved execution paths.
+- Q: How should incomplete current-step controller context be handled? → A: The boundary must reject incomplete context as a named pre-evaluation failure mode with dedicated validation.
+- Q: Which exact Fed TRPO files should remain as controller-boundary evidence? → A: `legacy/fed_trpo/src/custom/building.py`, `legacy/fed_trpo/src/custom/citylearn.py`, and `legacy/fed_trpo/src/utils/cl_torchrl_helper.py`.
+
 ## Scope Classification *(mandatory)*
 
 - **Feature type**: Migration
@@ -35,8 +41,8 @@ simulator responsibilities explicit, typed, and testable.
   - `legacy/old_tpm/src_py/simulator/common/pricing.py`
   - `legacy/old_tpm/src_py/simulator/common/time.py`
   - `legacy/fed_trpo/src/custom/building.py`
-  - `legacy/fed_trpo/src/utils/`
-  - `legacy/fed_trpo/src/algos/`
+  - `legacy/fed_trpo/src/custom/citylearn.py`
+  - `legacy/fed_trpo/src/utils/cl_torchrl_helper.py`
 - **New-code location**:
   - `src/open_energy_lab/core`
   - `src/open_energy_lab/simulator`
@@ -69,6 +75,10 @@ sign convention and step alignment before simulator evaluation.
    attempts to provide more than one step of dispatch, **When** it is submitted
    to the simulator boundary, **Then** the boundary rejects it before
    simulation begins.
+3. **Given** required current-step controller inputs are incomplete, **When**
+   controller evaluation is attempted, **Then** the boundary rejects the
+   evaluation as a named pre-evaluation failure mode before controller
+   execution or simulator stepping begins.
 
 ---
 
@@ -86,7 +96,9 @@ physics, or settlement.
 step-by-step evaluation loop can consume the same controller and scenario
 inputs and reproduce the same dispatch trace, realized simulator trace, and
 aggregate result across repeated runs for both migrated simulator scenario
-families.
+families, while dedicated regression cases prove the preserved explicit-
+dispatch and built-in `price_threshold` paths remain available and
+behaviorally unchanged.
 
 **Acceptance Scenarios**:
 
@@ -99,6 +111,10 @@ families.
    **When** the simulator evaluates it, **Then** the simulator clamps or
    constrains the realized behavior using the same physics rules already
    established by the current core.
+3. **Given** the existing explicit-dispatch path or built-in deterministic
+   `price_threshold` rule path for a supported scenario, **When** controller
+   support is added, **Then** dedicated regression validation proves those
+   preserved execution paths remain available and behaviorally unchanged.
 
 ---
 
@@ -166,6 +182,9 @@ dependencies.
   MUST NOT replace it with controller-specific logic.
 - **FR-007**: The feature MUST preserve the built-in deterministic rule path as
   an available baseline where it remains relevant to deterministic validation.
+- **FR-007a**: The feature MUST include dedicated regression validation for the
+  preserved explicit-dispatch path and the preserved built-in
+  `price_threshold` path for supported scenarios.
 - **FR-008**: The feature MUST define where controller responsibility ends and
   simulator responsibility begins, with controllers proposing dispatch and the
   simulator enforcing physics and settlement.
@@ -173,7 +192,8 @@ dependencies.
   step shape, invalid alignment, or invalid sign semantics before evaluation.
 - **FR-009a**: The feature MUST reject controller evaluation attempts when the
   required current-step controller context is incomplete for the active
-  scenario.
+  scenario, and this rejection MUST be covered by dedicated validation as a
+  named pre-evaluation failure mode.
 - **FR-010**: The feature MUST define a deterministic controller evaluation
   result or episode result that records the controller proposal and the realized
   simulator outcome.
@@ -210,9 +230,8 @@ dependencies.
   - `legacy/old_tpm/src_py/simulator/common/pricing.py`
   - `legacy/old_tpm/src_py/simulator/common/time.py`
   - `legacy/fed_trpo/src/custom/building.py`
-  - additional files under `legacy/fed_trpo/src/utils/` or
-    `legacy/fed_trpo/src/algos/` only if they provide interface evidence rather
-    than runtime behavior to migrate
+  - `legacy/fed_trpo/src/custom/citylearn.py`
+  - `legacy/fed_trpo/src/utils/cl_torchrl_helper.py`
 - **Behavior to preserve**:
   - explicit dispatch sign convention and alignment semantics
   - simulator-owned battery feasibility enforcement
@@ -232,6 +251,8 @@ dependencies.
   - deterministic fixtures
   - typed controller boundary tests
   - repeated execution checks
+  - dedicated regression validation for the preserved explicit-dispatch path
+    and preserved built-in `price_threshold` path
   - documented invariants rather than broad end-to-end legacy controller replay
 
 ### Key Entities *(include if feature involves data or API design)*
@@ -279,6 +300,9 @@ dependencies.
 - **SC-003**: Controller proposals with invalid shape, alignment, or sign
   semantics are rejected consistently before simulation in 100% of validation
   cases that exercise those failures.
+- **SC-003a**: Validation covers incomplete current-step controller context as
+  a named pre-evaluation rejection path in 100% of cases that exercise that
+  failure.
 - **SC-004**: Importing the controller-facing simulator surface does not load
   heavy optional research stacks and does not introduce runtime `legacy/*`
   imports across `open_energy_lab.core` and `open_energy_lab.simulator`.

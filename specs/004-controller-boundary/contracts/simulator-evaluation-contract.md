@@ -41,12 +41,17 @@ The controller-driven path must preserve:
 - deterministic repeated execution from the same inputs
 - the existing explicit-dispatch path and built-in rule path as separate
   validation baselines
+- dedicated regression evidence that the preserved explicit-dispatch path and
+  preserved built-in `price_threshold` path remain available and behaviorally
+  unchanged
 
 ## Failure Rules
 
 The evaluation boundary must reject before execution begins when:
 
 - the controller context cannot be built for the active scenario
+- the controller context is missing required current-step inputs for the active
+  scenario
 - the controller proposal is not single-step
 - the proposal’s sign semantics are invalid
 - the supported scenario’s aligned data are incomplete
@@ -56,6 +61,10 @@ entire episode when:
 
 - the requested battery power is valid in shape but infeasible in physics and
   therefore must be clamped by the simulator
+
+Incomplete required context is not a constraint event. It is a named
+pre-evaluation failure mode and must be reported separately from step-level
+physics enforcement.
 
 ## Result Guarantees
 

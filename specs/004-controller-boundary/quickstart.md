@@ -41,9 +41,13 @@ Before implementation, make sure the contracts agree on:
 - timestep duration in hours
 - positive dispatch meaning charge
 - one controller proposal per simulator step
+- incomplete required current-step context causing a named pre-evaluation
+  rejection
 - simulator-owned proposal validation and feasibility enforcement
 - stable imports from `open_energy_lab.core` and `open_energy_lab.simulator`
 - support for both migrated scenario families
+- preserved explicit-dispatch and built-in `price_threshold` regression
+  coverage
 - default absolute tolerance `1e-6`
 
 ## Review the Legacy Evidence
@@ -100,8 +104,12 @@ fixtures are enough if they prove:
 - the simulator builds current-step context without exposing scenario internals
 - both supported scenarios evaluate through the same runner API
 - proposal validation catches wrong-step or wrong-sign semantics
+- incomplete current-step context is rejected as a named pre-evaluation failure
+  mode
 - simulator-side clamping remains visible in the result when requests are
   infeasible
+- preserved explicit-dispatch and built-in `price_threshold` paths still pass
+  dedicated regression validation
 - repeated evaluation is deterministic
 
 ## Planned Stable Surface
@@ -145,6 +153,7 @@ Focused validation commands should include:
 uv run pytest tests/unit/core/test_controller_contract.py
 uv run pytest tests/unit/simulator/test_controller_runner.py
 uv run pytest tests/integration/simulator/test_controller_evaluation.py
+uv run pytest tests/integration/simulator/test_battery_arbitrage_trace.py tests/integration/simulator/test_battery_load_pv_trace.py
 ```
 
 Expected result for the legacy-import scan: no matches in new library modules

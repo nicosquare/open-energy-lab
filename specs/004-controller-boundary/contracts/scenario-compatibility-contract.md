@@ -49,6 +49,8 @@ The simulator boundary must reject:
 
 - any attempt to evaluate an unsupported scenario family
 - any attempt to require scenario internals in the public core contract
+- any attempt to execute a controller with incomplete required current-step
+  context for the active scenario
 - any controller path that silently changes sign conventions or timestep
   alignment between scenarios
 
