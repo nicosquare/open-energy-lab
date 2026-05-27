@@ -27,11 +27,11 @@ implementation and testing of each story.
 
 **Purpose**: Establish feature-specific files and deterministic validation inputs without expanding legacy code.
 
-- [ ] T001 Confirm target module, test, and documentation paths in `specs/004-controller-boundary/plan.md`
-- [ ] T002 [P] Create the controller-driven arbitrage fixture scaffold in `tests/fixtures/simulator/controller_arbitrage_case.json`
-- [ ] T003 [P] Create the controller-driven battery-load-PV fixture scaffold in `tests/fixtures/simulator/controller_battery_load_pv_case.json`
-- [ ] T004 [P] Create the core boundary test package notes in `tests/unit/core/README.md`
-- [ ] T005 [P] Add controller fixture provenance placeholders in `tests/fixtures/simulator/README.md`
+- [X] T001 Confirm target module, test, and documentation paths in `specs/004-controller-boundary/plan.md`
+- [X] T002 [P] Create the controller-driven arbitrage fixture scaffold in `tests/fixtures/simulator/controller_arbitrage_case.json`
+- [X] T003 [P] Create the controller-driven battery-load-PV fixture scaffold in `tests/fixtures/simulator/controller_battery_load_pv_case.json`
+- [X] T004 [P] Create the core boundary test package notes in `tests/unit/core/README.md`
+- [X] T005 [P] Add controller fixture provenance placeholders in `tests/fixtures/simulator/README.md`
 
 ---
 

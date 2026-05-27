@@ -1,0 +1,69 @@
+{
+  "case_id": "controller-arbitrage-mvp-v1",
+  "status": "draft",
+  "purpose": "Deterministic scaffold for controller-driven arbitrage evaluation.",
+  "origin": {
+    "author": "TBD",
+    "construction": "Phase 1 scaffold. Populate the controller sequence and expected evaluation outputs during T023.",
+    "seed": null,
+    "generation_command": null,
+    "refresh_policy": "Refresh only when the documented controller-boundary, battery, timestep, or settlement semantics intentionally change."
+  },
+  "legacy_references": [
+    "legacy/old_tpm/src_py/legacy/storage.py",
+    "legacy/old_tpm/src_py/simulator/common/battery.py",
+    "legacy/old_tpm/src_py/simulator/common/pricing.py",
+    "legacy/old_tpm/src_py/simulator/common/time.py"
+  ],
+  "scenario_kind": "ArbitrageScenario",
+  "controller_name": "placeholder-controller",
+  "fixture_source": "tests/fixtures/simulator/controller_arbitrage_case.json",
+  "time_grid": {
+    "num_steps": 0,
+    "time_step_hours": null
+  },
+  "battery": {
+    "name": "battery",
+    "capacity_kwh": null,
+    "max_charge_kw": null,
+    "max_discharge_kw": null,
+    "charge_efficiency": null,
+    "discharge_efficiency": null,
+    "initial_soc": null,
+    "min_soc": null,
+    "max_soc": null
+  },
+  "pricing": {
+    "currency": "USD",
+    "unit_rate_name": "energy-price",
+    "import_prices": [],
+    "export_price_ratio": null,
+    "interpretation": "discounted export relative to import prices",
+    "time_alignment": "step-start"
+  },
+  "controller_stub": {
+    "kind": "deterministic-sequence",
+    "proposal_sign_convention": "positive-means-charge",
+    "requested_power_kw": []
+  },
+  "expected_properties": {
+    "validates_controller_evaluation": true,
+    "validates_preserved_explicit_dispatch_regression": false,
+    "validates_preserved_price_threshold_regression": false,
+    "validates_named_incomplete_context_rejection": false
+  },
+  "expected_trace": {
+    "requested_power_kw": [],
+    "realized_power_kw": [],
+    "soc": [],
+    "step_settlement": [],
+    "total_settlement": null,
+    "constraint_events": []
+  },
+  "numeric_tolerance": 1e-06,
+  "provenance_notes": [
+    "Keep the fixture synthetic, small, and reviewable.",
+    "Populate exact proposal and trace expectations during T023.",
+    "Add any validation-specific notes if this fixture later covers more than controller evaluation."
+  ]
+}

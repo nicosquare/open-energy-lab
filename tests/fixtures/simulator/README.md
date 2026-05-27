@@ -7,6 +7,8 @@ Committed simulator fixtures currently include:
 
 - `tests/fixtures/simulator/battery_arbitrage_case.json`
 - `tests/fixtures/simulator/battery_load_pv_case.json`
+- `tests/fixtures/simulator/controller_arbitrage_case.json`
+- `tests/fixtures/simulator/controller_battery_load_pv_case.json`
 
 Each committed simulator fixture must include:
 
@@ -43,6 +45,60 @@ simulator fixture.
 - numeric tolerance: absolute `1e-6`
 - refresh policy: update only when the documented timestep, battery, policy, or
   discounted-settlement semantics intentionally change
+
+## Controller Arbitrage Scaffold
+
+`tests/fixtures/simulator/controller_arbitrage_case.json` is the draft
+controller-driven arbitrage fixture introduced in Phase 1 of the controller
+boundary MVP.
+
+- source: placeholder scaffold for later controller-evaluation validation
+- author: TBD until the expected controller trace is populated
+- generation command: none yet; populate manually or record the command when
+  T023 materializes the expected values
+- seed: none unless a future generator requires one
+- why it is committed: it fixes the contract shape and provenance slots before
+  controller-runner implementation work begins
+- exact legacy evidence:
+  - `legacy/old_tpm/src_py/legacy/storage.py`
+  - `legacy/old_tpm/src_py/simulator/common/battery.py`
+  - `legacy/old_tpm/src_py/simulator/common/pricing.py`
+  - `legacy/old_tpm/src_py/simulator/common/time.py`
+- expected validation target:
+  - controller-driven evaluation for `ArbitrageScenario`
+  - exact proposal and realized-trace values will be populated in T023
+- numeric tolerance: absolute `1e-6`
+- refresh policy: update only when the documented controller boundary,
+  timestep, battery, or settlement semantics intentionally change
+
+## Controller Battery Load PV Scaffold
+
+`tests/fixtures/simulator/controller_battery_load_pv_case.json` is the draft
+controller-driven battery-load-PV fixture introduced in Phase 1 of the
+controller boundary MVP.
+
+- source: placeholder scaffold for later controller-evaluation validation
+- author: TBD until the expected controller trace is populated
+- generation command: none yet; populate manually or record the command when
+  T024 materializes the expected values
+- seed: none unless a future generator requires one
+- why it is committed: it fixes the contract shape and provenance slots before
+  simulator-side controller evaluation is implemented
+- exact legacy evidence:
+  - `legacy/old_tpm/src_py/legacy/storage.py`
+  - `legacy/old_tpm/src_py/simulator/common/battery.py`
+  - `legacy/old_tpm/src_py/simulator/common/pricing.py`
+  - `legacy/old_tpm/src_py/simulator/common/time.py`
+  - `legacy/old_tpm/src_py/simulator/common/specs.py`
+  - `legacy/fed_trpo/src/custom/building.py`
+- expected validation target:
+  - controller-driven evaluation for `BatteryLoadPVScenario`
+  - exact proposal, PV, net-grid, and settlement values will be populated in
+    T024
+- numeric tolerance: absolute `1e-6`
+- refresh policy: update only when the documented controller boundary, weather
+  to PV derivation, battery, timestep, or settlement semantics intentionally
+  change
 
 ## Battery Load PV Fixture
 

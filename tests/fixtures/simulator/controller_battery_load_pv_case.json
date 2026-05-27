@@ -1,0 +1,104 @@
+{
+  "case_id": "controller-battery-load-pv-mvp-v1",
+  "status": "draft",
+  "purpose": "Deterministic scaffold for controller-driven battery-load-PV evaluation.",
+  "origin": {
+    "author": "TBD",
+    "construction": "Phase 1 scaffold. Populate the controller sequence and expected evaluation outputs during T024.",
+    "seed": null,
+    "generation_command": null,
+    "refresh_policy": "Refresh only when the documented controller-boundary, load, PV, battery, timestep, or settlement semantics intentionally change."
+  },
+  "legacy_references": [
+    "legacy/old_tpm/src_py/legacy/storage.py",
+    "legacy/old_tpm/src_py/simulator/common/battery.py",
+    "legacy/old_tpm/src_py/simulator/common/pricing.py",
+    "legacy/old_tpm/src_py/simulator/common/time.py",
+    "legacy/old_tpm/src_py/simulator/common/specs.py",
+    "legacy/fed_trpo/src/custom/building.py"
+  ],
+  "scenario_kind": "BatteryLoadPVScenario",
+  "controller_name": "placeholder-controller",
+  "fixture_source": "tests/fixtures/simulator/controller_battery_load_pv_case.json",
+  "time_grid": {
+    "num_steps": 0,
+    "time_step_hours": null
+  },
+  "battery": {
+    "name": "battery",
+    "capacity_kwh": null,
+    "max_charge_kw": null,
+    "max_discharge_kw": null,
+    "charge_efficiency": null,
+    "discharge_efficiency": null,
+    "initial_soc": null,
+    "min_soc": null,
+    "max_soc": null
+  },
+  "load": {
+    "name": "load",
+    "demand_kw": []
+  },
+  "weather": {
+    "name": "weather",
+    "timestamp_utc": {
+      "tmy_label": "Date & time (UTC)",
+      "values": []
+    },
+    "dry_bulb_air_temperature_c": {
+      "tmy_label": "T2m [°C]",
+      "values": []
+    },
+    "global_horizontal_irradiance_w_per_m2": {
+      "tmy_label": "G(h) [W/m2]",
+      "values": []
+    },
+    "deferred_tmy_fields": []
+  },
+  "pv": {
+    "name": "pv",
+    "rated_power_kw": null,
+    "temperature_coefficient_pct_per_c": null,
+    "reference_irradiance_w_per_m2": 1000.0,
+    "reference_temperature_c": 25.0,
+    "generation_cap_kw": null,
+    "derivation_name": "ghi-linear-temperature-adjusted"
+  },
+  "pricing": {
+    "currency": "USD",
+    "unit_rate_name": "energy-price",
+    "import_prices": [],
+    "export_price_ratio": null,
+    "interpretation": "discounted export relative to import prices",
+    "time_alignment": "step-start"
+  },
+  "controller_stub": {
+    "kind": "deterministic-sequence",
+    "proposal_sign_convention": "positive-means-charge",
+    "requested_power_kw": []
+  },
+  "expected_properties": {
+    "validates_controller_evaluation": true,
+    "validates_preserved_explicit_dispatch_regression": false,
+    "validates_preserved_price_threshold_regression": false,
+    "validates_named_incomplete_context_rejection": false
+  },
+  "expected_trace": {
+    "requested_power_kw": [],
+    "realized_power_kw": [],
+    "soc": [],
+    "pv_generation_kw": [],
+    "net_grid_power_kw": [],
+    "net_grid_energy_kwh": [],
+    "direction": [],
+    "step_settlement": [],
+    "total_settlement": null,
+    "constraint_events": []
+  },
+  "numeric_tolerance": 1e-06,
+  "provenance_notes": [
+    "Keep the fixture synthetic, small, and reviewable.",
+    "Populate exact proposal and trace expectations during T024.",
+    "Document any deferred weather or PV fields explicitly instead of dropping them silently."
+  ]
+}
