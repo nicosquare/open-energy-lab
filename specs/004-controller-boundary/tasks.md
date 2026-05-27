@@ -39,10 +39,10 @@ implementation and testing of each story.
 
 **Purpose**: Add shared validation scaffolding and documentation contracts that block all story work.
 
-- [ ] T006 [P] Add shared controller fixture loading helpers in `tests/integration/simulator/controller_fixture_utils.py`
-- [ ] T007 [P] Add controller fixture schema validation tests in `tests/integration/simulator/test_controller_fixture_schema.py`
-- [ ] T008 [P] Add controller migration note contract tests in `tests/unit/core/test_controller_migration_note.py`
-- [ ] T009 Create the controller migration note scaffold in `docs/migration/controller-boundary-mvp.md`
+- [X] T006 [P] Add shared controller fixture loading helpers in `tests/integration/simulator/controller_fixture_utils.py`
+- [X] T007 [P] Add controller fixture schema validation tests in `tests/integration/simulator/test_controller_fixture_schema.py`
+- [X] T008 [P] Add controller migration note contract tests in `tests/unit/core/test_controller_migration_note.py`
+- [X] T009 Create the controller migration note scaffold in `docs/migration/controller-boundary-mvp.md`
 
 **Checkpoint**: Shared fixtures, migration-note coverage, and controller test scaffolding are in place.
 
