@@ -51,6 +51,11 @@ the simulator-owned controller evaluation path in `open_energy_lab.simulator`.
   ad hoc simulator-adjacent caller logic
 - explicit `ControllerContext`, `DispatchProposal`, and controller-evaluation
   result models that remain inspectable without exposing simulator internals
+- stable package-root imports for `ControllerContext`,
+  `ControllerEvaluationResult`, `ControllerInterface`, and
+  `DispatchProposal` from `open_energy_lab.core`
+- controller-facing battery and price snapshots that keep scenario internals
+  out of the stable core API while preserving current-step semantics
 - a named pre-evaluation rejection path for incomplete required current-step
   context instead of ambiguous downstream failures
 - shared committed controller fixtures with provenance notes for both supported
@@ -73,16 +78,20 @@ the simulator-owned controller evaluation path in `open_energy_lab.simulator`.
   Rust dependencies for default `open_energy_lab.core` or
   `open_energy_lab.simulator` imports
 
-## Current Scaffold Status
+## Current Implementation Status
 
-Phase 2 establishes only the shared validation and documentation scaffold:
+User Story 1 now establishes the stable core-side boundary:
 
-- `tests/integration/simulator/controller_fixture_utils.py` loads the committed
-  controller fixtures for future integration tests
-- `tests/integration/simulator/test_controller_fixture_schema.py` locks the
-  placeholder fixture shape before controller-runner implementation
-- `docs/migration/controller-boundary-mvp.md` records the preserved, improved,
-  and rejected scope before the stable boundary is implemented
+- `src/open_energy_lab/core/controller.py` defines typed current-step controller
+  inputs, one-step proposal validation, the controller protocol, and a typed
+  evaluation-result surface using only Python standard-library imports
+- `src/open_energy_lab/core/__init__.py` re-exports the stable public API from
+  `open_energy_lab.core`
+- `tests/unit/core/test_controller_contract.py` validates contract shape,
+  sign semantics, and step alignment for one-step proposals
+- `tests/unit/core/test_import_boundary.py` verifies that the stable core API
+  remains import-light and resolves to `open_energy_lab.core.controller`
 
-The stable controller contract, simulator runner, scenario context extraction,
-and finalized expected controller traces remain later tasks in this feature.
+Later tasks still need to add the simulator-owned controller runner, scenario
+context extraction, deterministic controller traces, named pre-evaluation
+rejection handling, and simulator package-root exports.

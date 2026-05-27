@@ -61,9 +61,9 @@ implementation and testing of each story.
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Implement typed controller contracts in `src/open_energy_lab/core/controller.py`
-- [ ] T013 [US1] Export the stable controller API from `src/open_energy_lab/core/__init__.py`
-- [ ] T014 [US1] Document preserved, improved, and rejected controller-boundary semantics in `docs/migration/controller-boundary-mvp.md`
+- [X] T012 [US1] Implement typed controller contracts in `src/open_energy_lab/core/controller.py`
+- [X] T013 [US1] Export the stable controller API from `src/open_energy_lab/core/__init__.py`
+- [X] T014 [US1] Document preserved, improved, and rejected controller-boundary semantics in `docs/migration/controller-boundary-mvp.md`
 
 **Checkpoint**: User Story 1 is functional and independently testable through `tests/unit/core/test_controller_contract.py`.
 
