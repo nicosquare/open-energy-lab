@@ -56,8 +56,8 @@ implementation and testing of each story.
 
 ### Tests for User Story 1
 
-- [ ] T010 [P] [US1] Add controller contract validation tests in `tests/unit/core/test_controller_contract.py`
-- [ ] T011 [P] [US1] Add core import-boundary tests for controller exports in `tests/unit/core/test_import_boundary.py`
+- [X] T010 [P] [US1] Add controller contract validation tests in `tests/unit/core/test_controller_contract.py`
+- [X] T011 [P] [US1] Add core import-boundary tests for controller exports in `tests/unit/core/test_import_boundary.py`
 
 ### Implementation for User Story 1
 
