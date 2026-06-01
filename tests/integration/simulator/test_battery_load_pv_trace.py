@@ -112,8 +112,16 @@ def _assert_trace_matches_case(trace: object, case_data: dict[str, object]) -> N
     expected_trace = case_data["expected_trace"]
     tolerance = case_data["validation"]["numeric_tolerance"]
 
+    assert trace.requested_power_kw == pytest.approx(
+        expected_trace["requested_power_kw"],
+        abs=tolerance,
+    )
     assert trace.realized_power_kw == pytest.approx(
         expected_trace["realized_power_kw"],
+        abs=tolerance,
+    )
+    assert [state.soc for state in trace.states] == pytest.approx(
+        expected_trace["soc"],
         abs=tolerance,
     )
     assert trace.pv_generation_kw == pytest.approx(
@@ -124,6 +132,11 @@ def _assert_trace_matches_case(trace: object, case_data: dict[str, object]) -> N
         expected_trace["net_grid_power_kw"],
         abs=tolerance,
     )
+    assert trace.net_grid_energy_kwh == pytest.approx(
+        expected_trace["net_grid_energy_kwh"],
+        abs=tolerance,
+    )
+    assert trace.direction == expected_trace["direction"]
     assert trace.step_settlement == pytest.approx(
         expected_trace["step_settlement"],
         abs=tolerance,
@@ -132,6 +145,7 @@ def _assert_trace_matches_case(trace: object, case_data: dict[str, object]) -> N
         expected_trace["total_settlement"],
         abs=tolerance,
     )
+    assert trace.constraint_events == expected_trace["constraint_events"]
 
 
 def test_explicit_dispatch_trace_matches_shared_fixture_expectations() -> None:
@@ -157,8 +171,17 @@ def test_explicit_dispatch_trace_matches_shared_fixture_expectations() -> None:
     )
 
     trace = scenario.evaluate_trace()
+    second_trace = scenario.evaluate_trace()
 
     _assert_trace_matches_case(trace, dispatch_case)
+    assert second_trace.requested_power_kw == pytest.approx(
+        trace.requested_power_kw,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
+    assert second_trace.net_grid_power_kw == pytest.approx(
+        trace.net_grid_power_kw,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
 
 
 def test_price_threshold_trace_matches_shared_fixture_expectations() -> None:
@@ -192,5 +215,9 @@ def test_price_threshold_trace_matches_shared_fixture_expectations() -> None:
 
     assert second_trace.net_grid_power_kw == pytest.approx(
         trace.net_grid_power_kw,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
+    assert second_trace.requested_power_kw == pytest.approx(
+        trace.requested_power_kw,
         abs=DEFAULT_ABSOLUTE_TOLERANCE,
     )

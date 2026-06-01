@@ -115,8 +115,25 @@ def test_explicit_dispatch_trace_matches_shared_fixture_expectations() -> None:
     )
 
     trace = scenario.evaluate_trace()
+    second_trace = scenario.evaluate_trace()
 
     _assert_trace_matches_case(trace, dispatch_case)
+    assert trace.requested_power_kw == pytest.approx(
+        dispatch_case["dispatch_requests_kw"],
+        abs=dispatch_case["validation"]["numeric_tolerance"],
+    )
+    assert second_trace.requested_power_kw == pytest.approx(
+        trace.requested_power_kw,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
+    assert second_trace.realized_power_kw == pytest.approx(
+        trace.realized_power_kw,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
+    assert second_trace.total_settlement == pytest.approx(
+        trace.total_settlement,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
 
 
 def test_price_threshold_trace_matches_shared_fixture_expectations() -> None:
@@ -142,9 +159,17 @@ def test_price_threshold_trace_matches_shared_fixture_expectations() -> None:
     trace = scenario.evaluate_trace()
 
     _assert_trace_matches_case(trace, policy_case)
+    assert trace.requested_power_kw == pytest.approx(
+        [battery.max_charge_kw, 0.0, -battery.max_discharge_kw],
+        abs=policy_case["validation"]["numeric_tolerance"],
+    )
     second_trace = scenario.evaluate_trace()
 
     assert second_trace.realized_power_kw == pytest.approx(
         trace.realized_power_kw,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
+    assert second_trace.requested_power_kw == pytest.approx(
+        trace.requested_power_kw,
         abs=DEFAULT_ABSOLUTE_TOLERANCE,
     )

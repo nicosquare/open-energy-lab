@@ -77,11 +77,11 @@ implementation and testing of each story.
 
 ### Tests for User Story 2
 
-- [ ] T015 [US2] Add controller runner validation, clamping, and named incomplete-context rejection tests in `tests/unit/simulator/test_controller_runner.py`
-- [ ] T016 [P] [US2] Extend preserved explicit-dispatch and `price_threshold` regression coverage for arbitrage in `tests/integration/simulator/test_battery_arbitrage_trace.py`
-- [ ] T017 [P] [US2] Extend preserved explicit-dispatch and `price_threshold` regression coverage for battery-load-PV in `tests/integration/simulator/test_battery_load_pv_trace.py`
-- [ ] T018 [P] [US2] Add controller evaluation integration coverage for both scenarios in `tests/integration/simulator/test_controller_evaluation.py`
-- [ ] T019 [P] [US2] Add named incomplete-context validation coverage for controller evaluation in `tests/integration/simulator/test_controller_evaluation.py`
+- [X] T015 [US2] Add controller runner validation, clamping, and named incomplete-context rejection tests in `tests/unit/simulator/test_controller_runner.py`
+- [X] T016 [P] [US2] Extend preserved explicit-dispatch and `price_threshold` regression coverage for arbitrage in `tests/integration/simulator/test_battery_arbitrage_trace.py`
+- [X] T017 [P] [US2] Extend preserved explicit-dispatch and `price_threshold` regression coverage for battery-load-PV in `tests/integration/simulator/test_battery_load_pv_trace.py`
+- [X] T018 [P] [US2] Add controller evaluation integration coverage for both scenarios in `tests/integration/simulator/test_controller_evaluation.py`
+- [X] T019 [P] [US2] Add named incomplete-context validation coverage for controller evaluation in `tests/integration/simulator/test_controller_evaluation.py`
 
 ### Implementation for User Story 2
 
