@@ -218,6 +218,13 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Open Energy Lab local research outputs
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.idea/
+.env*
+.venv/
 wandb/
 **/wandb/
 .wandb/

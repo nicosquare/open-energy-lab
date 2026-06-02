@@ -41,6 +41,7 @@ def test_simulator_import_stays_lightweight() -> None:
         "BatteryComponent",
         "DeterministicRulePolicy",
         "DispatchRequestSeries",
+        "evaluate_with_controller",
         "LoadComponent",
         "PVComponent",
         "PriceSignal",
@@ -49,6 +50,10 @@ def test_simulator_import_stays_lightweight() -> None:
     ]
     assert module.ArbitrageScenario.__module__ == "open_energy_lab.simulator.scenario"
     assert module.BatteryLoadPVScenario.__module__ == "open_energy_lab.simulator.scenario"
+    assert (
+        module.evaluate_with_controller.__module__
+        == "open_energy_lab.simulator.controller_runner"
+    )
     assert module.LoadComponent.__module__ == "open_energy_lab.simulator.load"
     assert module.PriceSignal.__module__ == "open_energy_lab.simulator.pricing"
     assert module.PVComponent.__module__ == "open_energy_lab.simulator.pv"

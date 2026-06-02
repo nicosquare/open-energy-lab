@@ -85,9 +85,9 @@ implementation and testing of each story.
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Implement the simulator-owned controller evaluation loop and named pre-evaluation rejection handling in `src/open_energy_lab/simulator/controller_runner.py`
-- [ ] T021 [US2] Add current-step context extraction helpers for supported scenarios in `src/open_energy_lab/simulator/scenario.py`
-- [ ] T022 [US2] Export `evaluate_with_controller` from `src/open_energy_lab/simulator/__init__.py`
+- [X] T020 [US2] Implement the simulator-owned controller evaluation loop and named pre-evaluation rejection handling in `src/open_energy_lab/simulator/controller_runner.py`
+- [X] T021 [US2] Add current-step context extraction helpers for supported scenarios in `src/open_energy_lab/simulator/scenario.py`
+- [X] T022 [US2] Export `evaluate_with_controller` from `src/open_energy_lab/simulator/__init__.py`
 - [ ] T023 [US2] Populate expected proposal and trace values in `tests/fixtures/simulator/controller_arbitrage_case.json`
 - [ ] T024 [P] [US2] Populate expected proposal and trace values in `tests/fixtures/simulator/controller_battery_load_pv_case.json`
 - [ ] T025 [US2] Update controller evaluation and preserved-path regression commands and fixture notes in `specs/004-controller-boundary/quickstart.md`
