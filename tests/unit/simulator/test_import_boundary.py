@@ -34,6 +34,7 @@ def test_simulator_import_stays_lightweight() -> None:
     module_file = Path(module.__file__).resolve()
     assert module_file.name == "__init__.py"
     assert module_file.parent.name == "simulator"
+    assert "evaluate_with_controller" in dir(module)
     assert module.__all__ == [
         "ArbitrageObjectiveRepresentation",
         "ArbitrageScenario",
@@ -58,6 +59,19 @@ def test_simulator_import_stays_lightweight() -> None:
     assert module.PriceSignal.__module__ == "open_energy_lab.simulator.pricing"
     assert module.PVComponent.__module__ == "open_energy_lab.simulator.pv"
     assert module.WeatherComponent.__module__ == "open_energy_lab.simulator.weather"
+
+
+def test_controller_runner_import_and_export_stay_lightweight() -> None:
+    loaded_before_import = set(sys.modules)
+
+    module = importlib.import_module("open_energy_lab.simulator.controller_runner")
+
+    loaded_by_import = set(sys.modules) - loaded_before_import
+    optional_modules_loaded = OPTIONAL_RESEARCH_MODULES & loaded_by_import
+
+    assert optional_modules_loaded == set()
+    assert module.__all__ == ["evaluate_with_controller"]
+    assert module.evaluate_with_controller.__module__ == module.__name__
 
 
 def test_internal_foundation_helpers_import_without_optional_stacks() -> None:

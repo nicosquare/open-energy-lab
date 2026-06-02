@@ -104,10 +104,10 @@ implementation and testing of each story.
 
 ### Tests for User Story 3
 
-- [ ] T026 [P] [US3] Extend optional dependency boundary coverage for core and controller-runner imports in `tests/unit/test_optional_dependency_boundaries.py`
-- [ ] T027 [P] [US3] Add core no-legacy-import checks in `tests/unit/core/test_no_legacy_imports.py`
-- [ ] T028 [P] [US3] Extend simulator import-boundary assertions for controller runner exports in `tests/unit/simulator/test_import_boundary.py`
-- [ ] T029 [P] [US3] Extend root package import-contract coverage for `open_energy_lab.core` in `tests/unit/test_import_contract.py`
+- [X] T026 [P] [US3] Extend optional dependency boundary coverage for core and controller-runner imports in `tests/unit/test_optional_dependency_boundaries.py`
+- [X] T027 [P] [US3] Add core no-legacy-import checks in `tests/unit/core/test_no_legacy_imports.py`
+- [X] T028 [P] [US3] Extend simulator import-boundary assertions for controller runner exports in `tests/unit/simulator/test_import_boundary.py`
+- [X] T029 [P] [US3] Extend root package import-contract coverage for `open_energy_lab.core` in `tests/unit/test_import_contract.py`
 
 ### Implementation for User Story 3
 

@@ -44,10 +44,25 @@ def test_simulator_import_does_not_load_optional_research_stacks() -> None:
     assert optional_modules_loaded == set()
 
 
+def test_core_import_does_not_load_optional_research_stacks() -> None:
+    """The stable core package import must stay isolated from heavy optional stacks."""
+    loaded_before_import = set(sys.modules)
+
+    importlib.import_module("open_energy_lab.core")
+
+    loaded_by_import = set(sys.modules) - loaded_before_import
+    optional_modules_loaded = OPTIONAL_RESEARCH_MODULES & loaded_by_import
+
+    assert optional_modules_loaded == set()
+
+
 @pytest.mark.parametrize(
     "module_name",
     (
+        "open_energy_lab.core",
+        "open_energy_lab.core.controller",
         "open_energy_lab.simulator",
+        "open_energy_lab.simulator.controller_runner",
         "open_energy_lab.simulator.weather",
         "open_energy_lab.simulator.pv",
     ),
