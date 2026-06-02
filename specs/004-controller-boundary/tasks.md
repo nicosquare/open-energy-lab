@@ -88,9 +88,9 @@ implementation and testing of each story.
 - [X] T020 [US2] Implement the simulator-owned controller evaluation loop and named pre-evaluation rejection handling in `src/open_energy_lab/simulator/controller_runner.py`
 - [X] T021 [US2] Add current-step context extraction helpers for supported scenarios in `src/open_energy_lab/simulator/scenario.py`
 - [X] T022 [US2] Export `evaluate_with_controller` from `src/open_energy_lab/simulator/__init__.py`
-- [ ] T023 [US2] Populate expected proposal and trace values in `tests/fixtures/simulator/controller_arbitrage_case.json`
-- [ ] T024 [P] [US2] Populate expected proposal and trace values in `tests/fixtures/simulator/controller_battery_load_pv_case.json`
-- [ ] T025 [US2] Update controller evaluation and preserved-path regression commands and fixture notes in `specs/004-controller-boundary/quickstart.md`
+- [X] T023 [US2] Populate expected proposal and trace values in `tests/fixtures/simulator/controller_arbitrage_case.json`
+- [X] T024 [P] [US2] Populate expected proposal and trace values in `tests/fixtures/simulator/controller_battery_load_pv_case.json`
+- [X] T025 [US2] Update controller evaluation and preserved-path regression commands and fixture notes in `specs/004-controller-boundary/quickstart.md`
 
 **Checkpoint**: User Story 2 is functional and independently testable through `tests/integration/simulator/test_controller_evaluation.py` plus the preserved-path trace regression suites.
 

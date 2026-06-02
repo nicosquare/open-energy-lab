@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from open_energy_lab.core import ControllerContext, DispatchProposal
@@ -21,6 +24,9 @@ from open_energy_lab.simulator._units import (
     DEFAULT_ABSOLUTE_TOLERANCE,
     POSITIVE_DISPATCH_MEANING,
 )
+
+
+FIXTURE_DIR = Path("tests/fixtures/simulator")
 
 
 def _battery() -> BatteryComponent:
@@ -154,6 +160,121 @@ class _CountingController:
         )
 
 
+def _load_fixture(name: str) -> dict[str, object]:
+    return json.loads((FIXTURE_DIR / name).read_text(encoding="utf-8"))
+
+
+def _sequence_controller_from_fixture(fixture: dict[str, object]) -> _SequenceController:
+    controller_stub = fixture["controller_stub"]
+    return _SequenceController(controller_stub["requested_power_kw"])
+
+
+def _arbitrage_scenario_from_fixture(fixture: dict[str, object]) -> ArbitrageScenario:
+    time_grid = fixture["time_grid"]
+    battery_data = fixture["battery"]
+    pricing = fixture["pricing"]
+    grid = TimeGrid(
+        num_steps=time_grid["num_steps"],
+        time_step_hours=time_grid["time_step_hours"],
+    )
+    return ArbitrageScenario(
+        scenario_id=fixture["case_id"],
+        time_grid=grid,
+        battery=BatteryComponent(
+            name=battery_data["name"],
+            capacity_kwh=battery_data["capacity_kwh"],
+            max_charge_kw=battery_data["max_charge_kw"],
+            max_discharge_kw=battery_data["max_discharge_kw"],
+            charge_efficiency=battery_data["charge_efficiency"],
+            discharge_efficiency=battery_data["discharge_efficiency"],
+            initial_soc=battery_data["initial_soc"],
+            min_soc=battery_data["min_soc"],
+            max_soc=battery_data["max_soc"],
+        ),
+        price_signal=PriceSignal(
+            currency=pricing["currency"],
+            unit_rate_name=pricing["unit_rate_name"],
+            import_prices=pricing["import_prices"],
+            export_price_ratio=pricing["export_price_ratio"],
+            interpretation=pricing["interpretation"],
+            time_alignment=pricing["time_alignment"],
+            time_grid=grid,
+        ),
+        objective=_objective(),
+        dispatch_requests=_dispatch_requests(grid.num_steps),
+    )
+
+
+def _battery_load_pv_scenario_from_fixture(
+    fixture: dict[str, object],
+) -> BatteryLoadPVScenario:
+    time_grid = fixture["time_grid"]
+    battery_data = fixture["battery"]
+    load_data = fixture["load"]
+    weather_data = fixture["weather"]
+    pv_data = fixture["pv"]
+    pricing = fixture["pricing"]
+    grid = TimeGrid(
+        num_steps=time_grid["num_steps"],
+        time_step_hours=time_grid["time_step_hours"],
+    )
+    return BatteryLoadPVScenario(
+        scenario_id=fixture["case_id"],
+        time_grid=grid,
+        battery=BatteryComponent(
+            name=battery_data["name"],
+            capacity_kwh=battery_data["capacity_kwh"],
+            max_charge_kw=battery_data["max_charge_kw"],
+            max_discharge_kw=battery_data["max_discharge_kw"],
+            charge_efficiency=battery_data["charge_efficiency"],
+            discharge_efficiency=battery_data["discharge_efficiency"],
+            initial_soc=battery_data["initial_soc"],
+            min_soc=battery_data["min_soc"],
+            max_soc=battery_data["max_soc"],
+        ),
+        load=LoadComponent(
+            name=load_data["name"],
+            demand_kw=load_data["demand_kw"],
+            interpretation="exogenous-consumption",
+            time_grid=grid,
+            source="controller-fixture",
+        ),
+        weather=WeatherComponent(
+            name=weather_data["name"],
+            time_grid=grid,
+            timestamp_utc=weather_data["timestamp_utc"]["values"],
+            dry_bulb_air_temperature_c=weather_data["dry_bulb_air_temperature_c"]["values"],
+            global_horizontal_irradiance_w_per_m2=weather_data[
+                "global_horizontal_irradiance_w_per_m2"
+            ]["values"],
+            deferred_fields=tuple(
+                item["field_name"] for item in weather_data["deferred_tmy_fields"]
+            ),
+        ),
+        pv=PVComponent(
+            name=pv_data["name"],
+            rated_power_kw=pv_data["rated_power_kw"],
+            temperature_coefficient_pct_per_c=pv_data["temperature_coefficient_pct_per_c"],
+            reference_irradiance_w_per_m2=pv_data["reference_irradiance_w_per_m2"],
+            reference_temperature_c=pv_data["reference_temperature_c"],
+            derivation_name=pv_data["derivation_name"],
+            generation_cap_kw=pv_data["generation_cap_kw"],
+            irradiance_field_names=("global_horizontal_irradiance_w_per_m2",),
+        ),
+        price_signal=PriceSignal(
+            currency=pricing["currency"],
+            unit_rate_name=pricing["unit_rate_name"],
+            import_prices=pricing["import_prices"],
+            export_price_ratio=pricing["export_price_ratio"],
+            interpretation=pricing["interpretation"],
+            time_alignment=pricing["time_alignment"],
+            time_grid=grid,
+        ),
+        objective=_objective(),
+        dispatch_requests=_dispatch_requests(grid.num_steps),
+    )
+
+
 def test_controller_evaluation_is_deterministic_for_arbitrage_scenarios() -> None:
     from open_energy_lab.simulator.controller_runner import evaluate_with_controller
 
@@ -245,3 +366,90 @@ def test_controller_evaluation_returns_named_rejection_for_incomplete_current_st
     assert result.rejection.step_index == 0
     assert result.rejection.missing_inputs == ["load_kw"]
     assert result.step_records == []
+
+
+def test_controller_arbitrage_fixture_matches_controller_evaluation_trace() -> None:
+    from open_energy_lab.simulator.controller_runner import evaluate_with_controller
+
+    fixture = _load_fixture("controller_arbitrage_case.json")
+    tolerance = fixture["numeric_tolerance"]
+    expected_trace = fixture["expected_trace"]
+
+    result = evaluate_with_controller(
+        _arbitrage_scenario_from_fixture(fixture),
+        _sequence_controller_from_fixture(fixture),
+    )
+
+    assert result.rejection is None
+    assert result.controller_name == fixture["controller_name"]
+    assert result.requested_power_kw == pytest.approx(
+        expected_trace["requested_power_kw"],
+        abs=tolerance,
+    )
+    assert result.realized_power_kw == pytest.approx(
+        expected_trace["realized_power_kw"],
+        abs=tolerance,
+    )
+    assert [state.soc for state in result.underlying_trace.states] == pytest.approx(
+        expected_trace["soc"],
+        abs=tolerance,
+    )
+    assert result.underlying_trace.step_settlement == pytest.approx(
+        expected_trace["step_settlement"],
+        abs=tolerance,
+    )
+    assert result.total_settlement == pytest.approx(
+        expected_trace["total_settlement"],
+        abs=tolerance,
+    )
+    assert result.underlying_trace.constraint_events == expected_trace["constraint_events"]
+
+
+def test_controller_battery_load_pv_fixture_matches_controller_evaluation_trace() -> None:
+    from open_energy_lab.simulator.controller_runner import evaluate_with_controller
+
+    fixture = _load_fixture("controller_battery_load_pv_case.json")
+    tolerance = fixture["numeric_tolerance"]
+    expected_trace = fixture["expected_trace"]
+
+    result = evaluate_with_controller(
+        _battery_load_pv_scenario_from_fixture(fixture),
+        _sequence_controller_from_fixture(fixture),
+    )
+
+    assert result.rejection is None
+    assert result.controller_name == fixture["controller_name"]
+    assert result.requested_power_kw == pytest.approx(
+        expected_trace["requested_power_kw"],
+        abs=tolerance,
+    )
+    assert result.realized_power_kw == pytest.approx(
+        expected_trace["realized_power_kw"],
+        abs=tolerance,
+    )
+    assert [state.soc for state in result.underlying_trace.states] == pytest.approx(
+        expected_trace["soc"],
+        abs=tolerance,
+    )
+    assert result.underlying_trace.pv_generation_kw == pytest.approx(
+        expected_trace["pv_generation_kw"],
+        abs=tolerance,
+    )
+    assert result.underlying_trace.net_grid_power_kw == pytest.approx(
+        expected_trace["net_grid_power_kw"],
+        abs=tolerance,
+    )
+    assert result.underlying_trace.net_grid_energy_kwh == pytest.approx(
+        expected_trace["net_grid_energy_kwh"],
+        abs=tolerance,
+    )
+    assert result.underlying_trace.direction == expected_trace["direction"]
+    assert result.underlying_trace.step_settlement == pytest.approx(
+        expected_trace["step_settlement"],
+        abs=tolerance,
+    )
+    assert result.total_settlement == pytest.approx(
+        expected_trace["total_settlement"],
+        abs=tolerance,
+    )
+    assert result.underlying_trace.constraint_events == expected_trace["constraint_events"]

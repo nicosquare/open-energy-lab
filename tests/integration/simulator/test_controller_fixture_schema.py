@@ -36,9 +36,9 @@ def test_controller_fixture_common_schema(
         key for key in COMMON_TOP_LEVEL_KEYS if key not in fixture_data
     ]
     assert missing_top_level_keys == []
-    assert fixture_data["status"] == "draft"
+    assert fixture_data["status"] == "active"
     assert fixture_data["fixture_source"] == fixture_path.as_posix()
-    assert fixture_data["controller_name"] == "placeholder-controller"
+    assert fixture_data["controller_name"] == "sequence-controller"
     assert fixture_data["numeric_tolerance"] == pytest.approx(1e-6)
 
     origin = fixture_data["origin"]
@@ -67,7 +67,7 @@ def test_controller_fixture_common_schema(
     assert missing_controller_stub_keys == []
     assert controller_stub["kind"] == "deterministic-sequence"
     assert controller_stub["proposal_sign_convention"] == "positive-means-charge"
-    assert controller_stub["requested_power_kw"] == []
+    assert controller_stub["requested_power_kw"] == [1.0, 0.0, -1.0]
 
     expected_properties = fixture_data["expected_properties"]
     assert isinstance(expected_properties, dict)
@@ -84,7 +84,7 @@ def test_controller_fixture_common_schema(
 
     time_grid = fixture_data["time_grid"]
     assert isinstance(time_grid, dict)
-    assert time_grid == {"num_steps": 0, "time_step_hours": None}
+    assert time_grid == {"num_steps": 3, "time_step_hours": 1.0}
 
     legacy_references = fixture_data["legacy_references"]
     assert isinstance(legacy_references, list)
@@ -137,11 +137,11 @@ def test_controller_fixture_scenario_specific_schema(
     assert isinstance(expected_trace, dict)
     missing_trace_keys = [key for key in trace_keys if key not in expected_trace]
     assert missing_trace_keys == []
-    assert expected_trace["requested_power_kw"] == []
-    assert expected_trace["realized_power_kw"] == []
-    assert expected_trace["soc"] == []
-    assert expected_trace["step_settlement"] == []
-    assert expected_trace["total_settlement"] is None
+    assert expected_trace["requested_power_kw"] == [1.0, 0.0, -1.0]
+    assert expected_trace["realized_power_kw"] == [1.0, 0.0, -1.0]
+    assert len(expected_trace["soc"]) == fixture_data["time_grid"]["num_steps"]
+    assert len(expected_trace["step_settlement"]) == fixture_data["time_grid"]["num_steps"]
+    assert isinstance(expected_trace["total_settlement"], float)
     assert expected_trace["constraint_events"] == []
 
 
@@ -153,21 +153,36 @@ def test_controller_battery_load_pv_fixture_preserves_weather_label_mappings() -
     )
 
     load_data = fixture_data["load"]
-    assert load_data == {"name": "load", "demand_kw": []}
+    assert load_data == {"name": "load", "demand_kw": [2.0, 1.5, 0.5]}
 
     weather = fixture_data["weather"]
     assert weather["timestamp_utc"]["tmy_label"] == "Date & time (UTC)"
-    assert weather["timestamp_utc"]["values"] == []
+    assert weather["timestamp_utc"]["values"] == [
+        "2026-01-01T00:00:00Z",
+        "2026-01-01T01:00:00Z",
+        "2026-01-01T02:00:00Z",
+    ]
     assert weather["dry_bulb_air_temperature_c"]["tmy_label"] == "T2m [°C]"
-    assert weather["dry_bulb_air_temperature_c"]["values"] == []
+    assert weather["dry_bulb_air_temperature_c"]["values"] == [25.0, 26.0, 27.0]
     assert (
         weather["global_horizontal_irradiance_w_per_m2"]["tmy_label"] == "G(h) [W/m2]"
     )
-    assert weather["global_horizontal_irradiance_w_per_m2"]["values"] == []
-    assert weather["deferred_tmy_fields"] == []
+    assert weather["global_horizontal_irradiance_w_per_m2"]["values"] == [0.0, 500.0, 1000.0]
+    assert weather["deferred_tmy_fields"] == [
+        {"field_name": "relative_humidity_pct", "tmy_label": "RH [%]"},
+        {
+            "field_name": "infrared_radiation_downwards_w_per_m2",
+            "tmy_label": "IR(h) [W/m2]",
+        },
+        {"field_name": "windspeed_10m_m_per_s", "tmy_label": "WS10m [m/s]"},
+        {"field_name": "wind_direction_10m_deg", "tmy_label": "WD10m [°]"},
+        {"field_name": "surface_air_pressure_pa", "tmy_label": "SP [Pa]"},
+    ]
 
     pv = fixture_data["pv"]
     assert pv["name"] == "pv"
+    assert pv["rated_power_kw"] == pytest.approx(4.0)
+    assert pv["temperature_coefficient_pct_per_c"] == pytest.approx(-0.4)
     assert pv["reference_irradiance_w_per_m2"] == pytest.approx(1000.0)
     assert pv["reference_temperature_c"] == pytest.approx(25.0)
     assert pv["derivation_name"] == "ghi-linear-temperature-adjusted"

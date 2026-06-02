@@ -139,6 +139,27 @@ assumes:
   `open_energy_lab.simulator`
 - `open_energy_lab.control` remains deferred for broader future control work
 
+## Controller Fixture Notes
+
+The controller-driven fixtures are committed as active deterministic evidence:
+
+- `tests/fixtures/simulator/controller_arbitrage_case.json`
+- `tests/fixtures/simulator/controller_battery_load_pv_case.json`
+
+Use them to review the expected three-step `sequence-controller` proposals and
+realized traces without re-reading simulator internals. Refresh them only when
+the documented controller boundary, controller sequence, battery semantics,
+weather-to-PV derivation, timestep semantics, or settlement rules
+intentionally change.
+
+Review the provenance and refresh notes with:
+
+```bash
+sed -n '1,260p' tests/fixtures/simulator/README.md
+sed -n '1,220p' tests/fixtures/simulator/controller_arbitrage_case.json
+sed -n '1,260p' tests/fixtures/simulator/controller_battery_load_pv_case.json
+```
+
 ## Expected Checks After Tasks Exist
 
 ```bash
@@ -150,10 +171,21 @@ rg "from legacy|import legacy" src/open_energy_lab/core src/open_energy_lab/simu
 Focused validation commands should include:
 
 ```bash
+uv run pytest tests/integration/simulator/test_controller_fixture_schema.py
 uv run pytest tests/unit/core/test_controller_contract.py
 uv run pytest tests/unit/simulator/test_controller_runner.py
 uv run pytest tests/integration/simulator/test_controller_evaluation.py
 uv run pytest tests/integration/simulator/test_battery_arbitrage_trace.py tests/integration/simulator/test_battery_load_pv_trace.py
+```
+
+For the controller-driven path plus the preserved regression baselines, run:
+
+```bash
+uv run pytest \
+  tests/integration/simulator/test_controller_fixture_schema.py \
+  tests/integration/simulator/test_controller_evaluation.py \
+  tests/integration/simulator/test_battery_arbitrage_trace.py \
+  tests/integration/simulator/test_battery_load_pv_trace.py
 ```
 
 Expected result for the legacy-import scan: no matches in new library modules

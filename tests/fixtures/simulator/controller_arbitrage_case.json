@@ -1,13 +1,13 @@
 {
   "case_id": "controller-arbitrage-mvp-v1",
-  "status": "draft",
-  "purpose": "Deterministic scaffold for controller-driven arbitrage evaluation.",
+  "status": "active",
+  "purpose": "Deterministic synthetic controller-driven arbitrage fixture for exact sequence-controller evaluation.",
   "origin": {
-    "author": "TBD",
-    "construction": "Phase 1 scaffold. Populate the controller sequence and expected evaluation outputs during T023.",
+    "author": "OpenAI Codex",
+    "construction": "Manually authored from the US2 controller-boundary contracts and then checked against the current implementation with uv run python -c controller-evaluation calculations.",
     "seed": null,
     "generation_command": null,
-    "refresh_policy": "Refresh only when the documented controller-boundary, battery, timestep, or settlement semantics intentionally change."
+    "refresh_policy": "Refresh only when the documented controller-boundary, controller-sequence, battery, timestep, or discounted-export settlement semantics intentionally change."
   },
   "legacy_references": [
     "legacy/old_tpm/src_py/legacy/storage.py",
@@ -16,35 +16,43 @@
     "legacy/old_tpm/src_py/simulator/common/time.py"
   ],
   "scenario_kind": "ArbitrageScenario",
-  "controller_name": "placeholder-controller",
+  "controller_name": "sequence-controller",
   "fixture_source": "tests/fixtures/simulator/controller_arbitrage_case.json",
   "time_grid": {
-    "num_steps": 0,
-    "time_step_hours": null
+    "num_steps": 3,
+    "time_step_hours": 1.0
   },
   "battery": {
     "name": "battery",
-    "capacity_kwh": null,
-    "max_charge_kw": null,
-    "max_discharge_kw": null,
-    "charge_efficiency": null,
-    "discharge_efficiency": null,
-    "initial_soc": null,
-    "min_soc": null,
-    "max_soc": null
+    "capacity_kwh": 10.0,
+    "max_charge_kw": 5.0,
+    "max_discharge_kw": 5.0,
+    "charge_efficiency": 0.95,
+    "discharge_efficiency": 0.95,
+    "initial_soc": 0.5,
+    "min_soc": 0.0,
+    "max_soc": 1.0
   },
   "pricing": {
     "currency": "USD",
     "unit_rate_name": "energy-price",
-    "import_prices": [],
-    "export_price_ratio": null,
+    "import_prices": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "export_price_ratio": 0.8,
     "interpretation": "discounted export relative to import prices",
     "time_alignment": "step-start"
   },
   "controller_stub": {
     "kind": "deterministic-sequence",
     "proposal_sign_convention": "positive-means-charge",
-    "requested_power_kw": []
+    "requested_power_kw": [
+      1.0,
+      0.0,
+      -1.0
+    ]
   },
   "expected_properties": {
     "validates_controller_evaluation": true,
@@ -53,17 +61,33 @@
     "validates_named_incomplete_context_rejection": false
   },
   "expected_trace": {
-    "requested_power_kw": [],
-    "realized_power_kw": [],
-    "soc": [],
-    "step_settlement": [],
-    "total_settlement": null,
+    "requested_power_kw": [
+      1.0,
+      0.0,
+      -1.0
+    ],
+    "realized_power_kw": [
+      1.0,
+      0.0,
+      -1.0
+    ],
+    "soc": [
+      0.595,
+      0.595,
+      0.4897368421052632
+    ],
+    "step_settlement": [
+      -0.1,
+      0.0,
+      0.24
+    ],
+    "total_settlement": 0.14,
     "constraint_events": []
   },
   "numeric_tolerance": 1e-06,
   "provenance_notes": [
     "Keep the fixture synthetic, small, and reviewable.",
-    "Populate exact proposal and trace expectations during T023.",
-    "Add any validation-specific notes if this fixture later covers more than controller evaluation."
+    "The expected controller proposals and realized arbitrage trace were verified against evaluate_with_controller for the documented three-step sequence controller.",
+    "This fixture validates controller-driven execution only; preserved explicit-dispatch and price-threshold regression evidence remains in the shared non-controller arbitrage fixture."
   ]
 }
