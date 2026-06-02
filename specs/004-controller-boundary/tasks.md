@@ -111,9 +111,9 @@ implementation and testing of each story.
 
 ### Implementation for User Story 3
 
-- [ ] T030 [US3] Refine import-light controller type hints in `src/open_energy_lab/core/controller.py`
-- [ ] T031 [US3] Update stable API maturity guidance for the controller boundary in `docs/migration/api-maturity.md`
-- [ ] T032 [US3] Update migration governance guidance for controller-boundary validation in `docs/migration/parity-validation.md`
+- [X] T030 [US3] Refine import-light controller type hints in `src/open_energy_lab/core/controller.py`
+- [X] T031 [US3] Update stable API maturity guidance for the controller boundary in `docs/migration/api-maturity.md`
+- [X] T032 [US3] Update migration governance guidance for controller-boundary validation in `docs/migration/parity-validation.md`
 
 **Checkpoint**: User Story 3 is functional and independently testable through the import-boundary and no-legacy-import suites.
 

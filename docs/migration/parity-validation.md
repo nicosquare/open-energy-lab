@@ -49,6 +49,40 @@ Every migration needs at least one relevant validation evidence type:
 - Document tolerances and environment assumptions when exact equality is not
   realistic.
 
+## Controller Boundary Governance
+
+The `004-controller-boundary` migration adds a controller-specific validation
+shape that later migrations should preserve when they extend this boundary:
+
+- Keep `src/open_energy_lab/core` import-light and free of runtime `legacy/*`
+  imports.
+- Keep `src/open_energy_lab/simulator` import-light, with controller execution
+  owned by `evaluate_with_controller`.
+- Treat `tests/fixtures/simulator/controller_arbitrage_case.json` and
+  `tests/fixtures/simulator/controller_battery_load_pv_case.json` as active
+  deterministic evidence, not placeholder scaffolds.
+- Preserve exact fixture provenance, numeric tolerance, and refresh-policy
+  notes when those controller fixtures change.
+- Validate both supported scenario families through the same controller runner
+  API before expanding the stable surface.
+- Keep named incomplete-context rejection behavior explicit so failures remain
+  distinguishable from simulator-side clamping.
+
+Minimum controller-boundary validation now includes:
+
+- `tests/integration/simulator/test_controller_fixture_schema.py`
+- `tests/integration/simulator/test_controller_evaluation.py`
+- `tests/integration/simulator/test_battery_arbitrage_trace.py`
+- `tests/integration/simulator/test_battery_load_pv_trace.py`
+- `tests/unit/test_optional_dependency_boundaries.py`
+- `tests/unit/core/test_no_legacy_imports.py`
+- `tests/unit/simulator/test_import_boundary.py`
+- `tests/unit/test_import_contract.py`
+
+If future controller-boundary work cannot run one of these checks locally, the
+skip reason must be recorded in the relevant spec plan or quickstart, alongside
+any environment assumptions and the intended follow-up validation path.
+
 ## Out-of-Scope Boundary
 
 The foundation feature does not migrate simulator, TPM, RL, optimization,

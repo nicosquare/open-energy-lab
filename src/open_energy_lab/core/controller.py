@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 
 POSITIVE_DISPATCH_MEANING = "charge"
@@ -33,6 +34,21 @@ def _validate_time_step_hours(value: float) -> float:
     if normalized <= 0.0:
         raise ValueError("time_step_hours must be positive")
     return normalized
+
+
+def _normalize_metadata_mapping(
+    value: Mapping[str, object] | None,
+    *,
+    field_name: str,
+) -> dict[str, object] | None:
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise TypeError(f"{field_name} must be a mapping when provided")
+    return {
+        _require_non_empty_text(key, field_name=f"{field_name} key"): item
+        for key, item in value.items()
+    }
 
 
 @dataclass(slots=True)
@@ -102,7 +118,7 @@ class ControllerContext:
     battery_state: BatteryStateSnapshot
     price_input: PriceInput
     step_inputs: dict[str, float] = field(default_factory=dict)
-    notes: dict[str, Any] | None = None
+    notes: Mapping[str, object] | None = None
 
     def __post_init__(self) -> None:
         self.scenario_id = _require_non_empty_text(self.scenario_id, field_name="scenario_id")
@@ -123,8 +139,7 @@ class ControllerContext:
             )
         self.step_inputs = normalized_step_inputs
 
-        if self.notes is not None and not isinstance(self.notes, dict):
-            raise TypeError("notes must be a dictionary when provided")
+        self.notes = _normalize_metadata_mapping(self.notes, field_name="notes")
 
 
 @dataclass(slots=True)
@@ -135,7 +150,7 @@ class DispatchProposal:
     requested_power_kw: float
     sign_convention: str
     controller_name: str
-    metadata: dict[str, Any] | None = None
+    metadata: Mapping[str, object] | None = None
 
     def __post_init__(self) -> None:
         if self.step_index < 0:
@@ -150,8 +165,10 @@ class DispatchProposal:
             self.controller_name,
             field_name="controller_name",
         )
-        if self.metadata is not None and not isinstance(self.metadata, dict):
-            raise TypeError("metadata must be a dictionary when provided")
+        self.metadata = _normalize_metadata_mapping(
+            self.metadata,
+            field_name="metadata",
+        )
 
 
 @runtime_checkable
@@ -237,7 +254,7 @@ class ControllerEvaluationResult:
     realized_power_kw: list[float]
     total_settlement: float
     final_battery_state: BatteryStateSnapshot | None
-    underlying_trace: Any | None = None
+    underlying_trace: object | None = None
     rejection: ControllerRejectionRecord | None = None
 
     def __post_init__(self) -> None:
