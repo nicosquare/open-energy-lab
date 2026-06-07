@@ -45,10 +45,10 @@ blocks all user story work.
 - [X] T006 [P] Add typed controller configuration validation coverage in `tests/unit/control/test_configs.py`
 - [X] T007 [P] Add controller support-matrix and unsupported-scenario coverage in `tests/unit/control/test_support_matrix.py`
 - [X] T008 [P] Add controller-pack fixture loading helpers in `tests/integration/control/controller_fixture_utils.py`
-- [ ] T009 [P] Extend controller fixture schema validation for controller-pack artifacts, provenance fields, and legacy-reference fields in `tests/integration/simulator/test_controller_fixture_schema.py`
-- [ ] T010 Create shared control configuration helpers, shipped-controller support declarations, and package scaffolding in `src/open_energy_lab/control/_config.py` and `src/open_energy_lab/control/__init__.py`
-- [ ] T011 Create the initial preserve/improve/reject migration note content in `docs/migration/controller-pack.md`
-- [ ] T012 [P] Add shipped controller `ControllerInterface` conformance coverage in `tests/unit/control/test_controller_interface.py`
+- [X] T009 [P] Extend controller fixture schema validation for controller-pack artifacts, provenance fields, and legacy-reference fields in `tests/integration/simulator/test_controller_fixture_schema.py`
+- [X] T010 Create shared control configuration helpers, shipped-controller support declarations, and package scaffolding in `src/open_energy_lab/control/_config.py` and `src/open_energy_lab/control/__init__.py`
+- [X] T011 Create the initial preserve/improve/reject migration note content in `docs/migration/controller-pack.md`
+- [X] T012 [P] Add shipped controller `ControllerInterface` conformance coverage in `tests/unit/control/test_controller_interface.py`
 
 **Checkpoint**: Shared control package scaffolding, configuration validation,
 support declarations, and fixture helpers are in place.

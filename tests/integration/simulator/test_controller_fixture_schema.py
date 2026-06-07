@@ -6,6 +6,16 @@ from pathlib import Path
 import sys
 
 import pytest
+from tests.integration.control.controller_fixture_utils import (
+    COMMON_BATTERY_KEYS as CONTROLLER_PACK_COMMON_BATTERY_KEYS,
+    COMMON_EXPECTED_PROPERTIES_KEYS as CONTROLLER_PACK_COMMON_EXPECTED_PROPERTIES_KEYS,
+    COMMON_ORIGIN_KEYS as CONTROLLER_PACK_COMMON_ORIGIN_KEYS,
+    COMMON_PRICING_KEYS as CONTROLLER_PACK_COMMON_PRICING_KEYS,
+    COMMON_TOP_LEVEL_KEYS as CONTROLLER_PACK_COMMON_TOP_LEVEL_KEYS,
+    CONTROLLER_PACK_FIXTURE_PATHS,
+    LOAD_PV_SCENARIO_KEYS,
+    load_all_controller_pack_fixtures,
+)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -186,3 +196,164 @@ def test_controller_battery_load_pv_fixture_preserves_weather_label_mappings() -
     assert pv["reference_irradiance_w_per_m2"] == pytest.approx(1000.0)
     assert pv["reference_temperature_c"] == pytest.approx(25.0)
     assert pv["derivation_name"] == "ghi-linear-temperature-adjusted"
+
+
+@pytest.mark.parametrize(
+    ("fixture_path", "fixture_data"),
+    load_all_controller_pack_fixtures(),
+    ids=lambda item: item.name if isinstance(item, Path) else repr(item),
+)
+def test_controller_pack_fixture_common_schema(
+    fixture_path: Path,
+    fixture_data: dict[str, object],
+) -> None:
+    missing_top_level_keys = [
+        key for key in CONTROLLER_PACK_COMMON_TOP_LEVEL_KEYS if key not in fixture_data
+    ]
+    assert missing_top_level_keys == []
+    assert fixture_path in CONTROLLER_PACK_FIXTURE_PATHS
+    assert fixture_data["status"] == "scaffold"
+    assert fixture_data["fixture_source"] == fixture_path.as_posix()
+    assert fixture_data["numeric_tolerance"] == pytest.approx(1e-6)
+    assert fixture_data["config_reference"] in {
+        "PriceThresholdConfig",
+        "SocGuardrailConfig",
+        "PVSelfConsumptionConfig",
+    }
+
+    origin = fixture_data["origin"]
+    assert isinstance(origin, dict)
+    missing_origin_keys = [
+        key for key in CONTROLLER_PACK_COMMON_ORIGIN_KEYS if key not in origin
+    ]
+    assert missing_origin_keys == []
+    assert origin["author"] == "OpenAI Codex"
+    assert origin["seed"] is None
+
+    battery = fixture_data["battery"]
+    assert isinstance(battery, dict)
+    missing_battery_keys = [
+        key for key in CONTROLLER_PACK_COMMON_BATTERY_KEYS if key not in battery
+    ]
+    assert missing_battery_keys == []
+    assert battery["name"] == "battery"
+
+    pricing = fixture_data["pricing"]
+    assert isinstance(pricing, dict)
+    missing_pricing_keys = [
+        key for key in CONTROLLER_PACK_COMMON_PRICING_KEYS if key not in pricing
+    ]
+    assert missing_pricing_keys == []
+    assert pricing["currency"] == "USD"
+    assert pricing["time_alignment"] == "step-start"
+
+    expected_properties = fixture_data["expected_properties"]
+    assert isinstance(expected_properties, dict)
+    missing_expected_properties_keys = [
+        key
+        for key in CONTROLLER_PACK_COMMON_EXPECTED_PROPERTIES_KEYS
+        if key not in expected_properties
+    ]
+    assert missing_expected_properties_keys == []
+    assert expected_properties["validates_controller_evaluation"] is True
+    assert expected_properties["validates_repeated_run_determinism"] is True
+    assert expected_properties["validates_preserved_explicit_dispatch_regression"] is False
+    assert expected_properties["validates_preserved_built_in_rule_regression"] is False
+
+    time_grid = fixture_data["time_grid"]
+    assert isinstance(time_grid, dict)
+    assert time_grid == {"num_steps": 3, "time_step_hours": 1.0}
+
+    planned_config = fixture_data["planned_config"]
+    assert isinstance(planned_config, dict)
+    assert planned_config != {}
+
+    legacy_references = fixture_data["legacy_references"]
+    assert isinstance(legacy_references, list)
+    assert legacy_references != []
+    for legacy_path in legacy_references:
+        assert isinstance(legacy_path, str)
+        assert legacy_path.startswith("legacy/")
+        assert Path(legacy_path).is_file()
+
+    provenance_notes = fixture_data["provenance_notes"]
+    assert isinstance(provenance_notes, list)
+    assert provenance_notes != []
+    assert all(isinstance(note, str) and note for note in provenance_notes)
+
+    expected_trace = fixture_data["expected_trace"]
+    assert isinstance(expected_trace, dict)
+    assert expected_trace == {}
+
+
+@pytest.mark.parametrize(
+    ("fixture_path", "scenario_kind", "scenario_keys", "planned_config_keys"),
+    (
+        (
+            Path("tests/fixtures/simulator/price_threshold_controller_case.json"),
+            "ArbitrageScenario",
+            (),
+            (
+                "charge_below_import_price",
+                "discharge_above_import_price",
+                "charge_request_kw",
+                "discharge_request_kw",
+            ),
+        ),
+        (
+            Path("tests/fixtures/simulator/soc_guardrail_arbitrage_case.json"),
+            "ArbitrageScenario",
+            (),
+            (
+                "target_min_soc",
+                "target_max_soc",
+                "charge_request_kw",
+                "discharge_request_kw",
+            ),
+        ),
+        (
+            Path("tests/fixtures/simulator/pv_self_consumption_case.json"),
+            "BatteryLoadPVScenario",
+            LOAD_PV_SCENARIO_KEYS,
+            (
+                "reserve_min_soc",
+                "reserve_max_soc",
+                "charge_request_kw",
+                "discharge_request_kw",
+            ),
+        ),
+    ),
+)
+def test_controller_pack_fixture_scaffolds_match_planned_schema(
+    fixture_path: Path,
+    scenario_kind: str,
+    scenario_keys: tuple[str, ...],
+    planned_config_keys: tuple[str, ...],
+) -> None:
+    fixture_data = next(
+        data for path, data in load_all_controller_pack_fixtures() if path == fixture_path
+    )
+
+    assert fixture_data["scenario_kind"] == scenario_kind
+    missing_scenario_keys = [key for key in scenario_keys if key not in fixture_data]
+    assert missing_scenario_keys == []
+    assert tuple(fixture_data["planned_config"]) == planned_config_keys
+
+
+def test_controller_pack_fixture_legacy_references_distinguish_pv_context_evidence() -> None:
+    fixtures = dict(load_all_controller_pack_fixtures())
+
+    price_threshold_legacy = fixtures[
+        Path("tests/fixtures/simulator/price_threshold_controller_case.json")
+    ]["legacy_references"]
+    soc_guardrail_legacy = fixtures[
+        Path("tests/fixtures/simulator/soc_guardrail_arbitrage_case.json")
+    ]["legacy_references"]
+    pv_self_consumption_legacy = fixtures[
+        Path("tests/fixtures/simulator/pv_self_consumption_case.json")
+    ]["legacy_references"]
+
+    assert "legacy/fed_trpo/src/custom/building.py" not in price_threshold_legacy
+    assert "legacy/fed_trpo/src/custom/building.py" not in soc_guardrail_legacy
+    assert "legacy/old_tpm/src_py/simulator/common/specs.py" in pv_self_consumption_legacy
+    assert "legacy/fed_trpo/src/custom/building.py" in pv_self_consumption_legacy

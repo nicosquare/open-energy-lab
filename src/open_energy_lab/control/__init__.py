@@ -1,6 +1,19 @@
-"""Future control interface scaffold.
+"""Stable package-root exports for shipped native controllers."""
 
-Control concepts are limited to future interfaces or contracts in this
-foundation. Concrete controllers, RL agents, optimization models, and training
-loops require later migration or capability specs.
-"""
+from ._config import (
+    PVSelfConsumptionConfig,
+    PriceThresholdConfig,
+    SocGuardrailConfig,
+)
+from .price_threshold import PriceThresholdController
+from .pv_self_consumption import PVSelfConsumptionController
+from .soc_guardrail import SocGuardrailController
+
+__all__ = [
+    "PVSelfConsumptionConfig",
+    "PVSelfConsumptionController",
+    "PriceThresholdConfig",
+    "PriceThresholdController",
+    "SocGuardrailConfig",
+    "SocGuardrailController",
+]
