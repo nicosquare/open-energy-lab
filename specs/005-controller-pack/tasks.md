@@ -29,10 +29,10 @@ implementation and testing of each story.
 **Purpose**: Establish feature-specific test, fixture, and migration-note
 scaffolding without expanding legacy code.
 
-- [ ] T001 Create control test package scaffolds in `tests/unit/control/__init__.py` and `tests/integration/control/__init__.py`
-- [ ] T002 [P] Create deterministic controller fixture scaffolds in `tests/fixtures/simulator/price_threshold_controller_case.json`, `tests/fixtures/simulator/soc_guardrail_arbitrage_case.json`, and `tests/fixtures/simulator/pv_self_consumption_case.json`
-- [ ] T003 [P] Add controller-pack fixture provenance placeholders in `tests/fixtures/simulator/README.md`
-- [ ] T004 [P] Create the controller-pack migration note scaffold in `docs/migration/controller-pack.md`
+- [X] T001 Create control test package scaffolds in `tests/unit/control/__init__.py` and `tests/integration/control/__init__.py`
+- [X] T002 [P] Create deterministic controller fixture scaffolds in `tests/fixtures/simulator/price_threshold_controller_case.json`, `tests/fixtures/simulator/soc_guardrail_arbitrage_case.json`, and `tests/fixtures/simulator/pv_self_consumption_case.json`
+- [X] T003 [P] Add controller-pack fixture provenance placeholders in `tests/fixtures/simulator/README.md`
+- [X] T004 [P] Create the controller-pack migration note scaffold in `docs/migration/controller-pack.md`
 
 ---
 

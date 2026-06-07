@@ -10,6 +10,13 @@ Committed simulator fixtures currently include:
 - `tests/fixtures/simulator/controller_arbitrage_case.json`
 - `tests/fixtures/simulator/controller_battery_load_pv_case.json`
 
+Planned controller-pack fixture scaffolds reserved for the native control
+package include:
+
+- `tests/fixtures/simulator/price_threshold_controller_case.json`
+- `tests/fixtures/simulator/soc_guardrail_arbitrage_case.json`
+- `tests/fixtures/simulator/pv_self_consumption_case.json`
+
 Each committed simulator fixture must include:
 
 - origin and author/source note
@@ -19,6 +26,22 @@ Each committed simulator fixture must include:
 - expected invariants or outputs
 - numeric tolerance
 - refresh policy
+
+## Controller-Pack Scaffold Placeholders
+
+The three controller-pack fixture files listed above are Phase 1 scaffolds for
+spec `005-controller-pack`. They intentionally reserve final fixture paths and
+carry planned scenario, config, and provenance metadata before exact expected
+traces exist.
+
+Until tasks `T019` and `T030` populate them with verified deterministic
+outputs:
+
+- treat their `status` value of `scaffold` as non-active
+- do not use them as parity or regression evidence
+- preserve the cited legacy evidence paths and planned scenario families
+- replace the empty `expected_trace` objects only after runner-backed
+  validation confirms the controller behavior
 
 ## Current Fixture
 
