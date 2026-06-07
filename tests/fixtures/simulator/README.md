@@ -10,8 +10,7 @@ Committed simulator fixtures currently include:
 - `tests/fixtures/simulator/controller_arbitrage_case.json`
 - `tests/fixtures/simulator/controller_battery_load_pv_case.json`
 
-Planned controller-pack fixture scaffolds reserved for the native control
-package include:
+Committed controller-pack fixtures for the native control package include:
 
 - `tests/fixtures/simulator/price_threshold_controller_case.json`
 - `tests/fixtures/simulator/soc_guardrail_arbitrage_case.json`
@@ -27,21 +26,29 @@ Each committed simulator fixture must include:
 - numeric tolerance
 - refresh policy
 
-## Controller-Pack Scaffold Placeholders
+## Controller-Pack Active Fixtures
 
-The three controller-pack fixture files listed above are Phase 1 scaffolds for
-spec `005-controller-pack`. They intentionally reserve final fixture paths and
-carry planned scenario, config, and provenance metadata before exact expected
-traces exist.
+The three controller-pack fixture files listed above are now active
+deterministic validation artifacts for spec `005-controller-pack`.
 
-Until tasks `T019` and `T030` populate them with verified deterministic
-outputs:
+They should be used as shipped-controller evidence, not as preserved-path
+regression baselines:
 
-- treat their `status` value of `scaffold` as non-active
-- do not use them as parity or regression evidence
-- preserve the cited legacy evidence paths and planned scenario families
-- replace the empty `expected_trace` objects only after runner-backed
-  validation confirms the controller behavior
+- `price_threshold_controller_case.json` records the exact arbitrage trace for
+  `PriceThresholdController`
+- `soc_guardrail_arbitrage_case.json` records the exact low-SOC correction
+  trace for `SocGuardrailController`
+- `pv_self_consumption_case.json` records the exact PV-driven proposals,
+  realized clamp event, PV derivation outputs, net-grid accounting, and
+  discounted settlement trace for `PVSelfConsumptionController`
+
+All three controller-pack fixtures are:
+
+- synthetic, small, and reviewable
+- backed by runner-verified `expected_trace` data
+- explicit about cited legacy evidence paths and refresh policy
+- distinct from preserved explicit-dispatch and built-in simulator-rule
+  regression evidence
 
 ## Current Fixture
 

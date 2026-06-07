@@ -1,4 +1,4 @@
-"""Stable package-root exports for shipped native controllers."""
+"""Stable package-root public surface for shipped native controllers."""
 
 from ._config import (
     PVSelfConsumptionConfig,

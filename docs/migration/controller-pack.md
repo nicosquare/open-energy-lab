@@ -1,12 +1,13 @@
 # Native Controller Pack Migration Note
 
-Status: phase-3-us1
+Status: phase-4-us2
 
 Spec `005-controller-pack` introduces the first reusable native controller
-package under `src/open_energy_lab/control`. The current phase ships the first
-native arbitrage controller, commits exact deterministic fixture evidence for
-that behavior, and keeps the remaining controller-pack surface staged for the
-later guardrail and PV tasks.
+package under `src/open_energy_lab/control`. The current phase ships the full
+first controller pack, commits exact deterministic fixture evidence for all
+three shipped controllers, and keeps simulator-owned feasibility enforcement,
+settlement behavior, and preserved-path regression coverage separate from the
+native controller evidence.
 
 ## Target Module Paths
 
@@ -23,8 +24,11 @@ later guardrail and PV tasks.
 - `tests/unit/control/test_support_matrix.py`
 - `tests/unit/control/test_controller_interface.py`
 - `tests/unit/control/test_price_threshold.py`
+- `tests/unit/control/test_soc_guardrail.py`
+- `tests/unit/control/test_pv_self_consumption.py`
 - `tests/integration/control/controller_fixture_utils.py`
 - `tests/integration/control/test_price_threshold_controller.py`
+- `tests/integration/control/test_scenario_support.py`
 - `tests/integration/simulator/test_controller_fixture_schema.py`
 - `tests/integration/simulator/test_controller_evaluation.py`
 
@@ -72,9 +76,9 @@ Rejected integration-direction evidence:
   scenario use fails immediately and deterministically.
 - Extend fixture-schema validation to cover controller-pack artifacts,
   provenance metadata, and exact legacy-reference expectations.
-- Ship the first active controller-pack fixture with exact requested-power,
-  realized-power, SOC, and settlement outputs verified against the simulator
-  runner.
+- Ship active controller-pack fixtures with exact requested-power,
+  realized-power, SOC, PV, net-grid, and settlement outputs verified against
+  the simulator runner.
 
 ### Reject
 
@@ -97,14 +101,17 @@ The controller-pack feature reserves these committed fixture paths:
 
 Current status:
 
-- `tests/fixtures/simulator/price_threshold_controller_case.json` is now an
-  active deterministic fixture with exact trace expectations for
+- `tests/fixtures/simulator/price_threshold_controller_case.json` is an active
+  deterministic fixture with exact trace expectations for
   `PriceThresholdController`
-- `tests/fixtures/simulator/soc_guardrail_arbitrage_case.json` and
-  `tests/fixtures/simulator/pv_self_consumption_case.json` remain scaffold
-  artifacts until the later US2 implementation tasks populate them
-- provenance, planned config fields, and legacy evidence remain committed for
-  all three fixture paths
+- `tests/fixtures/simulator/soc_guardrail_arbitrage_case.json` is an active
+  deterministic fixture with exact low-SOC correction outputs for
+  `SocGuardrailController`
+- `tests/fixtures/simulator/pv_self_consumption_case.json` is an active
+  deterministic fixture with exact PV, net-grid, clamp-event, and settlement
+  outputs for `PVSelfConsumptionController`
+- provenance, planned config fields, exact traces, and legacy evidence remain
+  committed for all three fixture paths
 
 ## Shared Public Surface
 
@@ -138,6 +145,61 @@ dispatch request per step and relies on
 `open_energy_lab.simulator.evaluate_with_controller` for clamping, state
 transitions, and settlement.
 
+## Shipped US2 Behaviors
+
+`SocGuardrailController` and `PVSelfConsumptionController` now complete the
+first shipped controller pack.
+
+`SocGuardrailController` applies deterministic SOC-band correction rules:
+
+- charge when `soc_fraction < target_min_soc`
+- discharge when `soc_fraction > target_max_soc`
+- idle when the current SOC is inside the configured band or exactly on a
+  satisfied boundary
+- support both `ArbitrageScenario` and `BatteryLoadPVScenario`
+
+The committed deterministic arbitrage guardrail fixture uses:
+
+- config: `target_min_soc=0.3`, `target_max_soc=0.7`,
+  `charge_request_kw=5.0`, `discharge_request_kw=5.0`
+- initial SOC: `0.2`
+- verified trace:
+  - requested power: `[5.0, 0.0, 0.0]`
+  - realized power: `[5.0, 0.0, 0.0]`
+  - SOC trace: `[0.675, 0.675, 0.675]`
+  - step settlement: `[-0.5, -0.0, -0.0]`
+  - total settlement: `-0.5`
+
+`PVSelfConsumptionController` applies deterministic current-step PV-balancing
+rules:
+
+- charge when `pv_generation_kw > load_kw` and SOC is below `reserve_max_soc`
+- discharge when `load_kw > pv_generation_kw` and SOC is above `reserve_min_soc`
+- idle when load equals PV generation or the battery is already at the
+  relevant reserve boundary
+- support only `BatteryLoadPVScenario`
+
+The committed deterministic PV self-consumption fixture uses:
+
+- config: `reserve_min_soc=0.2`, `reserve_max_soc=0.8`,
+  `charge_request_kw=5.0`, `discharge_request_kw=5.0`
+- initial SOC: `0.5`
+- verified trace:
+  - requested power: `[-5.0, 5.0, 5.0]`
+  - realized power: `[-4.75, 5.0, 5.0]`
+  - SOC trace: `[0.0, 0.475, 0.95]`
+  - PV generation: `[0.0, 1.992, 3.968]`
+  - net-grid power: `[-2.75, 4.508, 1.532]`
+  - direction: `["export", "import", "import"]`
+  - step settlement: `[0.22000000000000003, -0.9016000000000001, -0.4596]`
+  - total settlement: `-1.1412`
+  - constraint events: `["step 0: requested -5.0 kW, realized -4.75 kW"]`
+
+This PV fixture is intentionally important for boundary clarity: the native
+controller requests current-step discharge at step 0, while the simulator
+retains ownership of feasibility clamping and records the realized deviation
+explicitly.
+
 ## Arbitrage Usage
 
 ```python
@@ -168,9 +230,8 @@ records the verified native-controller trace:
 
 ## Follow-Up Work
 
-- `T025` to `T029` will complete the guardrail and PV controller behavior and
-  align their scaffolds with the documented support matrix.
-- `T030` will populate the remaining controller-pack fixtures with verified
-  expected traces.
-- Later migration docs will promote API maturity and dependency-boundary notes
-  once the shipped behaviors are complete.
+- `T032` to `T038` will harden the import-boundary, no-legacy-import, API
+  maturity, and preserved-path regression evidence around the completed
+  shipped controller pack.
+- Later migration docs will promote dependency-boundary and parity-validation
+  notes once the US3 guardrails are complete.

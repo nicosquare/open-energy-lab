@@ -1,13 +1,13 @@
 {
   "case_id": "soc-guardrail-arbitrage-case-v1",
-  "status": "scaffold",
-  "purpose": "Planned deterministic guardrail validation case for the native SocGuardrailController on ArbitrageScenario.",
+  "status": "active",
+  "purpose": "Deterministic synthetic guardrail validation case for exact SocGuardrailController evaluation on ArbitrageScenario.",
   "origin": {
     "author": "OpenAI Codex",
-    "construction": "Phase 1 scaffold placeholder aligned to specs/005-controller-pack. Populate exact expected outputs in T030 after implementation and runner verification.",
+    "construction": "Manually authored from the US2 controller-pack contracts and then checked against the current implementation with uv run python -c controller-evaluation calculations.",
     "seed": null,
     "generation_command": null,
-    "refresh_policy": "Populate after implementation, then refresh only when documented guardrail semantics intentionally change."
+    "refresh_policy": "Refresh only when the documented guardrail thresholds, battery/timestep inputs, or discounted-export settlement semantics intentionally change."
   },
   "legacy_references": [
     "legacy/old_tpm/src_py/legacy/storage.py",
@@ -58,10 +58,34 @@
     "validates_preserved_explicit_dispatch_regression": false,
     "validates_preserved_built_in_rule_regression": false
   },
-  "expected_trace": {},
+  "expected_trace": {
+    "requested_power_kw": [
+      5.0,
+      0.0,
+      0.0
+    ],
+    "realized_power_kw": [
+      5.0,
+      0.0,
+      0.0
+    ],
+    "soc": [
+      0.675,
+      0.675,
+      0.675
+    ],
+    "step_settlement": [
+      -0.5,
+      -0.0,
+      -0.0
+    ],
+    "total_settlement": -0.5,
+    "constraint_events": []
+  },
   "numeric_tolerance": 1e-06,
   "provenance_notes": [
-    "This scaffold reserves a low-SOC or high-SOC correction case for the native guardrail controller.",
-    "Populate exact requested power, realized power, SOC, and settlement outputs in T030."
+    "Keep the fixture synthetic, small, and reviewable.",
+    "The expected controller proposals and realized arbitrage trace were verified against evaluate_with_controller for the documented three-step guardrail configuration.",
+    "This fixture validates the low-SOC correction path directly; preserved explicit-dispatch and built-in simulator rule evidence remains in the shared non-controller arbitrage fixtures."
   ]
 }

@@ -561,11 +561,12 @@ def test_price_threshold_controller_fixture_matches_controller_evaluation_trace(
     )
 
 
-def test_soc_guardrail_controller_fixture_remains_deterministic_during_runner_evaluation() -> None:
+def test_soc_guardrail_controller_fixture_matches_controller_evaluation_trace() -> None:
     from open_energy_lab.simulator.controller_runner import evaluate_with_controller
 
     fixture = _load_fixture("soc_guardrail_arbitrage_case.json")
     tolerance = fixture["numeric_tolerance"]
+    expected_trace = fixture["expected_trace"]
 
     first_result = evaluate_with_controller(
         _arbitrage_scenario_from_fixture(fixture),
@@ -576,38 +577,52 @@ def test_soc_guardrail_controller_fixture_remains_deterministic_during_runner_ev
         _soc_guardrail_controller_from_fixture(fixture),
     )
 
-    assert fixture["status"] == "scaffold"
+    assert fixture["status"] == "active"
     assert fixture["expected_properties"]["validates_controller_evaluation"] is True
     assert fixture["expected_properties"]["validates_repeated_run_determinism"] is True
     assert first_result.rejection is None
     assert first_result.controller_name == fixture["controller_name"]
-    assert len(first_result.step_records) == fixture["time_grid"]["num_steps"]
-    assert all(record.context.step_inputs == {} for record in first_result.step_records)
     assert first_result.requested_power_kw == pytest.approx(
-        second_result.requested_power_kw,
+        expected_trace["requested_power_kw"],
         abs=tolerance,
     )
     assert first_result.realized_power_kw == pytest.approx(
-        second_result.realized_power_kw,
+        expected_trace["realized_power_kw"],
+        abs=tolerance,
+    )
+    assert [state.soc for state in first_result.underlying_trace.states] == pytest.approx(
+        expected_trace["soc"],
+        abs=tolerance,
+    )
+    assert first_result.underlying_trace.step_settlement == pytest.approx(
+        expected_trace["step_settlement"],
         abs=tolerance,
     )
     assert first_result.total_settlement == pytest.approx(
-        second_result.total_settlement,
+        expected_trace["total_settlement"],
         abs=tolerance,
     )
-    assert first_result.realized_power_kw == pytest.approx(
+    assert first_result.underlying_trace.constraint_events == expected_trace["constraint_events"]
+    assert second_result.requested_power_kw == pytest.approx(
         first_result.requested_power_kw,
         abs=tolerance,
     )
-    assert first_result.underlying_trace.constraint_events == []
+    assert second_result.realized_power_kw == pytest.approx(
+        first_result.realized_power_kw,
+        abs=tolerance,
+    )
+    assert second_result.total_settlement == pytest.approx(
+        first_result.total_settlement,
+        abs=tolerance,
+    )
 
 
-def test_pv_self_consumption_controller_fixture_remains_deterministic_during_runner_evaluation(
-) -> None:
+def test_pv_self_consumption_controller_fixture_matches_controller_evaluation_trace() -> None:
     from open_energy_lab.simulator.controller_runner import evaluate_with_controller
 
     fixture = _load_fixture("pv_self_consumption_case.json")
     tolerance = fixture["numeric_tolerance"]
+    expected_trace = fixture["expected_trace"]
 
     first_result = evaluate_with_controller(
         _battery_load_pv_scenario_from_fixture(fixture),
@@ -618,31 +633,54 @@ def test_pv_self_consumption_controller_fixture_remains_deterministic_during_run
         _pv_self_consumption_controller_from_fixture(fixture),
     )
 
-    assert fixture["status"] == "scaffold"
+    assert fixture["status"] == "active"
     assert fixture["expected_properties"]["validates_controller_evaluation"] is True
     assert fixture["expected_properties"]["validates_repeated_run_determinism"] is True
     assert first_result.rejection is None
     assert first_result.controller_name == fixture["controller_name"]
-    assert len(first_result.step_records) == fixture["time_grid"]["num_steps"]
-    assert all("load_kw" in record.context.step_inputs for record in first_result.step_records)
-    assert all(
-        "pv_generation_kw" in record.context.step_inputs
-        for record in first_result.step_records
-    )
     assert first_result.requested_power_kw == pytest.approx(
-        second_result.requested_power_kw,
+        expected_trace["requested_power_kw"],
         abs=tolerance,
     )
     assert first_result.realized_power_kw == pytest.approx(
-        second_result.realized_power_kw,
+        expected_trace["realized_power_kw"],
+        abs=tolerance,
+    )
+    assert [state.soc for state in first_result.underlying_trace.states] == pytest.approx(
+        expected_trace["soc"],
+        abs=tolerance,
+    )
+    assert first_result.underlying_trace.pv_generation_kw == pytest.approx(
+        expected_trace["pv_generation_kw"],
+        abs=tolerance,
+    )
+    assert first_result.underlying_trace.net_grid_power_kw == pytest.approx(
+        expected_trace["net_grid_power_kw"],
+        abs=tolerance,
+    )
+    assert first_result.underlying_trace.net_grid_energy_kwh == pytest.approx(
+        expected_trace["net_grid_energy_kwh"],
+        abs=tolerance,
+    )
+    assert first_result.underlying_trace.direction == expected_trace["direction"]
+    assert first_result.underlying_trace.step_settlement == pytest.approx(
+        expected_trace["step_settlement"],
         abs=tolerance,
     )
     assert first_result.total_settlement == pytest.approx(
-        second_result.total_settlement,
+        expected_trace["total_settlement"],
         abs=tolerance,
     )
-    assert first_result.realized_power_kw == pytest.approx(
+    assert first_result.underlying_trace.constraint_events == expected_trace["constraint_events"]
+    assert second_result.requested_power_kw == pytest.approx(
         first_result.requested_power_kw,
         abs=tolerance,
     )
-    assert first_result.underlying_trace.constraint_events == []
+    assert second_result.realized_power_kw == pytest.approx(
+        first_result.realized_power_kw,
+        abs=tolerance,
+    )
+    assert second_result.total_settlement == pytest.approx(
+        first_result.total_settlement,
+        abs=tolerance,
+    )

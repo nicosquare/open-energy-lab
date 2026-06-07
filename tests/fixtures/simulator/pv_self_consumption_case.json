@@ -1,13 +1,13 @@
 {
   "case_id": "pv-self-consumption-case-v1",
-  "status": "scaffold",
-  "purpose": "Planned deterministic battery-load-PV validation case for the native PVSelfConsumptionController.",
+  "status": "active",
+  "purpose": "Deterministic synthetic battery-load-PV validation case for exact PVSelfConsumptionController evaluation.",
   "origin": {
     "author": "OpenAI Codex",
-    "construction": "Phase 1 scaffold placeholder aligned to specs/005-controller-pack. Populate exact expected outputs in T030 after implementation and runner verification.",
+    "construction": "Manually authored from the US2 controller-pack contracts and then checked against the current implementation with uv run python -c controller-evaluation calculations.",
     "seed": null,
     "generation_command": null,
-    "refresh_policy": "Populate after implementation, then refresh only when documented PV self-consumption semantics intentionally change."
+    "refresh_policy": "Refresh only when the documented PV self-consumption reserve thresholds, weather-to-PV inputs, battery/timestep inputs, or discounted settlement semantics intentionally change."
   },
   "legacy_references": [
     "legacy/old_tpm/src_py/legacy/storage.py",
@@ -126,10 +126,56 @@
     "validates_preserved_explicit_dispatch_regression": false,
     "validates_preserved_built_in_rule_regression": false
   },
-  "expected_trace": {},
+  "expected_trace": {
+    "requested_power_kw": [
+      -5.0,
+      5.0,
+      5.0
+    ],
+    "realized_power_kw": [
+      -4.75,
+      5.0,
+      5.0
+    ],
+    "soc": [
+      0.0,
+      0.475,
+      0.95
+    ],
+    "pv_generation_kw": [
+      0.0,
+      1.992,
+      3.968
+    ],
+    "net_grid_power_kw": [
+      -2.75,
+      4.508,
+      1.532
+    ],
+    "net_grid_energy_kwh": [
+      -2.75,
+      4.508,
+      1.532
+    ],
+    "direction": [
+      "export",
+      "import",
+      "import"
+    ],
+    "step_settlement": [
+      0.22000000000000003,
+      -0.9016000000000001,
+      -0.4596
+    ],
+    "total_settlement": -1.1412,
+    "constraint_events": [
+      "step 0: requested -5.0 kW, realized -4.75 kW"
+    ]
+  },
   "numeric_tolerance": 1e-06,
   "provenance_notes": [
-    "This scaffold reserves the deterministic battery-load-PV fixture path for the native PV self-consumption controller.",
-    "Populate exact requested power, realized power, SOC, PV, net-grid, and settlement outputs in T030."
+    "Keep the fixture synthetic, small, and reviewable.",
+    "The expected controller proposals, realized trace, PV derivation outputs, and settlement values were verified against evaluate_with_controller for the documented three-step PV self-consumption configuration.",
+    "This fixture intentionally preserves the simulator-side feasibility clamp on the opening discharge request so native controller evidence remains distinct from preserved-path regression coverage."
   ]
 }

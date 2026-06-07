@@ -108,9 +108,9 @@ self-consumption controller behaves deterministically on
 - [X] T026 [US2] Implement `SocGuardrailController` in `src/open_energy_lab/control/soc_guardrail.py`
 - [X] T027 [US2] Implement `PVSelfConsumptionConfig` in `src/open_energy_lab/control/_config.py`
 - [X] T028 [US2] Implement `PVSelfConsumptionController` in `src/open_energy_lab/control/pv_self_consumption.py`
-- [ ] T029 [US2] Export the guardrail and PV controller public surface from `src/open_energy_lab/control/__init__.py`
-- [ ] T030 [US2] Populate guardrail and PV deterministic fixtures, including provenance and legacy-reference fields, in `tests/fixtures/simulator/soc_guardrail_arbitrage_case.json` and `tests/fixtures/simulator/pv_self_consumption_case.json`
-- [ ] T031 [US2] Update controller-pack support notes and fixture provenance in `tests/fixtures/simulator/README.md` and `docs/migration/controller-pack.md`
+- [X] T029 [US2] Export the guardrail and PV controller public surface from `src/open_energy_lab/control/__init__.py`
+- [X] T030 [US2] Populate guardrail and PV deterministic fixtures, including provenance and legacy-reference fields, in `tests/fixtures/simulator/soc_guardrail_arbitrage_case.json` and `tests/fixtures/simulator/pv_self_consumption_case.json`
+- [X] T031 [US2] Update controller-pack support notes and fixture provenance in `tests/fixtures/simulator/README.md` and `docs/migration/controller-pack.md`
 
 **Checkpoint**: User Story 2 is functional and independently testable through
 `tests/integration/control/test_scenario_support.py`.

@@ -303,22 +303,44 @@ def test_price_threshold_controller_fixture_has_active_exact_trace() -> None:
     }
 
 
-@pytest.mark.parametrize(
-    "fixture_path",
-    (
-        Path("tests/fixtures/simulator/soc_guardrail_arbitrage_case.json"),
-        Path("tests/fixtures/simulator/pv_self_consumption_case.json"),
-    ),
-)
-def test_remaining_controller_pack_fixtures_remain_scaffolds(
-    fixture_path: Path,
-) -> None:
+def test_soc_guardrail_controller_fixture_has_active_exact_trace() -> None:
     fixture_data = next(
-        data for path, data in load_all_controller_pack_fixtures() if path == fixture_path
+        data
+        for path, data in load_all_controller_pack_fixtures()
+        if path == Path("tests/fixtures/simulator/soc_guardrail_arbitrage_case.json")
     )
 
-    assert fixture_data["status"] == "scaffold"
-    assert fixture_data["expected_trace"] == {}
+    assert fixture_data["status"] == "active"
+    assert fixture_data["expected_trace"] == {
+        "requested_power_kw": [5.0, 0.0, 0.0],
+        "realized_power_kw": [5.0, 0.0, 0.0],
+        "soc": [0.675, 0.675, 0.675],
+        "step_settlement": [-0.5, -0.0, -0.0],
+        "total_settlement": -0.5,
+        "constraint_events": [],
+    }
+
+
+def test_pv_self_consumption_controller_fixture_has_active_exact_trace() -> None:
+    fixture_data = next(
+        data
+        for path, data in load_all_controller_pack_fixtures()
+        if path == Path("tests/fixtures/simulator/pv_self_consumption_case.json")
+    )
+
+    assert fixture_data["status"] == "active"
+    assert fixture_data["expected_trace"] == {
+        "requested_power_kw": [-5.0, 5.0, 5.0],
+        "realized_power_kw": [-4.75, 5.0, 5.0],
+        "soc": [0.0, 0.475, 0.95],
+        "pv_generation_kw": [0.0, 1.992, 3.968],
+        "net_grid_power_kw": [-2.75, 4.508, 1.532],
+        "net_grid_energy_kwh": [-2.75, 4.508, 1.532],
+        "direction": ["export", "import", "import"],
+        "step_settlement": [0.22000000000000003, -0.9016000000000001, -0.4596],
+        "total_settlement": -1.1412,
+        "constraint_events": ["step 0: requested -5.0 kW, realized -4.75 kW"],
+    }
 
 
 @pytest.mark.parametrize(
