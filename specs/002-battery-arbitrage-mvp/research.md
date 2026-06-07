@@ -95,12 +95,12 @@ provenance and reduce determinism. A parity-only strategy against broad legacy
 simulation code would make the MVP dependent on code that includes unrelated
 features.
 
-## Decision: Treat `fed_trpo` Building and CityLearn References as Deferred Adapter Context
+## Decision: Treat `fed_trpo` Building and CityLearn References as Reference-Only Negative Evidence
 
 **Decision**: Use `legacy/fed_trpo/src/custom/building.py` only as evidence
-that future adapters will need richer concepts such as buildings, observations,
-and CityLearn-compatible storage interfaces. Do not migrate any of that surface
-into this MVP.
+that richer concepts such as buildings and observations existed in prior
+research code. Do not migrate any CityLearn-facing surface into this MVP, and
+do not treat CityLearn compatibility as a future product goal.
 
 **Rationale**: `building.py` imports `gymnasium`, `torch`, `citylearn`, and
 other heavy dependencies, and its abstraction level is much broader than a
@@ -108,9 +108,9 @@ single battery arbitrage simulator case. It is useful as a boundary marker, not
 as a source for the first core implementation.
 
 **Alternatives considered**: Starting from the CityLearn-facing building layer
-would force optional research dependencies into the first simulator migration.
-Ignoring `fed_trpo` entirely would miss useful evidence about future adapter
-needs.
+would force optional research dependencies into the first simulator migration
+and steer the product toward a runtime we do not plan to support. Ignoring
+`fed_trpo` entirely would miss useful negative-boundary evidence.
 
 ## Decision: Keep the Initial Simulator Surface Narrow and Only Partly Public
 

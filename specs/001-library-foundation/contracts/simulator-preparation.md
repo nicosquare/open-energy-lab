@@ -2,7 +2,8 @@
 
 The next simulator migration spec should use this contract. It should prepare
 `open_energy_lab.simulator` without relying on CityLearn, real data, or legacy
-directory structure as the target architecture.
+directory structure as the target architecture. CityLearn is legacy reference
+material only, not a compatibility or integration target.
 
 ## Target Boundary
 

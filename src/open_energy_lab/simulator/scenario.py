@@ -25,6 +25,143 @@ if TYPE_CHECKING:
     from .weather import WeatherComponent
 
 
+class _ControllerContextInputError(ValueError):
+    """Raised when required current-step controller inputs are incomplete."""
+
+    def __init__(self, *, step_index: int, missing_inputs: list[str], reason: str) -> None:
+        super().__init__(reason)
+        self.step_index = step_index
+        self.missing_inputs = missing_inputs
+        self.reason = reason
+
+
+def _require_controller_numeric_step_value(
+    value: object,
+    *,
+    field_name: str,
+    step_index: int,
+) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise _ControllerContextInputError(
+            step_index=step_index,
+            missing_inputs=[field_name],
+            reason=(
+                "controller evaluation requires complete numeric current-step inputs; "
+                f"{field_name} is unavailable at step {step_index}"
+            ),
+        )
+    return float(value)
+
+
+def _validate_price_signal_for_controller(
+    scenario: "ArbitrageScenario | BatteryLoadPVScenario",
+) -> None:
+    for step_index, value in enumerate(scenario.price_signal.import_prices):
+        _require_controller_numeric_step_value(
+            value,
+            field_name="import_price",
+            step_index=step_index,
+        )
+
+
+def prepare_controller_context_inputs(
+    scenario: "ArbitrageScenario | BatteryLoadPVScenario",
+) -> dict[str, list[float]]:
+    """Validate and cache aligned controller inputs for one scenario horizon."""
+
+    _validate_price_signal_for_controller(scenario)
+
+    if isinstance(scenario, ArbitrageScenario):
+        return {}
+
+    load_kw = [
+        _require_controller_numeric_step_value(
+            value,
+            field_name="load_kw",
+            step_index=step_index,
+        )
+        for step_index, value in enumerate(scenario.load.demand_kw)
+    ]
+
+    for step_index in range(scenario.time_grid.num_steps):
+        _require_controller_numeric_step_value(
+            scenario.weather.dry_bulb_air_temperature_c[step_index],
+            field_name="pv_generation_kw",
+            step_index=step_index,
+        )
+        for field_name in scenario.pv.irradiance_field_names:
+            _require_controller_numeric_step_value(
+                scenario.weather.field_values(field_name)[step_index],
+                field_name="pv_generation_kw",
+                step_index=step_index,
+            )
+
+    try:
+        pv_generation_kw = [
+            _require_controller_numeric_step_value(
+                value,
+                field_name="pv_generation_kw",
+                step_index=step_index,
+            )
+            for step_index, value in enumerate(scenario.pv.derive_generation_kw(scenario.weather))
+        ]
+    except (TypeError, ValueError) as exc:
+        raise _ControllerContextInputError(
+            step_index=0,
+            missing_inputs=["pv_generation_kw"],
+            reason=(
+                "controller evaluation requires complete numeric current-step inputs; "
+                "pv_generation_kw could not be derived from the active scenario"
+            ),
+        ) from exc
+
+    return {
+        "load_kw": load_kw,
+        "pv_generation_kw": pv_generation_kw,
+    }
+
+
+def build_controller_context_for_step(
+    scenario: "ArbitrageScenario | BatteryLoadPVScenario",
+    *,
+    battery_state: "BatteryState",
+    step_index: int,
+    prepared_inputs: dict[str, list[float]],
+):
+    """Build the stable controller context for one supported simulator step."""
+
+    from open_energy_lab.core.controller import (
+        BatteryStateSnapshot,
+        ControllerContext,
+        PriceInput,
+    )
+
+    step_inputs = {
+        name: values[step_index]
+        for name, values in prepared_inputs.items()
+    }
+    return ControllerContext(
+        scenario_id=scenario.scenario_id,
+        scenario_kind=type(scenario).__name__,
+        step_index=step_index,
+        time_step_hours=scenario.time_grid.time_step_hours,
+        battery_state=BatteryStateSnapshot(
+            soc_fraction=battery_state.soc,
+            min_soc=scenario.battery.min_soc,
+            max_soc=scenario.battery.max_soc,
+            max_charge_kw=scenario.battery.max_charge_kw,
+            max_discharge_kw=scenario.battery.max_discharge_kw,
+        ),
+        price_input=PriceInput(
+            import_price=scenario.price_signal.price_at_step(step_index),
+            export_price=scenario.price_signal.export_price_at_step(step_index),
+            currency=scenario.price_signal.currency,
+            time_alignment=scenario.price_signal.time_alignment,
+        ),
+        step_inputs=step_inputs,
+    )
+
+
 @dataclass(slots=True)
 class TimeGrid:
     """Discrete time grid expressed in hours."""

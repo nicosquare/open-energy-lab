@@ -1,0 +1,181 @@
+{
+  "case_id": "controller-battery-load-pv-mvp-v1",
+  "status": "active",
+  "purpose": "Deterministic synthetic controller-driven battery-load-PV fixture for exact sequence-controller evaluation.",
+  "origin": {
+    "author": "OpenAI Codex",
+    "construction": "Manually authored from the US2 controller-boundary contracts and then checked against the current implementation with uv run python -c controller-evaluation calculations.",
+    "seed": null,
+    "generation_command": null,
+    "refresh_policy": "Refresh only when the documented controller-boundary, controller-sequence, load, weather-to-PV derivation, battery, timestep, or net-grid settlement semantics intentionally change."
+  },
+  "legacy_references": [
+    "legacy/old_tpm/src_py/legacy/storage.py",
+    "legacy/old_tpm/src_py/simulator/common/battery.py",
+    "legacy/old_tpm/src_py/simulator/common/pricing.py",
+    "legacy/old_tpm/src_py/simulator/common/time.py",
+    "legacy/old_tpm/src_py/simulator/common/specs.py",
+    "legacy/fed_trpo/src/custom/building.py"
+  ],
+  "scenario_kind": "BatteryLoadPVScenario",
+  "controller_name": "sequence-controller",
+  "fixture_source": "tests/fixtures/simulator/controller_battery_load_pv_case.json",
+  "time_grid": {
+    "num_steps": 3,
+    "time_step_hours": 1.0
+  },
+  "battery": {
+    "name": "battery",
+    "capacity_kwh": 10.0,
+    "max_charge_kw": 5.0,
+    "max_discharge_kw": 5.0,
+    "charge_efficiency": 0.95,
+    "discharge_efficiency": 0.95,
+    "initial_soc": 0.5,
+    "min_soc": 0.0,
+    "max_soc": 1.0
+  },
+  "load": {
+    "name": "load",
+    "demand_kw": [
+      2.0,
+      1.5,
+      0.5
+    ]
+  },
+  "weather": {
+    "name": "weather",
+    "timestamp_utc": {
+      "tmy_label": "Date & time (UTC)",
+      "values": [
+        "2026-01-01T00:00:00Z",
+        "2026-01-01T01:00:00Z",
+        "2026-01-01T02:00:00Z"
+      ]
+    },
+    "dry_bulb_air_temperature_c": {
+      "tmy_label": "T2m [°C]",
+      "values": [
+        25.0,
+        26.0,
+        27.0
+      ]
+    },
+    "global_horizontal_irradiance_w_per_m2": {
+      "tmy_label": "G(h) [W/m2]",
+      "values": [
+        0.0,
+        500.0,
+        1000.0
+      ]
+    },
+    "deferred_tmy_fields": [
+      {
+        "field_name": "relative_humidity_pct",
+        "tmy_label": "RH [%]"
+      },
+      {
+        "field_name": "infrared_radiation_downwards_w_per_m2",
+        "tmy_label": "IR(h) [W/m2]"
+      },
+      {
+        "field_name": "windspeed_10m_m_per_s",
+        "tmy_label": "WS10m [m/s]"
+      },
+      {
+        "field_name": "wind_direction_10m_deg",
+        "tmy_label": "WD10m [°]"
+      },
+      {
+        "field_name": "surface_air_pressure_pa",
+        "tmy_label": "SP [Pa]"
+      }
+    ]
+  },
+  "pv": {
+    "name": "pv",
+    "rated_power_kw": 4.0,
+    "temperature_coefficient_pct_per_c": -0.4,
+    "reference_irradiance_w_per_m2": 1000.0,
+    "reference_temperature_c": 25.0,
+    "generation_cap_kw": null,
+    "derivation_name": "ghi-linear-temperature-adjusted"
+  },
+  "pricing": {
+    "currency": "USD",
+    "unit_rate_name": "energy-price",
+    "import_prices": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "export_price_ratio": 0.8,
+    "interpretation": "discounted export relative to import prices",
+    "time_alignment": "step-start"
+  },
+  "controller_stub": {
+    "kind": "deterministic-sequence",
+    "proposal_sign_convention": "positive-means-charge",
+    "requested_power_kw": [
+      1.0,
+      0.0,
+      -1.0
+    ]
+  },
+  "expected_properties": {
+    "validates_controller_evaluation": true,
+    "validates_preserved_explicit_dispatch_regression": false,
+    "validates_preserved_price_threshold_regression": false,
+    "validates_named_incomplete_context_rejection": false
+  },
+  "expected_trace": {
+    "requested_power_kw": [
+      1.0,
+      0.0,
+      -1.0
+    ],
+    "realized_power_kw": [
+      1.0,
+      0.0,
+      -1.0
+    ],
+    "soc": [
+      0.595,
+      0.595,
+      0.4897368421052632
+    ],
+    "pv_generation_kw": [
+      0.0,
+      1.992,
+      3.968
+    ],
+    "net_grid_power_kw": [
+      3.0,
+      -0.492,
+      -4.468
+    ],
+    "net_grid_energy_kwh": [
+      3.0,
+      -0.492,
+      -4.468
+    ],
+    "direction": [
+      "import",
+      "export",
+      "export"
+    ],
+    "step_settlement": [
+      -0.3,
+      0.07872,
+      1.07232
+    ],
+    "total_settlement": 0.85104,
+    "constraint_events": []
+  },
+  "numeric_tolerance": 1e-06,
+  "provenance_notes": [
+    "Keep the fixture synthetic, small, and reviewable.",
+    "The expected controller proposals, PV outputs, and net-grid trace were verified against evaluate_with_controller for the documented three-step sequence controller.",
+    "Deferred standard TMY fields remain listed explicitly so the controller-facing context stays narrow without hiding omitted weather inputs."
+  ]
+}

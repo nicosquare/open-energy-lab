@@ -7,6 +7,8 @@ Committed simulator fixtures currently include:
 
 - `tests/fixtures/simulator/battery_arbitrage_case.json`
 - `tests/fixtures/simulator/battery_load_pv_case.json`
+- `tests/fixtures/simulator/controller_arbitrage_case.json`
+- `tests/fixtures/simulator/controller_battery_load_pv_case.json`
 
 Each committed simulator fixture must include:
 
@@ -43,6 +45,67 @@ simulator fixture.
 - numeric tolerance: absolute `1e-6`
 - refresh policy: update only when the documented timestep, battery, policy, or
   discounted-settlement semantics intentionally change
+
+## Controller Arbitrage Fixture
+
+`tests/fixtures/simulator/controller_arbitrage_case.json` is the active
+controller-driven arbitrage fixture for the controller boundary MVP.
+
+- source: manually authored from the controller-boundary contracts, then
+  verified against the current implementation with `uv run python -c`
+  controller-evaluation calculations and the focused integration suite
+- author: OpenAI Codex
+- generation command: none; the fixture is manually maintained and checked
+  against the implementation rather than generated from a separate script
+- seed: none unless a future generator requires one
+- why it is committed: it is small, reviewable, deterministic, and captures
+  exact controller-driven proposals plus realized arbitrage-settlement results
+- exact legacy evidence:
+  - `legacy/old_tpm/src_py/legacy/storage.py`
+  - `legacy/old_tpm/src_py/simulator/common/battery.py`
+  - `legacy/old_tpm/src_py/simulator/common/pricing.py`
+  - `legacy/old_tpm/src_py/simulator/common/time.py`
+- expected validation target:
+  - controller-driven evaluation for `ArbitrageScenario`
+  - exact proposal and realized-trace values from the documented
+    `sequence-controller`
+  - repeated evaluation from the same inputs remains deterministic
+- numeric tolerance: absolute `1e-6`
+- refresh policy: update only when the documented controller boundary,
+  controller sequence, timestep, battery, or settlement semantics
+  intentionally change
+
+## Controller Battery Load PV Fixture
+
+`tests/fixtures/simulator/controller_battery_load_pv_case.json` is the active
+controller-driven battery-load-PV fixture for the controller boundary MVP.
+
+- source: manually authored from the controller-boundary contracts, then
+  verified against the current implementation with `uv run python -c`
+  controller-evaluation calculations and the focused integration suite
+- author: OpenAI Codex
+- generation command: none; the fixture is manually maintained and checked
+  against the implementation rather than generated from a separate script
+- seed: none unless a future generator requires one
+- why it is committed: it is small, reviewable, deterministic, and captures
+  exact controller-driven proposals, PV outputs, net-grid accounting, and
+  discounted-settlement results
+- exact legacy evidence:
+  - `legacy/old_tpm/src_py/legacy/storage.py`
+  - `legacy/old_tpm/src_py/simulator/common/battery.py`
+  - `legacy/old_tpm/src_py/simulator/common/pricing.py`
+  - `legacy/old_tpm/src_py/simulator/common/time.py`
+  - `legacy/old_tpm/src_py/simulator/common/specs.py`
+  - `legacy/fed_trpo/src/custom/building.py`
+- expected validation target:
+  - controller-driven evaluation for `BatteryLoadPVScenario`
+  - exact proposal, PV, net-grid, and settlement values from the documented
+    `sequence-controller`
+  - repeated evaluation from the same inputs remains deterministic
+- numeric tolerance: absolute `1e-6`
+- refresh policy: update only when the documented controller boundary, weather
+  to PV derivation, controller sequence, battery, timestep, or settlement
+  semantics intentionally change
 
 ## Battery Load PV Fixture
 

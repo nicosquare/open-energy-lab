@@ -16,8 +16,9 @@ dependencies, fixtures, provenance, and future brownfield migrations.
 
 Legacy projects under `legacy/old_tpm` and `legacy/fed_trpo` remain
 reference-only inputs. This plan defines how future migration specs should
-select behavior from those references, validate it with reproducible parity
-evidence, and keep heavyweight research workflows isolated from core imports.
+select behavior from those references, validate it with reproducible
+reference-backed evidence, and keep heavyweight research workflows isolated
+from core imports without forcing broad simulator-level legacy parity.
 
 ## Technical Context
 
@@ -52,7 +53,8 @@ environments for specific future capabilities, not foundation requirements.
 
 **Project Type**: Python research library with optional adapters, examples, and
 research workflow entry points. Legacy submodules are reference inputs rather
-than target architecture.
+than target architecture, and CityLearn is reference-only rather than an
+integration target.
 
 **Performance Goals**: No algorithm throughput, solve-time, or training-runtime
 goal is set in this foundation feature. The import-time goal is that importing
@@ -79,9 +81,9 @@ deferred to a later simulator spec.
   `src/open_energy_lab`, with tests under `tests`.
 - **Legacy reference boundary**: `legacy/old_tpm` and `legacy/fed_trpo` are
   reference-only unless a later migration spec explicitly authorizes changes.
-- **Validation before migration**: This plan defines parity cases, fixtures,
-  deterministic configs, documented equations, snapshots, and smoke checks as
-  migration prerequisites.
+- **Validation before migration**: This plan defines fixtures, deterministic
+  configs, documented equations, snapshots, smoke checks, and optional focused
+  parity cases as migration prerequisites.
 - **Dependency isolation**: Heavy dependencies are classified per migration and
   isolated behind optional capabilities, adapters, extras, or workflow entry
   points.
@@ -90,9 +92,9 @@ deferred to a later simulator spec.
 
 **Post-design status**: PASS
 
-- Design artifacts define API maturity, dependency classification,
-  migration/parity contracts, fixture provenance, and simulator preparation
-  without introducing algorithm migration or heavyweight core dependencies.
+- Design artifacts define API maturity, dependency classification, migration
+  validation contracts, fixture provenance, and simulator preparation without
+  introducing algorithm migration or heavyweight core dependencies.
 - No constitution violations require complexity tracking.
 
 ## Project Structure
@@ -185,13 +187,14 @@ Research decisions are captured in [research.md](./research.md). They resolve:
 - Python package namespace and source/test layout.
 - Public API maturity rules.
 - Optional dependency classification and import-boundary policy.
-- Migration/parity validation evidence requirements.
+- Migration validation evidence requirements, including when focused parity
+  checks are appropriate.
 - Fixture and provenance policy.
 - Notebook, generated artifact, W&B, GPU/SLURM, solver, and Rust reference
   handling.
 - Simulator migration preparation, including component graph direction,
-  synthetic-first data, optional TorchRL adapter, and battery arbitrage as the
-  first validation target.
+  synthetic-first data, optional TorchRL adapter, explicit non-integration of
+  CityLearn, and battery arbitrage as the first validation target.
 
 ## Phase 1: Design
 
@@ -223,8 +226,9 @@ and documentation only:
   dependencies out of the base environment.
 - Add `tests/unit`, `tests/integration`, `tests/parity`, and `tests/fixtures`
   directories with provenance guidance.
-- Add documentation for API maturity, dependency classification, parity
-  validation, fixture provenance, and future simulator migration preparation.
+- Add documentation for API maturity, dependency classification, validation
+  and selective-preservation policy, fixture provenance, and future simulator
+  migration preparation.
 - Add minimal import/scaffold tests that verify the package imports without
   optional research dependencies.
 - Avoid tasks that migrate simulator, weather, TPM, RL, optimization, planning,
@@ -235,8 +239,9 @@ and documentation only:
 Before this plan is considered complete:
 
 - No unresolved clarification markers remain in the plan or design artifacts.
-- The target package path, test layout, public API boundary, dependency policy,
-  parity policy, and fixture policy are documented.
+- The target package path, test layout, public API boundary, dependency
+  policy, validation/selective-preservation policy, and fixture policy are
+  documented.
 - Contracts do not require algorithm migration.
 - `AGENTS.md` points to this plan as the active Spec Kit context.
 

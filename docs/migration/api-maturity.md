@@ -20,6 +20,37 @@ An import path is stable public API when all conditions hold:
 Stable public APIs should preserve import paths and documented behavior across
 future migrations unless a deprecation decision is recorded.
 
+### Controller Boundary MVP
+
+The `004-controller-boundary` feature promotes the following imports to stable
+public API for the MVP:
+
+```python
+from open_energy_lab.core import (
+    ControllerContext,
+    ControllerEvaluationResult,
+    ControllerInterface,
+    DispatchProposal,
+)
+
+from open_energy_lab.simulator import evaluate_with_controller
+```
+
+These imports are stable because they now have:
+
+- focused unit and integration coverage
+- deterministic committed fixtures for both supported scenario families
+- import-boundary checks proving they stay clear of optional research stacks
+- no-legacy-import checks for the stable core package
+- documented controller-boundary behavior, validation commands, and migration
+  evidence
+
+Supporting controller-boundary types that remain in
+`open_energy_lab.core.controller` are intentionally narrower in maturity for
+now. They may be used by package-internal code and focused validation, but
+they are not yet promoted as root-level stable imports until a later spec
+explicitly broadens the public surface.
+
 ## Experimental API
 
 `open_energy_lab.experimental.*` is for immature migrations and incubating APIs.

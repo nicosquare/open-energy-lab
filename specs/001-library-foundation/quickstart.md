@@ -106,7 +106,8 @@ Each future migration should identify:
 - Target module path under `src/open_energy_lab`.
 - Public API maturity: private, experimental, or stable.
 - Dependency classifications and import boundaries.
-- Parity evidence, fixtures, seeds, tolerances, and environment assumptions.
+- Validation evidence, optional focused parity checks, fixtures, seeds,
+  tolerances, and environment assumptions.
 
 ## Prepare the Next Simulator Migration
 
