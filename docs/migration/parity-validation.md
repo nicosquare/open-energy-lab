@@ -3,6 +3,18 @@
 This document defines the validation shape for future brownfield migrations
 from `legacy/*` into `src/open_energy_lab`.
 
+## Core Principle
+
+Legacy code is guidance and evidence, not a target architecture to replay
+mechanically.
+
+- Preserve parity only for explicitly named behavior that the migration says
+  must remain the same.
+- Prefer clean, typed, reviewable simulator logic when legacy structure,
+  control flow, or incidental behavior does not deserve preservation.
+- Use parity checks as one validation tool, not as the default success
+  criterion for the whole simulator surface.
+
 ## Required Migration Record
 
 Each migration spec should describe the following:
@@ -35,6 +47,10 @@ Every migration needs at least one relevant validation evidence type:
 - Focused smoke run for long-running workflows.
 - Explicit limitation explaining why parity cannot be automated locally.
 
+Parity is therefore optional and selective. A migration may rely primarily on
+fixtures, invariants, deterministic configs, or smoke checks when those better
+capture the intended clean behavior.
+
 ## Review Rules
 
 - Cite exact legacy paths and keep them in the `legacy source paths` section.
@@ -44,10 +60,15 @@ Every migration needs at least one relevant validation evidence type:
   from optional, external-service-backed, hardware-bound, and legacy-only
   packages.
 - Record `behavior to preserve`, `behavior to improve`, and `behavior to
-  reject` separately so parity decisions stay reviewable.
+  reject` separately so validation and selective-preservation decisions stay
+  reviewable.
 - Include fixtures and provenance for any committed generated data.
 - Document tolerances and environment assumptions when exact equality is not
   realistic.
+- For simulator-level migrations, do not require broad end-to-end legacy
+  parity. Use focused reference checks only for named preserved physics,
+  settlement, or trace semantics, and allow cleaner implementation choices
+  everywhere else.
 
 ## Controller Boundary Governance
 

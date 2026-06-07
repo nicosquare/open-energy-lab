@@ -134,6 +134,8 @@ Optional Capabilities, Parity Cases, and Fixture Provenance Records.
 - Must cite behavior to preserve, improve, and reject.
 - Must define validation evidence before implementation.
 - Must not make heavy dependencies core without explicit justification.
+- Must not treat broad simulator-level parity as mandatory when the migration
+  intentionally adopts cleaner logic outside the named preserved behavior.
 
 ## Parity Case
 
@@ -147,6 +149,8 @@ Optional Capabilities, Parity Cases, and Fixture Provenance Records.
 
 - Must be reproducible by tests, deterministic configs, documented equations,
   snapshots, focused smoke checks, or documented manual limitations.
+- Should be used only for explicitly preserved behavior rather than as a proxy
+  for full architectural parity.
 - Long-running training or solver workflows should provide focused smoke checks
   when full parity cannot run locally.
 

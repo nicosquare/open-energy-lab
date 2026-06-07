@@ -43,6 +43,10 @@ Each migration must provide at least one relevant evidence type:
 - Focused smoke run for long-running workflows.
 - Explicit limitation explaining why parity cannot be automated locally.
 
+Focused parity is optional. Use it when a migration explicitly preserves a
+trusted legacy behavior. Do not require broad simulator-level replay when
+cleaner new logic and invariant-based validation are the better standard.
+
 ## Acceptance Rules
 
 A migration is not ready for implementation until reviewers can identify:

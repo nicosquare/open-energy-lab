@@ -3,11 +3,22 @@
 Parity tests compare migrated library behavior with legacy references,
 documented equations, fixtures, snapshots, or deterministic smoke checks.
 
+They are optional focused checks, not a blanket requirement that the new
+simulator must replay legacy structure or incidental behavior end to end.
+
 ## Future Parity Strategy
 
 Future migration specs should add parity cases here only after naming the
 target module path, validation path, legacy reference paths, fixtures, and the
 relevant parity evidence for the migrated behavior.
+
+For simulator work in particular:
+
+- use parity only for behavior explicitly named as preserved
+- prefer deterministic fixtures, invariants, and clean typed logic for the
+  broader simulator design
+- document intentional divergence when the new simulator is cleaner than the
+  legacy reference
 
 Acceptable parity evidence includes fixture-based checks, deterministic seeds
 or configs, documented equations or invariants, legacy command output,

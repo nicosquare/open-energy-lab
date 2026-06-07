@@ -29,12 +29,16 @@ Out-of-scope work:
 - Use the phrase `legacy paths` when summarizing where the behavior came from.
 - State `behavior to preserve`, `behavior to improve`, and `behavior to reject`
   separately.
+- Use parity only for explicitly preserved behavior. Do not require broad
+  simulator-level replay when cleaner logic and invariant-based validation are
+  the better fit.
 - Classify dependencies before implementation so optional, external-service-
   backed, hardware-bound, and legacy-only dependencies stay out of core
   imports.
 - Include `fixtures and provenance` for any committed generated data or
   snapshots.
-- Record `parity or validation cases` with the evidence used to support them.
+- Record `parity or validation cases` with the evidence used to support them,
+  and explain why a focused parity comparison is or is not appropriate.
 - Include `validation evidence` in a form reviewers can run or inspect.
 - State `tolerances` when exact equality is not expected.
 - Document `known environment assumptions` and `documentation updates` so
