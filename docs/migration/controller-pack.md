@@ -1,12 +1,12 @@
 # Native Controller Pack Migration Note
 
-Status: phase-2-foundation
+Status: phase-3-us1
 
 Spec `005-controller-pack` introduces the first reusable native controller
-package under `src/open_energy_lab/control`. This phase establishes the shared
-configuration types, support declarations, package-root exports, fixture-schema
-requirements, and migration rationale that later controller behavior tasks will
-build on.
+package under `src/open_energy_lab/control`. The current phase ships the first
+native arbitrage controller, commits exact deterministic fixture evidence for
+that behavior, and keeps the remaining controller-pack surface staged for the
+later guardrail and PV tasks.
 
 ## Target Module Paths
 
@@ -22,8 +22,11 @@ build on.
 - `tests/unit/control/test_configs.py`
 - `tests/unit/control/test_support_matrix.py`
 - `tests/unit/control/test_controller_interface.py`
+- `tests/unit/control/test_price_threshold.py`
 - `tests/integration/control/controller_fixture_utils.py`
+- `tests/integration/control/test_price_threshold_controller.py`
 - `tests/integration/simulator/test_controller_fixture_schema.py`
+- `tests/integration/simulator/test_controller_evaluation.py`
 
 ## Legacy Source Paths
 
@@ -67,8 +70,11 @@ Rejected integration-direction evidence:
   bands, SOC bounds, and positive request magnitudes.
 - Publish explicit support declarations for shipped controllers so unsupported
   scenario use fails immediately and deterministically.
-- Extend fixture-schema validation to cover controller-pack scaffold artifacts,
+- Extend fixture-schema validation to cover controller-pack artifacts,
   provenance metadata, and exact legacy-reference expectations.
+- Ship the first active controller-pack fixture with exact requested-power,
+  realized-power, SOC, and settlement outputs verified against the simulator
+  runner.
 
 ### Reject
 
@@ -91,10 +97,14 @@ The controller-pack feature reserves these committed fixture paths:
 
 Current status:
 
-- all three fixtures remain scaffold artifacts with `status: "scaffold"`
-- provenance, planned config fields, and legacy evidence are already committed
-- exact expected traces remain intentionally empty until implementation tasks
-  `T019` and `T030` verify controller behavior through the simulator runner
+- `tests/fixtures/simulator/price_threshold_controller_case.json` is now an
+  active deterministic fixture with exact trace expectations for
+  `PriceThresholdController`
+- `tests/fixtures/simulator/soc_guardrail_arbitrage_case.json` and
+  `tests/fixtures/simulator/pv_self_consumption_case.json` remain scaffold
+  artifacts until the later US2 implementation tasks populate them
+- provenance, planned config fields, and legacy evidence remain committed for
+  all three fixture paths
 
 ## Shared Public Surface
 
@@ -111,17 +121,56 @@ from open_energy_lab.control import (
 )
 ```
 
-The controllers are scaffolded to conform to the stable interface now, while
-their final decision rules are intentionally deferred to the user-story
-implementation tasks.
+## Shipped Arbitrage Behavior
+
+`PriceThresholdController` is the first shipped native controller in the pack.
+Its current-step rules are intentionally narrow and deterministic:
+
+- charge when `import_price < charge_below_import_price`
+- discharge when `import_price > discharge_above_import_price`
+- idle when the current import price falls inside the neutral band or exactly
+  equals either threshold
+- reject unsupported scenario kinds immediately through the shared support
+  declarations in `src/open_energy_lab/control/_config.py`
+
+This controller remains simulator-owned at execution time: it proposes one
+dispatch request per step and relies on
+`open_energy_lab.simulator.evaluate_with_controller` for clamping, state
+transitions, and settlement.
+
+## Arbitrage Usage
+
+```python
+from open_energy_lab.control import PriceThresholdConfig, PriceThresholdController
+from open_energy_lab.simulator import evaluate_with_controller
+
+controller = PriceThresholdController(
+    PriceThresholdConfig(
+        charge_below_import_price=0.15,
+        discharge_above_import_price=0.25,
+        charge_request_kw=5.0,
+        discharge_request_kw=5.0,
+    )
+)
+
+result = evaluate_with_controller(arbitrage_scenario, controller)
+```
+
+The committed deterministic arbitrage fixture uses this exact configuration on
+a three-step `ArbitrageScenario` with import prices `[0.10, 0.20, 0.30]` and
+records the verified native-controller trace:
+
+- requested power: `[5.0, 0.0, -5.0]`
+- realized power: `[5.0, 0.0, -5.0]`
+- SOC trace: `[0.975, 0.975, 0.44868421052631574]`
+- step settlement: `[-0.5, -0.0, 1.2]`
+- total settlement: `0.7`
 
 ## Follow-Up Work
 
-- `T016` to `T018` will complete the price-threshold controller behavior and
-  align the config and package-root export with the documented arbitrage rules.
 - `T025` to `T029` will complete the guardrail and PV controller behavior and
   align their scaffolds with the documented support matrix.
-- `T019` and `T030` will populate controller-pack fixtures with verified
+- `T030` will populate the remaining controller-pack fixtures with verified
   expected traces.
 - Later migration docs will promote API maturity and dependency-boundary notes
   once the shipped behaviors are complete.

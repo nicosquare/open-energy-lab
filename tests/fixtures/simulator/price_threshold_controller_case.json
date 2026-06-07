@@ -1,13 +1,13 @@
 {
   "case_id": "price-threshold-controller-case-v1",
-  "status": "scaffold",
-  "purpose": "Planned deterministic arbitrage validation case for the native PriceThresholdController.",
+  "status": "active",
+  "purpose": "Deterministic synthetic arbitrage validation case for exact PriceThresholdController evaluation.",
   "origin": {
     "author": "OpenAI Codex",
-    "construction": "Phase 1 scaffold placeholder aligned to specs/005-controller-pack. Populate exact expected outputs in T019 after implementation and runner verification.",
+    "construction": "Manually authored from the US1 controller-pack contracts and then checked against the current implementation with uv run python -c controller-evaluation calculations.",
     "seed": null,
     "generation_command": null,
-    "refresh_policy": "Populate after implementation, then refresh only when documented price-threshold controller semantics intentionally change."
+    "refresh_policy": "Refresh only when the documented price-threshold controller thresholds, battery/timestep inputs, or discounted-export settlement semantics intentionally change."
   },
   "legacy_references": [
     "legacy/old_tpm/src_py/legacy/storage.py",
@@ -58,10 +58,34 @@
     "validates_preserved_explicit_dispatch_regression": false,
     "validates_preserved_built_in_rule_regression": false
   },
-  "expected_trace": {},
+  "expected_trace": {
+    "requested_power_kw": [
+      5.0,
+      0.0,
+      -5.0
+    ],
+    "realized_power_kw": [
+      5.0,
+      0.0,
+      -5.0
+    ],
+    "soc": [
+      0.975,
+      0.975,
+      0.44868421052631574
+    ],
+    "step_settlement": [
+      -0.5,
+      -0.0,
+      1.2
+    ],
+    "total_settlement": 0.7,
+    "constraint_events": []
+  },
   "numeric_tolerance": 1e-06,
   "provenance_notes": [
-    "This scaffold reserves the deterministic arbitrage fixture path for the native controller pack.",
-    "Populate exact requested power, realized power, SOC, and settlement outputs in T019."
+    "Keep the fixture synthetic, small, and reviewable.",
+    "The expected controller proposals and realized arbitrage trace were verified against evaluate_with_controller for the documented three-step price-threshold controller configuration.",
+    "This fixture validates shipped native controller behavior only; preserved explicit-dispatch and built-in simulator rule evidence remains in the shared non-controller arbitrage fixture."
   ]
 }

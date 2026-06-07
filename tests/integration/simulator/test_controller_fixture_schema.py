@@ -212,7 +212,7 @@ def test_controller_pack_fixture_common_schema(
     ]
     assert missing_top_level_keys == []
     assert fixture_path in CONTROLLER_PACK_FIXTURE_PATHS
-    assert fixture_data["status"] == "scaffold"
+    assert fixture_data["status"] in {"active", "scaffold"}
     assert fixture_data["fixture_source"] == fixture_path.as_posix()
     assert fixture_data["numeric_tolerance"] == pytest.approx(1e-6)
     assert fixture_data["config_reference"] in {
@@ -283,7 +283,42 @@ def test_controller_pack_fixture_common_schema(
 
     expected_trace = fixture_data["expected_trace"]
     assert isinstance(expected_trace, dict)
-    assert expected_trace == {}
+
+
+def test_price_threshold_controller_fixture_has_active_exact_trace() -> None:
+    fixture_data = next(
+        data
+        for path, data in load_all_controller_pack_fixtures()
+        if path == Path("tests/fixtures/simulator/price_threshold_controller_case.json")
+    )
+
+    assert fixture_data["status"] == "active"
+    assert fixture_data["expected_trace"] == {
+        "requested_power_kw": [5.0, 0.0, -5.0],
+        "realized_power_kw": [5.0, 0.0, -5.0],
+        "soc": [0.975, 0.975, 0.44868421052631574],
+        "step_settlement": [-0.5, -0.0, 1.2],
+        "total_settlement": 0.7,
+        "constraint_events": [],
+    }
+
+
+@pytest.mark.parametrize(
+    "fixture_path",
+    (
+        Path("tests/fixtures/simulator/soc_guardrail_arbitrage_case.json"),
+        Path("tests/fixtures/simulator/pv_self_consumption_case.json"),
+    ),
+)
+def test_remaining_controller_pack_fixtures_remain_scaffolds(
+    fixture_path: Path,
+) -> None:
+    fixture_data = next(
+        data for path, data in load_all_controller_pack_fixtures() if path == fixture_path
+    )
+
+    assert fixture_data["status"] == "scaffold"
+    assert fixture_data["expected_trace"] == {}
 
 
 @pytest.mark.parametrize(
