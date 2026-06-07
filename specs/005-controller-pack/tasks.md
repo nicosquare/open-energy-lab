@@ -73,9 +73,9 @@ control surface.
 
 ### Implementation for User Story 1
 
-- [ ] T016 [US1] Implement `PriceThresholdConfig` in `src/open_energy_lab/control/_config.py`
-- [ ] T017 [US1] Implement `PriceThresholdController` in `src/open_energy_lab/control/price_threshold.py`
-- [ ] T018 [US1] Export `PriceThresholdConfig` and `PriceThresholdController` from `src/open_energy_lab/control/__init__.py`
+- [X] T016 [US1] Implement `PriceThresholdConfig` in `src/open_energy_lab/control/_config.py`
+- [X] T017 [US1] Implement `PriceThresholdController` in `src/open_energy_lab/control/price_threshold.py`
+- [X] T018 [US1] Export `PriceThresholdConfig` and `PriceThresholdController` from `src/open_energy_lab/control/__init__.py`
 - [ ] T019 [US1] Populate the deterministic arbitrage controller fixture, including provenance and legacy-reference fields, in `tests/fixtures/simulator/price_threshold_controller_case.json`
 - [ ] T020 [US1] Document arbitrage controller behavior and usage in `docs/migration/controller-pack.md`
 
