@@ -213,7 +213,7 @@ This feature does not add:
 
 - planning or MPC implementations
 - RL training loops or federated workflows
-- CityLearn runtime integration
+- CityLearn-derived runtime compatibility
 - solver-backed optimization
 - notebook-first workflows
 - W&B integrations

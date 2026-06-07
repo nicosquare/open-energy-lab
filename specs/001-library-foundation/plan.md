@@ -53,7 +53,8 @@ environments for specific future capabilities, not foundation requirements.
 
 **Project Type**: Python research library with optional adapters, examples, and
 research workflow entry points. Legacy submodules are reference inputs rather
-than target architecture.
+than target architecture, and CityLearn is reference-only rather than an
+integration target.
 
 **Performance Goals**: No algorithm throughput, solve-time, or training-runtime
 goal is set in this foundation feature. The import-time goal is that importing
@@ -192,8 +193,8 @@ Research decisions are captured in [research.md](./research.md). They resolve:
 - Notebook, generated artifact, W&B, GPU/SLURM, solver, and Rust reference
   handling.
 - Simulator migration preparation, including component graph direction,
-  synthetic-first data, optional TorchRL adapter, and battery arbitrage as the
-  first validation target.
+  synthetic-first data, optional TorchRL adapter, explicit non-integration of
+  CityLearn, and battery arbitrage as the first validation target.
 
 ## Phase 1: Design
 

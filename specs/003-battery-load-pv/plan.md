@@ -258,7 +258,7 @@ order:
   execution paths over the same multi-component balance rules
 - update import-boundary tests, migration docs, quickstart notes, and parity
   documentation to reflect the new feature boundary
-- avoid tasks that introduce CityLearn runtime integration, broader weather
+- avoid tasks that introduce CityLearn-derived runtime compatibility, broader weather
   subsystem migration, real data ingestion, MPC, RL, solver-backed planning, or
   notebook and W&B workflows
 

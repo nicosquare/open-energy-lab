@@ -67,7 +67,8 @@ Future specs should classify these before use:
 
 - Solver and optimization: Pyomo, Gurobi, CPLEX/docplex.
 - Probabilistic modeling: SPFlow and SPN/MIO support libraries.
-- RL and environments: PyTorch, TorchRL, CityLearn.
+- RL libraries and environment tooling: PyTorch, TorchRL.
+- Legacy-only environment references: CityLearn.
 - Experiment workflow: W&B, notebooks, sweep configs.
 - Execution environment: GPU, CUDA, SLURM/HPC scripts.
 - Rust parity and performance: Rust toolchain, cargo, binding generators.
@@ -106,15 +107,15 @@ Alternatives considered: ad hoc scripts were rejected because they weaken reprod
 
 ```text
 Dependency: PyTorch, TorchRL, CityLearn
-Requested by: possible future controller adapters only; not by 004-controller-boundary runtime
+Requested by: possible future controller adapters only for PyTorch/TorchRL; CityLearn remains legacy-only reference evidence
 Target module: none in the stable MVP surface
-Classification: optional
+Classification: optional for PyTorch/TorchRL; legacy-only for CityLearn
 Import boundary: excluded from open_energy_lab.core and open_energy_lab.simulator import paths
-Install mechanism: defer to a future adapter-specific extra or package if ever adopted
+Install mechanism: defer PyTorch/TorchRL to a future adapter-specific extra if ever adopted; do not define a CityLearn install path for product integration
 Fallback or skip behavior: stable controller-boundary validation proceeds without them
 External service, license, hardware, or scheduler assumptions: may imply larger local environments, but none are accepted as default assumptions here
-Rationale: the spec preserves only the repeated observation-to-action idea and explicitly rejects training-environment wrappers and action-space abstractions from the stable core
-Alternatives considered: making RL stacks core dependencies was rejected because it would violate the import-light constitution boundary
+Rationale: the spec preserves only the repeated observation-to-action idea, rejects training-environment wrappers and action-space abstractions from the stable core, and treats CityLearn as historical evidence rather than a future compatibility target
+Alternatives considered: making RL stacks core dependencies or positioning CityLearn as an integration target was rejected because it would violate the import-light constitution boundary and the product direction
 ```
 
 ```text

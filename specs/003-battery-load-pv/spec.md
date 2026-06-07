@@ -110,8 +110,8 @@ without research-only stacks or service dependencies so that richer scenarios
 do not break the simulator-core boundary established by the earlier specs.
 
 **Why this priority**: Load, PV, and grid accounting are a natural place for
-scope creep into data adapters, weather models, CityLearn, or optimization. The
-feature must make that boundary explicit.
+scope creep into data adapters, weather models, CityLearn-shaped legacy
+abstractions, or optimization. The feature must make that boundary explicit.
 
 **Independent Test**: A reviewer can verify that the extended simulator core
 still imports in the baseline environment and does not require TorchRL,
@@ -123,10 +123,10 @@ workflows, external tariff APIs, or legacy runtime imports.
 1. **Given** the baseline local environment, **When** the extended simulator is
    imported and validated, **Then** it does not require heavy optional stacks,
    external services, or legacy package imports.
-2. **Given** future ideas such as weather-driven PV, CityLearn adapters, or
-   optimization, **When** they are referenced by this feature, **Then** they
-   are clearly framed as deferred optional follow-on work rather than simulator
-   core requirements.
+2. **Given** future ideas such as weather-driven PV or optimization, **When**
+   they are referenced by this feature, **Then** they are clearly framed as
+   deferred optional follow-on work rather than simulator core requirements;
+   CityLearn remains reference-only evidence rather than an adapter direction.
 
 ### Edge Cases
 
@@ -139,7 +139,7 @@ workflows, external tariff APIs, or legacy runtime imports.
   energy-balance relationships.
 - A proposed PV representation depends on weather-model migration instead of a
   simple deterministic exogenous profile.
-- A future adapter concern such as CityLearn, ENTSO-E, or notebook execution is
+- A legacy runtime concern such as CityLearn, ENTSO-E, or notebook execution is
   accidentally introduced into simulator-core imports or fixtures.
 
 ## Requirements *(mandatory)*
@@ -201,10 +201,11 @@ workflows, external tariff APIs, or legacy runtime imports.
   location.
 - **FR-015**: The feature MUST explicitly defer planning implementations,
   control implementations beyond deterministic scenario execution, RL training
-  loops, federated workflows, TorchRL adapter implementation, CityLearn runtime
-  integration, solver-backed optimization, notebook-first workflows, W&B
-  logging integrations, GPU or SLURM execution paths, Rust bindings, and broad
-  migration of unrelated simulator modules.
+  loops, federated workflows, TorchRL adapter implementation, solver-backed
+  optimization, notebook-first workflows, W&B logging integrations, GPU or
+  SLURM execution paths, Rust bindings, and broad migration of unrelated
+  simulator modules, and it MUST treat CityLearn as reference-only rather than
+  a runtime integration target.
 - **FR-016**: The feature MUST keep real-world tariff downloads and ENTSO-E or
   similar external adapters out of scope.
 - **FR-017**: The feature MUST define the weather-model scope required for PV

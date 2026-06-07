@@ -65,9 +65,10 @@ and justifies dependencies as core, optional, external-service-backed,
 hardware-bound, or legacy-only.
 
 **Rationale**: Legacy projects include valuable but heavy dependencies such as
-TorchRL, PyTorch, CityLearn, Pyomo, Gurobi, CPLEX/docplex, SPFlow, W&B,
-Jupyter, GPU tooling, and SLURM scripts. Making them unconditional would make
-basic import and testing fragile.
+TorchRL, PyTorch, Pyomo, Gurobi, CPLEX/docplex, SPFlow, W&B, Jupyter, GPU
+tooling, and SLURM scripts, plus legacy runtime references such as CityLearn.
+Making them unconditional would make basic import and testing fragile, and
+CityLearn is not a product integration target for this library.
 
 **Alternatives considered**: A broad research dependency bundle is convenient
 for experiments but too expensive for ordinary library use. A strict

@@ -61,5 +61,8 @@ This MVP explicitly defers:
 - multi-building controller contracts
 - federated or multi-agent interfaces
 - full-horizon forecast surfaces
-- CityLearn runtime compatibility
 - RL training-environment wrappers
+
+CityLearn runtime compatibility is not merely deferred here; it is outside the
+target direction and remains reference-only evidence rather than a compatibility
+goal.

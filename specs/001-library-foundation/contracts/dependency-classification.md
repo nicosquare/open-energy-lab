@@ -55,7 +55,8 @@ Future specs should classify these before use:
 
 - Solver and optimization: Pyomo, Gurobi, CPLEX/docplex.
 - Probabilistic modeling: SPFlow and SPN/MIO support libraries.
-- RL and environments: PyTorch, TorchRL, CityLearn.
+- RL libraries and environment tooling: PyTorch, TorchRL.
+- Legacy-only environment references: CityLearn.
 - Experiment workflow: W&B, notebooks, sweep configs.
 - Execution environment: GPU, CUDA, SLURM/HPC scripts.
 - Rust parity and performance: Rust toolchain, cargo, binding generators.

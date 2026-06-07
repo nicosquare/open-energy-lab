@@ -54,9 +54,10 @@ boundary; uv manages Python project dependencies, dev dependencies, editable
 installation, locking, and command execution through `pyproject.toml`.
 
 The foundation keeps the core import path light. Solver stacks, TorchRL,
-PyTorch, CityLearn, SPFlow, W&B, notebooks, GPU/SLURM workflows, Rust tooling,
-and external data APIs are optional capabilities unless a later spec explicitly
-promotes one.
+PyTorch, SPFlow, W&B, notebooks, GPU/SLURM workflows, Rust tooling, and
+external data APIs are optional capabilities unless a later spec explicitly
+promotes one. CityLearn is not an optional capability here; it is legacy-only
+reference material and not a target integration surface.
 
 ## Roadmap Modules
 
@@ -83,7 +84,8 @@ Legacy directories are evidence, not target architecture:
 - `legacy/old_tpm`: Rust/Python simulation, SPN/MIO, weather, and experiment
   references.
 - `legacy/fed_trpo`: federated RL, PPO/TRPO, CityLearn, sweep, W&B, and SLURM
-  workflow references.
+  workflow references. CityLearn remains evidence about prior ecosystem shape,
+  not a runtime compatibility goal for the new library.
 
 Future migrations must cite exact legacy source paths, identify behavior to
 preserve, improve, or reject, classify dependencies, and define validation

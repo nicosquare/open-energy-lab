@@ -118,10 +118,10 @@ behaviorally unchanged.
 
 ---
 
-### User Story 3 - Preserve a Lightweight Core While Enabling Future Adapters (Priority: P3)
+### User Story 3 - Preserve a Lightweight Core While Enabling Future Control Systems (Priority: P3)
 
 A maintainer wants the controller boundary to remain generic enough for later
-MPC or RL adapters while keeping the simulator import path free of training,
+MPC or RL-facing control systems while keeping the simulator import path free of training,
 optimizer, or research-stack dependencies.
 
 **Why this priority**: This feature is intended to unlock future control work
@@ -157,7 +157,7 @@ dependencies.
   required inputs, and the boundary must reject incomplete controller context.
 - Legacy control code may exist in `legacy/fed_trpo`, but behavior that depends
   on training loops, replay buffers, or CityLearn runtime must not be preserved
-  in core.
+  in core, and CityLearn compatibility is not a product goal.
 
 ## Requirements *(mandatory)*
 
@@ -221,6 +221,9 @@ dependencies.
   buffers, policy networks, stochastic exploration logic, solver-backed
   optimization, or runtime adapters for MPC, TorchRL, or CityLearn into
   simulator core.
+- **FR-018a**: The feature MUST treat CityLearn as reference-only evidence for
+  rejected boundary ideas and MUST NOT position CityLearn compatibility as a
+  future integration target.
 
 ### Legacy Reference Requirements *(include for migration features)*
 

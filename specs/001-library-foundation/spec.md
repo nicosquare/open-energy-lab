@@ -29,6 +29,7 @@ without copying legacy structure or preserving known bad practices by default.
 - Q: What simulator composition model should the foundation prefer? -> A: Component graph; simulator scenarios are composed from typed components and connections such as buildings, loads, storage, generators, markets, and networks.
 - Q: What data source policy should the foundation use? -> A: Synthetic plus adapters; synthetic data is first-class, and real data comes through template-based ingestion plus optional source adapters such as ENTSO-E.
 - Q: What TorchRL environment boundary should the foundation use? -> A: Optional adapter; simulator core stays independent, and TorchRL compatibility is provided through an optional wrapper or adapter.
+- Q: What is the CityLearn roadmap stance? -> A: CityLearn remains reference-only evidence from `legacy/fed_trpo`; Open Energy Lab does not plan CityLearn integration and should build its own alternative surfaces instead.
 - Q: What near-term use case should drive the first simulator validation target? -> A: Battery arbitrage; prioritize battery, price signal, and market arbitrage scenarios.
 - Q: What environment and package-management policy should the foundation use? -> A: Conda defines the minimal base research environment with Python and uv; uv manages Python project dependencies, dev dependencies, editable installs, locking, and command execution.
 
@@ -138,6 +139,7 @@ inputs, and acceptable tolerances before implementation begins.
 - **FR-018**: The foundation MUST define the simulator composition direction as a component graph where scenarios are composed from typed components and connections, including buildings, loads, storage, generators, markets, and networks.
 - **FR-019**: The foundation MUST define data sources as synthetic-first with adapters: synthetic data generation is first-class, and real data ingestion must use template specifications and optional source adapters such as ENTSO-E.
 - **FR-020**: The foundation MUST define TorchRL compatibility as an optional simulator adapter or wrapper; simulator core imports must not require TorchRL.
+- **FR-020a**: The foundation MUST treat CityLearn as reference-only legacy evidence and MUST NOT define CityLearn integration, compatibility, or adapter support as part of the product roadmap.
 - **FR-021**: The foundation MUST identify battery arbitrage as the near-term use-case driver for the first simulator validation target, focusing on battery, price signal, and market arbitrage scenarios.
 - **FR-022**: The foundation MUST define a minimal conda environment and uv-based Python package-management workflow where conda provides the interpreter/base environment and uv manages project dependencies, dev dependencies, locking, editable installation, and command execution.
 
@@ -170,7 +172,8 @@ inputs, and acceptable tolerances before implementation begins.
 ### Dependency and Environment Requirements *(include if relevant)*
 
 - **Core dependencies**: No core dependency baseline is fixed by this foundation. Each migration must propose and justify any dependency it needs before that dependency is treated as core.
-- **Optional dependencies**: Solver-backed optimization, SPN/MIO, RL training, CityLearn environments, W&B logging, notebooks, GPU workflows, and Rust parity tooling must be isolated as optional capabilities unless a future spec explicitly promotes one to core.
+- **Optional dependencies**: Solver-backed optimization, SPN/MIO, RL training, W&B logging, notebooks, GPU workflows, and Rust parity tooling must be isolated as optional capabilities unless a future spec explicitly promotes one to core.
+- **Legacy-only environment references**: CityLearn and similar legacy runtime surfaces may be cited as evidence, but they are not optional capabilities to be integrated into `open_energy_lab`.
 - **External services**: W&B and any data APIs must be optional and documented with offline or disabled behavior where practical.
 - **Hardware assumptions**: GPU and SLURM workflows must be treated as execution environments for selected research workflows, not requirements for using the core library.
 - **Environment tooling**: The foundation uses conda for the minimal base research environment and uv for Python project dependency management. Heavy optional stacks must not be added to the base environment.
@@ -195,6 +198,7 @@ inputs, and acceptable tolerances before implementation begins.
 - Simulator scenarios are expected to be represented as component graphs rather than hard-coded single-case structures.
 - Synthetic data generation is first-class; real data is incorporated through documented templates and optional adapters rather than direct dependency on a specific external data source.
 - TorchRL compatibility should be provided through an optional adapter so simulator core remains usable without TorchRL installed.
+- CityLearn is reference-only input from `legacy/fed_trpo`, not a target integration or compatibility surface for the unified library.
 - Battery arbitrage is the first intended simulator validation use case; cooling demand response, frequency regulation, federated microgrid control, and investment planning remain future roadmap use cases.
 - The long-term roadmap includes simulator, core methods, planning, control, and visualization modules, but this foundation does not require implementing them all immediately.
 - Planning/control concepts should be defined as future-facing interfaces or contracts before concrete planners, controllers, RL agents, or optimization models are migrated.

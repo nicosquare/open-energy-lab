@@ -190,7 +190,7 @@ relationships, and the extended scenario assembly boundary.
 
 ### Scope Guard
 
-If any task appears to require CityLearn runtime integration, broad weather
+If any task appears to require CityLearn-derived runtime compatibility, broad weather
 subsystem migration, real weather ingestion, solver-backed optimization,
 MPC/RL control, notebooks, W&B, GPU/SLURM tooling, Rust bindings, or broad
 legacy simulator copying into `src/open_energy_lab`, stop and create a later
