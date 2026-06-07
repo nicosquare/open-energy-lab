@@ -71,3 +71,61 @@ Future specs should classify these before use:
 - Experiment workflow: W&B, notebooks, sweep configs.
 - Execution environment: GPU, CUDA, SLURM/HPC scripts.
 - Rust parity and performance: Rust toolchain, cargo, binding generators.
+
+## Controller Boundary MVP Classification
+
+The `004-controller-boundary` feature keeps the stable controller surface and
+simulator runner inside the existing lightweight library boundary. The review
+record for this feature is:
+
+```text
+Dependency: Python standard library typing/dataclass support and existing open_energy_lab package modules
+Requested by: 004-controller-boundary
+Target module: src/open_energy_lab/core/controller.py, src/open_energy_lab/simulator/controller_runner.py, src/open_energy_lab/simulator/scenario.py
+Classification: core
+Import boundary: allowed at import time for open_energy_lab.core and open_energy_lab.simulator
+Install mechanism: base project environment via conda plus uv
+Fallback or skip behavior: none; these are part of the normal library surface
+External service, license, hardware, or scheduler assumptions: none
+Rationale: the stable controller contract and simulator-owned evaluation loop must stay import-light and portable
+Alternatives considered: introducing Gym, TorchRL, CityLearn, solver, or Rust-backed runtime requirements was rejected for this MVP
+```
+
+```text
+Dependency: pytest-based validation commands
+Requested by: 004-controller-boundary
+Target module: tests/unit/core, tests/unit/simulator, tests/integration/simulator
+Classification: optional
+Import boundary: test-only; must not affect library runtime imports
+Install mechanism: uv sync --dev
+Fallback or skip behavior: if dev dependencies are unavailable, document validation as blocked rather than broadening runtime requirements
+External service, license, hardware, or scheduler assumptions: none
+Rationale: controller-boundary evidence depends on deterministic unit and integration checks, but pytest is not a runtime dependency
+Alternatives considered: ad hoc scripts were rejected because they weaken reproducible review evidence
+```
+
+```text
+Dependency: PyTorch, TorchRL, CityLearn
+Requested by: possible future controller adapters only; not by 004-controller-boundary runtime
+Target module: none in the stable MVP surface
+Classification: optional
+Import boundary: excluded from open_energy_lab.core and open_energy_lab.simulator import paths
+Install mechanism: defer to a future adapter-specific extra or package if ever adopted
+Fallback or skip behavior: stable controller-boundary validation proceeds without them
+External service, license, hardware, or scheduler assumptions: may imply larger local environments, but none are accepted as default assumptions here
+Rationale: the spec preserves only the repeated observation-to-action idea and explicitly rejects training-environment wrappers and action-space abstractions from the stable core
+Alternatives considered: making RL stacks core dependencies was rejected because it would violate the import-light constitution boundary
+```
+
+```text
+Dependency: Solver stacks, W&B, GPU/SLURM tooling, Rust parity toolchains, legacy reference packages
+Requested by: none for 004-controller-boundary runtime; only possible future parity or adapter workflows
+Target module: none in the stable MVP surface
+Classification: hardware-bound, external-service-backed, or legacy-only depending on family
+Import boundary: excluded from open_energy_lab.core and open_energy_lab.simulator import paths
+Install mechanism: none for this feature
+Fallback or skip behavior: document skipped checks when those environments are unavailable; do not make them prerequisites for default validation
+External service, license, hardware, or scheduler assumptions: commercial licenses, credentials, GPU runtime, SLURM access, Rust toolchains, or legacy checkout context may be required outside this MVP
+Rationale: the controller boundary is validated on CPU with deterministic fixtures and does not reopen solver, experiment-service, HPC, or Rust migrations
+Alternatives considered: coupling Phase 6 validation to these stacks was rejected as out of scope and brittle
+```

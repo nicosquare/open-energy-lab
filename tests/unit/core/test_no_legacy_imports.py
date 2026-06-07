@@ -6,7 +6,10 @@ from pathlib import Path
 
 
 CORE_PACKAGE_DIR = Path("src/open_energy_lab/core")
-LEGACY_IMPORT_MARKERS = ("from legacy", "import legacy")
+LEGACY_IMPORT_MARKERS = (
+    "from " "legacy",
+    "import " "legacy",
+)
 
 
 def test_core_runtime_modules_do_not_import_legacy_packages() -> None:

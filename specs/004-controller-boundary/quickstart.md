@@ -191,6 +191,45 @@ uv run pytest \
 Expected result for the legacy-import scan: no matches in new library modules
 or their runtime tests.
 
+## Phase 6 Validation Record
+
+Recorded on `2026-06-02` in the default local CPU-only development
+environment with `uv run` and Python `3.12.3`.
+
+Completed planned validation commands and outcomes:
+
+- `uv run pytest tests/unit/core tests/unit/simulator tests/integration/simulator`
+  -> `79 passed` in `0.16s`
+- `uv run python -c "import open_energy_lab.core; import open_energy_lab.simulator"`
+  -> passed with no import-time optional dependency errors
+- `rg "from legacy|import legacy" src/open_energy_lab/core src/open_energy_lab/simulator tests/unit/core tests/unit/simulator tests/integration/simulator`
+  -> no matches
+- `uv run pytest tests/integration/simulator/test_controller_fixture_schema.py`
+  -> `5 passed` in `0.02s`
+- `uv run pytest tests/unit/core/test_controller_contract.py`
+  -> `5 passed` in `0.02s`
+- `uv run pytest tests/unit/simulator/test_controller_runner.py`
+  -> `4 passed` in `0.05s`
+- `uv run pytest tests/integration/simulator/test_controller_evaluation.py`
+  -> `5 passed` in `0.04s`
+- `uv run pytest tests/integration/simulator/test_battery_arbitrage_trace.py tests/integration/simulator/test_battery_load_pv_trace.py`
+  -> `4 passed` in `0.04s`
+- `uv run pytest tests/integration/simulator/test_controller_fixture_schema.py tests/integration/simulator/test_controller_evaluation.py tests/integration/simulator/test_battery_arbitrage_trace.py tests/integration/simulator/test_battery_load_pv_trace.py`
+  -> `14 passed` in `0.06s`
+
+Skipped planned validation commands:
+
+- None.
+
+Checks intentionally still out of scope for this feature:
+
+- CityLearn environment execution
+- RL training loops
+- solver-backed planning or solver license checks
+- W&B, notebook, GPU, or SLURM workflows
+- Rust builds or Rust parity checks
+- external data downloads or credentialed services
+
 ## Checks Intentionally Out of Scope
 
 This feature should not require or run:

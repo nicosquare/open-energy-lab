@@ -123,10 +123,10 @@ implementation and testing of each story.
 
 **Purpose**: Finalize dependency classification, environment notes, and validation records that span multiple stories.
 
-- [ ] T033 [P] Update controller-boundary dependency classification in `docs/migration/dependency-policy.md`
-- [ ] T034 [P] Update controller-boundary environment assumptions in `docs/migration/environment-assumptions.md`
-- [ ] T035 Run the planned validation commands documented in `specs/004-controller-boundary/quickstart.md`
-- [ ] T036 Document final validation outcomes and any skipped checks in `specs/004-controller-boundary/quickstart.md`
+- [X] T033 [P] Update controller-boundary dependency classification in `docs/migration/dependency-policy.md`
+- [X] T034 [P] Update controller-boundary environment assumptions in `docs/migration/environment-assumptions.md`
+- [X] T035 Run the planned validation commands documented in `specs/004-controller-boundary/quickstart.md`
+- [X] T036 Document final validation outcomes and any skipped checks in `specs/004-controller-boundary/quickstart.md`
 
 ---
 
