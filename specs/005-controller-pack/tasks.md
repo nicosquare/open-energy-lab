@@ -97,10 +97,10 @@ self-consumption controller behaves deterministically on
 
 ### Tests for User Story 2
 
-- [ ] T021 [P] [US2] Add SOC guardrail controller unit behavior tests in `tests/unit/control/test_soc_guardrail.py`
-- [ ] T022 [P] [US2] Add PV self-consumption controller unit behavior tests in `tests/unit/control/test_pv_self_consumption.py`
-- [ ] T023 [P] [US2] Add scenario-support integration coverage for native controllers in `tests/integration/control/test_scenario_support.py`
-- [ ] T024 [P] [US2] Extend simulator controller evaluation coverage for SOC guardrail and PV self-consumption controllers in `tests/integration/simulator/test_controller_evaluation.py`
+- [X] T021 [P] [US2] Add SOC guardrail controller unit behavior tests in `tests/unit/control/test_soc_guardrail.py`
+- [X] T022 [P] [US2] Add PV self-consumption controller unit behavior tests in `tests/unit/control/test_pv_self_consumption.py`
+- [X] T023 [P] [US2] Add scenario-support integration coverage for native controllers in `tests/integration/control/test_scenario_support.py`
+- [X] T024 [P] [US2] Extend simulator controller evaluation coverage for SOC guardrail and PV self-consumption controllers in `tests/integration/simulator/test_controller_evaluation.py`
 
 ### Implementation for User Story 2
 

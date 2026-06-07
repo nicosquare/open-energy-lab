@@ -7,7 +7,14 @@ from pathlib import Path
 
 import pytest
 
-from open_energy_lab.control import PriceThresholdConfig, PriceThresholdController
+from open_energy_lab.control import (
+    PVSelfConsumptionConfig,
+    PVSelfConsumptionController,
+    PriceThresholdConfig,
+    PriceThresholdController,
+    SocGuardrailConfig,
+    SocGuardrailController,
+)
 from open_energy_lab.core import ControllerContext, DispatchProposal
 from open_energy_lab.simulator import (
     ArbitrageObjectiveRepresentation,
@@ -178,6 +185,34 @@ def _price_threshold_controller_from_fixture(
         PriceThresholdConfig(
             charge_below_import_price=planned_config["charge_below_import_price"],
             discharge_above_import_price=planned_config["discharge_above_import_price"],
+            charge_request_kw=planned_config["charge_request_kw"],
+            discharge_request_kw=planned_config["discharge_request_kw"],
+        )
+    )
+
+
+def _soc_guardrail_controller_from_fixture(
+    fixture: dict[str, object],
+) -> SocGuardrailController:
+    planned_config = fixture["planned_config"]
+    return SocGuardrailController(
+        SocGuardrailConfig(
+            target_min_soc=planned_config["target_min_soc"],
+            target_max_soc=planned_config["target_max_soc"],
+            charge_request_kw=planned_config["charge_request_kw"],
+            discharge_request_kw=planned_config["discharge_request_kw"],
+        )
+    )
+
+
+def _pv_self_consumption_controller_from_fixture(
+    fixture: dict[str, object],
+) -> PVSelfConsumptionController:
+    planned_config = fixture["planned_config"]
+    return PVSelfConsumptionController(
+        PVSelfConsumptionConfig(
+            reserve_min_soc=planned_config["reserve_min_soc"],
+            reserve_max_soc=planned_config["reserve_max_soc"],
             charge_request_kw=planned_config["charge_request_kw"],
             discharge_request_kw=planned_config["discharge_request_kw"],
         )
@@ -524,3 +559,90 @@ def test_price_threshold_controller_fixture_matches_controller_evaluation_trace(
         first_result.total_settlement,
         abs=tolerance,
     )
+
+
+def test_soc_guardrail_controller_fixture_remains_deterministic_during_runner_evaluation() -> None:
+    from open_energy_lab.simulator.controller_runner import evaluate_with_controller
+
+    fixture = _load_fixture("soc_guardrail_arbitrage_case.json")
+    tolerance = fixture["numeric_tolerance"]
+
+    first_result = evaluate_with_controller(
+        _arbitrage_scenario_from_fixture(fixture),
+        _soc_guardrail_controller_from_fixture(fixture),
+    )
+    second_result = evaluate_with_controller(
+        _arbitrage_scenario_from_fixture(fixture),
+        _soc_guardrail_controller_from_fixture(fixture),
+    )
+
+    assert fixture["status"] == "scaffold"
+    assert fixture["expected_properties"]["validates_controller_evaluation"] is True
+    assert fixture["expected_properties"]["validates_repeated_run_determinism"] is True
+    assert first_result.rejection is None
+    assert first_result.controller_name == fixture["controller_name"]
+    assert len(first_result.step_records) == fixture["time_grid"]["num_steps"]
+    assert all(record.context.step_inputs == {} for record in first_result.step_records)
+    assert first_result.requested_power_kw == pytest.approx(
+        second_result.requested_power_kw,
+        abs=tolerance,
+    )
+    assert first_result.realized_power_kw == pytest.approx(
+        second_result.realized_power_kw,
+        abs=tolerance,
+    )
+    assert first_result.total_settlement == pytest.approx(
+        second_result.total_settlement,
+        abs=tolerance,
+    )
+    assert first_result.realized_power_kw == pytest.approx(
+        first_result.requested_power_kw,
+        abs=tolerance,
+    )
+    assert first_result.underlying_trace.constraint_events == []
+
+
+def test_pv_self_consumption_controller_fixture_remains_deterministic_during_runner_evaluation(
+) -> None:
+    from open_energy_lab.simulator.controller_runner import evaluate_with_controller
+
+    fixture = _load_fixture("pv_self_consumption_case.json")
+    tolerance = fixture["numeric_tolerance"]
+
+    first_result = evaluate_with_controller(
+        _battery_load_pv_scenario_from_fixture(fixture),
+        _pv_self_consumption_controller_from_fixture(fixture),
+    )
+    second_result = evaluate_with_controller(
+        _battery_load_pv_scenario_from_fixture(fixture),
+        _pv_self_consumption_controller_from_fixture(fixture),
+    )
+
+    assert fixture["status"] == "scaffold"
+    assert fixture["expected_properties"]["validates_controller_evaluation"] is True
+    assert fixture["expected_properties"]["validates_repeated_run_determinism"] is True
+    assert first_result.rejection is None
+    assert first_result.controller_name == fixture["controller_name"]
+    assert len(first_result.step_records) == fixture["time_grid"]["num_steps"]
+    assert all("load_kw" in record.context.step_inputs for record in first_result.step_records)
+    assert all(
+        "pv_generation_kw" in record.context.step_inputs
+        for record in first_result.step_records
+    )
+    assert first_result.requested_power_kw == pytest.approx(
+        second_result.requested_power_kw,
+        abs=tolerance,
+    )
+    assert first_result.realized_power_kw == pytest.approx(
+        second_result.realized_power_kw,
+        abs=tolerance,
+    )
+    assert first_result.total_settlement == pytest.approx(
+        second_result.total_settlement,
+        abs=tolerance,
+    )
+    assert first_result.realized_power_kw == pytest.approx(
+        first_result.requested_power_kw,
+        abs=tolerance,
+    )
+    assert first_result.underlying_trace.constraint_events == []
