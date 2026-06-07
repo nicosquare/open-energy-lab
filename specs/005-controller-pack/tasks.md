@@ -67,9 +67,9 @@ control surface.
 
 ### Tests for User Story 1
 
-- [ ] T013 [P] [US1] Add price-threshold controller behavior tests in `tests/unit/control/test_price_threshold.py`
-- [ ] T014 [P] [US1] Add arbitrage integration coverage for the package-root price-threshold controller in `tests/integration/control/test_price_threshold_controller.py`
-- [ ] T015 [P] [US1] Extend deterministic arbitrage controller evaluation coverage for shipped controller fixtures in `tests/integration/simulator/test_controller_evaluation.py`
+- [X] T013 [P] [US1] Add price-threshold controller behavior tests in `tests/unit/control/test_price_threshold.py`
+- [X] T014 [P] [US1] Add arbitrage integration coverage for the package-root price-threshold controller in `tests/integration/control/test_price_threshold_controller.py`
+- [X] T015 [P] [US1] Extend deterministic arbitrage controller evaluation coverage for shipped controller fixtures in `tests/integration/simulator/test_controller_evaluation.py`
 
 ### Implementation for User Story 1
 
