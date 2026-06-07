@@ -104,8 +104,8 @@ self-consumption controller behaves deterministically on
 
 ### Implementation for User Story 2
 
-- [ ] T025 [US2] Implement `SocGuardrailConfig` in `src/open_energy_lab/control/_config.py`
-- [ ] T026 [US2] Implement `SocGuardrailController` in `src/open_energy_lab/control/soc_guardrail.py`
+- [X] T025 [US2] Implement `SocGuardrailConfig` in `src/open_energy_lab/control/_config.py`
+- [X] T026 [US2] Implement `SocGuardrailController` in `src/open_energy_lab/control/soc_guardrail.py`
 - [ ] T027 [US2] Implement `PVSelfConsumptionConfig` in `src/open_energy_lab/control/_config.py`
 - [ ] T028 [US2] Implement `PVSelfConsumptionController` in `src/open_energy_lab/control/pv_self_consumption.py`
 - [ ] T029 [US2] Export the guardrail and PV controller public surface from `src/open_energy_lab/control/__init__.py`
