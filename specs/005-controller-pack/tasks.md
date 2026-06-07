@@ -41,10 +41,10 @@ scaffolding without expanding legacy code.
 **Purpose**: Add shared package scaffolding and validation infrastructure that
 blocks all user story work.
 
-- [ ] T005 [P] Add control package import-boundary coverage in `tests/unit/control/test_import_boundary.py`
-- [ ] T006 [P] Add typed controller configuration validation coverage in `tests/unit/control/test_configs.py`
-- [ ] T007 [P] Add controller support-matrix and unsupported-scenario coverage in `tests/unit/control/test_support_matrix.py`
-- [ ] T008 [P] Add controller-pack fixture loading helpers in `tests/integration/control/controller_fixture_utils.py`
+- [X] T005 [P] Add control package import-boundary coverage in `tests/unit/control/test_import_boundary.py`
+- [X] T006 [P] Add typed controller configuration validation coverage in `tests/unit/control/test_configs.py`
+- [X] T007 [P] Add controller support-matrix and unsupported-scenario coverage in `tests/unit/control/test_support_matrix.py`
+- [X] T008 [P] Add controller-pack fixture loading helpers in `tests/integration/control/controller_fixture_utils.py`
 - [ ] T009 [P] Extend controller fixture schema validation for controller-pack artifacts, provenance fields, and legacy-reference fields in `tests/integration/simulator/test_controller_fixture_schema.py`
 - [ ] T010 Create shared control configuration helpers, shipped-controller support declarations, and package scaffolding in `src/open_energy_lab/control/_config.py` and `src/open_energy_lab/control/__init__.py`
 - [ ] T011 Create the initial preserve/improve/reject migration note content in `docs/migration/controller-pack.md`
