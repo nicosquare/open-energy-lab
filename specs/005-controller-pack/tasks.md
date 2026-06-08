@@ -129,10 +129,10 @@ existing explicit-dispatch and built-in simulator rule paths remain available.
 
 ### Tests for User Story 3
 
-- [ ] T032 [P] [US3] Extend optional dependency boundary coverage for `open_energy_lab.control` in `tests/unit/test_optional_dependency_boundaries.py`
-- [ ] T033 [P] [US3] Add control package no-legacy-import checks in `tests/unit/test_no_legacy_imports.py`
-- [ ] T034 [P] [US3] Extend root import-contract coverage for `open_energy_lab.control` in `tests/unit/test_import_contract.py`
-- [ ] T035 [P] [US3] Extend preserved explicit-dispatch and built-in rule regression coverage in `tests/integration/simulator/test_battery_arbitrage_trace.py` and `tests/integration/simulator/test_battery_load_pv_trace.py`
+- [X] T032 [P] [US3] Extend optional dependency boundary coverage for `open_energy_lab.control` in `tests/unit/test_optional_dependency_boundaries.py`
+- [X] T033 [P] [US3] Add control package no-legacy-import checks in `tests/unit/test_no_legacy_imports.py`
+- [X] T034 [P] [US3] Extend root import-contract coverage for `open_energy_lab.control` in `tests/unit/test_import_contract.py`
+- [X] T035 [P] [US3] Extend preserved explicit-dispatch and built-in rule regression coverage in `tests/integration/simulator/test_battery_arbitrage_trace.py` and `tests/integration/simulator/test_battery_load_pv_trace.py`
 
 ### Implementation for User Story 3
 
