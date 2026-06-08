@@ -136,9 +136,9 @@ existing explicit-dispatch and built-in simulator rule paths remain available.
 
 ### Implementation for User Story 3
 
-- [ ] T036 [US3] Refine package-root control imports and metadata for import-light behavior in `src/open_energy_lab/control/__init__.py`
-- [ ] T037 [US3] Update control package API maturity guidance in `docs/migration/api-maturity.md`
-- [ ] T038 [US3] Update control package dependency and parity guidance in `docs/migration/dependency-policy.md` and `docs/migration/parity-validation.md`
+- [X] T036 [US3] Refine package-root control imports and metadata for import-light behavior in `src/open_energy_lab/control/__init__.py`
+- [X] T037 [US3] Update control package API maturity guidance in `docs/migration/api-maturity.md`
+- [X] T038 [US3] Update control package dependency and parity guidance in `docs/migration/dependency-policy.md` and `docs/migration/parity-validation.md`
 
 **Checkpoint**: User Story 3 is functional and independently testable through
 the import-boundary and preserved-path regression suites.

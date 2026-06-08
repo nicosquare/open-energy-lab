@@ -130,3 +130,48 @@ External service, license, hardware, or scheduler assumptions: commercial licens
 Rationale: the controller boundary is validated on CPU with deterministic fixtures and does not reopen solver, experiment-service, HPC, or Rust migrations
 Alternatives considered: coupling Phase 6 validation to these stacks was rejected as out of scope and brittle
 ```
+
+## Native Controller Pack Classification
+
+The `005-controller-pack` feature extends the stable control surface without
+widening runtime dependencies beyond the existing lightweight library
+boundary. The review record for this feature is:
+
+```text
+Dependency: Python standard library importlib/typing support and existing open_energy_lab core and simulator modules
+Requested by: 005-controller-pack
+Target module: src/open_energy_lab/control/__init__.py, src/open_energy_lab/control/_config.py, src/open_energy_lab/control/price_threshold.py, src/open_energy_lab/control/soc_guardrail.py, src/open_energy_lab/control/pv_self_consumption.py
+Classification: core
+Import boundary: allowed at import time for open_energy_lab.control, with package-root exports resolved lazily so ordinary imports stay import-light
+Install mechanism: base project environment via uv-managed Python
+Fallback or skip behavior: none; shipped native controllers are part of the normal library surface
+External service, license, hardware, or scheduler assumptions: none
+Rationale: the first shipped controller pack must remain portable, deterministic, and layered on top of open_energy_lab.core and open_energy_lab.simulator instead of introducing new runtime stacks
+Alternatives considered: eager package-root imports, CityLearn adapters, RL frameworks, solver-backed planning, and notebook-first controller dependencies were rejected because they would weaken the ordinary import boundary
+```
+
+```text
+Dependency: pytest-based controller-pack validation commands
+Requested by: 005-controller-pack
+Target module: tests/unit/control, tests/integration/control, tests/integration/simulator, tests/unit/test_optional_dependency_boundaries.py, tests/unit/test_no_legacy_imports.py, tests/unit/test_import_contract.py
+Classification: optional
+Import boundary: test-only; must not affect library runtime imports
+Install mechanism: uv sync --dev
+Fallback or skip behavior: if dev dependencies are unavailable, document validation as blocked rather than broadening runtime requirements
+External service, license, hardware, or scheduler assumptions: none
+Rationale: shipped-controller promotion depends on deterministic unit, integration, import-boundary, and preserved-path regression evidence, but pytest remains non-runtime tooling
+Alternatives considered: relying only on ad hoc scripts or informal fixture review was rejected because it would weaken repeatable evidence for stable API promotion
+```
+
+```text
+Dependency: PyTorch, TorchRL, CityLearn, solver stacks, W&B, notebook tooling, GPU/SLURM helpers, Rust parity toolchains, and legacy reference packages
+Requested by: none for 005-controller-pack runtime; only possible future adapters, parity workflows, or legacy reference checks
+Target module: none in the stable open_energy_lab.control surface
+Classification: optional, external-service-backed, hardware-bound, or legacy-only depending on family
+Import boundary: excluded from open_energy_lab.control package-root and controller module imports
+Install mechanism: none for this feature
+Fallback or skip behavior: controller-pack validation proceeds without them; any blocked future checks must be documented explicitly
+External service, license, hardware, or scheduler assumptions: may require commercial licenses, credentials, GPU runtime, SLURM access, Rust toolchains, or legacy checkout context outside this feature
+Rationale: the controller pack is intentionally current-step, CPU-default, and deterministic, so ordinary imports must not trigger research-stack initialization or legacy runtime coupling
+Alternatives considered: making these stacks default dependencies or treating CityLearn as a compatibility target was rejected because it would violate the constitution’s dependency boundary
+```
