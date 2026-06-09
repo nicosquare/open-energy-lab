@@ -221,3 +221,70 @@ def test_price_threshold_trace_matches_shared_fixture_expectations() -> None:
         trace.requested_power_kw,
         abs=DEFAULT_ABSOLUTE_TOLERANCE,
     )
+
+
+def test_explicit_dispatch_and_built_in_rule_paths_remain_distinct() -> None:
+    fixture = _load_case()
+    dispatch_case = fixture["dispatch_case"]
+    policy_case = fixture["policy_case"]
+    grid, battery, load, weather, pv, price_signal, objective = _build_common_scenario_parts(
+        fixture
+    )
+
+    dispatch_trace = BatteryLoadPVScenario(
+        scenario_id=f"{fixture['case_id']}-dispatch-regression",
+        time_grid=grid,
+        battery=battery,
+        load=load,
+        weather=weather,
+        pv=pv,
+        price_signal=price_signal,
+        objective=objective,
+        dispatch_requests=DispatchRequestSeries(
+            requested_power_kw=dispatch_case["dispatch_requests_kw"],
+            sign_convention=POSITIVE_DISPATCH_MEANING,
+            source="shared-fixture",
+        ),
+    ).evaluate_trace()
+    policy_trace = BatteryLoadPVScenario(
+        scenario_id=f"{fixture['case_id']}-policy-regression",
+        time_grid=grid,
+        battery=battery,
+        load=load,
+        weather=weather,
+        pv=pv,
+        price_signal=price_signal,
+        objective=objective,
+        rule_policy=DeterministicRulePolicy(
+            policy_name=policy_case["policy_name"],
+            price_threshold=policy_case["price_threshold"],
+            below_threshold_action=policy_case["below_threshold_action"],
+            above_threshold_action=policy_case["above_threshold_action"],
+            at_threshold_action=policy_case["at_threshold_action"],
+        ),
+    ).evaluate_trace()
+
+    assert dispatch_trace.requested_power_kw == pytest.approx(
+        dispatch_case["dispatch_requests_kw"],
+        abs=dispatch_case["validation"]["numeric_tolerance"],
+    )
+    assert policy_trace.requested_power_kw == pytest.approx(
+        policy_case["expected_trace"]["requested_power_kw"],
+        abs=policy_case["validation"]["numeric_tolerance"],
+    )
+    assert policy_trace.pv_generation_kw == pytest.approx(
+        dispatch_trace.pv_generation_kw,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
+    assert policy_trace.requested_power_kw != pytest.approx(
+        dispatch_trace.requested_power_kw,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
+    assert policy_trace.net_grid_power_kw != pytest.approx(
+        dispatch_trace.net_grid_power_kw,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
+    assert policy_trace.total_settlement != pytest.approx(
+        dispatch_trace.total_settlement,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )

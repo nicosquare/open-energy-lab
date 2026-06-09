@@ -10,6 +10,12 @@ Committed simulator fixtures currently include:
 - `tests/fixtures/simulator/controller_arbitrage_case.json`
 - `tests/fixtures/simulator/controller_battery_load_pv_case.json`
 
+Committed controller-pack fixtures for the native control package include:
+
+- `tests/fixtures/simulator/price_threshold_controller_case.json`
+- `tests/fixtures/simulator/soc_guardrail_arbitrage_case.json`
+- `tests/fixtures/simulator/pv_self_consumption_case.json`
+
 Each committed simulator fixture must include:
 
 - origin and author/source note
@@ -19,6 +25,30 @@ Each committed simulator fixture must include:
 - expected invariants or outputs
 - numeric tolerance
 - refresh policy
+
+## Controller-Pack Active Fixtures
+
+The three controller-pack fixture files listed above are now active
+deterministic validation artifacts for spec `005-controller-pack`.
+
+They should be used as shipped-controller evidence, not as preserved-path
+regression baselines:
+
+- `price_threshold_controller_case.json` records the exact arbitrage trace for
+  `PriceThresholdController`
+- `soc_guardrail_arbitrage_case.json` records the exact low-SOC correction
+  trace for `SocGuardrailController`
+- `pv_self_consumption_case.json` records the exact PV-driven proposals,
+  realized clamp event, PV derivation outputs, net-grid accounting, and
+  discounted settlement trace for `PVSelfConsumptionController`
+
+All three controller-pack fixtures are:
+
+- synthetic, small, and reviewable
+- backed by runner-verified `expected_trace` data
+- explicit about cited legacy evidence paths and refresh policy
+- distinct from preserved explicit-dispatch and built-in simulator-rule
+  regression evidence
 
 ## Current Fixture
 

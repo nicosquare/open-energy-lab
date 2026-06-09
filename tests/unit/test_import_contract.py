@@ -15,6 +15,15 @@ OPTIONAL_RESEARCH_MODULES = {
     "wandb",
 }
 
+EXPECTED_CONTROL_EXPORTS = [
+    "PVSelfConsumptionConfig",
+    "PVSelfConsumptionController",
+    "PriceThresholdConfig",
+    "PriceThresholdController",
+    "SocGuardrailConfig",
+    "SocGuardrailController",
+]
+
 
 def test_root_package_imports_from_source_tree_without_optional_stacks():
     before_import = set(sys.modules)
@@ -27,6 +36,34 @@ def test_root_package_imports_from_source_tree_without_optional_stacks():
     assert package_file.name == "__init__.py"
     assert package_file.parent.name == "open_energy_lab"
     assert package_file.parent.parent.name == "src"
+
+    newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
+        set(sys.modules) - before_import
+    )
+    assert newly_loaded_optional_modules == set()
+
+
+def test_control_package_imports_from_source_tree_without_optional_stacks():
+    before_import = set(sys.modules)
+
+    module = importlib.import_module("open_energy_lab.control")
+
+    assert module.__file__ is not None
+    module_file = Path(module.__file__).resolve()
+    assert module.__name__ == "open_energy_lab.control"
+    assert module_file.name == "__init__.py"
+    assert module_file.parent.name == "control"
+    assert module_file.parent.parent.name == "open_energy_lab"
+    assert module.__all__ == EXPECTED_CONTROL_EXPORTS
+    assert module.PVSelfConsumptionConfig.__module__ == "open_energy_lab.control._config"
+    assert (
+        module.PVSelfConsumptionController.__module__
+        == "open_energy_lab.control.pv_self_consumption"
+    )
+    assert module.PriceThresholdConfig.__module__ == "open_energy_lab.control._config"
+    assert module.PriceThresholdController.__module__ == "open_energy_lab.control.price_threshold"
+    assert module.SocGuardrailConfig.__module__ == "open_energy_lab.control._config"
+    assert module.SocGuardrailController.__module__ == "open_energy_lab.control.soc_guardrail"
 
     newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
         set(sys.modules) - before_import

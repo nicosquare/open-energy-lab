@@ -104,6 +104,49 @@ If future controller-boundary work cannot run one of these checks locally, the
 skip reason must be recorded in the relevant spec plan or quickstart, alongside
 any environment assumptions and the intended follow-up validation path.
 
+## Native Controller Pack Governance
+
+The `005-controller-pack` migration extends the controller boundary with a
+stable native controller surface while keeping parity selective:
+
+- Keep `src/open_energy_lab/control` import-light, free of runtime `legacy/*`
+  imports, and layered on top of `open_energy_lab.core` and
+  `open_energy_lab.simulator`.
+- Treat `tests/fixtures/simulator/price_threshold_controller_case.json`,
+  `tests/fixtures/simulator/soc_guardrail_arbitrage_case.json`, and
+  `tests/fixtures/simulator/pv_self_consumption_case.json` as controller-pack
+  validation evidence, not as preserved-path parity baselines.
+- Keep `tests/integration/simulator/test_battery_arbitrage_trace.py` and
+  `tests/integration/simulator/test_battery_load_pv_trace.py` focused on the
+  preserved explicit-dispatch and built-in-rule simulator paths that must stay
+  available alongside the new control package.
+- Preserve exact fixture provenance, numeric tolerance, and refresh-policy
+  notes when controller-pack fixtures change.
+- Keep unsupported-scenario failures explicit so boundary errors remain
+  distinguishable from simulator feasibility clamping and settlement behavior.
+- Use focused invariants and deterministic traces instead of broad legacy
+  controller parity claims.
+
+Minimum controller-pack validation now includes:
+
+- `tests/unit/control/test_import_boundary.py`
+- `tests/unit/control/test_controller_interface.py`
+- `tests/unit/control/test_support_matrix.py`
+- `tests/unit/test_optional_dependency_boundaries.py`
+- `tests/unit/test_no_legacy_imports.py`
+- `tests/unit/test_import_contract.py`
+- `tests/integration/control/test_price_threshold_controller.py`
+- `tests/integration/control/test_scenario_support.py`
+- `tests/integration/simulator/test_controller_fixture_schema.py`
+- `tests/integration/simulator/test_controller_evaluation.py`
+- `tests/integration/simulator/test_battery_arbitrage_trace.py`
+- `tests/integration/simulator/test_battery_load_pv_trace.py`
+
+If future controller-pack work cannot run one of these checks locally, the
+skip reason must be recorded in the relevant spec plan or quickstart,
+alongside any environment assumptions and the intended follow-up validation
+path.
+
 ## Out-of-Scope Boundary
 
 The foundation feature does not migrate simulator, TPM, RL, optimization,

@@ -1,0 +1,91 @@
+{
+  "case_id": "price-threshold-controller-case-v1",
+  "status": "active",
+  "purpose": "Deterministic synthetic arbitrage validation case for exact PriceThresholdController evaluation.",
+  "origin": {
+    "author": "OpenAI Codex",
+    "construction": "Manually authored from the US1 controller-pack contracts and then checked against the current implementation with uv run python -c controller-evaluation calculations.",
+    "seed": null,
+    "generation_command": null,
+    "refresh_policy": "Refresh only when the documented price-threshold controller thresholds, battery/timestep inputs, or discounted-export settlement semantics intentionally change."
+  },
+  "legacy_references": [
+    "legacy/old_tpm/src_py/legacy/storage.py",
+    "legacy/old_tpm/src_py/simulator/common/battery.py",
+    "legacy/old_tpm/src_py/simulator/common/pricing.py",
+    "legacy/old_tpm/src_py/simulator/common/time.py"
+  ],
+  "scenario_kind": "ArbitrageScenario",
+  "controller_name": "PriceThresholdController",
+  "fixture_source": "tests/fixtures/simulator/price_threshold_controller_case.json",
+  "config_reference": "PriceThresholdConfig",
+  "planned_config": {
+    "charge_below_import_price": 0.15,
+    "discharge_above_import_price": 0.25,
+    "charge_request_kw": 5.0,
+    "discharge_request_kw": 5.0
+  },
+  "time_grid": {
+    "num_steps": 3,
+    "time_step_hours": 1.0
+  },
+  "battery": {
+    "name": "battery",
+    "capacity_kwh": 10.0,
+    "max_charge_kw": 5.0,
+    "max_discharge_kw": 5.0,
+    "charge_efficiency": 0.95,
+    "discharge_efficiency": 0.95,
+    "initial_soc": 0.5,
+    "min_soc": 0.0,
+    "max_soc": 1.0
+  },
+  "pricing": {
+    "currency": "USD",
+    "unit_rate_name": "energy-price",
+    "import_prices": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "export_price_ratio": 0.8,
+    "interpretation": "discounted export relative to import prices",
+    "time_alignment": "step-start"
+  },
+  "expected_properties": {
+    "validates_controller_evaluation": true,
+    "validates_repeated_run_determinism": true,
+    "validates_preserved_explicit_dispatch_regression": false,
+    "validates_preserved_built_in_rule_regression": false
+  },
+  "expected_trace": {
+    "requested_power_kw": [
+      5.0,
+      0.0,
+      -5.0
+    ],
+    "realized_power_kw": [
+      5.0,
+      0.0,
+      -5.0
+    ],
+    "soc": [
+      0.975,
+      0.975,
+      0.44868421052631574
+    ],
+    "step_settlement": [
+      -0.5,
+      -0.0,
+      1.2
+    ],
+    "total_settlement": 0.7,
+    "constraint_events": []
+  },
+  "numeric_tolerance": 1e-06,
+  "provenance_notes": [
+    "Keep the fixture synthetic, small, and reviewable.",
+    "The expected controller proposals and realized arbitrage trace were verified against evaluate_with_controller for the documented three-step price-threshold controller configuration.",
+    "This fixture validates shipped native controller behavior only; preserved explicit-dispatch and built-in simulator rule evidence remains in the shared non-controller arbitrage fixture."
+  ]
+}

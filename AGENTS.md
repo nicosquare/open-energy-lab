@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
-Current Spec Kit plan: `specs/004-controller-boundary/plan.md`
+Current Spec Kit plan: `specs/005-controller-pack/plan.md`
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan.

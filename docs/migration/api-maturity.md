@@ -51,6 +51,42 @@ now. They may be used by package-internal code and focused validation, but
 they are not yet promoted as root-level stable imports until a later spec
 explicitly broadens the public surface.
 
+### Native Controller Pack
+
+The `005-controller-pack` feature promotes the following imports to stable
+public API for the first shipped native controller surface:
+
+```python
+from open_energy_lab.control import (
+    PVSelfConsumptionConfig,
+    PVSelfConsumptionController,
+    PriceThresholdConfig,
+    PriceThresholdController,
+    SocGuardrailConfig,
+    SocGuardrailController,
+)
+```
+
+These imports are stable because they now have:
+
+- package-root export coverage tied to the documented support matrix
+- typed configuration validation and `ControllerInterface` conformance tests
+- deterministic controller-pack fixtures plus repeated-run runner checks
+- import-boundary, import-contract, and no-legacy-import coverage that names
+  `open_energy_lab.control` explicitly
+- preserved-path regression evidence proving the controller pack does not
+  replace explicit-dispatch or built-in simulator rule flows
+- migration documentation that records behavior, dependency boundaries, and
+  selective parity expectations
+
+Supporting controller modules such as `open_energy_lab.control._config`,
+`open_energy_lab.control.price_threshold`,
+`open_energy_lab.control.soc_guardrail`, and
+`open_energy_lab.control.pv_self_consumption` remain implementation-facing
+modules. They are intentionally imported lazily through the package root so
+ordinary `open_energy_lab.control` imports stay import-light while the stable
+package-root surface remains fixed.
+
 ## Experimental API
 
 `open_energy_lab.experimental.*` is for immature migrations and incubating APIs.
