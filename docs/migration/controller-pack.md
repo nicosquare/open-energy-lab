@@ -1,13 +1,13 @@
 # Native Controller Pack Migration Note
 
-Status: phase-4-us2
+Status: complete
 
 Spec `005-controller-pack` introduces the first reusable native controller
-package under `src/open_energy_lab/control`. The current phase ships the full
-first controller pack, commits exact deterministic fixture evidence for all
-three shipped controllers, and keeps simulator-owned feasibility enforcement,
-settlement behavior, and preserved-path regression coverage separate from the
-native controller evidence.
+package under `src/open_energy_lab/control`. The completed feature ships the
+full first controller pack, commits exact deterministic fixture evidence for
+all three shipped controllers, and keeps simulator-owned feasibility
+enforcement, settlement behavior, and preserved-path regression coverage
+separate from the native controller evidence.
 
 ## Target Module Paths
 
@@ -31,6 +31,11 @@ native controller evidence.
 - `tests/integration/control/test_scenario_support.py`
 - `tests/integration/simulator/test_controller_fixture_schema.py`
 - `tests/integration/simulator/test_controller_evaluation.py`
+- `tests/integration/simulator/test_battery_arbitrage_trace.py`
+- `tests/integration/simulator/test_battery_load_pv_trace.py`
+- `tests/unit/test_optional_dependency_boundaries.py`
+- `tests/unit/test_no_legacy_imports.py`
+- `tests/unit/test_import_contract.py`
 
 ## Legacy Source Paths
 
@@ -228,10 +233,15 @@ records the verified native-controller trace:
 - step settlement: `[-0.5, -0.0, 1.2]`
 - total settlement: `0.7`
 
-## Follow-Up Work
+## Final Validation Summary
 
-- `T032` to `T038` will harden the import-boundary, no-legacy-import, API
-  maturity, and preserved-path regression evidence around the completed
-  shipped controller pack.
-- Later migration docs will promote dependency-boundary and parity-validation
-  notes once the US3 guardrails are complete.
+The completed Phase 6 validation run records:
+
+- `96 passed` from
+  `uv run pytest tests/unit/control tests/integration/control tests/integration/simulator`
+- `65 passed` from `uv run pytest tests/unit/core tests/unit/simulator`
+- successful import smoke coverage for
+  `open_energy_lab.control`, `open_energy_lab.core`, and
+  `open_energy_lab.simulator`
+- no `legacy/*` runtime import matches under `src/open_energy_lab/control`,
+  the controller-pack test directories, or `docs/migration`

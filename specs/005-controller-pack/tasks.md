@@ -150,10 +150,10 @@ the import-boundary and preserved-path regression suites.
 **Purpose**: Finalize quickstart validation guidance and cross-story
 documentation.
 
-- [ ] T039 [P] Update controller-pack review and validation commands in `specs/005-controller-pack/quickstart.md`
-- [ ] T040 [P] Update migration overview references for the native control package in `docs/migration/README.md`
-- [ ] T041 Run the validation commands documented in `specs/005-controller-pack/quickstart.md`: `uv run pytest tests/unit/control tests/integration/control tests/integration/simulator`, `uv run pytest tests/unit/core tests/unit/simulator`, `uv run python -c "import open_energy_lab.control; import open_energy_lab.core; import open_energy_lab.simulator"`, and `rg "from legacy|import legacy" src/open_energy_lab/control tests/unit/control tests/integration/control tests/integration/simulator docs/migration`
-- [ ] T042 Document final validation outcomes and any skipped checks in `specs/005-controller-pack/quickstart.md`
+- [X] T039 [P] Update controller-pack review and validation commands in `specs/005-controller-pack/quickstart.md`
+- [X] T040 [P] Update migration overview references for the native control package in `docs/migration/README.md`
+- [X] T041 Run the validation commands documented in `specs/005-controller-pack/quickstart.md`: `uv run pytest tests/unit/control tests/integration/control tests/integration/simulator`, `uv run pytest tests/unit/core tests/unit/simulator`, `uv run python -c "import open_energy_lab.control; import open_energy_lab.core; import open_energy_lab.simulator"`, and `rg "from legacy|import legacy" src/open_energy_lab/control tests/unit/control tests/integration/control tests/integration/simulator docs/migration`
+- [X] T042 Document final validation outcomes and any skipped checks in `specs/005-controller-pack/quickstart.md`
 
 ---
 

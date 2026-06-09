@@ -1,10 +1,10 @@
 # Quickstart: Native Controller Pack
 
-Use this quickstart to review the plan and guide later implementation. This
-feature introduces the first reusable native controllers in
-`open_energy_lab.control` while preserving the stable controller contract in
-`open_energy_lab.core` and the simulator-owned runner in
-`open_energy_lab.simulator`.
+Use this quickstart to review the completed controller-pack feature and rerun
+its focused validation set. The feature introduces the first reusable native
+controllers in `open_energy_lab.control` while preserving the stable
+controller contract in `open_energy_lab.core` and the simulator-owned runner
+in `open_energy_lab.simulator`.
 
 ## Review the Feature
 
@@ -27,6 +27,26 @@ Confirm the intended feature boundary:
 - CityLearn, RL, solver-backed planning, and runtime legacy imports remain out
   of scope
 
+## Review the Final Migration Notes
+
+```bash
+sed -n '1,260p' docs/migration/controller-pack.md
+sed -n '1,220p' docs/migration/api-maturity.md
+sed -n '1,260p' docs/migration/dependency-policy.md
+sed -n '1,260p' docs/migration/parity-validation.md
+sed -n '1,220p' docs/migration/README.md
+```
+
+Use these files to confirm that:
+
+- the stable `open_energy_lab.control` package-root exports are documented
+- the native control package remains import-light and free of runtime
+  `legacy/*` imports
+- controller-pack evidence stays fixture-backed and separate from broad legacy
+  parity claims
+- migration overview references point reviewers to the current controller-pack
+  guidance
+
 ## Review the Contracts
 
 ```bash
@@ -36,7 +56,7 @@ sed -n '1,220p' specs/005-controller-pack/contracts/configuration-contract.md
 sed -n '1,220p' specs/005-controller-pack/contracts/validation-case.md
 ```
 
-Before implementation, make sure the contracts agree on:
+Confirm the contracts agree on:
 
 - stable package-root exports from `open_energy_lab.control`
 - explicit per-controller scenario support
@@ -97,7 +117,7 @@ sed -n '1,220p' specs/001-library-foundation/quickstart.md
 sed -n '1,260p' specs/004-controller-boundary/quickstart.md
 ```
 
-## Expected Implementation Targets
+## Implemented Targets
 
 After implementation, the main touched areas should be:
 
@@ -110,8 +130,7 @@ tests/fixtures/simulator/
 docs/migration/
 ```
 
-The implementation should stay narrow. It only needs enough structure to
-prove:
+The implemented feature stays narrow. It proves that:
 
 - shipped controllers can be imported and configured from the package root
 - each shipped controller satisfies the stable controller contract
@@ -121,9 +140,9 @@ prove:
 - preserved explicit-dispatch and built-in simulator rule paths still pass
 - the control package remains free of heavy runtime dependencies
 
-## Planned Stable Surface
+## Stable Surface
 
-Planned stable imports for this feature are:
+Stable imports for this feature are:
 
 ```python
 from open_energy_lab.control import (
@@ -139,17 +158,17 @@ from open_energy_lab.core import ControllerInterface
 from open_energy_lab.simulator import evaluate_with_controller
 ```
 
-## Fixture Planning Notes
+## Fixture Evidence
 
-Add small committed controller-pack fixtures under `tests/fixtures/simulator`
-for shipped controller behavior. At minimum, plan for:
+The completed feature ships small committed controller-pack fixtures under
+`tests/fixtures/simulator` for shipped controller behavior:
 
 - one arbitrage case for `PriceThresholdController`
 - one guardrail case showing low-SOC or high-SOC correction
 - one battery-load-PV case for `PVSelfConsumptionController`
 
-Reuse existing boundary fixtures only as runner evidence. The new fixtures
-should prove native shipped controller behavior directly.
+Existing boundary fixtures remain runner evidence. The controller-pack fixtures
+prove native shipped controller behavior directly.
 
 Review current fixture provenance with:
 
@@ -159,7 +178,7 @@ sed -n '1,220p' tests/fixtures/simulator/controller_arbitrage_case.json
 sed -n '1,260p' tests/fixtures/simulator/controller_battery_load_pv_case.json
 ```
 
-## Expected Checks After Tasks Exist
+## Final Validation Commands
 
 ```bash
 uv run pytest tests/unit/control tests/integration/control tests/integration/simulator
@@ -168,7 +187,7 @@ uv run python -c "import open_energy_lab.control; import open_energy_lab.core; i
 rg "from legacy|import legacy" src/open_energy_lab/control tests/unit/control tests/integration/control tests/integration/simulator docs/migration
 ```
 
-Focused validation commands should include:
+Focused follow-up commands remain:
 
 ```bash
 uv run pytest tests/unit/control
@@ -176,6 +195,21 @@ uv run pytest tests/integration/control
 uv run pytest tests/integration/simulator/test_controller_evaluation.py
 uv run pytest tests/integration/simulator/test_battery_arbitrage_trace.py tests/integration/simulator/test_battery_load_pv_trace.py
 ```
+
+## Validation Outcomes
+
+Validation was rerun on `2026-06-08` with the default uv-managed local
+environment.
+
+- `uv run pytest tests/unit/control tests/integration/control tests/integration/simulator`
+  passed with `96 passed`
+- `uv run pytest tests/unit/core tests/unit/simulator` passed with
+  `65 passed`
+- `uv run python -c "import open_energy_lab.control; import open_energy_lab.core; import open_energy_lab.simulator"`
+  passed
+- `rg "from legacy|import legacy" src/open_energy_lab/control tests/unit/control tests/integration/control tests/integration/simulator docs/migration`
+  returned no matches
+- No Phase 6 validation commands were skipped
 
 Checks intentionally out of scope for this feature:
 
