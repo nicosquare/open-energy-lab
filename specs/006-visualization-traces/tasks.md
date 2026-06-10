@@ -42,11 +42,11 @@ and migration-note placeholders without expanding legacy code.
 **Purpose**: Add shared package scaffolding and validation infrastructure that
 blocks all user story work.
 
-- [ ] T005 [P] Add visualization package import-boundary coverage in `tests/unit/visualization/test_import_boundary.py`
-- [ ] T006 [P] Add visualization runtime no-legacy-import coverage in `tests/unit/visualization/test_no_legacy_imports.py`
-- [ ] T007 [P] Add visualization fixture loading helpers in `tests/integration/visualization/fixture_utils.py`
-- [ ] T008 [P] Add fixture-schema and provenance validation for visualization fixtures in `tests/integration/visualization/test_fixture_schema.py`
-- [ ] T009 [P] Add package-surface maturity coverage for stable inspection exports and experimental plotting exports in `tests/unit/visualization/test_package_surface.py`
+- [X] T005 [P] Add visualization package import-boundary coverage in `tests/unit/visualization/test_import_boundary.py`
+- [X] T006 [P] Add visualization runtime no-legacy-import coverage in `tests/unit/visualization/test_no_legacy_imports.py`
+- [X] T007 [P] Add visualization fixture loading helpers in `tests/integration/visualization/fixture_utils.py`
+- [X] T008 [P] Add fixture-schema and provenance validation for visualization fixtures in `tests/integration/visualization/test_fixture_schema.py`
+- [X] T009 [P] Add package-surface maturity coverage for stable inspection exports and experimental plotting exports in `tests/unit/visualization/test_package_surface.py`
 - [ ] T010 Create visualization package scaffolding and export placeholders in `src/open_energy_lab/visualization/__init__.py`, `src/open_energy_lab/visualization/inspection.py`, `src/open_energy_lab/visualization/comparison.py`, `src/open_energy_lab/visualization/plotting.py`, and `src/open_energy_lab/visualization/_persistence.py`
 - [ ] T011 [P] Add visualization API-maturity and dependency-boundary placeholders in `docs/migration/api-maturity.md`, `docs/migration/dependency-policy.md`, and `docs/migration/visualization-traces.md`
 - [ ] T012 [P] Add persisted-output schema validation coverage for supported visualization inputs in `tests/unit/visualization/test_persistence_schema.py`
