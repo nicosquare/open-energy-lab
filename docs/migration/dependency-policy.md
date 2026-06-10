@@ -175,3 +175,49 @@ External service, license, hardware, or scheduler assumptions: may require comme
 Rationale: the controller pack is intentionally current-step, CPU-default, and deterministic, so ordinary imports must not trigger research-stack initialization or legacy runtime coupling
 Alternatives considered: making these stacks default dependencies or treating CityLearn as a compatibility target was rejected because it would violate the constitution’s dependency boundary
 ```
+
+## Visualization Trace Inspection Foundational Classification
+
+The `006-visualization-traces` foundational tasks `T010` through `T013`
+reserve the visualization package root, add persisted-output schema
+validation, and keep plotting outside the always-importable base package. The
+review record for this foundational slice is:
+
+```text
+Dependency: Python standard library importlib and collections/mapping validation support
+Requested by: 006-visualization-traces
+Target module: src/open_energy_lab/visualization/__init__.py, src/open_energy_lab/visualization/inspection.py, src/open_energy_lab/visualization/comparison.py, src/open_energy_lab/visualization/_persistence.py
+Classification: core
+Import boundary: allowed at import time for open_energy_lab.visualization, with package-root helpers resolved lazily so ordinary imports stay import-light
+Install mechanism: base project environment via uv-managed Python
+Fallback or skip behavior: none for the scaffolding modules; later behavior remains deferred until the feature is implemented
+External service, license, hardware, or scheduler assumptions: none
+Rationale: the visualization feature needs a stable package boundary and persisted-output schema rules before full inspection/comparison behavior can be added, but those foundations must not widen runtime requirements
+Alternatives considered: eager package-root imports and visualization-owned execution behavior were rejected because they would weaken the import boundary and confuse simulator ownership
+```
+
+```text
+Dependency: pytest-based visualization schema and import-boundary validation
+Requested by: 006-visualization-traces
+Target module: tests/unit/visualization, tests/integration/visualization
+Classification: optional
+Import boundary: test-only; must not affect library runtime imports
+Install mechanism: uv sync --dev
+Fallback or skip behavior: if dev dependencies are unavailable, document visualization validation as blocked rather than broadening runtime requirements
+External service, license, hardware, or scheduler assumptions: none
+Rationale: persisted-output normalization, import-boundary checks, and fixture-schema validation are required evidence for the visualization feature, but pytest remains non-runtime tooling
+Alternatives considered: relying on ad hoc fixture review was rejected because it weakens deterministic evidence for the future stable surface
+```
+
+```text
+Dependency: plotting backends, notebook tooling, dashboards, W&B, GPU/SLURM helpers, solver stacks, and legacy reference packages
+Requested by: none for the foundational visualization runtime
+Target module: src/open_energy_lab/visualization/plotting.py and future visualization integrations only
+Classification: optional, external-service-backed, hardware-bound, or legacy-only depending on family
+Import boundary: excluded from open_energy_lab.visualization package-root imports during the foundational phase
+Install mechanism: none for this feature slice
+Fallback or skip behavior: base visualization imports and persisted-output validation proceed without them; any later blocked checks must be documented explicitly
+External service, license, hardware, or scheduler assumptions: may require larger local environments, credentials, commercial licenses, or schedulers outside this feature slice
+Rationale: plotting and presentation remain experimental and optional, so the foundational visualization boundary must stay import-light and free of research-stack initialization
+Alternatives considered: making a plotting backend mandatory at package import time was rejected because it violates the core dependency boundary for the unified library
+```

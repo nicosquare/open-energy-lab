@@ -1,6 +1,6 @@
 # Visualization And Trace Inspection Migration Note
 
-Status: scaffold
+Status: foundational scaffolding in progress
 
 This note reserves the migration-documentation home for the visualization and
 trace-inspection MVP under `src/open_energy_lab/visualization`.
@@ -24,13 +24,20 @@ trace-inspection MVP under `src/open_energy_lab/visualization`.
 
 ## Current Boundary
 
-Phase 1 adds scaffolding only:
+The completed foundational phases currently add:
 
-- visualization-specific test-package markers
-- reserved visualization fixture paths plus provenance placeholders
-- this migration-note shell for later preserve/improve/reject details
+- visualization-specific test-package markers and fixture helpers
+- import-boundary and no-legacy-import checks for runtime visualization modules
+- reserved package-root exports for inspection, comparison, and persisted-output
+  loading helpers
+- placeholder `inspection.py`, `comparison.py`, and `plotting.py` modules that
+  keep the intended stable-versus-experimental split explicit
+- persisted-output normalization and validation rules in
+  `src/open_energy_lab/visualization/_persistence.py`
 
-No new runtime visualization behavior is implemented in this phase.
+The feature still does not implement inspection views, comparison outputs, or
+plot rendering in this phase. The new runtime modules reserve those seams
+without changing simulator ownership of execution.
 
 ## Upstream Result Sources
 
@@ -54,3 +61,15 @@ Later implementation phases should expand this note with:
 - rejected runtime coupling to plotting backends, notebook workflows,
   dashboards, and `legacy/*` imports
 - fixture provenance and validation outcomes
+
+## Foundational Decisions Recorded Here
+
+- `open_energy_lab.visualization` now uses lazy package-root exports so
+  inspection/reporting helpers can be promoted later without making plotting a
+  package-root dependency.
+- Persisted-output inputs are normalized through explicit schema rules that
+  preserve supported scenario kinds, timestep alignment, settlement totals, and
+  present-versus-absent section declarations.
+- `src/open_energy_lab/visualization/plotting.py` exists only as an
+  experimental placeholder in this phase and is intentionally excluded from the
+  package-root export list.

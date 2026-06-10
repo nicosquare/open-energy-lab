@@ -87,6 +87,37 @@ modules. They are intentionally imported lazily through the package root so
 ordinary `open_energy_lab.control` imports stay import-light while the stable
 package-root surface remains fixed.
 
+### Visualization Trace Inspection Foundational Scaffolding
+
+The `006-visualization-traces` foundational tasks `T010` through `T013`
+prepare the future visualization package surface without promoting the feature
+to stable public API yet.
+
+The package root now reserves these import paths for the feature:
+
+```python
+from open_energy_lab.visualization import (
+    build_inspection_view,
+    compare_inspection_views,
+    load_persisted_run_output,
+    summarize_inspection_view,
+)
+```
+
+At this phase these imports are scaffolding only because they now have:
+
+- package-root lazy-export coverage proving plotting stays outside the root
+- no-legacy-import checks for the runtime visualization modules
+- persisted-output schema validation for supported scenario families
+- migration-note and dependency-boundary placeholders describing the intended
+  stable-versus-experimental split
+
+These imports are not yet promoted as stable public API because the actual
+inspection, comparison, and plotting behavior is still deferred to later
+implementation tasks. Until the feature lands end to end, the package-root
+helpers are reserved names with explicit placeholder behavior rather than
+shipped user-facing functionality.
+
 ## Experimental API
 
 `open_energy_lab.experimental.*` is for immature migrations and incubating APIs.
