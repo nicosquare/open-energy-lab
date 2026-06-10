@@ -1,0 +1,30 @@
+{
+  "case_id": "visualization-inspection-battery-load-pv-scaffold",
+  "status": "scaffold",
+  "purpose": "Placeholder visualization fixture for stable inspection coverage over a battery-load-PV run.",
+  "origin": {
+    "author": "OpenAI Codex",
+    "construction": "Phase 1 scaffold. Populate from current simulator or controller-driven battery-load-PV outputs during US2 implementation.",
+    "seed": null,
+    "generation_command": null,
+    "refresh_policy": "Replace this scaffold with a small deterministic inspection fixture when T030 is implemented."
+  },
+  "source_fixture": "tests/fixtures/simulator/controller_battery_load_pv_case.json",
+  "scenario_kind": "BatteryLoadPVScenario",
+  "expected_sections": [
+    "battery",
+    "dispatch",
+    "load",
+    "pv",
+    "net_grid",
+    "weather",
+    "settlement"
+  ],
+  "legacy_references": [],
+  "inspection_expectations": {},
+  "numeric_tolerance": 1e-06,
+  "provenance_notes": [
+    "Scaffold only. Do not treat this file as finalized validation evidence.",
+    "Future content should keep weather reporting limited to simulator-exposed fields."
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "case_id": "visualization-comparison-arbitrage-scaffold",
+  "status": "scaffold",
+  "purpose": "Placeholder visualization fixture for same-family arbitrage comparison coverage.",
+  "origin": {
+    "author": "OpenAI Codex",
+    "construction": "Phase 1 scaffold. Populate with two deterministic arbitrage inspection inputs during US3 implementation.",
+    "seed": null,
+    "generation_command": null,
+    "refresh_policy": "Replace this scaffold with deterministic same-family comparison evidence when T037 is implemented."
+  },
+  "scenario_kind": "ArbitrageScenario",
+  "left_source_fixture": "tests/fixtures/simulator/battery_arbitrage_case.json",
+  "right_source_fixture": "tests/fixtures/simulator/controller_arbitrage_case.json",
+  "legacy_references": [],
+  "comparison_expectations": {},
+  "numeric_tolerance": 1e-06,
+  "provenance_notes": [
+    "Scaffold only. Do not treat this file as finalized validation evidence.",
+    "Future content should include at least one deterministic unsupported-case note when cross-family comparison is requested elsewhere."
+  ]
+}

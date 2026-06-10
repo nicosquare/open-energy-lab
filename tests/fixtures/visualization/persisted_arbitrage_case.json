@@ -1,0 +1,22 @@
+{
+  "case_id": "visualization-persisted-arbitrage-scaffold",
+  "status": "scaffold",
+  "purpose": "Placeholder persisted-output fixture for later inspection and plotting reuse without re-simulation.",
+  "origin": {
+    "author": "OpenAI Codex",
+    "construction": "Phase 1 scaffold. Populate with a supported persisted arbitrage output during US1 implementation.",
+    "seed": null,
+    "generation_command": null,
+    "refresh_policy": "Replace this scaffold with a supported persisted-output example when T022 is implemented."
+  },
+  "scenario_kind": "ArbitrageScenario",
+  "source_fixture": "tests/fixtures/simulator/battery_arbitrage_case.json",
+  "persisted_output": {},
+  "inspection_expectations": {},
+  "plot_expectations": {},
+  "numeric_tolerance": 1e-06,
+  "provenance_notes": [
+    "Scaffold only. Do not treat this file as finalized validation evidence.",
+    "Future content should prove inspection or plotting from stored outputs without rerunning simulation."
+  ]
+}

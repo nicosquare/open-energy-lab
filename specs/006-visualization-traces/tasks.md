@@ -30,10 +30,10 @@ implementation and testing of each story.
 **Purpose**: Establish feature-specific visualization scaffolding, fixtures,
 and migration-note placeholders without expanding legacy code.
 
-- [ ] T001 Create visualization test package scaffolds in `tests/unit/visualization/__init__.py` and `tests/integration/visualization/__init__.py`
-- [ ] T002 [P] Create visualization fixture scaffolds in `tests/fixtures/visualization/inspection_arbitrage_case.json`, `tests/fixtures/visualization/inspection_battery_load_pv_case.json`, `tests/fixtures/visualization/comparison_arbitrage_case.json`, and `tests/fixtures/visualization/persisted_arbitrage_case.json`
-- [ ] T003 [P] Add visualization fixture provenance placeholders in `tests/fixtures/visualization/README.md`
-- [ ] T004 [P] Create the visualization migration note scaffold in `docs/migration/visualization-traces.md`
+- [X] T001 Create visualization test package scaffolds in `tests/unit/visualization/__init__.py` and `tests/integration/visualization/__init__.py`
+- [X] T002 [P] Create visualization fixture scaffolds in `tests/fixtures/visualization/inspection_arbitrage_case.json`, `tests/fixtures/visualization/inspection_battery_load_pv_case.json`, `tests/fixtures/visualization/comparison_arbitrage_case.json`, and `tests/fixtures/visualization/persisted_arbitrage_case.json`
+- [X] T003 [P] Add visualization fixture provenance placeholders in `tests/fixtures/visualization/README.md`
+- [X] T004 [P] Create the visualization migration note scaffold in `docs/migration/visualization-traces.md`
 
 ---
 
