@@ -80,9 +80,9 @@ optional plotting layer without direct simulator traversal or re-simulation.
 - [X] T018 [US1] Implement stable inspection-view builders and summary extraction in `src/open_energy_lab/visualization/inspection.py`
 - [X] T019 [US1] Implement persisted-output loading helpers for supported arbitrage results in `src/open_energy_lab/visualization/_persistence.py`
 - [X] T020 [US1] Implement experimental static single-run plotting helpers over inspection views in `src/open_energy_lab/visualization/plotting.py`
-- [ ] T021 [US1] Export stable inspection/reporting helpers and keep plotting behind experimental imports in `src/open_energy_lab/visualization/__init__.py`
-- [ ] T022 [US1] Populate arbitrage and persisted-output fixtures, including provenance notes, in `tests/fixtures/visualization/inspection_arbitrage_case.json`, `tests/fixtures/visualization/persisted_arbitrage_case.json`, and `tests/fixtures/visualization/README.md`
-- [ ] T023 [US1] Document stable inspection usage, persisted-output reuse, and experimental plotting behavior in `docs/migration/visualization-traces.md`
+- [X] T021 [US1] Export stable inspection/reporting helpers and keep plotting behind experimental imports in `src/open_energy_lab/visualization/__init__.py`
+- [X] T022 [US1] Populate arbitrage and persisted-output fixtures, including provenance notes, in `tests/fixtures/visualization/inspection_arbitrage_case.json`, `tests/fixtures/visualization/persisted_arbitrage_case.json`, and `tests/fixtures/visualization/README.md`
+- [X] T023 [US1] Document stable inspection usage, persisted-output reuse, and experimental plotting behavior in `docs/migration/visualization-traces.md`
 
 **Checkpoint**: User Story 1 is functional and independently testable through
 `tests/integration/visualization/test_inspection_arbitrage.py`,

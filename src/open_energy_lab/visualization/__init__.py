@@ -1,7 +1,7 @@
-"""Visualization package scaffolding for inspection and trace review.
+"""Stable package-root exports for visualization inspection and reporting.
 
 Ordinary ``open_energy_lab.visualization`` imports stay import-light by
-resolving the planned stable inspection/reporting helpers lazily. Experimental
+resolving the shipped stable inspection/reporting helpers lazily. Experimental
 plotting remains outside the package-root exports.
 """
 
@@ -11,28 +11,25 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from .comparison import compare_inspection_views
     from .inspection import build_inspection_view, summarize_inspection_view
     from ._persistence import load_persisted_run_output
 
 
 _EXPORT_MAP = {
     "build_inspection_view": (".inspection", "build_inspection_view"),
-    "compare_inspection_views": (".comparison", "compare_inspection_views"),
     "load_persisted_run_output": ("._persistence", "load_persisted_run_output"),
     "summarize_inspection_view": (".inspection", "summarize_inspection_view"),
 }
 
 __all__ = [
     "build_inspection_view",
-    "compare_inspection_views",
     "load_persisted_run_output",
     "summarize_inspection_view",
 ]
 
 
 def __getattr__(name: str) -> Any:
-    """Lazily resolve the planned stable visualization helpers."""
+    """Lazily resolve the stable visualization helpers."""
 
     try:
         module_name, attribute_name = _EXPORT_MAP[name]
