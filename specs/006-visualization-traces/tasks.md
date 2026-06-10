@@ -70,10 +70,10 @@ optional plotting layer without direct simulator traversal or re-simulation.
 
 ### Tests for User Story 1
 
-- [ ] T014 [P] [US1] Add stable inspection-view unit coverage for series ordering, summary extraction, and explicit availability markers in `tests/unit/visualization/test_inspection.py`
-- [ ] T015 [P] [US1] Add arbitrage inspection integration coverage for simulator and controller-driven outputs in `tests/integration/visualization/test_inspection_arbitrage.py`
-- [ ] T016 [P] [US1] Add persisted-output loading coverage for stable inspection reuse in `tests/integration/visualization/test_persisted_outputs.py`
-- [ ] T017 [P] [US1] Add experimental static-plot integration coverage proving no-resimulation behavior in `tests/integration/visualization/test_plotting.py`
+- [X] T014 [P] [US1] Add stable inspection-view unit coverage for series ordering, summary extraction, and explicit availability markers in `tests/unit/visualization/test_inspection.py`
+- [X] T015 [P] [US1] Add arbitrage inspection integration coverage for simulator and controller-driven outputs in `tests/integration/visualization/test_inspection_arbitrage.py`
+- [X] T016 [P] [US1] Add persisted-output loading coverage for stable inspection reuse in `tests/integration/visualization/test_persisted_outputs.py`
+- [X] T017 [P] [US1] Add experimental static-plot integration coverage proving no-resimulation behavior in `tests/integration/visualization/test_plotting.py`
 
 ### Implementation for User Story 1
 
