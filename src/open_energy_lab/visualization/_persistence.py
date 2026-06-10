@@ -22,8 +22,11 @@ REQUIRED_PERSISTED_OUTPUT_KEYS = (
     "provenance_notes",
 )
 OPTIONAL_PERSISTED_OUTPUT_KEYS = ("requested_power_kw",)
+_LOADED_OUTPUT_METADATA_KEYS = ("source_kind", "maturity")
 _ALLOWED_PERSISTED_OUTPUT_KEYS = (
-    set(REQUIRED_PERSISTED_OUTPUT_KEYS) | set(OPTIONAL_PERSISTED_OUTPUT_KEYS)
+    set(REQUIRED_PERSISTED_OUTPUT_KEYS)
+    | set(OPTIONAL_PERSISTED_OUTPUT_KEYS)
+    | set(_LOADED_OUTPUT_METADATA_KEYS)
 )
 _TRACE_PAYLOAD_KEYS = {"series", "available_sections"}
 _SERIES_REQUIRED_KEYS = {"values", "units", "source_field"}
@@ -435,7 +438,10 @@ def validate_persisted_output(value: Mapping[str, object]) -> None:
 def load_persisted_run_output(value: Mapping[str, object]) -> dict[str, object]:
     """Normalize one supported persisted output mapping for later inspection work."""
 
-    return normalize_persisted_output(value)
+    loaded_output = dict(normalize_persisted_output(value))
+    loaded_output["source_kind"] = "persisted_output"
+    loaded_output["maturity"] = "stable"
+    return loaded_output
 
 
 __all__ = [
