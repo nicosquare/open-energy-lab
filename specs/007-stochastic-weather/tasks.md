@@ -41,9 +41,9 @@ migration-note scaffolding without expanding legacy runtime code.
 **Purpose**: Add shared validation infrastructure and package scaffolding that
 blocks all user story work.
 
-- [ ] T005 [P] Add weather package import-boundary coverage in `tests/unit/weather/test_import_boundary.py`
-- [ ] T006 [P] Add weather package no-legacy-import coverage in `tests/unit/weather/test_no_legacy_imports.py`
-- [ ] T007 [P] Extend root optional dependency boundary coverage for `open_energy_lab.weather` and `open_energy_lab.simulator.stochastic_weather` in `tests/unit/test_optional_dependency_boundaries.py`
+- [X] T005 [P] Add weather package import-boundary coverage in `tests/unit/weather/test_import_boundary.py`
+- [X] T006 [P] Add weather package no-legacy-import coverage in `tests/unit/weather/test_no_legacy_imports.py`
+- [X] T007 [P] Extend root optional dependency boundary coverage for `open_energy_lab.weather` and `open_energy_lab.simulator.stochastic_weather` in `tests/unit/test_optional_dependency_boundaries.py`
 - [ ] T008 [P] Add weather fixture loading helpers in `tests/integration/weather/fixture_utils.py` and `tests/integration/simulator/weather_family_fixture_utils.py`
 - [ ] T009 [P] Add fixture-schema and provenance validation for weather artifacts and simulator family fixtures in `tests/integration/weather/test_fixture_schema.py` and `tests/integration/simulator/test_weather_family_fixture_schema.py`
 - [ ] T010 [P] Add stable weather package-surface and import-contract coverage in `tests/unit/weather/test_package_surface.py` and `tests/unit/test_import_contract.py`
