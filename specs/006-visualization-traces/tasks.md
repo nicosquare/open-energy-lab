@@ -167,9 +167,9 @@ remains isolated.
 
 ### Implementation for User Story 4
 
-- [ ] T042 [US4] Refine package-root visualization imports and experimental plotting gating in `src/open_energy_lab/visualization/__init__.py`
-- [ ] T043 [US4] Update migration documentation for stable inspection/reporting and experimental plotting maturity in `docs/migration/api-maturity.md` and `docs/migration/visualization-traces.md`
-- [ ] T044 [US4] Update dependency-boundary guidance for optional plotting support in `docs/migration/dependency-policy.md` and `docs/migration/README.md`
+- [X] T042 [US4] Refine package-root visualization imports and experimental plotting gating in `src/open_energy_lab/visualization/__init__.py`
+- [X] T043 [US4] Update migration documentation for stable inspection/reporting and experimental plotting maturity in `docs/migration/api-maturity.md` and `docs/migration/visualization-traces.md`
+- [X] T044 [US4] Update dependency-boundary guidance for optional plotting support in `docs/migration/dependency-policy.md` and `docs/migration/README.md`
 
 **Checkpoint**: User Story 4 is functional and independently testable through
 the import-boundary and import-smoke suites.

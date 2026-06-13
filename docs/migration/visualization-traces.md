@@ -1,6 +1,6 @@
 # Visualization And Trace Inspection Migration Note
 
-Status: US1 arbitrage inspection, US2 weather-aware inspection, and US3 same-family comparison shipped; plotting remains experimental
+Status: US1 arbitrage inspection, US2 weather-aware inspection, US3 same-family comparison, and US4 import-boundary hardening shipped; plotting remains experimental
 
 This note records the first shipped visualization and trace-inspection slice
 under `src/open_energy_lab/visualization`.
@@ -42,6 +42,17 @@ The completed US1, US2, and US3 slice now ships:
 - experimental static single-run plotting support through
   `open_energy_lab.visualization.plotting.plot_inspection_view`, including
   explicit plot-request metadata for in-memory versus persisted inputs
+
+US4 hardens the package boundary further by:
+
+- keeping the stable package root limited to inspection/reporting helpers only
+- rejecting root-level access to `compare_inspection_views` with guidance to
+  `open_energy_lab.visualization.comparison`
+- rejecting root-level access to `plot_inspection_view` with guidance to
+  `open_energy_lab.visualization.plotting`
+- adding direct smoke coverage that proves ordinary
+  `open_energy_lab.visualization` imports stay separate from experimental
+  plotting imports
 
 The feature still defers:
 
@@ -132,6 +143,17 @@ This plotting helper:
 - keeps optional weather-backed plotting bounded to series already exposed by
   the simulator-backed inspection view
 
+Focused comparison behavior also remains outside the root contract:
+
+```python
+from open_energy_lab.visualization.comparison import compare_inspection_views
+```
+
+The root package now provides explicit import guidance instead of silently
+behaving like comparison or plotting were ordinary root exports. This keeps
+inspection/reporting stable at the package root while callers opt in to
+comparison and experimental plotting through focused modules.
+
 ## Same-Family Comparison Scope
 
 US3 adds a deterministic comparison surface in the focused comparison module:
@@ -216,13 +238,15 @@ These fixtures are:
 
 ## Validation Outcomes
 
-US1, US2, and US3 were validated locally with:
+US1, US2, US3, and the US4 import-boundary hardening slice were validated
+locally with:
 
 ```bash
 uv run pytest tests/unit/visualization/test_inspection.py tests/unit/visualization/test_persistence_schema.py tests/integration/visualization/test_inspection_arbitrage.py tests/integration/visualization/test_persisted_outputs.py tests/integration/visualization/test_plotting.py
 uv run pytest tests/unit/visualization/test_weather_reporting.py tests/integration/visualization/test_inspection_battery_load_pv.py tests/integration/visualization/test_plotting_battery_load_pv.py
 uv run pytest tests/unit/visualization/test_comparison.py tests/integration/visualization/test_comparison.py tests/integration/visualization/test_comparison_failures.py tests/integration/visualization/test_fixture_schema.py
 uv run pytest tests/unit/visualization/test_package_surface.py tests/unit/visualization/test_import_boundary.py tests/unit/visualization/test_no_legacy_imports.py
+uv run pytest tests/unit/test_optional_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/visualization/test_optional_plotting_imports.py
 uv run pytest tests/integration/simulator/test_controller_evaluation.py
 python -m compileall src/open_energy_lab/visualization
 ```
