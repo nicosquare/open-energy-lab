@@ -187,6 +187,19 @@ uv run pytest tests/integration/visualization/test_fixture_schema.py
 
 ## Validation Outcomes
 
-Validation should be recorded after implementation using the default uv-managed
-local environment. If any plotting checks require an optional backend not yet
-installed, document that explicitly and keep base import checks separate.
+Recorded on 2026-06-13 in the default uv-managed local environment:
+
+- `uv run pytest tests/unit/visualization tests/integration/visualization`
+  passed with `46 passed` in `0.14s`.
+- `uv run pytest tests/unit/simulator tests/integration/simulator` passed
+  with `83 passed` in `0.29s`.
+- `uv run python -c "import open_energy_lab.visualization; import open_energy_lab.simulator; import open_energy_lab.core"`
+  completed successfully with no import errors.
+- `rg "from legacy|import legacy" src/open_energy_lab/visualization tests/unit/visualization tests/integration/visualization docs/migration`
+  returned no matches, confirming the reviewed visualization paths and
+  migration docs remain free of runtime `legacy/*` imports.
+
+Optional plotting backend checks skipped: none. The current plotting coverage
+continues to use an injected test backend, so the base visualization import
+check remains separate and passes without requiring an additional rendering
+dependency.
