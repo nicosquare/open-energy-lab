@@ -254,6 +254,7 @@ class ControllerEvaluationResult:
     realized_power_kw: list[float]
     total_settlement: float
     final_battery_state: BatteryStateSnapshot | None
+    source_scenario: object | None = None
     underlying_trace: object | None = None
     rejection: ControllerRejectionRecord | None = None
 

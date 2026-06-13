@@ -73,6 +73,7 @@ def _build_incomplete_context_result(
         realized_power_kw=[],
         total_settlement=0.0,
         final_battery_state=None,
+        source_scenario=scenario,
         rejection=ControllerRejectionRecord(
             scenario_id=scenario.scenario_id,
             scenario_kind=type(scenario).__name__,
@@ -225,6 +226,7 @@ def evaluate_with_controller(
             scenario,
             soc_fraction=current_state.soc,
         ),
+        source_scenario=scenario,
         underlying_trace=underlying_trace,
     )
 
