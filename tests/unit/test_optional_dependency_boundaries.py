@@ -19,6 +19,14 @@ OPTIONAL_RESEARCH_MODULES = {
     "wandb",
 }
 
+VISUALIZATION_MODULES = (
+    "open_energy_lab.visualization",
+    "open_energy_lab.visualization.inspection",
+    "open_energy_lab.visualization.comparison",
+    "open_energy_lab.visualization._persistence",
+    "open_energy_lab.visualization.plotting",
+)
+
 
 def _optional_modules_loaded_after(before_import: set[str]) -> set[str]:
     return OPTIONAL_RESEARCH_MODULES & (set(sys.modules) - before_import)
@@ -52,6 +60,11 @@ def test_control_import_does_not_load_optional_research_stacks() -> None:
     _assert_import_stays_clear_of_optional_research_stacks("open_energy_lab.control")
 
 
+def test_visualization_import_does_not_load_optional_research_stacks() -> None:
+    """The stable visualization package import must stay isolated from optional stacks."""
+    _assert_import_stays_clear_of_optional_research_stacks("open_energy_lab.visualization")
+
+
 @pytest.mark.parametrize(
     "module_name",
     (
@@ -65,10 +78,11 @@ def test_control_import_does_not_load_optional_research_stacks() -> None:
         "open_energy_lab.control.price_threshold",
         "open_energy_lab.control.soc_guardrail",
         "open_energy_lab.control.pv_self_consumption",
+        *VISUALIZATION_MODULES,
     ),
 )
 def test_simulator_submodule_imports_stay_clear_of_optional_research_stacks(
     module_name: str,
 ) -> None:
-    """US3 modules must not pull optional research stacks at import time."""
+    """Stable package submodules must not pull optional research stacks at import time."""
     _assert_import_stays_clear_of_optional_research_stacks(module_name)

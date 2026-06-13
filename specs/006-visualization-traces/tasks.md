@@ -161,9 +161,9 @@ remains isolated.
 
 ### Tests for User Story 4
 
-- [ ] T039 [P] [US4] Extend root optional dependency boundary coverage for visualization imports in `tests/unit/test_optional_dependency_boundaries.py`
-- [ ] T040 [P] [US4] Add root import-contract coverage for stable visualization exports in `tests/unit/test_import_contract.py`
-- [ ] T041 [P] [US4] Add direct import smoke coverage separating base visualization imports from experimental plotting imports in `tests/unit/visualization/test_optional_plotting_imports.py`
+- [X] T039 [P] [US4] Extend root optional dependency boundary coverage for visualization imports in `tests/unit/test_optional_dependency_boundaries.py`
+- [X] T040 [P] [US4] Add root import-contract coverage for stable visualization exports in `tests/unit/test_import_contract.py`
+- [X] T041 [P] [US4] Add direct import smoke coverage separating base visualization imports from experimental plotting imports in `tests/unit/visualization/test_optional_plotting_imports.py`
 
 ### Implementation for User Story 4
 
