@@ -104,11 +104,11 @@ simulator for that scenario family.
 
 ### Tests for User Story 2
 
-- [ ] T024 [P] [US2] Add weather-aware inspection unit coverage for present-versus-absent optional sections in `tests/unit/visualization/test_weather_reporting.py`
-- [ ] T025 [P] [US2] Add battery-load-PV inspection integration coverage in `tests/integration/visualization/test_inspection_battery_load_pv.py`
-- [ ] T026 [P] [US2] Add regression coverage proving unsupported runs do not invent weather sections in `tests/integration/visualization/test_inspection_availability.py`
-- [ ] T027 [P] [US2] Add persisted-output inspection coverage for supported battery-load-PV results in `tests/integration/visualization/test_persisted_outputs.py`
-- [ ] T028 [P] [US2] Add static-plot integration coverage for battery-load-PV and simulator-exposed weather traces in `tests/integration/visualization/test_plotting_battery_load_pv.py`
+- [X] T024 [P] [US2] Add weather-aware inspection unit coverage for present-versus-absent optional sections in `tests/unit/visualization/test_weather_reporting.py`
+- [X] T025 [P] [US2] Add battery-load-PV inspection integration coverage in `tests/integration/visualization/test_inspection_battery_load_pv.py`
+- [X] T026 [P] [US2] Add regression coverage proving unsupported runs do not invent weather sections in `tests/integration/visualization/test_inspection_availability.py`
+- [X] T027 [P] [US2] Add persisted-output inspection coverage for supported battery-load-PV results in `tests/integration/visualization/test_persisted_outputs.py`
+- [X] T028 [P] [US2] Add static-plot integration coverage for battery-load-PV and simulator-exposed weather traces in `tests/integration/visualization/test_plotting_battery_load_pv.py`
 
 ### Implementation for User Story 2
 

@@ -10,6 +10,10 @@ from tests.integration.visualization.arbitrage_result_utils import (
     build_direct_arbitrage_trace,
     make_persisted_arbitrage_output,
 )
+from tests.integration.visualization.battery_load_pv_result_utils import (
+    build_direct_battery_load_pv_trace,
+    make_persisted_battery_load_pv_output,
+)
 
 
 def _inspection_module():
@@ -54,6 +58,49 @@ def test_persisted_arbitrage_output_rebuilds_the_same_inspection_surface() -> No
             direct_series[series_name]["values"],
             abs=1e-6,
         )
+        assert persisted_series[series_name]["units"] == direct_series[series_name]["units"]
+
+    direct_summary = _summary_by_name(direct_view)
+    persisted_summary = _summary_by_name(persisted_view)
+    assert persisted_summary["total_settlement"]["value"] == pytest.approx(
+        direct_summary["total_settlement"]["value"],
+        abs=1e-6,
+    )
+    assert persisted_view["available_sections"] == direct_view["available_sections"]
+
+
+def test_persisted_battery_load_pv_output_rebuilds_the_same_weather_aware_surface() -> None:
+    inspection = _inspection_module()
+    persistence = _persistence_module()
+
+    scenario, trace = build_direct_battery_load_pv_trace()
+    persisted_output = make_persisted_battery_load_pv_output(scenario, trace)
+
+    loaded_output = persistence.load_persisted_run_output(persisted_output)
+    direct_view = inspection.build_inspection_view(trace, scenario=scenario)
+    persisted_view = inspection.build_inspection_view(loaded_output)
+
+    assert loaded_output["scenario_id"] == scenario.scenario_id
+    assert loaded_output["scenario_kind"] == "BatteryLoadPVScenario"
+    assert loaded_output["realized_power_kw"] == pytest.approx(
+        trace.realized_power_kw,
+        abs=1e-6,
+    )
+
+    direct_series = _series_by_name(direct_view)
+    persisted_series = _series_by_name(persisted_view)
+    assert list(persisted_series) == list(direct_series)
+    for series_name in direct_series:
+        if direct_series[series_name]["values"] and isinstance(
+            direct_series[series_name]["values"][0],
+            str,
+        ):
+            assert persisted_series[series_name]["values"] == direct_series[series_name]["values"]
+        else:
+            assert persisted_series[series_name]["values"] == pytest.approx(
+                direct_series[series_name]["values"],
+                abs=1e-6,
+            )
         assert persisted_series[series_name]["units"] == direct_series[series_name]["units"]
 
     direct_summary = _summary_by_name(direct_view)
