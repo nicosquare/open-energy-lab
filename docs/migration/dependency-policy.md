@@ -220,3 +220,60 @@ External service, license, hardware, or scheduler assumptions: may require large
 Rationale: plotting remains experimental and optional, so rendered output capabilities must not become prerequisites for ordinary inspection or comparison imports
 Alternatives considered: making a plotting backend mandatory at package import time or re-exporting plotting from the package root was rejected because it violates the core dependency boundary for the unified library
 ```
+
+## Stochastic Weather Foundational Classification
+
+The `007-stochastic-weather` feature currently adds import-light scaffolding
+only. The dependency review record for this foundational slice is:
+
+```text
+Dependency: Python standard library dataclasses/importlib support plus existing open_energy_lab simulator weather-schema metadata
+Requested by: 007-stochastic-weather
+Target module: src/open_energy_lab/weather/__init__.py, src/open_energy_lab/weather/_canonical.py, src/open_energy_lab/weather/tmy.py, src/open_energy_lab/weather/fit.py, src/open_energy_lab/weather/artifact.py, src/open_energy_lab/weather/sampling.py, src/open_energy_lab/weather/events.py, src/open_energy_lab/simulator/stochastic_weather.py
+Classification: core
+Import boundary: allowed at import time for open_energy_lab.weather and open_energy_lab.simulator.stochastic_weather, with the weather package root resolving its documented exports lazily
+Install mechanism: base project environment via uv-managed Python
+Fallback or skip behavior: placeholder call sites raise clear NotImplementedError until later user-story tasks ship the actual behavior
+External service, license, hardware, or scheduler assumptions: none for the current scaffolding slice
+Rationale: the project needs committed package/module boundaries and import-light placeholder exports before fit, artifact, sampling, and simulator family behavior can be implemented safely
+Alternatives considered: delaying source scaffolding until behavior tasks, eager package-root imports, or widening the simulator package root early were rejected because they weaken boundary validation and increase churn
+```
+
+```text
+Dependency: numpy
+Requested by: 007-stochastic-weather planned offline fitting and sampling workflow
+Target module: future user-story implementations under src/open_energy_lab/weather and simulator integration consumers
+Classification: core
+Import boundary: accepted for later behavioral implementation, but not required by the current scaffolding-only slice
+Install mechanism: base project environment via uv-managed Python
+Fallback or skip behavior: not applicable to the current placeholder modules
+External service, license, hardware, or scheduler assumptions: none
+Rationale: the plan fixes array-based offline fitting and sampling as part of the intended stable workflow, so numpy remains the planned portable core math dependency
+Alternatives considered: treating numpy as optional was rejected in research because offline sampling is part of the intended stable capability
+```
+
+```text
+Dependency: pvlib, pandas, timezonefinder
+Requested by: 007-stochastic-weather fit/fetch workflow
+Target module: future implementations in src/open_energy_lab/weather/tmy.py and src/open_energy_lab/weather/fit.py
+Classification: external-service-backed for live fetch workflow plus optional for normalization helpers
+Import boundary: excluded from open_energy_lab.weather package-root imports and from open_energy_lab.simulator.stochastic_weather imports
+Install mechanism: future weather-specific extra or isolated workflow dependency, not required for current default imports
+Fallback or skip behavior: ordinary artifact-load and simulator-family imports must remain usable without these dependencies; live fetch validation should rely on recorded fixtures for routine review
+External service, license, hardware, or scheduler assumptions: PVGIS network access for live fetches; no solver, GPU, or scheduler requirement accepted
+Rationale: research and contracts require the geolocation-to-TMY workflow while also requiring offline artifact loading and sampling to remain import-light and service-free
+Alternatives considered: making live fetch tooling part of the base import path or reimplementing provider parsing directly in the stable root was rejected because it violates the dependency boundary and reviewability goals
+```
+
+```text
+Dependency: pytest-based weather scaffolding validation
+Requested by: 007-stochastic-weather
+Target module: tests/unit/weather, tests/unit/test_optional_dependency_boundaries.py, tests/unit/test_import_contract.py, tests/unit/test_no_legacy_imports.py
+Classification: optional
+Import boundary: test-only; must not affect library runtime imports
+Install mechanism: uv sync --dev
+Fallback or skip behavior: if dev dependencies are unavailable, document weather-scaffolding validation as blocked rather than broadening runtime requirements
+External service, license, hardware, or scheduler assumptions: none
+Rationale: package-boundary promotion work needs deterministic import and isolation evidence, but pytest remains non-runtime tooling
+Alternatives considered: ad hoc manual import checks were rejected because they weaken repeatable validation evidence
+```

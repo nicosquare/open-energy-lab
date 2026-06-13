@@ -137,6 +137,52 @@ evolve. The package root now rejects root-level plotting access explicitly so
 ordinary imports remain import-light and callers must opt in through the
 focused plotting module.
 
+### Stochastic Weather Foundational Scaffolding
+
+The `007-stochastic-weather` feature reserves a package-root weather surface
+and a focused simulator-side stochastic module, but this foundational slice
+does not promote shipped stochastic behavior to stable public API yet.
+
+Reserved package-root imports:
+
+```python
+from open_energy_lab.weather import (
+    fit_weather_model,
+    load_weather_artifact,
+    sample_weather_family,
+)
+```
+
+Focused simulator-side placeholder import:
+
+```python
+from open_energy_lab.simulator.stochastic_weather import evaluate_weather_family
+```
+
+Current maturity status:
+
+- `open_energy_lab.weather` exists as import-light foundational scaffolding
+  with lazy root exports and placeholder functions that raise
+  `NotImplementedError`
+- `open_energy_lab.weather._canonical`, `.tmy`, `.fit`, `.artifact`,
+  `.sampling`, and `.events` are implementation-facing modules reserved for
+  later user-story work
+- `open_energy_lab.simulator.stochastic_weather` is a focused placeholder
+  module that preserves simulator ownership of family evaluation without
+  widening `open_energy_lab.simulator.__all__`
+
+These imports are not yet promoted as stable shipped behavior because this
+slice has only:
+
+- import-boundary, import-contract, and no-legacy-import coverage
+- documented dependency isolation for future fit/fetch work
+- package/module scaffolding rather than validated weather-model behavior,
+  artifact persistence, offline sampling, or simulator family evaluation
+
+Promotion to stable public API remains gated on later user-story tasks adding
+focused behavioral tests, deterministic fixtures, and completed migration
+documentation for the shipped workflow.
+
 ## Experimental API
 
 `open_energy_lab.experimental.*` is for immature migrations and incubating APIs.

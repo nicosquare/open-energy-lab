@@ -47,8 +47,8 @@ blocks all user story work.
 - [X] T008 [P] Add weather fixture loading helpers in `tests/integration/weather/fixture_utils.py` and `tests/integration/simulator/weather_family_fixture_utils.py`
 - [X] T009 [P] Add fixture-schema and provenance validation for weather artifacts and simulator family fixtures in `tests/integration/weather/test_fixture_schema.py` and `tests/integration/simulator/test_weather_family_fixture_schema.py`
 - [X] T010 [P] Add stable weather package-surface and import-contract coverage in `tests/unit/weather/test_package_surface.py` and `tests/unit/test_import_contract.py`
-- [ ] T011 Create shared weather package module scaffolding and stable export placeholders in `src/open_energy_lab/weather/__init__.py`, `src/open_energy_lab/weather/_canonical.py`, `src/open_energy_lab/weather/tmy.py`, `src/open_energy_lab/weather/fit.py`, `src/open_energy_lab/weather/artifact.py`, `src/open_energy_lab/weather/sampling.py`, `src/open_energy_lab/weather/events.py`, and `src/open_energy_lab/simulator/stochastic_weather.py`
-- [ ] T012 [P] Populate stochastic-weather API-maturity and dependency-boundary placeholder content in `docs/migration/stochastic-weather.md`, `docs/migration/api-maturity.md`, and `docs/migration/dependency-policy.md`
+- [X] T011 Create shared weather package module scaffolding and stable export placeholders in `src/open_energy_lab/weather/__init__.py`, `src/open_energy_lab/weather/_canonical.py`, `src/open_energy_lab/weather/tmy.py`, `src/open_energy_lab/weather/fit.py`, `src/open_energy_lab/weather/artifact.py`, `src/open_energy_lab/weather/sampling.py`, `src/open_energy_lab/weather/events.py`, and `src/open_energy_lab/simulator/stochastic_weather.py`
+- [X] T012 [P] Populate stochastic-weather API-maturity and dependency-boundary placeholder content in `docs/migration/stochastic-weather.md`, `docs/migration/api-maturity.md`, and `docs/migration/dependency-policy.md`
 
 **Checkpoint**: Shared package scaffolding, fixture utilities, and boundary
 validation are in place.

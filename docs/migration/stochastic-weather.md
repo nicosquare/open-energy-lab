@@ -1,13 +1,14 @@
 # Stochastic Weather Migration Note
 
-Status: Phase 1 setup scaffolding only
+Status: Phase 2 foundational scaffolding only
 
-Spec `007-stochastic-weather` reserves the target library paths, fixture
+Spec `007-stochastic-weather` now reserves the target library paths, fixture
 records, and migration-documentation boundary for a new
 `open_energy_lab.weather` capability plus simulator-side stochastic weather
-evaluation. This Phase 1 slice does not ship fit, sampling, or simulator
-family behavior yet. It establishes the committed scaffolding that later tasks
-will populate and validate.
+evaluation. This foundational slice still does not ship fit, sampling, or
+simulator family behavior, but it now adds import-light module scaffolding and
+documented package-root placeholder exports that later tasks will populate and
+validate.
 
 ## Target Module Paths
 
@@ -19,6 +20,30 @@ will populate and validate.
 - `src/open_energy_lab/weather/sampling.py`
 - `src/open_energy_lab/weather/events.py`
 - `src/open_energy_lab/simulator/stochastic_weather.py`
+
+## Foundational Package Boundary
+
+The new reserved package surface now exists in source control with import-light
+placeholders:
+
+```python
+from open_energy_lab.weather import (
+    fit_weather_model,
+    load_weather_artifact,
+    sample_weather_family,
+)
+
+from open_energy_lab.simulator.stochastic_weather import evaluate_weather_family
+```
+
+Current expectation:
+
+- package-root weather exports stay lazy and import-light
+- weather submodules remain free of runtime `legacy/*` imports
+- placeholder call sites raise `NotImplementedError` until user-story tasks
+  add tested behavior
+- simulator stochastic evaluation remains separate from the deterministic
+  `BatteryLoadPVScenario` path
 
 ## Planned Validation Paths
 
@@ -77,7 +102,7 @@ Simulator weather and PV coupling evidence:
 
 ## Fixture Record
 
-Phase 1 creates these scaffold placeholders only:
+Foundational scaffolding currently creates these placeholders only:
 
 - `tests/fixtures/weather/recorded_pvgis_tmy_response.json`
 - `tests/fixtures/weather/location_unavailable_response.json`
@@ -112,8 +137,24 @@ Simulator-side stochastic evaluation remains a separate surface:
 from open_energy_lab.simulator.stochastic_weather import evaluate_weather_family
 ```
 
-These imports are design targets only in Phase 1. They are not implemented by
-this setup slice.
+These imports are now reserved in source control, but the underlying behavior
+is not implemented by this foundational slice yet.
+
+## API Maturity And Dependency Boundary
+
+Supporting policy updates for this foundational slice live in:
+
+- `docs/migration/api-maturity.md`
+- `docs/migration/dependency-policy.md`
+
+Current posture:
+
+- `open_energy_lab.weather` root exports are reserved but not yet promoted to
+  stable shipped behavior
+- `open_energy_lab.simulator.stochastic_weather` is a focused simulator-side
+  placeholder module, not a package-root simulator export
+- `pvlib`, `pandas`, and `timezonefinder` remain isolated future fit/fetch
+  dependencies and are not imported by the current scaffolding
 
 ## Working Rule
 
