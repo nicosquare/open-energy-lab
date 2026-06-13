@@ -1,0 +1,83 @@
+{
+  "case_id": "visualization-inspection-arbitrage-v1",
+  "status": "active",
+  "purpose": "Deterministic arbitrage inspection fixture for the shipped US1 stable visualization surface.",
+  "origin": {
+    "author": "OpenAI Codex",
+    "construction": "Manually authored from the shared current-library controller arbitrage fixture and the shipped US1 inspection contract, then checked against the focused visualization integration tests for direct-trace and controller-driven inspection parity.",
+    "seed": null,
+    "generation_command": "uv run pytest tests/integration/visualization/test_inspection_arbitrage.py tests/unit/visualization/test_inspection.py",
+    "refresh_policy": "Refresh only when the documented arbitrage inspection field names, ordering, units, or settlement semantics intentionally change."
+  },
+  "source_fixture": "tests/fixtures/simulator/controller_arbitrage_case.json",
+  "scenario_kind": "ArbitrageScenario",
+  "expected_sections": [
+    "battery",
+    "dispatch",
+    "pricing",
+    "settlement"
+  ],
+  "legacy_references": [],
+  "inspection_expectations": {
+    "supported_source_kinds": [
+      "simulation_trace",
+      "controller_evaluation"
+    ],
+    "expected_series_order": [
+      "battery_soc",
+      "requested_power_kw",
+      "realized_power_kw",
+      "import_price",
+      "step_settlement"
+    ],
+    "expected_available_sections": {
+      "battery": true,
+      "dispatch": true,
+      "pricing": true,
+      "settlement": true,
+      "load": false,
+      "pv": false,
+      "net_grid": false,
+      "weather": false
+    },
+    "expected_trace": {
+      "battery_soc": [
+        0.595,
+        0.595,
+        0.4897368421052632
+      ],
+      "requested_power_kw": [
+        1.0,
+        0.0,
+        -1.0
+      ],
+      "realized_power_kw": [
+        1.0,
+        0.0,
+        -1.0
+      ],
+      "import_price": [
+        0.1,
+        0.2,
+        0.3
+      ],
+      "step_settlement": [
+        -0.1,
+        0.0,
+        0.24
+      ]
+    },
+    "expected_summary_outcomes": {
+      "total_settlement": {
+        "value": 0.14,
+        "units": "usd"
+      }
+    }
+  },
+  "numeric_tolerance": 1e-06,
+  "provenance_notes": [
+    "Keep this fixture synthetic, small, and reviewable.",
+    "The expected inspection values match the shared controller arbitrage case and the direct-trace/controller-driven parity checks in the focused visualization suite.",
+    "This fixture documents the shipped US1 stable inspection ordering, units, and present-versus-absent section markers for arbitrage runs."
+  ]
+}

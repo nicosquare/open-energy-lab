@@ -87,6 +87,56 @@ modules. They are intentionally imported lazily through the package root so
 ordinary `open_energy_lab.control` imports stay import-light while the stable
 package-root surface remains fixed.
 
+### Visualization Trace Inspection MVP
+
+The `006-visualization-traces` feature now promotes the stable visualization
+inspection/reporting root surface and keeps plotting explicitly experimental.
+
+The package root now ships these stable public imports:
+
+```python
+from open_energy_lab.visualization import (
+    build_inspection_view,
+    load_persisted_run_output,
+    summarize_inspection_view,
+)
+```
+
+These imports are stable because they now have:
+
+- focused unit and integration coverage for supported arbitrage and
+  battery-load-PV inspection flows
+- persisted-output validation and reuse checks that avoid re-simulation
+- package-root import-boundary, import-contract, and no-legacy-import
+  coverage naming `open_energy_lab.visualization` explicitly
+- direct smoke coverage proving experimental plotting stays outside the stable
+  root import path
+- migration documentation that records stable inspection/reporting behavior,
+  same-family comparison scope, and the experimental plotting split
+
+Same-family comparison is also shipped user-facing behavior, but it remains a
+focused module import rather than a package-root export:
+
+```python
+from open_energy_lab.visualization.comparison import compare_inspection_views
+```
+
+This comparison helper is intentionally not promoted into the package root
+because the stable root contract for this MVP is inspection/reporting only,
+while comparison remains discoverable through its dedicated module.
+
+Experimental plotting remains outside the stable root contract:
+
+```python
+from open_energy_lab.visualization.plotting import plot_inspection_view
+```
+
+This plotting helper remains experimental because rendered output shape,
+backend conventions, and future comparison-plot scope are still expected to
+evolve. The package root now rejects root-level plotting access explicitly so
+ordinary imports remain import-light and callers must opt in through the
+focused plotting module.
+
 ## Experimental API
 
 `open_energy_lab.experimental.*` is for immature migrations and incubating APIs.

@@ -1,0 +1,174 @@
+{
+  "case_id": "visualization-persisted-arbitrage-v1",
+  "status": "active",
+  "purpose": "Deterministic persisted-output fixture proving US1 inspection and plotting reuse without re-simulation.",
+  "origin": {
+    "author": "OpenAI Codex",
+    "construction": "Built from the shipped US1 helper that converts the shared direct arbitrage trace into a supported persisted output, then checked against the focused persisted-output and plotting integration suite.",
+    "seed": null,
+    "generation_command": "uv run pytest tests/integration/visualization/test_persisted_outputs.py tests/integration/visualization/test_plotting.py",
+    "refresh_policy": "Refresh only when the supported persisted-output schema, stable inspection field names, or arbitrage settlement semantics intentionally change."
+  },
+  "scenario_kind": "ArbitrageScenario",
+  "source_fixture": "tests/fixtures/simulator/controller_arbitrage_case.json",
+  "persisted_output": {
+    "scenario_id": "controller-arbitrage-mvp-v1",
+    "scenario_kind": "ArbitrageScenario",
+    "time_step_hours": 1.0,
+    "requested_power_kw": [
+      1.0,
+      0.0,
+      -1.0
+    ],
+    "realized_power_kw": [
+      1.0,
+      0.0,
+      -1.0
+    ],
+    "step_settlement": [
+      -0.1,
+      0.0,
+      0.24
+    ],
+    "trace_payload": {
+      "series": {
+        "battery_soc": {
+          "values": [
+            0.595,
+            0.595,
+            0.4897368421052632
+          ],
+          "units": "fraction",
+          "source_field": "states.soc",
+          "display_category": "battery",
+          "step_labels": [
+            "step-0",
+            "step-1",
+            "step-2"
+          ]
+        },
+        "requested_power_kw": {
+          "values": [
+            1.0,
+            0.0,
+            -1.0
+          ],
+          "units": "kw",
+          "source_field": "requested_power_kw",
+          "display_category": "dispatch",
+          "step_labels": [
+            "step-0",
+            "step-1",
+            "step-2"
+          ]
+        },
+        "realized_power_kw": {
+          "values": [
+            1.0,
+            0.0,
+            -1.0
+          ],
+          "units": "kw",
+          "source_field": "realized_power_kw",
+          "display_category": "dispatch",
+          "step_labels": [
+            "step-0",
+            "step-1",
+            "step-2"
+          ]
+        },
+        "import_price": {
+          "values": [
+            0.1,
+            0.2,
+            0.3
+          ],
+          "units": "usd_per_kwh",
+          "source_field": "price_signal.import_prices",
+          "display_category": "pricing",
+          "step_labels": [
+            "step-0",
+            "step-1",
+            "step-2"
+          ]
+        },
+        "step_settlement": {
+          "values": [
+            -0.1,
+            0.0,
+            0.24
+          ],
+          "units": "usd",
+          "source_field": "step_settlement",
+          "display_category": "settlement",
+          "step_labels": [
+            "step-0",
+            "step-1",
+            "step-2"
+          ]
+        }
+      },
+      "available_sections": {
+        "battery": true,
+        "dispatch": true,
+        "pricing": true,
+        "settlement": true,
+        "load": false,
+        "pv": false,
+        "net_grid": false,
+        "weather": false
+      }
+    },
+    "summary_payload": {
+      "total_settlement": {
+        "value": 0.14,
+        "units": "usd",
+        "source_field": "total_settlement",
+        "display_group": "settlement"
+      }
+    },
+    "provenance_notes": [
+      "Synthetic persisted arbitrage payload derived from the shared controller fixture.",
+      "Used only for US1 visualization persisted-output integration coverage."
+    ]
+  },
+  "inspection_expectations": {
+    "expected_source_kind": "persisted_output",
+    "expected_series_order": [
+      "battery_soc",
+      "requested_power_kw",
+      "realized_power_kw",
+      "import_price",
+      "step_settlement"
+    ],
+    "expected_total_settlement": 0.14,
+    "expected_available_sections": {
+      "battery": true,
+      "dispatch": true,
+      "pricing": true,
+      "settlement": true,
+      "load": false,
+      "pv": false,
+      "net_grid": false,
+      "weather": false
+    }
+  },
+  "plot_expectations": {
+    "supported_series_names": [
+      "battery_soc",
+      "requested_power_kw",
+      "realized_power_kw",
+      "import_price",
+      "step_settlement"
+    ],
+    "expected_plot_kind": "static_single_run",
+    "expected_output_mode": "backend_result",
+    "no_resimulation_required": true
+  },
+  "numeric_tolerance": 1e-06,
+  "provenance_notes": [
+    "Keep this fixture synthetic, small, and reviewable.",
+    "The persisted payload is intentionally explicit so inspection and plotting can be validated without needing access to the original simulation process.",
+    "This fixture is active US1 evidence for persisted-output reuse and the no-resimulation plotting rule."
+  ]
+}

@@ -175,3 +175,48 @@ External service, license, hardware, or scheduler assumptions: may require comme
 Rationale: the controller pack is intentionally current-step, CPU-default, and deterministic, so ordinary imports must not trigger research-stack initialization or legacy runtime coupling
 Alternatives considered: making these stacks default dependencies or treating CityLearn as a compatibility target was rejected because it would violate the constitution’s dependency boundary
 ```
+
+## Visualization Trace Inspection MVP Classification
+
+The `006-visualization-traces` feature now ships stable inspection/reporting,
+focused same-family comparison, and experimental plotting without widening the
+ordinary import boundary. The review record for the shipped slice is:
+
+```text
+Dependency: Python standard library importlib plus collections/mapping validation support and existing open_energy_lab core and simulator modules
+Requested by: 006-visualization-traces
+Target module: src/open_energy_lab/visualization/__init__.py, src/open_energy_lab/visualization/inspection.py, src/open_energy_lab/visualization/comparison.py, src/open_energy_lab/visualization/_persistence.py
+Classification: core
+Import boundary: allowed at import time for open_energy_lab.visualization and open_energy_lab.visualization.comparison, with package-root helpers resolved lazily so ordinary imports stay import-light
+Install mechanism: base project environment via uv-managed Python
+Fallback or skip behavior: none; shipped inspection/reporting and same-family comparison are part of the normal library surface
+External service, license, hardware, or scheduler assumptions: none
+Rationale: visualization must remain a lightweight consumer of existing simulator and controller outputs rather than introducing new runtime stacks or a second execution path
+Alternatives considered: eager package-root imports, visualization-owned execution behavior, and mandatory rendering dependencies were rejected because they would weaken the import boundary and confuse simulator ownership
+```
+
+```text
+Dependency: pytest-based visualization validation
+Requested by: 006-visualization-traces
+Target module: tests/unit/visualization, tests/integration/visualization, tests/unit/test_optional_dependency_boundaries.py, tests/unit/test_import_contract.py
+Classification: optional
+Import boundary: test-only; must not affect library runtime imports
+Install mechanism: uv sync --dev
+Fallback or skip behavior: if dev dependencies are unavailable, document visualization validation as blocked rather than broadening runtime requirements
+External service, license, hardware, or scheduler assumptions: none
+Rationale: inspection/reporting promotion depends on deterministic unit, integration, import-boundary, import-contract, and no-legacy-import evidence, but pytest remains non-runtime tooling
+Alternatives considered: relying on ad hoc fixture review or manual plotting checks was rejected because it weakens deterministic evidence for the shipped surface
+```
+
+```text
+Dependency: concrete plotting backends plus notebook tooling, dashboards, W&B, GPU/SLURM helpers, solver stacks, and legacy reference packages
+Requested by: optional experimental plotting workflows only
+Target module: src/open_energy_lab/visualization/plotting.py and future visualization integrations only
+Classification: optional, external-service-backed, hardware-bound, or legacy-only depending on family
+Import boundary: excluded from open_energy_lab.visualization package-root imports; callers must opt in through open_energy_lab.visualization.plotting or later integrations
+Install mechanism: defer any concrete plotting backend to a future extra or caller-managed dependency; the current plotting API relies on backend injection rather than a required runtime package
+Fallback or skip behavior: base visualization imports, comparison imports, and persisted-output inspection proceed without them; blocked experimental-backend checks must be documented explicitly
+External service, license, hardware, or scheduler assumptions: may require larger local environments, credentials, commercial licenses, or schedulers outside this feature
+Rationale: plotting remains experimental and optional, so rendered output capabilities must not become prerequisites for ordinary inspection or comparison imports
+Alternatives considered: making a plotting backend mandatory at package import time or re-exporting plotting from the package root was rejected because it violates the core dependency boundary for the unified library
+```

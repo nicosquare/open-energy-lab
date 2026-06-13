@@ -1,0 +1,310 @@
+{
+  "case_id": "visualization-persisted-battery-load-pv-v1",
+  "status": "active",
+  "purpose": "Deterministic persisted-output fixture proving US2 weather-aware inspection and plotting reuse without re-simulation.",
+  "origin": {
+    "author": "OpenAI Codex",
+    "construction": "Built from the shipped US2 helper that converts the shared direct battery-load-PV trace into a supported persisted output, then checked against the focused persisted-output and plotting integration suite.",
+    "seed": null,
+    "generation_command": "uv run pytest tests/integration/visualization/test_persisted_outputs.py tests/integration/visualization/test_plotting_battery_load_pv.py",
+    "refresh_policy": "Refresh only when the supported persisted-output schema, stable battery-load-PV inspection field names, or weather-backed settlement semantics intentionally change."
+  },
+  "scenario_kind": "BatteryLoadPVScenario",
+  "source_fixture": "tests/fixtures/simulator/controller_battery_load_pv_case.json",
+  "persisted_output": {
+    "scenario_id": "controller-battery-load-pv-mvp-v1",
+    "scenario_kind": "BatteryLoadPVScenario",
+    "time_step_hours": 1.0,
+    "requested_power_kw": [
+      1.0,
+      0.0,
+      -1.0
+    ],
+    "realized_power_kw": [
+      1.0,
+      0.0,
+      -1.0
+    ],
+    "step_settlement": [
+      -0.3,
+      0.07872,
+      1.07232
+    ],
+    "trace_payload": {
+      "series": {
+        "battery_soc": {
+          "values": [
+            0.595,
+            0.595,
+            0.4897368421052632
+          ],
+          "units": "fraction",
+          "source_field": "states.soc",
+          "display_category": "battery",
+          "step_labels": [
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T01:00:00Z",
+            "2026-01-01T02:00:00Z"
+          ]
+        },
+        "requested_power_kw": {
+          "values": [
+            1.0,
+            0.0,
+            -1.0
+          ],
+          "units": "kw",
+          "source_field": "requested_power_kw",
+          "display_category": "dispatch",
+          "step_labels": [
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T01:00:00Z",
+            "2026-01-01T02:00:00Z"
+          ]
+        },
+        "realized_power_kw": {
+          "values": [
+            1.0,
+            0.0,
+            -1.0
+          ],
+          "units": "kw",
+          "source_field": "realized_power_kw",
+          "display_category": "dispatch",
+          "step_labels": [
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T01:00:00Z",
+            "2026-01-01T02:00:00Z"
+          ]
+        },
+        "load_kw": {
+          "values": [
+            2.0,
+            1.5,
+            0.5
+          ],
+          "units": "kw",
+          "source_field": "load.demand_kw",
+          "display_category": "load",
+          "step_labels": [
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T01:00:00Z",
+            "2026-01-01T02:00:00Z"
+          ]
+        },
+        "pv_generation_kw": {
+          "values": [
+            0.0,
+            1.992,
+            3.968
+          ],
+          "units": "kw",
+          "source_field": "pv_generation_kw",
+          "display_category": "pv",
+          "step_labels": [
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T01:00:00Z",
+            "2026-01-01T02:00:00Z"
+          ]
+        },
+        "net_grid_power_kw": {
+          "values": [
+            3.0,
+            -0.492,
+            -4.468
+          ],
+          "units": "kw",
+          "source_field": "net_grid_power_kw",
+          "display_category": "net_grid",
+          "step_labels": [
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T01:00:00Z",
+            "2026-01-01T02:00:00Z"
+          ]
+        },
+        "net_grid_energy_kwh": {
+          "values": [
+            3.0,
+            -0.492,
+            -4.468
+          ],
+          "units": "kwh",
+          "source_field": "net_grid_energy_kwh",
+          "display_category": "net_grid",
+          "step_labels": [
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T01:00:00Z",
+            "2026-01-01T02:00:00Z"
+          ]
+        },
+        "direction": {
+          "values": [
+            "import",
+            "export",
+            "export"
+          ],
+          "units": "label",
+          "source_field": "direction",
+          "display_category": "net_grid",
+          "step_labels": [
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T01:00:00Z",
+            "2026-01-01T02:00:00Z"
+          ]
+        },
+        "import_price": {
+          "values": [
+            0.1,
+            0.2,
+            0.3
+          ],
+          "units": "usd_per_kwh",
+          "source_field": "price_signal.import_prices",
+          "display_category": "pricing",
+          "step_labels": [
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T01:00:00Z",
+            "2026-01-01T02:00:00Z"
+          ]
+        },
+        "step_settlement": {
+          "values": [
+            -0.3,
+            0.07872,
+            1.07232
+          ],
+          "units": "usd",
+          "source_field": "step_settlement",
+          "display_category": "settlement",
+          "step_labels": [
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T01:00:00Z",
+            "2026-01-01T02:00:00Z"
+          ]
+        },
+        "timestamp_utc": {
+          "values": [
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T01:00:00Z",
+            "2026-01-01T02:00:00Z"
+          ],
+          "units": "iso8601",
+          "source_field": "weather.timestamp_utc",
+          "display_category": "weather",
+          "step_labels": [
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T01:00:00Z",
+            "2026-01-01T02:00:00Z"
+          ]
+        },
+        "dry_bulb_air_temperature_c": {
+          "values": [
+            25.0,
+            26.0,
+            27.0
+          ],
+          "units": "celsius",
+          "source_field": "weather.dry_bulb_air_temperature_c",
+          "display_category": "weather",
+          "step_labels": [
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T01:00:00Z",
+            "2026-01-01T02:00:00Z"
+          ]
+        },
+        "global_horizontal_irradiance_w_per_m2": {
+          "values": [
+            0.0,
+            500.0,
+            1000.0
+          ],
+          "units": "w_per_m2",
+          "source_field": "weather.global_horizontal_irradiance_w_per_m2",
+          "display_category": "weather",
+          "step_labels": [
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T01:00:00Z",
+            "2026-01-01T02:00:00Z"
+          ]
+        }
+      },
+      "available_sections": {
+        "battery": true,
+        "dispatch": true,
+        "pricing": true,
+        "settlement": true,
+        "load": true,
+        "pv": true,
+        "net_grid": true,
+        "weather": true
+      }
+    },
+    "summary_payload": {
+      "total_settlement": {
+        "value": 0.85104,
+        "units": "usd",
+        "source_field": "total_settlement",
+        "display_group": "settlement"
+      }
+    },
+    "provenance_notes": [
+      "Synthetic persisted battery-load-PV payload derived from the shared controller fixture.",
+      "Used only for US2 visualization persisted-output integration coverage."
+    ]
+  },
+  "inspection_expectations": {
+    "expected_source_kind": "persisted_output",
+    "expected_series_order": [
+      "battery_soc",
+      "requested_power_kw",
+      "realized_power_kw",
+      "load_kw",
+      "pv_generation_kw",
+      "net_grid_power_kw",
+      "net_grid_energy_kwh",
+      "direction",
+      "import_price",
+      "step_settlement",
+      "timestamp_utc",
+      "dry_bulb_air_temperature_c",
+      "global_horizontal_irradiance_w_per_m2"
+    ],
+    "expected_total_settlement": 0.85104,
+    "expected_available_sections": {
+      "battery": true,
+      "dispatch": true,
+      "pricing": true,
+      "settlement": true,
+      "load": true,
+      "pv": true,
+      "net_grid": true,
+      "weather": true
+    }
+  },
+  "plot_expectations": {
+    "supported_series_names": [
+      "battery_soc",
+      "requested_power_kw",
+      "realized_power_kw",
+      "load_kw",
+      "pv_generation_kw",
+      "net_grid_power_kw",
+      "net_grid_energy_kwh",
+      "direction",
+      "import_price",
+      "step_settlement",
+      "timestamp_utc",
+      "dry_bulb_air_temperature_c",
+      "global_horizontal_irradiance_w_per_m2"
+    ],
+    "expected_plot_kind": "static_single_run",
+    "expected_output_mode": "backend_result",
+    "no_resimulation_required": true
+  },
+  "numeric_tolerance": 1e-06,
+  "provenance_notes": [
+    "Keep this fixture synthetic, small, and reviewable.",
+    "The persisted payload is intentionally explicit so weather-aware inspection and plotting can be validated without access to the original simulation process.",
+    "This fixture is active US2 evidence for persisted-output reuse and the no-resimulation plotting rule for battery-load-PV runs."
+  ]
+}

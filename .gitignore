@@ -256,3 +256,7 @@ data/generated/
 conda-env/
 .uv/
 .uv-cache/
+
+# Custom ignores
+
+tmp/

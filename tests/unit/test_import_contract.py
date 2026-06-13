@@ -23,6 +23,11 @@ EXPECTED_CONTROL_EXPORTS = [
     "SocGuardrailConfig",
     "SocGuardrailController",
 ]
+EXPECTED_VISUALIZATION_EXPORTS = [
+    "build_inspection_view",
+    "load_persisted_run_output",
+    "summarize_inspection_view",
+]
 
 
 def test_root_package_imports_from_source_tree_without_optional_stacks():
@@ -92,6 +97,35 @@ def test_core_package_imports_from_source_tree_without_optional_stacks():
     assert module.ControllerEvaluationResult.__module__ == "open_energy_lab.core.controller"
     assert module.ControllerInterface.__module__ == "open_energy_lab.core.controller"
     assert module.DispatchProposal.__module__ == "open_energy_lab.core.controller"
+
+    newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
+        set(sys.modules) - before_import
+    )
+    assert newly_loaded_optional_modules == set()
+
+
+def test_visualization_package_imports_from_source_tree_without_optional_stacks():
+    before_import = set(sys.modules)
+
+    module = importlib.import_module("open_energy_lab.visualization")
+
+    assert module.__file__ is not None
+    module_file = Path(module.__file__).resolve()
+    assert module.__name__ == "open_energy_lab.visualization"
+    assert module_file.name == "__init__.py"
+    assert module_file.parent.name == "visualization"
+    assert module_file.parent.parent.name == "open_energy_lab"
+    assert module.__all__ == EXPECTED_VISUALIZATION_EXPORTS
+    assert module.build_inspection_view.__module__ == "open_energy_lab.visualization.inspection"
+    assert (
+        module.load_persisted_run_output.__module__
+        == "open_energy_lab.visualization._persistence"
+    )
+    assert (
+        module.summarize_inspection_view.__module__
+        == "open_energy_lab.visualization.inspection"
+    )
+    assert "plot_inspection_view" not in module.__all__
 
     newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
         set(sys.modules) - before_import

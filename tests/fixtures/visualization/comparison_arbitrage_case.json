@@ -1,0 +1,53 @@
+{
+  "case_id": "visualization-comparison-arbitrage-v1",
+  "status": "active",
+  "purpose": "Deterministic arbitrage comparison fixture for the shipped US3 same-family visualization surface.",
+  "origin": {
+    "author": "OpenAI Codex",
+    "construction": "Manually authored from the shared current-library direct-trace and controller-driven arbitrage cases, then checked against the focused visualization unit and integration comparison suites.",
+    "seed": null,
+    "generation_command": "uv run pytest tests/unit/visualization/test_comparison.py tests/integration/visualization/test_comparison.py tests/integration/visualization/test_comparison_failures.py",
+    "refresh_policy": "Refresh only when the canonical arbitrage comparison field names, supported series ordering, or deterministic unsupported-case wording intentionally change."
+  },
+  "scenario_kind": "ArbitrageScenario",
+  "left_source_fixture": "tests/fixtures/simulator/battery_arbitrage_case.json",
+  "right_source_fixture": "tests/fixtures/simulator/controller_arbitrage_case.json",
+  "legacy_references": [],
+  "comparison_expectations": {
+    "supported_source_kinds": [
+      "simulation_trace",
+      "controller_evaluation"
+    ],
+    "expected_series_order": [
+      "battery_soc",
+      "requested_power_kw",
+      "realized_power_kw",
+      "import_price",
+      "step_settlement"
+    ],
+    "expected_summary_order": [
+      "total_settlement"
+    ],
+    "expected_zero_delta_series": [
+      "battery_soc",
+      "requested_power_kw",
+      "realized_power_kw",
+      "import_price",
+      "step_settlement"
+    ],
+    "expected_summary_deltas": {
+      "total_settlement": 0.0
+    },
+    "unsupported_cases": {
+      "cross_family": "Reject BatteryLoadPVScenario requests as out of scope for the MVP instead of attempting reduced cross-family comparison.",
+      "missing_series": "Reject requests when a canonical same-family series such as requested_power_kw is absent from one run.",
+      "incompatible_lengths": "Reject requests when a canonical same-family series has incompatible step counts."
+    }
+  },
+  "numeric_tolerance": 1e-06,
+  "provenance_notes": [
+    "Keep this fixture synthetic, small, and reviewable.",
+    "The supported same-family comparison expectations match the focused arbitrage direct-trace versus controller-driven comparison suite.",
+    "This fixture also records the required deterministic unsupported comparison categories for cross-family, missing-series, and incompatible-length requests."
+  ]
+}
