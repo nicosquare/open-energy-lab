@@ -1,6 +1,6 @@
 # Visualization And Trace Inspection Migration Note
 
-Status: US1 arbitrage inspection plus US2 weather-aware inspection shipped; plotting remains experimental
+Status: US1 arbitrage inspection, US2 weather-aware inspection, and US3 same-family comparison shipped; plotting remains experimental
 
 This note records the first shipped visualization and trace-inspection slice
 under `src/open_energy_lab/visualization`.
@@ -25,7 +25,7 @@ under `src/open_energy_lab/visualization`.
 
 ## Current Boundary
 
-The completed US1 and US2 slice now ships:
+The completed US1, US2, and US3 slice now ships:
 
 - stable package-root exports for `build_inspection_view`,
   `summarize_inspection_view`, and `load_persisted_run_output`
@@ -33,6 +33,8 @@ The completed US1 and US2 slice now ships:
   controller-driven evaluation results, and supported persisted outputs
 - stable battery-load-PV inspection over direct simulator traces,
   controller-driven evaluation results, and supported persisted outputs
+- stable same-family comparison through
+  `open_energy_lab.visualization.comparison.compare_inspection_views`
 - explicit present-versus-absent section reporting for arbitrage and
   battery-load-PV inspection surfaces
 - persisted-output normalization plus stable loader metadata for later
@@ -43,8 +45,8 @@ The completed US1 and US2 slice now ships:
 
 The feature still defers:
 
-- same-family comparison behavior
 - any package-root plotting export
+- rendered comparison plots
 - dashboards, notebooks, and visualization-owned execution flows
 
 ## Upstream Result Sources
@@ -62,34 +64,39 @@ preserve/improve evidence.
 
 ## Preserve / Improve / Defer
 
-Preserved in US1 and US2:
+Preserved in US1, US2, and US3:
 
 - simulator and controller modules remain the only execution owners
 - arbitrage timestep ordering, dispatch values, price values, and settlement
   totals remain deterministic within absolute tolerance `1e-6`
 - battery-load-PV load, PV, net-grid, weather-backed context, and settlement
   totals remain deterministic within absolute tolerance `1e-6`
+- same-family comparison requests preserve the canonical inspection ordering
+  and produce deterministic summary and trace deltas within absolute
+  tolerance `1e-6`
 - supported persisted outputs can be loaded for later review without rerunning
   a scenario
 
-Improved in US1 and US2:
+Improved in US1, US2, and US3:
 
 - `open_energy_lab.visualization` now exposes a real stable inspection and
   reporting surface instead of placeholder behavior
-- the stable package root no longer reserves unimplemented comparison helpers
+- the visualization comparison module no longer reserves an unimplemented
+  entry point for same-family comparisons
 - committed visualization fixtures now include active arbitrage and
-  battery-load-PV inspection evidence plus persisted-output coverage instead
-  of scaffolds only
+  battery-load-PV inspection evidence, arbitrage comparison evidence, and
+  persisted-output coverage instead of scaffolds only
 - weather-backed plotting requests now carry explicit `target_run`,
   `source_location`, and `requires_optional_backend` metadata without
   weakening the no-resimulation rule
 
-Deferred beyond US2:
+Deferred beyond US3:
 
-- same-family comparison views and explicit unsupported cross-family behavior
 - experimental comparison plots or richer rendering backends
+- any package-root comparison re-export if the stable root surface is widened
+  later
 
-## Shipped US1 And US2 Behavior
+## Shipped Stable Inspection Behavior
 
 Stable package-root behavior:
 
@@ -124,6 +131,38 @@ This plotting helper:
 - reports whether the input came from `in_memory` or `persisted_output`
 - keeps optional weather-backed plotting bounded to series already exposed by
   the simulator-backed inspection view
+
+## Same-Family Comparison Scope
+
+US3 adds a deterministic comparison surface in the focused comparison module:
+
+```python
+from open_energy_lab.visualization.comparison import compare_inspection_views
+```
+
+This helper now:
+
+- consumes two supported inspection views, or other supported deterministic
+  inputs through the same inspection builder
+- allows same-family comparisons only
+- preserves the canonical left-run inspection series ordering in the aligned
+  comparison output
+- computes numeric trace deltas and summary deltas without rerunning
+  simulation
+- returns an explicit unsupported response when the scenario families differ,
+  when a canonical series is absent, or when timestep alignment is not exact
+
+Unsupported comparison behavior is intentionally explicit:
+
+- `ArbitrageScenario` versus `BatteryLoadPVScenario` returns an immediate
+  cross-family unsupported response
+- same-family requests fail deterministically when a canonical series is
+  missing from one run
+- same-family requests fail deterministically when a canonical series has
+  incompatible lengths or timestep labels
+
+Rendered comparison plots remain deferred. The MVP comparison output is the
+structured data returned by `compare_inspection_views`, not a plotting API.
 
 ## Weather-Aware Inspection Scope
 
@@ -160,27 +199,29 @@ The shipped fallback behavior is explicit rather than inferred:
 
 ## Fixture Evidence
 
-Active US1 and US2 visualization fixtures:
+Active US1, US2, and US3 visualization fixtures:
 
 - `tests/fixtures/visualization/inspection_arbitrage_case.json`
 - `tests/fixtures/visualization/persisted_arbitrage_case.json`
 - `tests/fixtures/visualization/inspection_battery_load_pv_case.json`
 - `tests/fixtures/visualization/persisted_battery_load_pv_case.json`
+- `tests/fixtures/visualization/comparison_arbitrage_case.json`
 
 These fixtures are:
 
 - synthetic, small, and reviewable
 - based on current-library simulator and controller result shapes rather than
   a legacy runtime import
-- aligned with the focused US1 and US2 unit and integration suites
+- aligned with the focused US1, US2, and US3 unit and integration suites
 
 ## Validation Outcomes
 
-US1 and US2 were validated locally with:
+US1, US2, and US3 were validated locally with:
 
 ```bash
 uv run pytest tests/unit/visualization/test_inspection.py tests/unit/visualization/test_persistence_schema.py tests/integration/visualization/test_inspection_arbitrage.py tests/integration/visualization/test_persisted_outputs.py tests/integration/visualization/test_plotting.py
 uv run pytest tests/unit/visualization/test_weather_reporting.py tests/integration/visualization/test_inspection_battery_load_pv.py tests/integration/visualization/test_plotting_battery_load_pv.py
+uv run pytest tests/unit/visualization/test_comparison.py tests/integration/visualization/test_comparison.py tests/integration/visualization/test_comparison_failures.py tests/integration/visualization/test_fixture_schema.py
 uv run pytest tests/unit/visualization/test_package_surface.py tests/unit/visualization/test_import_boundary.py tests/unit/visualization/test_no_legacy_imports.py
 uv run pytest tests/integration/simulator/test_controller_evaluation.py
 python -m compileall src/open_energy_lab/visualization

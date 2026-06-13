@@ -139,9 +139,9 @@ comparison request is rejected deterministically.
 
 ### Implementation for User Story 3
 
-- [ ] T036 [US3] Implement same-family comparison views and deterministic unsupported-case handling in `src/open_energy_lab/visualization/comparison.py`
-- [ ] T037 [US3] Populate same-family comparison fixture coverage in `tests/fixtures/visualization/comparison_arbitrage_case.json`
-- [ ] T038 [US3] Document comparison scope, unsupported cross-family behavior, and deferred comparison plots in `docs/migration/visualization-traces.md`
+- [X] T036 [US3] Implement same-family comparison views and deterministic unsupported-case handling in `src/open_energy_lab/visualization/comparison.py`
+- [X] T037 [US3] Populate same-family comparison fixture coverage in `tests/fixtures/visualization/comparison_arbitrage_case.json`
+- [X] T038 [US3] Document comparison scope, unsupported cross-family behavior, and deferred comparison plots in `docs/migration/visualization-traces.md`
 
 **Checkpoint**: User Story 3 is functional and independently testable through
 `tests/integration/visualization/test_comparison.py`.
