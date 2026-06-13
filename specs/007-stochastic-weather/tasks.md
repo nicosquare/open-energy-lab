@@ -67,9 +67,9 @@ confirm it remains sampleable without refetching source data.
 
 ### Tests for User Story 1
 
-- [ ] T013 [P] [US1] Add canonical schema and local-civil-time normalization unit coverage in `tests/unit/weather/test_canonical_schema.py`
-- [ ] T014 [P] [US1] Add artifact schema, provenance, timestep lock, and unsupported-version unit coverage in `tests/unit/weather/test_artifact_schema.py`
-- [ ] T015 [P] [US1] Add recorded fetch-to-artifact integration coverage for offline reload, missing-field failures, and syntactically valid but source-unavailable locations in `tests/integration/weather/test_fit_workflow.py`
+- [X] T013 [P] [US1] Add canonical schema and local-civil-time normalization unit coverage in `tests/unit/weather/test_canonical_schema.py`
+- [X] T014 [P] [US1] Add artifact schema, provenance, timestep lock, and unsupported-version unit coverage in `tests/unit/weather/test_artifact_schema.py`
+- [X] T015 [P] [US1] Add recorded fetch-to-artifact integration coverage for offline reload, missing-field failures, and syntactically valid but source-unavailable locations in `tests/integration/weather/test_fit_workflow.py`
 
 ### Implementation for User Story 1
 
