@@ -1,0 +1,15 @@
+{
+  "fixture_status": "scaffold",
+  "fixture_path": "tests/fixtures/weather/recorded_pvgis_tmy_response.json",
+  "purpose": "Reserved recorded PVGIS TMY response fixture for the stochastic weather fit workflow.",
+  "origin": "Phase 1 setup scaffold for spec 007-stochastic-weather.",
+  "source_service": "PVGIS TMY",
+  "legacy_reference_paths": [
+    "legacy/old_tpm/src_py/weather/fetch.py",
+    "legacy/old_tpm/src_py/weather/pipeline.py"
+  ],
+  "notes": [
+    "Populate this fixture with a small recorded provider response during User Story 1.",
+    "Keep service provenance and any access or license notes explicit when the placeholder is replaced."
+  ]
+}

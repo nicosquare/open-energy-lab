@@ -3,6 +3,29 @@
 Fixtures in this directory support deterministic simulator validation for the
 battery arbitrage MVP and the battery + load + PV migration that builds on it.
 
+## Stochastic Weather Scaffold Fixtures
+
+The `007-stochastic-weather` Phase 1 setup reserves these simulator fixture
+paths for later stochastic family validation:
+
+- `tests/fixtures/simulator/stochastic_weather_family_case.json`
+- `tests/fixtures/simulator/blackout_weather_family_case.json`
+
+Current status:
+
+- both files are scaffold placeholders only
+- neither file is an active regression baseline yet
+- both placeholders point back to the planned weather artifact fixture in
+  `tests/fixtures/weather/fitted_weather_artifact_v1.json`
+
+When these fixture paths are populated later, record at least:
+
+- family seed and scenario ordering assumptions
+- scenario count and timestep expectations
+- supported simulator summary fields
+- blackout interval semantics when present
+- numeric tolerance and refresh policy
+
 Committed simulator fixtures currently include:
 
 - `tests/fixtures/simulator/battery_arbitrage_case.json`

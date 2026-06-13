@@ -1,0 +1,15 @@
+{
+  "fixture_status": "scaffold",
+  "fixture_path": "tests/fixtures/weather/fitted_weather_artifact_v1.json",
+  "purpose": "Reserved fitted weather artifact fixture for offline load and sampling tests.",
+  "origin": "Phase 1 setup scaffold for spec 007-stochastic-weather.",
+  "schema_version": "v1-scaffold",
+  "legacy_reference_paths": [
+    "legacy/old_tpm/src_py/weather/models/gaussian.py",
+    "legacy/old_tpm/src_py/weather/models/enhanced.py"
+  ],
+  "notes": [
+    "Replace this placeholder with a deterministic committed artifact during User Story 1.",
+    "Final contents must remain inspectable JSON with explicit provenance and timestep metadata."
+  ]
+}

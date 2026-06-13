@@ -29,10 +29,10 @@ implementation and testing of each story.
 **Purpose**: Establish the weather package, deterministic fixtures, and
 migration-note scaffolding without expanding legacy runtime code.
 
-- [ ] T001 Create weather test package scaffolds in `tests/unit/weather/__init__.py` and `tests/integration/weather/__init__.py`
-- [ ] T002 [P] Create deterministic weather and simulator fixture scaffolds in `tests/fixtures/weather/recorded_pvgis_tmy_response.json`, `tests/fixtures/weather/location_unavailable_response.json`, `tests/fixtures/weather/fitted_weather_artifact_v1.json`, `tests/fixtures/simulator/stochastic_weather_family_case.json`, and `tests/fixtures/simulator/blackout_weather_family_case.json`
-- [ ] T003 [P] Add weather fixture provenance placeholders in `tests/fixtures/weather/README.md` and `tests/fixtures/simulator/README.md`
-- [ ] T004 [P] Create the stochastic-weather migration note file in `docs/migration/stochastic-weather.md`
+- [X] T001 Create weather test package scaffolds in `tests/unit/weather/__init__.py` and `tests/integration/weather/__init__.py`
+- [X] T002 [P] Create deterministic weather and simulator fixture scaffolds in `tests/fixtures/weather/recorded_pvgis_tmy_response.json`, `tests/fixtures/weather/location_unavailable_response.json`, `tests/fixtures/weather/fitted_weather_artifact_v1.json`, `tests/fixtures/simulator/stochastic_weather_family_case.json`, and `tests/fixtures/simulator/blackout_weather_family_case.json`
+- [X] T003 [P] Add weather fixture provenance placeholders in `tests/fixtures/weather/README.md` and `tests/fixtures/simulator/README.md`
+- [X] T004 [P] Create the stochastic-weather migration note file in `docs/migration/stochastic-weather.md`
 
 ---
 

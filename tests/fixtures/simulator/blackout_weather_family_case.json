@@ -1,0 +1,15 @@
+{
+  "fixture_status": "scaffold",
+  "fixture_path": "tests/fixtures/simulator/blackout_weather_family_case.json",
+  "purpose": "Reserved blackout-aware stochastic weather family fixture for simulator outage semantics coverage.",
+  "origin": "Phase 1 setup scaffold for spec 007-stochastic-weather.",
+  "weather_artifact_dependency": "tests/fixtures/weather/fitted_weather_artifact_v1.json",
+  "legacy_reference_paths": [
+    "legacy/old_tpm/src_py/simulator/common/weather.py",
+    "legacy/old_tpm/src_py/simulator/common/pv.py"
+  ],
+  "notes": [
+    "Replace this placeholder with a deterministic blackout scenario-family fixture during User Story 3.",
+    "Final contents should keep blackout semantics explicit and separate from weather attenuation."
+  ]
+}
