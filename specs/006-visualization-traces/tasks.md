@@ -133,9 +133,9 @@ comparison request is rejected deterministically.
 
 ### Tests for User Story 3
 
-- [ ] T033 [P] [US3] Add same-family comparison unit coverage for aligned series and summary deltas in `tests/unit/visualization/test_comparison.py`
-- [ ] T034 [P] [US3] Add integration coverage for supported same-family comparison and unsupported cross-family requests in `tests/integration/visualization/test_comparison.py`
-- [ ] T035 [P] [US3] Add regression coverage for missing-series and incompatible-length comparison failures in `tests/integration/visualization/test_comparison_failures.py`
+- [X] T033 [P] [US3] Add same-family comparison unit coverage for aligned series and summary deltas in `tests/unit/visualization/test_comparison.py`
+- [X] T034 [P] [US3] Add integration coverage for supported same-family comparison and unsupported cross-family requests in `tests/integration/visualization/test_comparison.py`
+- [X] T035 [P] [US3] Add regression coverage for missing-series and incompatible-length comparison failures in `tests/integration/visualization/test_comparison_failures.py`
 
 ### Implementation for User Story 3
 
