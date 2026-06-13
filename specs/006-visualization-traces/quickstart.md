@@ -54,6 +54,12 @@ sed -n '1,340p' src/open_energy_lab/simulator/scenario.py
 sed -n '1,220p' src/open_energy_lab/simulator/weather.py
 sed -n '1,220p' src/open_energy_lab/simulator/pv.py
 sed -n '1,120p' src/open_energy_lab/visualization/__init__.py
+sed -n '1,260p' src/open_energy_lab/visualization/inspection.py
+sed -n '1,260p' src/open_energy_lab/visualization/comparison.py
+sed -n '1,260p' src/open_energy_lab/visualization/plotting.py
+sed -n '1,240p' src/open_energy_lab/visualization/_persistence.py
+sed -n '1,320p' docs/migration/visualization-traces.md
+sed -n '1,260p' tests/fixtures/visualization/README.md
 ```
 
 Use these files to confirm that:
@@ -62,8 +68,10 @@ Use these files to confirm that:
   inspection
 - `BatteryLoadPVScenario` already exposes the weather-backed context that the
   visualization layer should report
-- the current visualization package is still only a scaffold and this feature
-  will become its first real public surface
+- the visualization package now ships a real stable inspection/reporting
+  surface plus focused comparison and experimental plotting modules
+- the migration note and fixture README agree on the shipped scope,
+  validation evidence, and refresh expectations
 
 ## Review the Existing Migration Notes
 
@@ -143,7 +151,20 @@ Review current fixture provenance with:
 ```bash
 sed -n '1,260p' tests/fixtures/README.md
 sed -n '1,260p' tests/fixtures/simulator/README.md
+sed -n '1,260p' tests/fixtures/visualization/README.md
 ```
+
+## Focused Visualization Validation
+
+```bash
+uv run pytest tests/unit/visualization/test_inspection.py tests/unit/visualization/test_weather_reporting.py tests/unit/visualization/test_comparison.py tests/unit/visualization/test_persistence_schema.py
+uv run pytest tests/integration/visualization/test_inspection_arbitrage.py tests/integration/visualization/test_inspection_battery_load_pv.py tests/integration/visualization/test_persisted_outputs.py
+uv run pytest tests/integration/visualization/test_comparison.py tests/integration/visualization/test_comparison_failures.py tests/integration/visualization/test_plotting.py tests/integration/visualization/test_plotting_battery_load_pv.py
+uv run pytest tests/unit/visualization/test_package_surface.py tests/unit/visualization/test_import_boundary.py tests/unit/visualization/test_no_legacy_imports.py tests/unit/visualization/test_optional_plotting_imports.py tests/unit/test_optional_dependency_boundaries.py tests/unit/test_import_contract.py
+```
+
+Use those focused commands while reviewing implementation details or fixture
+changes. Then rerun the broader feature-level checks below.
 
 ## Final Validation Commands
 
@@ -161,6 +182,7 @@ uv run pytest tests/unit/visualization
 uv run pytest tests/integration/visualization
 uv run pytest tests/integration/simulator/test_controller_evaluation.py
 uv run pytest tests/integration/simulator/test_battery_arbitrage_trace.py tests/integration/simulator/test_battery_load_pv_trace.py
+uv run pytest tests/integration/visualization/test_fixture_schema.py
 ```
 
 ## Validation Outcomes

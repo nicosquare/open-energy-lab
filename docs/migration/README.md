@@ -22,6 +22,25 @@ parity validation, and environment assumptions.
 - `environment-assumptions.md`: default local validation environment and skip
   rules for non-core capabilities
 
+## Visualization Review Path
+
+For the `006-visualization-traces` feature, read the migration docs in this
+order:
+
+1. `visualization-traces.md` for the shipped inspection/reporting surface,
+   same-family comparison scope, experimental plotting split, fixture set, and
+   recorded validation outcomes.
+2. `api-maturity.md` for the stable package-root visualization imports versus
+   focused comparison and experimental plotting module imports.
+3. `dependency-policy.md` for the import-light visualization dependency
+   boundary and optional plotting guidance.
+4. `fixture-provenance.md` together with
+   `tests/fixtures/visualization/README.md` for the committed fixture record
+   requirements and refresh expectations.
+
+This review path keeps the visualization feature anchored to shipped library
+behavior, not to the earlier scaffolding state.
+
 ## Working Rule
 
 Future migration specs must identify target library paths, validation paths,

@@ -181,9 +181,9 @@ the import-boundary and import-smoke suites.
 **Purpose**: Finalize quickstart validation guidance, fixture provenance, and
 cross-story documentation.
 
-- [ ] T045 [P] Update visualization fixture provenance details and refresh guidance in `tests/fixtures/visualization/README.md`
-- [ ] T046 [P] Update review and validation commands in `specs/006-visualization-traces/quickstart.md`
-- [ ] T047 [P] Update migration overview references for the visualization feature in `docs/migration/README.md`
+- [X] T045 [P] Update visualization fixture provenance details and refresh guidance in `tests/fixtures/visualization/README.md`
+- [X] T046 [P] Update review and validation commands in `specs/006-visualization-traces/quickstart.md`
+- [X] T047 [P] Update migration overview references for the visualization feature in `docs/migration/README.md`
 - [ ] T048 Run the validation commands documented in `specs/006-visualization-traces/quickstart.md`: `uv run pytest tests/unit/visualization tests/integration/visualization`, `uv run pytest tests/unit/simulator tests/integration/simulator`, `uv run python -c "import open_energy_lab.visualization; import open_energy_lab.simulator; import open_energy_lab.core"`, and `rg "from legacy|import legacy" src/open_energy_lab/visualization tests/unit/visualization tests/integration/visualization docs/migration`
 - [ ] T049 Document final validation outcomes and any skipped optional-backend checks in `specs/006-visualization-traces/quickstart.md`
 
