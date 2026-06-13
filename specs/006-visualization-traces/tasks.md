@@ -114,8 +114,8 @@ simulator for that scenario family.
 
 - [X] T029 [US2] Extend inspection-view builders for load, PV, net-grid, and simulator-exposed weather series in `src/open_energy_lab/visualization/inspection.py`
 - [X] T030 [US2] Populate battery-load-PV visualization fixture coverage in `tests/fixtures/visualization/inspection_battery_load_pv_case.json` and `tests/fixtures/visualization/persisted_battery_load_pv_case.json`
-- [ ] T031 [US2] Extend experimental plotting helpers for supported battery-load-PV and weather-backed single-run traces in `src/open_energy_lab/visualization/plotting.py`
-- [ ] T032 [US2] Document weather-aware inspection scope, persisted-output support, and no-weather fallback behavior in `docs/migration/visualization-traces.md`
+- [X] T031 [US2] Extend experimental plotting helpers for supported battery-load-PV and weather-backed single-run traces in `src/open_energy_lab/visualization/plotting.py`
+- [X] T032 [US2] Document weather-aware inspection scope, persisted-output support, and no-weather fallback behavior in `docs/migration/visualization-traces.md`
 
 **Checkpoint**: User Story 2 is functional and independently testable through
 `tests/integration/visualization/test_inspection_battery_load_pv.py`.

@@ -70,6 +70,13 @@ def test_plotting_accepts_weather_backed_inspection_views_without_resimulation()
     ]
     assert backend.calls[0]["scenario_kind"] == "BatteryLoadPVScenario"
     assert backend.calls[0]["source_kind"] == "controller_evaluation"
+    assert backend.calls[0]["source_location"] == "in_memory"
+    assert backend.calls[0]["requires_optional_backend"] is True
+    assert backend.calls[0]["target_run"] == {
+        "scenario_id": inspection_view["scenario_id"],
+        "scenario_kind": "BatteryLoadPVScenario",
+        "source_kind": "controller_evaluation",
+    }
     assert backend.calls[0]["available_sections"]["weather"] is True
 
 
@@ -106,4 +113,6 @@ def test_plotting_from_persisted_battery_load_pv_output_does_not_rerun_the_simul
         "dry_bulb_air_temperature_c",
     ]
     assert backend.calls[0]["source_kind"] == "persisted_output"
+    assert backend.calls[0]["source_location"] == "persisted_output"
+    assert backend.calls[0]["requires_optional_backend"] is True
     assert backend.calls[0]["available_sections"]["weather"] is True

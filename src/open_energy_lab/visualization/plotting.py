@@ -7,6 +7,13 @@ from collections.abc import Sequence
 from .inspection import build_inspection_view
 
 
+_SOURCE_LOCATION_BY_KIND = {
+    "simulation_trace": "in_memory",
+    "controller_evaluation": "in_memory",
+    "persisted_output": "persisted_output",
+}
+
+
 def _normalize_series_names(value: Sequence[str]) -> list[str]:
     if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
         raise TypeError("series_names must be a sequence of strings")
@@ -22,6 +29,15 @@ def _normalize_series_names(value: Sequence[str]) -> list[str]:
     return normalized
 
 
+def _source_location_for_view(source_kind: str) -> str:
+    try:
+        return _SOURCE_LOCATION_BY_KIND[source_kind]
+    except KeyError as exc:
+        raise ValueError(
+            f"unsupported inspection source_kind for plotting: {source_kind!r}"
+        ) from exc
+
+
 def plot_inspection_view(
     value: object,
     *,
@@ -31,7 +47,8 @@ def plot_inspection_view(
 ) -> object:
     """Render a deterministic static single-run plot through an injected backend."""
 
-    if not hasattr(backend, "render_static_plot"):
+    render_static_plot = getattr(backend, "render_static_plot", None)
+    if not callable(render_static_plot):
         raise TypeError("backend must define render_static_plot(plot_spec)")
 
     normalized_series_names = _normalize_series_names(series_names)
@@ -49,16 +66,23 @@ def plot_inspection_view(
         raise ValueError(f"unsupported series_names requested for plotting: {missing_series}")
 
     plot_spec = {
+        "target_run": {
+            "scenario_id": inspection_view["scenario_id"],
+            "scenario_kind": inspection_view["scenario_kind"],
+            "source_kind": inspection_view["source_kind"],
+        },
         "scenario_id": inspection_view["scenario_id"],
         "scenario_kind": inspection_view["scenario_kind"],
         "source_kind": inspection_view["source_kind"],
         "plot_kind": "static_single_run",
         "output_mode": "backend_result",
+        "source_location": _source_location_for_view(inspection_view["source_kind"]),
+        "requires_optional_backend": True,
         "maturity": "experimental",
         "series": [series_by_name[series_name] for series_name in normalized_series_names],
         "available_sections": dict(inspection_view["available_sections"]),
     }
-    return backend.render_static_plot(plot_spec)
+    return render_static_plot(plot_spec)
 
 
 __all__ = ["plot_inspection_view"]

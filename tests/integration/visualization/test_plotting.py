@@ -61,6 +61,13 @@ def test_plotting_accepts_an_existing_inspection_view_without_resimulation() -> 
     ]
     assert backend.calls[0]["scenario_kind"] == "ArbitrageScenario"
     assert backend.calls[0]["source_kind"] == "controller_evaluation"
+    assert backend.calls[0]["source_location"] == "in_memory"
+    assert backend.calls[0]["requires_optional_backend"] is True
+    assert backend.calls[0]["target_run"] == {
+        "scenario_id": inspection_view["scenario_id"],
+        "scenario_kind": "ArbitrageScenario",
+        "source_kind": "controller_evaluation",
+    }
 
 
 def test_plotting_from_persisted_output_does_not_rerun_the_simulator(
@@ -91,3 +98,5 @@ def test_plotting_from_persisted_output_does_not_rerun_the_simulator(
         "step_settlement",
     ]
     assert backend.calls[0]["source_kind"] == "persisted_output"
+    assert backend.calls[0]["source_location"] == "persisted_output"
+    assert backend.calls[0]["requires_optional_backend"] is True
