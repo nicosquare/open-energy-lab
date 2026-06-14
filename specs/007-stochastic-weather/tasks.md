@@ -98,10 +98,10 @@ length, deterministic seed behavior, and physical-bounds enforcement.
 
 ### Tests for User Story 2
 
-- [ ] T022 [P] [US2] Add seeded family-sampling unit coverage for arbitrary horizons and timestep mismatch failures in `tests/unit/weather/test_sampling.py`
-- [ ] T023 [P] [US2] Add cloud-event overlay and physical-bounds unit coverage in `tests/unit/weather/test_events.py`
-- [ ] T024 [P] [US2] Add offline family sampling integration coverage for reproducibility and exact `num_steps` outputs in `tests/integration/weather/test_offline_sampling.py`
-- [ ] T025 [P] [US2] Add stochastic acceptance coverage for `100` sampled scenarios at `num_steps=168` across family seeds `0..9`, including explicit physical-bounds, lag-1 autocorrelation (`<= 0.15` mean absolute error), pairwise-correlation (`<= 0.20` mean absolute error), and cloud-event contiguity thresholds in `tests/integration/weather/test_sampling_statistics.py`
+- [X] T022 [P] [US2] Add seeded family-sampling unit coverage for arbitrary horizons and timestep mismatch failures in `tests/unit/weather/test_sampling.py`
+- [X] T023 [P] [US2] Add cloud-event overlay and physical-bounds unit coverage in `tests/unit/weather/test_events.py`
+- [X] T024 [P] [US2] Add offline family sampling integration coverage for reproducibility and exact `num_steps` outputs in `tests/integration/weather/test_offline_sampling.py`
+- [X] T025 [P] [US2] Add stochastic acceptance coverage for `100` sampled scenarios at `num_steps=168` across family seeds `0..9`, including explicit physical-bounds, lag-1 autocorrelation (`<= 0.15` mean absolute error), pairwise-correlation (`<= 0.20` mean absolute error), and cloud-event contiguity thresholds in `tests/integration/weather/test_sampling_statistics.py`
 
 ### Implementation for User Story 2
 
