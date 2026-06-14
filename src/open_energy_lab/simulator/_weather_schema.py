@@ -33,6 +33,10 @@ _WEATHER_FIELD_SPECS = (
 )
 
 _SPECS_BY_FIELD_NAME = {item.field_name: item for item in _WEATHER_FIELD_SPECS}
+CANONICAL_WEATHER_FIELD_NAMES = tuple(item.field_name for item in _WEATHER_FIELD_SPECS)
+TMY_LABEL_TO_FIELD_NAME = {
+    item.tmy_label: item.field_name for item in _WEATHER_FIELD_SPECS
+}
 
 REQUIRED_WEATHER_FIELD_NAMES = (
     "timestamp_utc",
@@ -94,9 +98,11 @@ def validate_weather_field_names(field_names: Iterable[str]) -> tuple[str, ...]:
 
 
 __all__ = [
+    "CANONICAL_WEATHER_FIELD_NAMES",
     "DEFERRED_STANDARD_WEATHER_FIELD_NAMES",
     "IRRADIANCE_FIELD_NAMES",
     "REQUIRED_WEATHER_FIELD_NAMES",
+    "TMY_LABEL_TO_FIELD_NAME",
     "WeatherFieldSpec",
     "canonical_tmy_label",
     "get_weather_field_spec",

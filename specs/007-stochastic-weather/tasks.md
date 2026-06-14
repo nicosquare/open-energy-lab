@@ -73,9 +73,9 @@ confirm it remains sampleable without refetching source data.
 
 ### Implementation for User Story 1
 
-- [ ] T016 [US1] Implement the PVGIS-backed TMY fetch adapter in `src/open_energy_lab/weather/tmy.py` using `legacy/old_tpm/src_py/weather/fetch.py` as reference-only evidence
-- [ ] T017 [US1] Implement canonical field ordering, full ten-field normalization, source-label mapping, and local-civil-time normalization in `src/open_energy_lab/weather/_canonical.py` and `src/open_energy_lab/simulator/_weather_schema.py` using `legacy/old_tpm/src_py/weather/pipeline.py` as reference-only evidence
-- [ ] T018 [US1] Implement artifact fitting, JSON persistence, and supported-version loading in `src/open_energy_lab/weather/fit.py` and `src/open_energy_lab/weather/artifact.py` using `legacy/old_tpm/src_py/weather/models/gaussian.py` and `legacy/old_tpm/src_py/weather/models/enhanced.py` as reference-only evidence
+- [X] T016 [US1] Implement the PVGIS-backed TMY fetch adapter in `src/open_energy_lab/weather/tmy.py` using `legacy/old_tpm/src_py/weather/fetch.py` as reference-only evidence
+- [X] T017 [US1] Implement canonical field ordering, full ten-field normalization, source-label mapping, and local-civil-time normalization in `src/open_energy_lab/weather/_canonical.py` and `src/open_energy_lab/simulator/_weather_schema.py` using `legacy/old_tpm/src_py/weather/pipeline.py` as reference-only evidence
+- [X] T018 [US1] Implement artifact fitting, JSON persistence, and supported-version loading in `src/open_energy_lab/weather/fit.py` and `src/open_energy_lab/weather/artifact.py` using `legacy/old_tpm/src_py/weather/models/gaussian.py` and `legacy/old_tpm/src_py/weather/models/enhanced.py` as reference-only evidence
 - [ ] T019 [US1] Export `fit_weather_model` and `load_weather_artifact` from `src/open_energy_lab/weather/__init__.py`
 - [ ] T020 [US1] Populate recorded fetch and artifact fixtures with provenance in `tests/fixtures/weather/recorded_pvgis_tmy_response.json`, `tests/fixtures/weather/missing_required_field_response.json`, `tests/fixtures/weather/location_unavailable_response.json`, `tests/fixtures/weather/fitted_weather_artifact_v1.json`, `tests/fixtures/weather/fitted_weather_artifact_unsupported_version.json`, and `tests/fixtures/weather/README.md`
 - [ ] T021 [US1] Document geolocation-to-artifact preserve/improve/reject decisions and fit workflow usage in `docs/migration/stochastic-weather.md` and `specs/007-stochastic-weather/quickstart.md`

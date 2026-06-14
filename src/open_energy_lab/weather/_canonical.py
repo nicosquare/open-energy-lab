@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
+from hashlib import sha1
 from math import isclose
 from zoneinfo import ZoneInfo
 
@@ -19,6 +20,28 @@ CANONICAL_WEATHER_FIELD_ORDER = tuple(
 LOCAL_CIVIL_TIME_BASIS = "local_civil_time"
 SOURCE_FIELD_LABELS = {
     spec.field_name: spec.tmy_label for spec in iter_weather_field_specs()
+}
+SOURCE_FIELD_ALIASES = {
+    "timestamp_utc": (
+        "Date & time (UTC)",
+        "timestamp_utc",
+        "time(UTC)",
+        "time_utc",
+    ),
+    "dry_bulb_air_temperature_c": ("T2m [°C]", "temp_air", "T2m"),
+    "global_horizontal_irradiance_w_per_m2": ("G(h) [W/m2]", "ghi", "G(h)"),
+    "direct_beam_irradiance_w_per_m2": ("Gb(n) [W/m2]", "dni", "Gb(n)"),
+    "diffuse_horizontal_irradiance_w_per_m2": ("Gd(h) [W/m2]", "dhi", "Gd(h)"),
+    "relative_humidity_pct": ("RH [%]", "relative_humidity", "RH"),
+    "infrared_radiation_downwards_w_per_m2": (
+        "IR(h) [W/m2]",
+        "ghi_infrared",
+        "infrared",
+        "IR(h)",
+    ),
+    "windspeed_10m_m_per_s": ("WS10m [m/s]", "wind_speed", "WS10m"),
+    "wind_direction_10m_deg": ("WD10m [°]", "wind_direction", "WD10m"),
+    "surface_air_pressure_pa": ("SP [Pa]", "pressure", "SP"),
 }
 
 
@@ -82,7 +105,7 @@ def normalize_recorded_tmy_response(
 ) -> CanonicalWeatherDataset:
     """Normalize one recorded provider response into the canonical schema."""
 
-    records_raw = response.get("records")
+    records_raw = _extract_provider_records(response)
     if not isinstance(records_raw, list) or not records_raw:
         raise ValueError("TMY response must contain a non-empty 'records' list")
 
@@ -115,9 +138,8 @@ def normalize_recorded_tmy_response(
 
     field_series: dict[str, tuple[object, ...]] = {"timestamp_utc": canonical_timestamps}
     for field_name in CANONICAL_WEATHER_FIELD_ORDER[1:]:
-        label = SOURCE_FIELD_LABELS[field_name]
         values = tuple(
-            _coerce_float(records, label, index)
+            _coerce_float(records, field_name, index)
             for index in range(len(records))
         )
         field_series[field_name] = values
@@ -126,12 +148,15 @@ def normalize_recorded_tmy_response(
     if not isinstance(source_metadata, Mapping):
         raise TypeError("source_metadata must be a mapping when provided")
 
+    default_dataset_id = _build_dataset_id(
+        source_name=source_name,
+        latitude=latitude,
+        longitude=longitude,
+        timestep_hours=effective_timestep,
+        timestamp_utc=canonical_timestamps,
+    )
     effective_dataset_id = dataset_id or str(
-        response.get(
-            "dataset_id",
-            f"{source_name.lower().replace(' ', '-')}"
-            f":{latitude:.6f}:{longitude:.6f}:{effective_timestep:g}",
-        )
+        response.get("dataset_id") or default_dataset_id
     )
 
     return CanonicalWeatherDataset(
@@ -156,10 +181,10 @@ def _coerce_timestamp(
     field_name: str,
     index: int,
 ) -> str:
-    label = SOURCE_FIELD_LABELS[field_name]
-    if label not in records[index]:
+    label = _resolve_source_label(records[index], field_name)
+    if label is None:
         raise MissingCanonicalWeatherFieldError(
-            f"provider record is missing canonical field {field_name!r} mapped from {label!r}"
+            f"provider record is missing canonical field {field_name!r} mapped from {SOURCE_FIELD_LABELS[field_name]!r}"
         )
     value = records[index][label]
     if not isinstance(value, str):
@@ -169,17 +194,13 @@ def _coerce_timestamp(
 
 def _coerce_float(
     records: list[Mapping[str, object]],
-    label: str,
+    field_name: str,
     index: int,
 ) -> float:
-    if label not in records[index]:
-        field_name = next(
-            canonical_name
-            for canonical_name, source_label in SOURCE_FIELD_LABELS.items()
-            if source_label == label
-        )
+    label = _resolve_source_label(records[index], field_name)
+    if label is None:
         raise MissingCanonicalWeatherFieldError(
-            f"provider record is missing canonical field {field_name!r} mapped from {label!r}"
+            f"provider record is missing canonical field {field_name!r} mapped from {SOURCE_FIELD_LABELS[field_name]!r}"
         )
     return float(records[index][label])
 
@@ -202,9 +223,18 @@ def _derive_timestep_hours(
 ) -> float | None:
     if len(timestamp_utc) < 2:
         return None
-    first = _parse_utc_timestamp(timestamp_utc[0])
-    second = _parse_utc_timestamp(timestamp_utc[1])
-    return (second - first).total_seconds() / 3600.0
+    parsed_timestamps = tuple(_parse_utc_timestamp(value) for value in timestamp_utc)
+    timestep_hours = (
+        parsed_timestamps[1] - parsed_timestamps[0]
+    ).total_seconds() / 3600.0
+    if timestep_hours <= 0:
+        raise ValueError("timestamp_utc values must be strictly increasing")
+
+    for previous, current in zip(parsed_timestamps, parsed_timestamps[1:]):
+        delta_hours = (current - previous).total_seconds() / 3600.0
+        if not isclose(delta_hours, timestep_hours, rel_tol=0.0, abs_tol=1e-9):
+            raise ValueError("timestamp_utc values must use one regular timestep")
+    return timestep_hours
 
 
 def _local_civil_label(timestamp_text: str, timezone_name: str) -> str:
@@ -212,11 +242,56 @@ def _local_civil_label(timestamp_text: str, timezone_name: str) -> str:
         ZoneInfo(timezone_name)
     ).isoformat()
 
+
+def _extract_provider_records(response: Mapping[str, object]) -> object:
+    records = response.get("records")
+    if records is not None:
+        return records
+
+    outputs = response.get("outputs")
+    if isinstance(outputs, Mapping):
+        hourly = outputs.get("hourly")
+        if hourly is not None:
+            return hourly
+
+    return None
+
+
+def _resolve_source_label(record: Mapping[str, object], field_name: str) -> str | None:
+    for label in SOURCE_FIELD_ALIASES[field_name]:
+        if label in record:
+            return label
+    return None
+
+
+def _build_dataset_id(
+    *,
+    source_name: str,
+    latitude: float,
+    longitude: float,
+    timestep_hours: float,
+    timestamp_utc: tuple[str, ...],
+) -> str:
+    dataset_suffix = sha1(
+        "|".join(
+            (
+                f"{latitude:.6f}",
+                f"{longitude:.6f}",
+                f"{timestep_hours:g}",
+                timestamp_utc[0],
+                timestamp_utc[-1],
+                str(len(timestamp_utc)),
+            )
+        ).encode("utf-8")
+    ).hexdigest()[:12]
+    return f"{source_name.lower().replace(' ', '-')}:{dataset_suffix}"
+
 __all__ = [
     "CANONICAL_WEATHER_FIELD_ORDER",
     "CanonicalWeatherDataset",
     "LOCAL_CIVIL_TIME_BASIS",
     "MissingCanonicalWeatherFieldError",
+    "SOURCE_FIELD_ALIASES",
     "SOURCE_FIELD_LABELS",
     "normalize_recorded_tmy_response",
 ]

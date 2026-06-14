@@ -54,6 +54,22 @@ class WeatherArtifact:
             raise ValueError("timestep_hours must be positive")
         if not self.supported_load_modes:
             raise ValueError("supported_load_modes must not be empty")
+        if "offline" not in self.supported_load_modes:
+            raise ValueError("supported_load_modes must include 'offline'")
+        if "intervals_per_day" not in self.base_model_parameters:
+            raise ValueError("base_model_parameters must include intervals_per_day")
+        if "field_order" not in self.base_model_parameters:
+            raise ValueError("base_model_parameters must include field_order")
+        if "mean_vector" not in self.base_model_parameters:
+            raise ValueError("base_model_parameters must include mean_vector")
+        if "covariance_matrix" not in self.base_model_parameters:
+            raise ValueError("base_model_parameters must include covariance_matrix")
+        if "irradiance_fields" not in self.cloud_event_model:
+            raise ValueError("cloud_event_model must include irradiance_fields")
+        if "start_probability_by_local_step" not in self.cloud_event_model:
+            raise ValueError(
+                "cloud_event_model must include start_probability_by_local_step"
+            )
 
     def to_dict(self) -> dict[str, object]:
         """Serialize the artifact into its persisted JSON shape."""
