@@ -131,10 +131,10 @@ deterministic debugging behavior.
 
 ### Tests for User Story 3
 
-- [ ] T031 [P] [US3] Add simulator unit coverage for family summaries, blackout traces, and unmet-load fields in `tests/unit/simulator/test_stochastic_weather.py`
-- [ ] T032 [P] [US3] Add stochastic family integration coverage for scenario-indexed results and fixed percentile summaries in `tests/integration/simulator/test_stochastic_weather_family.py`
-- [ ] T033 [P] [US3] Add blackout grid-outage integration coverage for disabled grid exchange and explicit unmet load in `tests/integration/simulator/test_blackout_semantics.py`
-- [ ] T034 [P] [US3] Extend deterministic fixed-weather regression coverage to preserve `BatteryLoadPVScenario` debugging behavior in `tests/integration/simulator/test_battery_load_pv_trace.py`
+- [X] T031 [P] [US3] Add simulator unit coverage for family summaries, blackout traces, and unmet-load fields in `tests/unit/simulator/test_stochastic_weather.py`
+- [X] T032 [P] [US3] Add stochastic family integration coverage for scenario-indexed results and fixed percentile summaries in `tests/integration/simulator/test_stochastic_weather_family.py`
+- [X] T033 [P] [US3] Add blackout grid-outage integration coverage for disabled grid exchange and explicit unmet load in `tests/integration/simulator/test_blackout_semantics.py`
+- [X] T034 [P] [US3] Extend deterministic fixed-weather regression coverage to preserve `BatteryLoadPVScenario` debugging behavior in `tests/integration/simulator/test_battery_load_pv_trace.py`
 
 ### Implementation for User Story 3
 

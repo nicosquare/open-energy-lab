@@ -288,3 +288,59 @@ def test_explicit_dispatch_and_built_in_rule_paths_remain_distinct() -> None:
         dispatch_trace.total_settlement,
         abs=DEFAULT_ABSOLUTE_TOLERANCE,
     )
+
+
+def test_fixed_weather_trace_preserves_debuggable_inputs_and_algebra() -> None:
+    fixture = _load_case()
+    dispatch_case = fixture["dispatch_case"]
+    grid, battery, load, weather, pv, price_signal, objective = _build_common_scenario_parts(
+        fixture
+    )
+    scenario = BatteryLoadPVScenario(
+        scenario_id=f"{fixture['case_id']}-debug-regression",
+        time_grid=grid,
+        battery=battery,
+        load=load,
+        weather=weather,
+        pv=pv,
+        price_signal=price_signal,
+        objective=objective,
+        dispatch_requests=DispatchRequestSeries(
+            requested_power_kw=dispatch_case["dispatch_requests_kw"],
+            sign_convention=POSITIVE_DISPATCH_MEANING,
+            source="shared-fixture",
+        ),
+    )
+
+    original_timestamp_utc = list(weather.timestamp_utc)
+    original_temperature_c = list(weather.dry_bulb_air_temperature_c)
+    original_irradiance = list(weather.global_horizontal_irradiance_w_per_m2)
+
+    trace = scenario.evaluate_trace()
+
+    assert trace.load_kw == pytest.approx(load.demand_kw, abs=DEFAULT_ABSOLUTE_TOLERANCE)
+    assert trace.pv_generation_kw == pytest.approx(
+        pv.derive_generation_kw(weather),
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
+    assert trace.net_grid_power_kw == pytest.approx(
+        [
+            load_kw + battery_kw - pv_kw
+            for load_kw, battery_kw, pv_kw in zip(
+                trace.load_kw,
+                trace.realized_power_kw,
+                trace.pv_generation_kw,
+                strict=True,
+            )
+        ],
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
+    assert weather.timestamp_utc == original_timestamp_utc
+    assert weather.dry_bulb_air_temperature_c == pytest.approx(
+        original_temperature_c,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
+    assert weather.global_horizontal_irradiance_w_per_m2 == pytest.approx(
+        original_irradiance,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
