@@ -35,7 +35,7 @@ def load_weather_family_fixture(path: Path) -> dict[str, Any]:
 
 
 def load_all_weather_family_fixtures() -> list[tuple[Path, dict[str, Any]]]:
-    """Load every committed stochastic-weather simulator fixture scaffold."""
+    """Load every committed stochastic-weather simulator fixture."""
 
     return [(path, load_weather_family_fixture(path)) for path in WEATHER_FAMILY_FIXTURE_PATHS]
 

@@ -1,15 +1,297 @@
 {
-  "fixture_status": "scaffold",
+  "fixture_status": "active",
   "fixture_path": "tests/fixtures/simulator/stochastic_weather_family_case.json",
-  "purpose": "Reserved stochastic weather family fixture for simulator family-evaluation coverage.",
-  "origin": "Phase 1 setup scaffold for spec 007-stochastic-weather.",
+  "purpose": "Deterministic simulator scenario-family evaluation fixture for sampled weather without blackout intervals.",
+  "origin": "Synthetic current-library US3 family-evaluation fixture verified against the shipped stochastic simulator path.",
   "weather_artifact_dependency": "tests/fixtures/weather/fitted_weather_artifact_v1.json",
   "legacy_reference_paths": [
     "legacy/old_tpm/src_py/simulator/common/weather.py",
     "legacy/old_tpm/src_py/simulator/common/pv.py"
   ],
   "notes": [
-    "Replace this placeholder with a deterministic scenario-family fixture during User Story 3.",
-    "Final contents should document summary fields, scenario ordering, and numeric tolerance."
-  ]
+    "Uses the committed sampled weather family in tests/fixtures/weather/sampled_weather_family_case.json together with a deterministic BatteryLoadPVScenario baseline.",
+    "Captures exact scenario ordering, fixed summary statistics, and the preserved no-blackout path for simulator family evaluation."
+  ],
+  "sampled_weather_family_fixture_path": "tests/fixtures/weather/sampled_weather_family_case.json",
+  "weather_sampling_request": {
+    "num_steps": 3,
+    "scenario_count": 2,
+    "family_seed": 13,
+    "expected_timestep_hours": 24.0
+  },
+  "summary_output_fields": [
+    "pv_generation_kw",
+    "net_grid_power_kw",
+    "unmet_load_kw",
+    "step_settlement"
+  ],
+  "numeric_tolerance": 1e-06,
+  "base_scenario": {
+    "scenario_id": "stochastic-weather-base",
+    "battery": {
+      "name": "battery",
+      "capacity_kwh": 8.0,
+      "max_charge_kw": 3.0,
+      "max_discharge_kw": 3.0,
+      "charge_efficiency": 0.95,
+      "discharge_efficiency": 0.95,
+      "initial_soc": 0.25,
+      "min_soc": 0.0,
+      "max_soc": 1.0
+    },
+    "load": {
+      "name": "load",
+      "demand_kw": [
+        3.0,
+        1.0,
+        4.0
+      ],
+      "interpretation": "exogenous-consumption",
+      "source": "fixture-baseline"
+    },
+    "pv": {
+      "name": "pv",
+      "rated_power_kw": 4.0,
+      "temperature_coefficient_pct_per_c": -0.4,
+      "reference_irradiance_w_per_m2": 1000.0,
+      "reference_temperature_c": 25.0,
+      "derivation_name": "ghi-linear-temperature-adjusted",
+      "irradiance_field_names": [
+        "global_horizontal_irradiance_w_per_m2"
+      ],
+      "generation_cap_kw": null
+    },
+    "price_signal": {
+      "currency": "USD",
+      "unit_rate_name": "energy-price",
+      "import_prices": [
+        0.1,
+        0.2,
+        0.3
+      ],
+      "export_price_ratio": 0.8,
+      "interpretation": "discounted export relative to import prices",
+      "time_alignment": "step-start"
+    },
+    "objective": {
+      "objective_name": "grid-settlement",
+      "settlement_basis": "grid-settlement",
+      "allow_export": true,
+      "export_price_ratio": 0.8
+    },
+    "dispatch_requests": {
+      "requested_power_kw": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sign_convention": "charge",
+      "source": "fixture-baseline"
+    }
+  },
+  "expected_family_result": {
+    "family_id": "weather-family:f7dbcc3a131d",
+    "scenario_results": [
+      {
+        "scenario_index": 0,
+        "pv_generation_kw": [
+          2.195977008873028,
+          1.6203355177746448,
+          2.7124327050008397
+        ],
+        "net_grid_power_kw": [
+          0.8040229911269718,
+          -0.6203355177746448,
+          1.2875672949991603
+        ],
+        "unmet_load_kw": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "blackout_active": [
+          false,
+          false,
+          false
+        ],
+        "step_settlement": [
+          -1.9296551787047325,
+          2.3820883882546364,
+          -9.270484523993954
+        ],
+        "total_settlement": -8.81805131444405,
+        "weather_reference": "weather-artifact:synthetic-us1-daily:family-13:scenario-0",
+        "constraint_events": []
+      },
+      {
+        "scenario_index": 1,
+        "pv_generation_kw": [
+          2.2348175894656284,
+          2.215912056083534,
+          1.1954367563864203
+        ],
+        "net_grid_power_kw": [
+          0.7651824105343716,
+          -1.2159120560835341,
+          2.80456324361358
+        ],
+        "unmet_load_kw": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "blackout_active": [
+          false,
+          false,
+          false
+        ],
+        "step_settlement": [
+          -1.836437785282492,
+          4.669102295360772,
+          -20.192855354017777
+        ],
+        "total_settlement": -17.360190843939495,
+        "weather_reference": "weather-artifact:synthetic-us1-daily:family-13:scenario-1",
+        "constraint_events": []
+      }
+    ],
+    "summary_statistics": {
+      "pv_generation_kw": {
+        "min": [
+          2.195977008873028,
+          1.6203355177746448,
+          1.1954367563864203
+        ],
+        "mean": [
+          2.2153972991693283,
+          1.9181237869290895,
+          1.9539347306936299
+        ],
+        "max": [
+          2.2348175894656284,
+          2.215912056083534,
+          2.7124327050008397
+        ],
+        "p05": [
+          2.197919037902658,
+          1.6501143446900892,
+          1.2712865538171414
+        ],
+        "p50": [
+          2.2153972991693283,
+          1.9181237869290895,
+          1.9539347306936299
+        ],
+        "p95": [
+          2.2328755604359984,
+          2.1861332291680897,
+          2.6365829075701184
+        ]
+      },
+      "net_grid_power_kw": {
+        "min": [
+          0.7651824105343716,
+          -1.2159120560835341,
+          1.2875672949991603
+        ],
+        "mean": [
+          0.7846027008306717,
+          -0.9181237869290895,
+          2.04606526930637
+        ],
+        "max": [
+          0.8040229911269718,
+          -0.6203355177746448,
+          2.80456324361358
+        ],
+        "p05": [
+          0.7671244395640017,
+          -1.1861332291680897,
+          1.3634170924298814
+        ],
+        "p50": [
+          0.7846027008306717,
+          -0.9181237869290895,
+          2.04606526930637
+        ],
+        "p95": [
+          0.8020809620973418,
+          -0.6501143446900893,
+          2.7287134461828586
+        ]
+      },
+      "unmet_load_kw": {
+        "min": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "mean": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "p05": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "p50": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "p95": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "step_settlement": {
+        "min": [
+          -1.9296551787047325,
+          2.3820883882546364,
+          -20.192855354017777
+        ],
+        "mean": [
+          -1.8830464819936124,
+          3.525595341807704,
+          -14.731669939005865
+        ],
+        "max": [
+          -1.836437785282492,
+          4.669102295360772,
+          -9.270484523993954
+        ],
+        "p05": [
+          -1.9249943090336203,
+          2.496439083609943,
+          -19.646736812516586
+        ],
+        "p50": [
+          -1.8830464819936124,
+          3.525595341807704,
+          -14.731669939005865
+        ],
+        "p95": [
+          -1.8410986549536041,
+          4.554751600005465,
+          -9.816603065495146
+        ]
+      }
+    },
+    "supported_summary_fields": [
+      "pv_generation_kw",
+      "net_grid_power_kw",
+      "unmet_load_kw",
+      "step_settlement"
+    ],
+    "family_seed": 13,
+    "timestep_hours": 24.0
+  }
 }

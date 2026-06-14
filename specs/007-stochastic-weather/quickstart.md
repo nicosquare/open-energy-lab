@@ -1,11 +1,12 @@
 # Quickstart: Stochastic Weather Generation And Simulator Integration
 
 Use this quickstart to review the plan and exercise the implemented User Story
-1 fit workflow plus User Story 2 offline sampling workflow. The feature adds a
-reusable `open_energy_lab.weather` capability for geolocation fetch,
-stochastic fitting, persisted artifacts, and offline sampled weather families,
-then later integrates sampled weather into `open_energy_lab.simulator`
-without replacing the current deterministic path.
+1 fit workflow, User Story 2 offline sampling workflow, and User Story 3
+simulator family-evaluation workflow. The feature adds a reusable
+`open_energy_lab.weather` capability for geolocation fetch, stochastic
+fitting, persisted artifacts, and offline sampled weather families, then
+integrates those sampled families into `open_energy_lab.simulator` without
+replacing the current deterministic path.
 
 ## Review the Feature
 
@@ -74,12 +75,12 @@ the stable contract without the documented improvements.
 ## Review the Current Upstream Library Surfaces
 
 ```bash
+sed -n '1,220p' src/open_energy_lab/simulator/__init__.py
 sed -n '1,220p' src/open_energy_lab/simulator/_weather_schema.py
 sed -n '1,220p' src/open_energy_lab/simulator/weather.py
 sed -n '1,240p' src/open_energy_lab/simulator/pv.py
+sed -n '1,240p' src/open_energy_lab/simulator/stochastic_weather.py
 sed -n '360,560p' src/open_energy_lab/simulator/scenario.py
-sed -n '1,220p' docs/migration/dependency-policy.md
-sed -n '1,220p' docs/architecture/foundation.md
 sed -n '1,260p' tests/fixtures/simulator/README.md
 ```
 
@@ -87,8 +88,11 @@ Confirm from these files that:
 
 - the current simulator already owns deterministic weather-backed PV behavior
 - the canonical first-release field set already exists in `_weather_schema.py`
+- the package root now exports the stable stochastic family-evaluation entry
+  points lazily
+- the sampled weather artifact keeps the full canonical field set while the
+  current simulator PV path consumes only the deterministic fields it needs
 - dependency isolation and fixture provenance rules are already documented
-- the new feature must preserve simulator ownership of execution semantics
 
 ## Environment
 
@@ -99,8 +103,8 @@ conda activate open-energy-lab
 uv sync --dev
 ```
 
-The planned fit/fetch workflow may add isolated weather-specific dependencies
-later, but default artifact-load and simulator validation should remain usable
+The fit/fetch workflow may use isolated weather-specific dependencies, but
+default artifact-load, sampling, and simulator-family validation remain usable
 in the base development environment.
 
 ## Use The Implemented US1 Workflow
@@ -227,6 +231,167 @@ These checks cover:
   correlation, and event contiguity
 - replay of the committed sampling request and sampled-family fixtures
 
+## Use The Implemented US3 Simulator Family Workflow
+
+Run the current sampled-weather simulator family workflow from the committed
+artifact and sampling fixtures:
+
+```bash
+uv run python -c '
+from pathlib import Path
+import json
+
+from open_energy_lab.simulator import (
+    ArbitrageObjectiveRepresentation,
+    BatteryComponent,
+    BatteryLoadPVScenario,
+    DispatchRequestSeries,
+    LoadComponent,
+    PVComponent,
+    PriceSignal,
+    SUPPORTED_SUMMARY_OUTPUT_FIELDS,
+    TimeGrid,
+    WeatherComponent,
+    WeatherFamilyEvaluationRequest,
+    evaluate_weather_family,
+)
+from open_energy_lab.weather import (
+    WeatherSamplingRequest,
+    load_weather_artifact,
+    sample_weather_family,
+)
+
+artifact = load_weather_artifact(
+    json.loads(Path("tests/fixtures/weather/fitted_weather_artifact_v1.json").read_text()),
+    expected_timestep_hours=24.0,
+)
+request_payload = json.loads(
+    Path("tests/fixtures/weather/sampling_request_case.json").read_text()
+)
+family = sample_weather_family(
+    artifact,
+    request=WeatherSamplingRequest(
+        num_steps=request_payload["num_steps"],
+        scenario_count=request_payload["scenario_count"],
+        family_seed=request_payload["family_seed"],
+    ),
+    expected_timestep_hours=request_payload["expected_timestep_hours"],
+)
+trace = family.sampled_traces[0]
+grid = TimeGrid(num_steps=len(trace.timestamp_utc), time_step_hours=trace.timestep_hours)
+weather = WeatherComponent(
+    name="sampled-weather-0",
+    time_grid=grid,
+    timestamp_utc=list(trace.timestamp_utc),
+    dry_bulb_air_temperature_c=list(trace.canonical_field_series["dry_bulb_air_temperature_c"]),
+    global_horizontal_irradiance_w_per_m2=list(
+        trace.canonical_field_series["global_horizontal_irradiance_w_per_m2"]
+    ),
+    direct_beam_irradiance_w_per_m2=list(
+        trace.canonical_field_series["direct_beam_irradiance_w_per_m2"]
+    ),
+    diffuse_horizontal_irradiance_w_per_m2=list(
+        trace.canonical_field_series["diffuse_horizontal_irradiance_w_per_m2"]
+    ),
+    deferred_fields=(
+        "relative_humidity_pct",
+        "infrared_radiation_downwards_w_per_m2",
+        "windspeed_10m_m_per_s",
+        "wind_direction_10m_deg",
+        "surface_air_pressure_pa",
+    ),
+    source=trace.derived_identity,
+)
+base_scenario = BatteryLoadPVScenario(
+    scenario_id="stochastic-weather-base",
+    time_grid=grid,
+    battery=BatteryComponent(
+        name="battery",
+        capacity_kwh=8.0,
+        max_charge_kw=3.0,
+        max_discharge_kw=3.0,
+        charge_efficiency=0.95,
+        discharge_efficiency=0.95,
+        initial_soc=0.25,
+    ),
+    load=LoadComponent(
+        name="load",
+        demand_kw=[3.0, 1.0, 4.0],
+        interpretation="exogenous-consumption",
+        time_grid=grid,
+        source="quickstart",
+    ),
+    weather=weather,
+    pv=PVComponent(
+        name="pv",
+        rated_power_kw=4.0,
+        temperature_coefficient_pct_per_c=-0.4,
+        reference_irradiance_w_per_m2=1000.0,
+        reference_temperature_c=25.0,
+        derivation_name="ghi-linear-temperature-adjusted",
+        irradiance_field_names=("global_horizontal_irradiance_w_per_m2",),
+    ),
+    price_signal=PriceSignal(
+        currency="USD",
+        unit_rate_name="energy-price",
+        import_prices=[0.10, 0.20, 0.30],
+        export_price_ratio=0.8,
+        interpretation="discounted export relative to import prices",
+        time_alignment="step-start",
+        time_grid=grid,
+    ),
+    objective=ArbitrageObjectiveRepresentation(
+        objective_name="grid-settlement",
+        settlement_basis="grid-settlement",
+        allow_export=True,
+        export_price_ratio=0.8,
+    ),
+    dispatch_requests=DispatchRequestSeries(
+        requested_power_kw=[0.0, 0.0, 0.0],
+        sign_convention="charge",
+        source="quickstart",
+    ),
+)
+result = evaluate_weather_family(
+    WeatherFamilyEvaluationRequest(
+        base_scenario_reference=base_scenario,
+        weather_family=family,
+        summary_output_fields=SUPPORTED_SUMMARY_OUTPUT_FIELDS,
+    )
+)
+
+print(result.family_id)
+print([item.scenario_index for item in result.scenario_results])
+print(tuple(result.summary_statistics))
+print(result.scenario_results[0].blackout_active)
+'
+```
+
+Expected result:
+
+- the simulator evaluates both sampled scenarios without changing the
+  deterministic `BatteryLoadPVScenario` API
+- the scenario ordering stays `[0, 1]`
+- the built-in summary keys stay limited to the documented core simulator
+  outputs
+- the no-blackout path returns `False` for every element in the
+  `blackout_active` series
+
+Exercise the committed US3 validation paths:
+
+```bash
+uv run pytest tests/unit/simulator/test_stochastic_weather.py
+uv run pytest tests/integration/simulator/test_stochastic_weather_family.py tests/integration/simulator/test_blackout_semantics.py
+uv run pytest tests/integration/simulator/test_weather_family_fixture_schema.py
+```
+
+These checks cover:
+
+- preserved deterministic debugging through the existing fixed-weather path
+- scenario-indexed simulator results from the committed sampled family
+- explicit grid-outage blackout semantics with unmet-load tracking
+- committed simulator family-fixture provenance and baseline result shape
+
 ## Expected Implementation Targets
 
 After implementation, the main touched areas should be:
@@ -235,6 +400,7 @@ After implementation, the main touched areas should be:
 src/open_energy_lab/weather/
 src/open_energy_lab/simulator/
 tests/unit/weather/
+tests/unit/simulator/
 tests/integration/weather/
 tests/integration/simulator/
 tests/fixtures/weather/
@@ -253,14 +419,17 @@ recorded fixtures are enough if they prove:
 - blackout-aware simulator results expose unmet load explicitly
 - family summaries are limited to documented core simulator outputs
 
-Current committed US1 fixture choices:
+Current committed fixture choices:
 
 - provider responses use three hourly records to keep the normalization review
   surface small
 - artifact fixtures use a synthetic daily timestep payload so the committed
   covariance matrix stays reviewable
+- sampled-family fixtures keep only two scenarios across three steps
+- simulator family fixtures record one no-blackout baseline and one explicit
+  grid-outage baseline
 
-## Planned Stable And Experimental Surface
+## Stable And Experimental Surface
 
 Stable first-release behavior:
 
@@ -300,20 +469,25 @@ Stable sampling controls today:
 - `WeatherSamplingRequest.family_seed`
 - `expected_timestep_hours` validation against the artifact timestep
 
-Experimental or deferred sampling controls:
-
-- alternate model backends
-- caller-defined summary percentiles
-- artifact auto-migration
-- blackout-aware simulator summaries
-
-Simulator-side integration is expected to remain distinct from the
-deterministic path, for example:
+Simulator-side integration remains distinct from the deterministic path, for
+example:
 
 ```python
-from open_energy_lab.simulator import BatteryLoadPVScenario
-from open_energy_lab.simulator.stochastic_weather import evaluate_weather_family
+from open_energy_lab.simulator import (
+    BatteryLoadPVScenario,
+    WeatherFamilyEvaluationRequest,
+    evaluate_weather_family,
+)
 ```
+
+The artifact-versus-simulator-consumed field boundary is explicit:
+
+- the weather artifact and sampled traces preserve the full first-release
+  canonical weather field set
+- the current simulator PV path consumes dry-bulb temperature and the
+  irradiance fields named on `PVComponent.irradiance_field_names`
+- other canonical fields remain available for future simulator or analysis
+  consumers but are not silently required by the current deterministic PV path
 
 ## Dependency Boundary Notes
 
@@ -338,10 +512,10 @@ toolchains, and CityLearn runtime.
 ## Expected Checks After Tasks Exist
 
 ```bash
-uv run pytest tests/unit/weather tests/integration/weather tests/integration/simulator
+uv run pytest tests/unit/weather tests/unit/simulator tests/integration/weather tests/integration/simulator
 uv run pytest tests/unit/test_optional_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py
 uv run python -c "import open_energy_lab; import open_energy_lab.weather; import open_energy_lab.simulator"
-rg "from legacy|import legacy" src/open_energy_lab/weather src/open_energy_lab/simulator tests/unit/weather tests/integration/weather tests/integration/simulator
+rg "from legacy|import legacy" src/open_energy_lab/weather src/open_energy_lab/simulator tests/unit/weather tests/unit/simulator tests/integration/weather tests/integration/simulator docs/migration
 ```
 
 Focused validation commands should include:
@@ -349,7 +523,7 @@ Focused validation commands should include:
 ```bash
 uv run pytest tests/unit/weather/test_canonical_schema.py tests/unit/weather/test_artifact_schema.py tests/unit/weather/test_sampling.py
 uv run pytest tests/integration/weather/test_fit_workflow.py tests/integration/weather/test_fixture_schema.py tests/integration/weather/test_offline_sampling.py
-uv run pytest tests/integration/simulator/test_stochastic_weather_family.py tests/integration/simulator/test_blackout_semantics.py
+uv run pytest tests/unit/simulator/test_stochastic_weather.py tests/integration/simulator/test_stochastic_weather_family.py tests/integration/simulator/test_blackout_semantics.py tests/integration/simulator/test_weather_family_fixture_schema.py
 ```
 
 Routine local review should prefer recorded fixtures over live network fetches.
@@ -366,12 +540,14 @@ Improve:
 
 - full ten-field canonical normalization in local civil time
 - persisted JSON artifacts with explicit provenance and timestep lock
-- committed positive-path and failure-path fit fixtures
+- committed simulator family fixtures with explicit blackout semantics and
+  bounded summary fields
 
 Reject:
 
 - partial artifacts with missing canonical fields
 - implicit version migration on load
+- hidden simulator consumption of undocumented weather fields
 - any requirement to hit a live provider for routine validation
 
 ## Checks Intentionally Out of Scope

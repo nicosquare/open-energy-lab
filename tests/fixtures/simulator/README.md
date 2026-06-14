@@ -3,28 +3,70 @@
 Fixtures in this directory support deterministic simulator validation for the
 battery arbitrage MVP and the battery + load + PV migration that builds on it.
 
-## Stochastic Weather Scaffold Fixtures
+## Stochastic Weather Active Fixtures
 
-The `007-stochastic-weather` Phase 1 setup reserves these simulator fixture
-paths for later stochastic family validation:
+The `007-stochastic-weather` feature now ships these active simulator family
+fixtures:
 
 - `tests/fixtures/simulator/stochastic_weather_family_case.json`
 - `tests/fixtures/simulator/blackout_weather_family_case.json`
 
 Current status:
 
-- both files are scaffold placeholders only
-- neither file is an active regression baseline yet
-- both placeholders point back to the planned weather artifact fixture in
-  `tests/fixtures/weather/fitted_weather_artifact_v1.json`
+- both files are active deterministic regression baselines
+- both fixtures point back to the committed weather artifact and sampled-family
+  fixtures under `tests/fixtures/weather/`
+- one fixture records the preserved no-blackout simulator family path and the
+  other records explicit grid-outage blackout behavior
 
-When these fixture paths are populated later, record at least:
+Both fixture paths record:
 
 - family seed and scenario ordering assumptions
 - scenario count and timestep expectations
 - supported simulator summary fields
 - blackout interval semantics when present
 - numeric tolerance and refresh policy
+
+`stochastic_weather_family_case.json`
+
+- source: verified against the shipped simulator family-evaluation path with
+  the committed sampled weather family fixture
+- author: OpenAI Codex
+- random seed: family seed `13`
+- expected validation target: preserved deterministic `BatteryLoadPVScenario`
+  semantics under sampled weather substitution plus fixed family summaries
+- exact legacy evidence:
+  - `legacy/old_tpm/src_py/simulator/common/weather.py`
+  - `legacy/old_tpm/src_py/simulator/common/pv.py`
+- expected invariants:
+  - scenario ordering stays `[0, 1]`
+  - `unmet_load_kw` remains zero without blackout traces
+  - built-in summaries stay limited to PV generation, net-grid power, unmet
+    load, and settlement series
+- numeric tolerance: absolute `1e-6`
+- refresh policy: update only when the documented simulator family-evaluation
+  contract, baseline scenario inputs, or summary semantics intentionally
+  change
+
+`blackout_weather_family_case.json`
+
+- source: verified against the shipped blackout-aware simulator family path
+  with explicit grid-outage traces for each sampled scenario
+- author: OpenAI Codex
+- random seed: family seed `13`
+- expected validation target: grid-outage-only blackout semantics with
+  explicit unmet load and zeroed grid exchange
+- exact legacy evidence:
+  - `legacy/old_tpm/src_py/simulator/common/weather.py`
+  - `legacy/old_tpm/src_py/simulator/common/pv.py`
+- expected invariants:
+  - `blackout_active` is explicit at every step
+  - `net_grid_power_kw` and `step_settlement` are zero during blackout
+    intervals
+  - unmet load equals the positive portion of the no-blackout net-grid demand
+- numeric tolerance: absolute `1e-6`
+- refresh policy: update only when the documented blackout contract, baseline
+  scenario inputs, or summary semantics intentionally change
 
 Committed simulator fixtures currently include:
 
