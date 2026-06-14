@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from open_energy_lab.weather._canonical import CANONICAL_WEATHER_FIELD_ORDER
+from open_energy_lab.weather import WeatherSamplingRequest
 from open_energy_lab.weather.artifact import (
     UnsupportedWeatherArtifactVersionError,
     load_weather_artifact,
@@ -106,5 +107,32 @@ def test_load_weather_artifact_rejects_unsupported_versions(tmp_path: Path) -> N
     with pytest.raises(
         UnsupportedWeatherArtifactVersionError,
         match="unsupported weather artifact schema_version 'v999'",
+    ):
+        load_weather_artifact(artifact_path)
+
+
+def test_loaded_weather_artifact_can_sample_family_directly(tmp_path: Path) -> None:
+    artifact_path = tmp_path / "artifact.json"
+    _write_artifact(artifact_path)
+
+    artifact = load_weather_artifact(artifact_path, expected_timestep_hours=1.0)
+    family = artifact.sample_family(
+        request=WeatherSamplingRequest(num_steps=3, scenario_count=2, family_seed=19),
+        expected_timestep_hours=1.0,
+    )
+
+    assert family.artifact_reference == artifact.artifact_id
+    assert family.scenario_count == 2
+
+
+def test_load_weather_artifact_rejects_missing_sampling_parameters(tmp_path: Path) -> None:
+    artifact_path = tmp_path / "artifact.json"
+    payload = _write_artifact(artifact_path)
+    del payload["base_model_parameters"]["physical_bounds_policy"]
+    artifact_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="base_model_parameters is missing required keys: physical_bounds_policy",
     ):
         load_weather_artifact(artifact_path)

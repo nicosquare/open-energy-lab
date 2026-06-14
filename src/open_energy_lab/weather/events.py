@@ -279,6 +279,9 @@ def _baseline_by_local_step(
             for day_block in day_blocks
             if local_step < len(day_block)
         ]
+        if not samples:
+            baseline.append(0.0)
+            continue
         baseline.append(sum(samples) / len(samples))
     return baseline
 

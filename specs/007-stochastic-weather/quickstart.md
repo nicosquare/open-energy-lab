@@ -1,10 +1,11 @@
 # Quickstart: Stochastic Weather Generation And Simulator Integration
 
 Use this quickstart to review the plan and exercise the implemented User Story
-1 fit workflow. The feature adds a reusable `open_energy_lab.weather`
-capability for geolocation fetch, stochastic fitting, persisted artifacts, and
-later offline sampling, then integrates sampled weather into
-`open_energy_lab.simulator` without replacing the current deterministic path.
+1 fit workflow plus User Story 2 offline sampling workflow. The feature adds a
+reusable `open_energy_lab.weather` capability for geolocation fetch,
+stochastic fitting, persisted artifacts, and offline sampled weather families,
+then later integrates sampled weather into `open_energy_lab.simulator`
+without replacing the current deterministic path.
 
 ## Review the Feature
 
@@ -159,6 +160,73 @@ These checks cover:
 - supported artifact offline reload
 - unsupported artifact version rejection
 
+## Use The Implemented US2 Offline Sampling Workflow
+
+Run the current artifact-to-family sampling workflow from the committed
+artifact and request fixtures:
+
+```bash
+uv run python -c '
+from pathlib import Path
+import json
+
+from open_energy_lab.weather import (
+    WeatherSamplingRequest,
+    load_weather_artifact,
+    sample_weather_family,
+)
+
+artifact = load_weather_artifact(
+    json.loads(Path("tests/fixtures/weather/fitted_weather_artifact_v1.json").read_text()),
+    expected_timestep_hours=24.0,
+)
+
+request_payload = json.loads(
+    Path("tests/fixtures/weather/sampling_request_case.json").read_text()
+)
+
+family = sample_weather_family(
+    artifact,
+    request=WeatherSamplingRequest(
+        num_steps=request_payload["num_steps"],
+        scenario_count=request_payload["scenario_count"],
+        family_seed=request_payload["family_seed"],
+    ),
+    expected_timestep_hours=request_payload["expected_timestep_hours"],
+)
+
+print(family.family_id)
+print(len(family.sampled_traces))
+print(len(family.sampled_traces[0].timestamp_utc))
+print(len(family.sampled_traces[1].cloud_event_annotations))
+'
+```
+
+Expected result:
+
+- the family loads and samples entirely offline from the committed artifact
+- both scenarios preserve the full canonical field set
+- each sampled trace returns exactly `3` timestamps from the paired request
+  fixture
+- replay from the same `family_seed` reproduces the committed family fixture
+- cloud-event annotations remain explicit even when a trace has no events
+
+Exercise the committed US2 validation paths:
+
+```bash
+uv run pytest tests/unit/weather/test_sampling.py tests/integration/weather/test_offline_sampling.py
+uv run pytest tests/integration/weather/test_sampling_statistics.py tests/integration/weather/test_fixture_schema.py
+```
+
+These checks cover:
+
+- exact-horizon family sampling for arbitrary positive `num_steps`
+- deterministic replay from one family seed and scenario ordering
+- physical-bounds enforcement and cloud-event overlays
+- stochastic acceptance thresholds for lag-1 autocorrelation, pairwise
+  correlation, and event contiguity
+- replay of the committed sampling request and sampled-family fixtures
+
 ## Expected Implementation Targets
 
 After implementation, the main touched areas should be:
@@ -199,7 +267,8 @@ Stable first-release behavior:
 - `open_energy_lab.weather` fit workflow
 - canonical weather normalization
 - versioned fitted-artifact persistence and loading
-- offline fixed-timestep sampling from one family seed
+- `WeatherSamplingRequest` plus offline fixed-timestep family sampling from
+  one family seed
 - simulator scenario-family evaluation with grid-outage blackouts
 - built-in min/mean/max/5th/50th/95th summaries for core simulator outputs
 
@@ -217,11 +286,26 @@ The stable weather package direction is:
 
 ```python
 from open_energy_lab.weather import (
+    WeatherSamplingRequest,
     fit_weather_model,
     load_weather_artifact,
     sample_weather_family,
 )
 ```
+
+Stable sampling controls today:
+
+- `WeatherSamplingRequest.num_steps`
+- `WeatherSamplingRequest.scenario_count`
+- `WeatherSamplingRequest.family_seed`
+- `expected_timestep_hours` validation against the artifact timestep
+
+Experimental or deferred sampling controls:
+
+- alternate model backends
+- caller-defined summary percentiles
+- artifact auto-migration
+- blackout-aware simulator summaries
 
 Simulator-side integration is expected to remain distinct from the
 deterministic path, for example:

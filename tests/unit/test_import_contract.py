@@ -31,6 +31,7 @@ EXPECTED_VISUALIZATION_EXPORTS = [
 EXPECTED_WEATHER_EXPORTS = [
     "fit_weather_model",
     "load_weather_artifact",
+    "WeatherSamplingRequest",
     "sample_weather_family",
 ]
 
@@ -157,6 +158,7 @@ def test_weather_package_import_contract_stays_reserved_and_import_light():
     assert module.__all__ == EXPECTED_WEATHER_EXPORTS
     assert module.fit_weather_model.__module__ == "open_energy_lab.weather.fit"
     assert module.load_weather_artifact.__module__ == "open_energy_lab.weather.artifact"
+    assert module.WeatherSamplingRequest.__module__ == "open_energy_lab.weather.sampling"
     assert module.sample_weather_family.__module__ == "open_energy_lab.weather.sampling"
 
     newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (

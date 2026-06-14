@@ -11,6 +11,7 @@ WEATHER_PACKAGE = "open_energy_lab.weather"
 EXPECTED_ROOT_EXPORTS = [
     "fit_weather_model",
     "load_weather_artifact",
+    "WeatherSamplingRequest",
     "sample_weather_family",
 ]
 PLANNED_SUBMODULES = (
@@ -44,7 +45,9 @@ def test_weather_root_surface_stays_explicit_about_stable_exports() -> None:
     module = importlib.import_module(WEATHER_PACKAGE)
 
     assert module.__all__ == EXPECTED_ROOT_EXPORTS
-    assert sorted(name for name in dir(module) if name in EXPECTED_ROOT_EXPORTS) == EXPECTED_ROOT_EXPORTS
+    assert sorted(name for name in dir(module) if name in EXPECTED_ROOT_EXPORTS) == sorted(
+        EXPECTED_ROOT_EXPORTS
+    )
 
 
 def test_weather_root_import_defers_planned_submodule_loading() -> None:

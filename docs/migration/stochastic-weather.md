@@ -1,13 +1,14 @@
 # Stochastic Weather Migration Note
 
-Status: User Story 1 geolocation-to-artifact workflow implemented
+Status: User Story 1 geolocation-to-artifact workflow and User Story 2
+offline family sampling implemented
 
 Spec `007-stochastic-weather` now ships the first stable weather-package slice:
 geolocation input, PVGIS-style TMY normalization, deterministic artifact
-fitting, JSON persistence, and offline artifact loading. Sampling and
-simulator-family evaluation remain later-story work, but the package root now
-exports the fit and load entry points behind the same import-light lazy-loading
-boundary.
+fitting, JSON persistence, offline artifact loading, and seeded offline family
+sampling. Simulator-family evaluation remains later-story work, and the
+package root keeps the shipped weather workflow behind the same import-light
+lazy-loading boundary.
 
 ## Target Module Paths
 
@@ -22,11 +23,12 @@ boundary.
 
 ## Current Package Boundary
 
-The weather package root now exposes the implemented US1 fit and load
-workflow, while leaving the planned sampler export in place for later work:
+The weather package root now exposes the implemented fit, load, and sampling
+workflow:
 
 ```python
 from open_energy_lab.weather import (
+    WeatherSamplingRequest,
     fit_weather_model,
     load_weather_artifact,
     sample_weather_family,
@@ -40,8 +42,11 @@ Current expectation:
 - package-root weather exports stay lazy and import-light
 - `fit_weather_model` performs the geolocation-to-artifact workflow
 - `load_weather_artifact` works from committed JSON without network access
+- `WeatherSamplingRequest` is the stable first-release request type for seeded
+  offline family sampling
+- `sample_weather_family` and `WeatherArtifact.sample_family(...)` both sample
+  reproducible arbitrary-horizon weather families from a loaded artifact
 - weather submodules remain free of runtime `legacy/*` imports
-- `sample_weather_family` remains a later-story placeholder
 - simulator stochastic evaluation remains separate from the deterministic
   `BatteryLoadPVScenario` path
 
@@ -106,7 +111,7 @@ Simulator weather and PV coupling evidence:
 - Silent fallback from unsupported artifact versions to auto-migrated payloads
 - Blackout semantics inferred from irradiance attenuation alone
 
-## Current US1 Fixtures
+## Current Weather Fixtures
 
 The weather fixture set is now active for the fit workflow:
 
@@ -115,6 +120,8 @@ The weather fixture set is now active for the fit workflow:
 - `tests/fixtures/weather/location_unavailable_response.json`
 - `tests/fixtures/weather/fitted_weather_artifact_v1.json`
 - `tests/fixtures/weather/fitted_weather_artifact_unsupported_version.json`
+- `tests/fixtures/weather/sampling_request_case.json`
+- `tests/fixtures/weather/sampled_weather_family_case.json`
 
 Current expectations:
 
@@ -122,6 +129,8 @@ Current expectations:
 - the supported artifact remains human-reviewable by using a synthetic daily
   timestep payload
 - artifact fixtures include full schema, provenance, and offline load metadata
+- sampling fixtures prove exact horizon trimming, family-seed replay, and
+  explicit cloud-event annotations
 - default validation never requires live weather fetches
 
 ## Fit Workflow Usage
@@ -157,12 +166,96 @@ This preserves the intended workflow boundary:
 - offline reload depends only on the committed JSON artifact
 - unsupported versions and missing canonical fields fail fast
 
+## Offline Sampling Usage
+
+The current offline sampling workflow is:
+
+```python
+from pathlib import Path
+import json
+
+from open_energy_lab.weather import (
+    WeatherSamplingRequest,
+    load_weather_artifact,
+    sample_weather_family,
+)
+
+artifact = load_weather_artifact(
+    json.loads(Path("tests/fixtures/weather/fitted_weather_artifact_v1.json").read_text()),
+    expected_timestep_hours=24.0,
+)
+
+request = WeatherSamplingRequest(num_steps=3, scenario_count=2, family_seed=13)
+
+family = sample_weather_family(
+    artifact,
+    request=request,
+    expected_timestep_hours=24.0,
+)
+```
+
+Equivalent loaded-artifact usage is also stable:
+
+```python
+family = artifact.sample_family(
+    request=WeatherSamplingRequest(num_steps=3, scenario_count=2, family_seed=13),
+    expected_timestep_hours=24.0,
+)
+```
+
+This preserves the intended US2 boundary:
+
+- sampling remains fully offline once the artifact exists
+- the artifact timestep stays locked and explicit
+- the same `family_seed` plus scenario ordering reproduces the same sampled
+  family
+- every sampled trace preserves the full canonical weather field set and
+  explicit cloud-event annotations
+
+## Stable Versus Experimental Sampling Controls
+
+Stable first-release sampling controls:
+
+- `WeatherSamplingRequest.num_steps`
+- `WeatherSamplingRequest.scenario_count`
+- `WeatherSamplingRequest.family_seed`
+- `expected_timestep_hours` validation against the loaded artifact
+- returned `timestamp_utc`, canonical field series, and cloud-event
+  annotations in each sampled trace
+
+Experimental or deferred controls:
+
+- alternative stochastic backends beyond the current joint daily-block model
+- caller-configured percentile sets or family-summary surfaces
+- artifact auto-migration across schema versions
+- blackout-aware simulator evaluation and summary outputs
+- weather-derived blackout fitting or calibration
+
+## Stochastic Validation Expectations
+
+The current committed validation path for US2 is:
+
+- `tests/unit/weather/test_sampling.py`
+- `tests/integration/weather/test_offline_sampling.py`
+- `tests/integration/weather/test_sampling_statistics.py`
+- `tests/integration/weather/test_fixture_schema.py`
+
+Expectation summary:
+
+- replay from the same artifact and `family_seed` is exact
+- every sampled trace returns exactly the requested `num_steps`
+- physical-bounds enforcement keeps weather variables in documented ranges
+- stochastic acceptance checks compare lag-1 autocorrelation, pairwise
+  correlation, and cloud-event contiguity against deterministic synthetic
+  training data
+
 ## Planned Public Surface
 
 The stable first-release weather direction remains:
 
 ```python
 from open_energy_lab.weather import (
+    WeatherSamplingRequest,
     fit_weather_model,
     load_weather_artifact,
     sample_weather_family,
@@ -175,8 +268,8 @@ Simulator-side stochastic evaluation remains a separate surface:
 from open_energy_lab.simulator.stochastic_weather import evaluate_weather_family
 ```
 
-The fit and load imports are implemented now. The sampling import remains part
-of the planned surface for later stories.
+The fit, load, and sampling request/entry point imports are implemented now.
+Simulator-side family evaluation remains a later story.
 
 ## API Maturity And Dependency Boundary
 
@@ -187,7 +280,8 @@ Supporting policy updates for this feature live in:
 
 Current posture:
 
-- `open_energy_lab.weather` root exports stable fit and load behavior today
+- `open_energy_lab.weather` root exports stable fit, load, and offline
+  sampling behavior today
 - `open_energy_lab.simulator.stochastic_weather` is a focused simulator-side
   placeholder module, not a package-root simulator export
 - `pvlib`, `pandas`, and `timezonefinder` remain isolated fit/fetch

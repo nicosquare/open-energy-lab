@@ -12,18 +12,20 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from .artifact import load_weather_artifact
     from .fit import fit_weather_model
-    from .sampling import sample_weather_family
+    from .sampling import WeatherSamplingRequest, sample_weather_family
 
 
 _EXPORT_MAP = {
     "fit_weather_model": (".fit", "fit_weather_model"),
     "load_weather_artifact": (".artifact", "load_weather_artifact"),
+    "WeatherSamplingRequest": (".sampling", "WeatherSamplingRequest"),
     "sample_weather_family": (".sampling", "sample_weather_family"),
 }
 
 __all__ = [
     "fit_weather_model",
     "load_weather_artifact",
+    "WeatherSamplingRequest",
     "sample_weather_family",
 ]
 
