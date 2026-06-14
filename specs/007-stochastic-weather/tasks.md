@@ -105,8 +105,8 @@ length, deterministic seed behavior, and physical-bounds enforcement.
 
 ### Implementation for User Story 2
 
-- [ ] T026 [US2] Implement contiguous irradiance-event calibration and overlay logic in `src/open_energy_lab/weather/events.py` using `legacy/old_tpm/src_py/weather/analysis/drops.py` and `legacy/old_tpm/src_py/weather/models/enhanced.py` as reference-only evidence
-- [ ] T027 [US2] Implement seeded arbitrary-horizon family sampling and request validation in `src/open_energy_lab/weather/sampling.py` using `legacy/old_tpm/src_py/weather/models/gaussian.py` as reference-only evidence
+- [X] T026 [US2] Implement contiguous irradiance-event calibration and overlay logic in `src/open_energy_lab/weather/events.py` using `legacy/old_tpm/src_py/weather/analysis/drops.py` and `legacy/old_tpm/src_py/weather/models/enhanced.py` as reference-only evidence
+- [X] T027 [US2] Implement seeded arbitrary-horizon family sampling and request validation in `src/open_energy_lab/weather/sampling.py` using `legacy/old_tpm/src_py/weather/models/gaussian.py` as reference-only evidence
 - [ ] T028 [US2] Extend artifact loading and stable sampler exports for offline family sampling in `src/open_energy_lab/weather/artifact.py` and `src/open_energy_lab/weather/__init__.py`
 - [ ] T029 [US2] Populate sampling request and sampled-family fixtures with provenance in `tests/fixtures/weather/sampling_request_case.json`, `tests/fixtures/weather/sampled_weather_family_case.json`, and `tests/fixtures/weather/README.md`
 - [ ] T030 [US2] Document stable versus experimental sampling controls and stochastic validation expectations in `docs/migration/stochastic-weather.md` and `specs/007-stochastic-weather/quickstart.md`

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime
 from math import isclose
@@ -10,10 +9,7 @@ from pathlib import Path
 from statistics import fmean
 from zoneinfo import ZoneInfo
 
-from open_energy_lab.simulator._weather_schema import (
-    IRRADIANCE_FIELD_NAMES,
-    iter_weather_field_specs,
-)
+from open_energy_lab.simulator._weather_schema import iter_weather_field_specs
 
 from ._canonical import (
     CANONICAL_WEATHER_FIELD_ORDER,
@@ -21,6 +17,7 @@ from ._canonical import (
     LOCAL_CIVIL_TIME_BASIS,
 )
 from .artifact import WeatherArtifact
+from .events import calibrate_cloud_event_model
 from .tmy import fetch_tmy_dataset
 
 
@@ -244,63 +241,7 @@ def _fit_cloud_event_model(
     *,
     intervals_per_day: int,
 ) -> dict[str, object]:
-    minimum_base_irradiance = 50.0
-    ghi_values = tuple(
-        float(value)
-        for value in dataset.field_series["global_horizontal_irradiance_w_per_m2"]
+    return calibrate_cloud_event_model(
+        canonical_field_series=dataset.field_series,
+        intervals_per_day=intervals_per_day,
     )
-    start_counts = [0] * intervals_per_day
-    day_count = max(1, len(dataset.local_civil_step_labels) // intervals_per_day)
-    durations: list[int] = []
-    attenuations: list[float] = []
-
-    for start_index in range(1, len(ghi_values)):
-        previous = ghi_values[start_index - 1]
-        current = ghi_values[start_index]
-        local_step = start_index % intervals_per_day
-        if previous <= minimum_base_irradiance or current >= previous:
-            continue
-
-        attenuation = max(0.0, min(0.95, 1.0 - (current / previous)))
-        if attenuation < 0.15:
-            continue
-
-        start_counts[local_step] += 1
-        duration = 1
-        cursor = start_index + 1
-        while cursor < len(ghi_values) and ghi_values[cursor] <= ghi_values[cursor - 1]:
-            duration += 1
-            cursor += 1
-        durations.append(duration)
-        attenuations.append(attenuation)
-
-    duration_counts = Counter(durations)
-    attenuation_counts = Counter(round(value, 3) for value in attenuations)
-    return {
-        "irradiance_fields": list(IRRADIANCE_FIELD_NAMES),
-        "start_probability_by_local_step": [
-            count / day_count for count in start_counts
-        ],
-        "duration_distribution": {
-            "kind": "empirical",
-            "durations": sorted(duration_counts),
-            "probabilities": [
-                duration_counts[duration] / max(1, len(durations))
-                for duration in sorted(duration_counts)
-            ],
-        },
-        "attenuation_distribution": {
-            "kind": "empirical",
-            "attenuation_values": sorted(attenuation_counts),
-            "probabilities": [
-                attenuation_counts[value] / max(1, len(attenuations))
-                for value in sorted(attenuation_counts)
-            ],
-        },
-        "minimum_base_irradiance_w_per_m2": minimum_base_irradiance,
-        "calibration_summary": {
-            "event_count": len(durations),
-            "training_record_count": len(ghi_values),
-            "inferred_day_count": day_count,
-        },
-    }
