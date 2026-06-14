@@ -9,14 +9,22 @@ from typing import Any
 
 FIXTURE_DIR = Path("tests/fixtures/weather")
 RECORDED_PVGIS_TMY_RESPONSE_FIXTURE_PATH = FIXTURE_DIR / "recorded_pvgis_tmy_response.json"
+MISSING_REQUIRED_FIELD_RESPONSE_FIXTURE_PATH = (
+    FIXTURE_DIR / "missing_required_field_response.json"
+)
 LOCATION_UNAVAILABLE_RESPONSE_FIXTURE_PATH = (
     FIXTURE_DIR / "location_unavailable_response.json"
 )
 FITTED_WEATHER_ARTIFACT_FIXTURE_PATH = FIXTURE_DIR / "fitted_weather_artifact_v1.json"
+UNSUPPORTED_WEATHER_ARTIFACT_FIXTURE_PATH = (
+    FIXTURE_DIR / "fitted_weather_artifact_unsupported_version.json"
+)
 WEATHER_FIXTURE_PATHS = (
     RECORDED_PVGIS_TMY_RESPONSE_FIXTURE_PATH,
+    MISSING_REQUIRED_FIELD_RESPONSE_FIXTURE_PATH,
     LOCATION_UNAVAILABLE_RESPONSE_FIXTURE_PATH,
     FITTED_WEATHER_ARTIFACT_FIXTURE_PATH,
+    UNSUPPORTED_WEATHER_ARTIFACT_FIXTURE_PATH,
 )
 
 COMMON_TOP_LEVEL_KEYS = (
@@ -36,7 +44,7 @@ def load_weather_fixture(path: Path) -> dict[str, Any]:
 
 
 def load_all_weather_fixtures() -> list[tuple[Path, dict[str, Any]]]:
-    """Load every committed weather fixture scaffold."""
+    """Load every committed weather fixture."""
 
     return [(path, load_weather_fixture(path)) for path in WEATHER_FIXTURE_PATHS]
 

@@ -1,118 +1,149 @@
 # Weather Fixtures
 
-This directory is reserved for deterministic stochastic-weather validation
-cases that support the planned `open_energy_lab.weather` package without
-adding new runtime behavior to `legacy/*`.
+This directory now holds the committed User Story 1 validation fixtures for
+the `open_energy_lab.weather` geolocation-to-artifact workflow. They are
+small, deterministic, and explicit about provenance so default validation can
+stay offline and reviewable.
 
-## Scaffolded Fixture Set
-
-Phase 1 reserves these placeholder fixture paths:
+## Active Fixture Set
 
 - `recorded_pvgis_tmy_response.json`
+- `missing_required_field_response.json`
 - `location_unavailable_response.json`
 - `fitted_weather_artifact_v1.json`
+- `fitted_weather_artifact_unsupported_version.json`
 
-These files are scaffolds only in Phase 1. They establish committed paths,
-provenance expectations, and future validation intent before the weather
-workflow is implemented.
+## Provenance Fields
 
-## Required Provenance Record
-
-Each committed weather fixture should keep a nearby record with at least these
+Every committed fixture in this directory keeps these top-level metadata
 fields:
 
 ```text
-Fixture path:
-Purpose:
-Status:
-Origin:
-Source service, dataset, or current-library artifact:
-Exact legacy reference paths consulted, if any:
-Generation command:
-Random seed:
-Expected validation target:
-Canonical field coverage:
-Numeric tolerance:
-Why the fixture is small enough to commit:
-Access, license, or network notes:
-Refresh policy:
+fixture_status
+fixture_path
+purpose
+origin
+legacy_reference_paths
+notes
 ```
 
-## Phase 1 Placeholder Records
+Provider-response fixtures also keep `source_service` plus any recorded
+provider payload fields. Artifact fixtures keep the full artifact payload so
+they can be loaded directly by `load_weather_artifact`.
+
+## Fixture Records
 
 `recorded_pvgis_tmy_response.json`
 
 - fixture path: `tests/fixtures/weather/recorded_pvgis_tmy_response.json`
-- purpose: reserved recorded PVGIS TMY response for the geolocation-to-fit
-  workflow
-- status: scaffold
-- origin: Phase 1 setup scaffold for spec `007-stochastic-weather`
-- source service or artifact: PVGIS TMY response to be recorded later
-- exact legacy reference paths consulted, if any:
+- purpose: recorded positive-path PVGIS-style response for fitting
+- status: active
+- origin: current-library US1 contract fixture
+- source service or artifact: trimmed PVGIS-style hourly response
+- exact legacy reference paths consulted:
   - `legacy/old_tpm/src_py/weather/fetch.py`
   - `legacy/old_tpm/src_py/weather/pipeline.py`
-- generation command: none yet
+- generation command: committed manually from the current library contract
 - random seed: none
-- expected validation target: recorded fetch-to-normalization integration
-  coverage for User Story 1
-- canonical field coverage: not populated yet
-- numeric tolerance: not applicable until populated
-- why the fixture is small enough to commit: the final recorded response must
-  stay trimmed and reviewable
-- access, license, or network notes: replace routine live fetches with this
-  recorded response for default validation
-- refresh policy: update only when the documented fetch workflow or provider
-  response assumptions intentionally change
+- expected validation target: recorded fetch-to-artifact workflow coverage
+- canonical field coverage: full ten-field canonical mapping via provider
+  labels
+- numeric tolerance: exact fixture values
+- why the fixture is small enough to commit: only three hourly records are
+  retained
+- access, license, or network notes: replaces routine live PVGIS fetches in
+  default validation
+- refresh policy: update only when the documented provider mapping or
+  normalization contract intentionally changes
+
+`missing_required_field_response.json`
+
+- fixture path: `tests/fixtures/weather/missing_required_field_response.json`
+- purpose: fail-fast missing-field provider response
+- status: active
+- origin: derived from the recorded positive-path response
+- source service or artifact: trimmed PVGIS-style hourly response with
+  `Gb(n) [W/m2]` removed from one record
+- exact legacy reference paths consulted:
+  - `legacy/old_tpm/src_py/weather/fetch.py`
+  - `legacy/old_tpm/src_py/weather/pipeline.py`
+- generation command: committed manually from the current library contract
+- random seed: none
+- expected validation target: `MissingCanonicalWeatherFieldError` coverage
+- canonical field coverage: intentionally incomplete
+- numeric tolerance: exact fixture values
+- why the fixture is small enough to commit: reuses the three-record shape of
+  the recorded response
+- access, license, or network notes: avoids routine live negative-path fetches
+- refresh policy: update only when the missing-field fail-fast contract
+  intentionally changes
 
 `location_unavailable_response.json`
 
 - fixture path: `tests/fixtures/weather/location_unavailable_response.json`
-- purpose: reserved fail-fast provider response for unsupported or unavailable
-  geolocations
-- status: scaffold
-- origin: Phase 1 setup scaffold for spec `007-stochastic-weather`
-- source service or artifact: PVGIS failure response to be recorded later
-- exact legacy reference paths consulted, if any:
+- purpose: fail-fast unsupported-location provider response
+- status: active
+- origin: current-library `WeatherLocationUnavailableError` contract fixture
+- source service or artifact: provider-style failure envelope with empty
+  records
+- exact legacy reference paths consulted:
   - `legacy/old_tpm/src_py/weather/fetch.py`
-- generation command: none yet
+- generation command: committed manually from the current library contract
 - random seed: none
-- expected validation target: explicit location-unavailable workflow failure
+- expected validation target: explicit location-unavailable failure coverage
 - canonical field coverage: not applicable
-- numeric tolerance: not applicable
-- why the fixture is small enough to commit: the final failure payload should
-  remain minimal and reviewable
-- access, license, or network notes: intended to avoid live provider failures
-  in routine tests
-- refresh policy: update only when the documented provider-error handling
-  contract intentionally changes
+- numeric tolerance: exact fixture values
+- why the fixture is small enough to commit: minimal response body
+- access, license, or network notes: avoids routine live provider failures
+- refresh policy: update only when the provider-failure handling contract
+  intentionally changes
 
 `fitted_weather_artifact_v1.json`
 
 - fixture path: `tests/fixtures/weather/fitted_weather_artifact_v1.json`
-- purpose: reserved deterministic fitted-artifact shell for offline load and
-  sampling validation
-- status: scaffold
-- origin: Phase 1 setup scaffold for spec `007-stochastic-weather`
-- source service or artifact: current-library artifact to be committed later
-- exact legacy reference paths consulted, if any:
+- purpose: supported offline load artifact fixture
+- status: active
+- origin: synthetic current-library artifact fixture
+- source service or artifact: committed JSON artifact with a daily timestep
+- exact legacy reference paths consulted:
   - `legacy/old_tpm/src_py/weather/models/gaussian.py`
   - `legacy/old_tpm/src_py/weather/models/enhanced.py`
-- generation command: none yet
-- random seed: none until final fixture generation is documented
-- expected validation target: artifact schema, provenance, and offline reload
-  checks for User Story 1
-- canonical field coverage: not populated yet
-- numeric tolerance: `1e-6` unless the final artifact contract documents a
-  stricter case
-- why the fixture is small enough to commit: the final artifact must remain
-  inspectable JSON rather than an opaque binary
-- access, license, or network notes: final reload and sampling validation must
-  stay offline
-- refresh policy: update only when the documented artifact schema, timestep
-  contract, or provenance expectations intentionally change
+- generation command: committed manually from the current library contract
+- random seed: none
+- expected validation target: supported artifact schema and offline load
+  coverage
+- canonical field coverage: full first-release canonical order
+- numeric tolerance: exact fixture values
+- why the fixture is small enough to commit: uses `intervals_per_day = 1` so
+  the covariance matrix remains reviewable
+- access, license, or network notes: entirely offline
+- refresh policy: update only when the documented artifact schema or
+  provenance contract intentionally changes
+
+`fitted_weather_artifact_unsupported_version.json`
+
+- fixture path: `tests/fixtures/weather/fitted_weather_artifact_unsupported_version.json`
+- purpose: unsupported-version artifact fixture
+- status: active
+- origin: copy of the supported artifact with only the schema version changed
+- source service or artifact: committed JSON artifact with `schema_version:
+  v999`
+- exact legacy reference paths consulted:
+  - `legacy/old_tpm/src_py/weather/models/gaussian.py`
+  - `legacy/old_tpm/src_py/weather/models/enhanced.py`
+- generation command: committed manually from the current library contract
+- random seed: none
+- expected validation target: unsupported-version fail-fast coverage
+- canonical field coverage: full first-release canonical order
+- numeric tolerance: exact fixture values
+- why the fixture is small enough to commit: reuses the supported daily
+  artifact shape
+- access, license, or network notes: entirely offline
+- refresh policy: update only when the explicit schema compatibility contract
+  intentionally changes
 
 ## Working Rule
 
 Keep weather fixtures synthetic or tightly trimmed, explicit about network
-assumptions, and reviewable in git. Replace placeholders only when the
-corresponding workflow or sampling contract has focused tests.
+assumptions, and reviewable in git. Prefer committed deterministic fixtures
+over live fetches for default validation.

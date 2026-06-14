@@ -1,7 +1,7 @@
-"""Reserved public weather package surface for the stochastic-weather feature.
+"""Public weather package surface for the stochastic-weather feature.
 
-The stable weather root stays import-light by resolving its documented exports
-from focused submodules only when callers access them.
+The stable weather root stays import-light by resolving documented exports from
+focused submodules only when callers access them.
 """
 
 from __future__ import annotations

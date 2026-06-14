@@ -1,10 +1,10 @@
 # Quickstart: Stochastic Weather Generation And Simulator Integration
 
-Use this quickstart to review the plan and guide later implementation. This
-feature adds a reusable `open_energy_lab.weather` capability for geolocation
-fetch, stochastic fitting, persisted artifacts, and offline sampling, then
-integrates sampled weather into `open_energy_lab.simulator` without replacing
-the current deterministic path.
+Use this quickstart to review the plan and exercise the implemented User Story
+1 fit workflow. The feature adds a reusable `open_energy_lab.weather`
+capability for geolocation fetch, stochastic fitting, persisted artifacts, and
+later offline sampling, then integrates sampled weather into
+`open_energy_lab.simulator` without replacing the current deterministic path.
 
 ## Review the Feature
 
@@ -102,6 +102,63 @@ The planned fit/fetch workflow may add isolated weather-specific dependencies
 later, but default artifact-load and simulator validation should remain usable
 in the base development environment.
 
+## Use The Implemented US1 Workflow
+
+Run the current geolocation-to-artifact workflow from the committed recorded
+fixture:
+
+```bash
+uv run python -c '
+from pathlib import Path
+import json
+
+from open_energy_lab.weather import fit_weather_model, load_weather_artifact
+from open_energy_lab.weather.fit import WeatherFitConfig
+
+recorded_response = json.loads(
+    Path("tests/fixtures/weather/recorded_pvgis_tmy_response.json").read_text()
+)
+
+artifact = fit_weather_model(
+    33.4484,
+    -112.0740,
+    recorded_response=recorded_response,
+    fit_config=WeatherFitConfig(timestep_hours=1.0),
+    output_path=Path("/tmp/us1-weather-artifact.json"),
+)
+
+reloaded = load_weather_artifact(
+    Path("/tmp/us1-weather-artifact.json"),
+    expected_timestep_hours=1.0,
+)
+
+print(artifact.artifact_id)
+print(reloaded.schema_version)
+'
+```
+
+Expected result:
+
+- the fit workflow writes a JSON artifact without contacting a live weather
+  service
+- the reload step succeeds offline
+- the artifact preserves local-civil-time semantics, canonical field order,
+  and provenance
+
+Exercise the committed failure-path fixtures:
+
+```bash
+uv run pytest tests/integration/weather/test_fit_workflow.py
+uv run pytest tests/integration/weather/test_fixture_schema.py
+```
+
+These checks cover:
+
+- missing canonical field rejection
+- location-unavailable rejection
+- supported artifact offline reload
+- unsupported artifact version rejection
+
 ## Expected Implementation Targets
 
 After implementation, the main touched areas should be:
@@ -128,6 +185,13 @@ recorded fixtures are enough if they prove:
 - blackout-aware simulator results expose unmet load explicitly
 - family summaries are limited to documented core simulator outputs
 
+Current committed US1 fixture choices:
+
+- provider responses use three hourly records to keep the normalization review
+  surface small
+- artifact fixtures use a synthetic daily timestep payload so the committed
+  covariance matrix stays reviewable
+
 ## Planned Stable And Experimental Surface
 
 Stable first-release behavior:
@@ -149,8 +213,7 @@ Experimental or deferred behavior:
 
 ## Planned Public Entry Points
 
-The exact exported names can still evolve during implementation, but the stable
-weather package direction should look like:
+The stable weather package direction is:
 
 ```python
 from open_energy_lab.weather import (
@@ -193,7 +256,7 @@ toolchains, and CityLearn runtime.
 ```bash
 uv run pytest tests/unit/weather tests/integration/weather tests/integration/simulator
 uv run pytest tests/unit/test_optional_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py
-uv run python -c "import open_energy_lab; import open_energy_lab.simulator"
+uv run python -c "import open_energy_lab; import open_energy_lab.weather; import open_energy_lab.simulator"
 rg "from legacy|import legacy" src/open_energy_lab/weather src/open_energy_lab/simulator tests/unit/weather tests/integration/weather tests/integration/simulator
 ```
 
@@ -201,11 +264,31 @@ Focused validation commands should include:
 
 ```bash
 uv run pytest tests/unit/weather/test_canonical_schema.py tests/unit/weather/test_artifact_schema.py tests/unit/weather/test_sampling.py
-uv run pytest tests/integration/weather/test_fit_workflow.py tests/integration/weather/test_offline_sampling.py
+uv run pytest tests/integration/weather/test_fit_workflow.py tests/integration/weather/test_fixture_schema.py tests/integration/weather/test_offline_sampling.py
 uv run pytest tests/integration/simulator/test_stochastic_weather_family.py tests/integration/simulator/test_blackout_semantics.py
 ```
 
 Routine local review should prefer recorded fixtures over live network fetches.
+
+## Preserve / Improve / Reject Summary
+
+Preserve:
+
+- geolocation as the stable fit input
+- deterministic simulator debugging through the existing fixed-weather path
+- offline default validation using committed fixtures
+
+Improve:
+
+- full ten-field canonical normalization in local civil time
+- persisted JSON artifacts with explicit provenance and timestep lock
+- committed positive-path and failure-path fit fixtures
+
+Reject:
+
+- partial artifacts with missing canonical fields
+- implicit version migration on load
+- any requirement to hit a live provider for routine validation
 
 ## Checks Intentionally Out of Scope
 
@@ -219,14 +302,3 @@ This feature should not require or run as part of default validation:
 - RL training loops
 - Rust builds
 - legacy runtime execution as a feature gate
-
-## Task Planning Reminder
-
-When `/speckit-tasks` is generated, make sure it includes:
-
-- tests first for canonical schema, artifacts, sampling, and simulator family
-  integration
-- deterministic and recorded fixtures with provenance notes
-- explicit import-boundary and legacy-isolation checks
-- simulator tests that preserve the deterministic weather path
-- documentation tasks for dependency classification and migration notes

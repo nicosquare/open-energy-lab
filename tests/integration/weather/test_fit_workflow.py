@@ -10,67 +10,12 @@ from open_energy_lab.weather._canonical import MissingCanonicalWeatherFieldError
 from open_energy_lab.weather.artifact import load_weather_artifact
 from open_energy_lab.weather.fit import WeatherFitConfig, fit_weather_model
 from open_energy_lab.weather.tmy import WeatherLocationUnavailableError
-
-
-def _recorded_tmy_response() -> dict[str, object]:
-    return {
-        "source_name": "PVGIS TMY",
-        "timezone_name": "America/Phoenix",
-        "source_metadata": {
-            "provider": "pvgis",
-            "dataset_year": 2020,
-            "fixture_kind": "recorded-test-response",
-        },
-        "records": [
-            {
-                "Date & time (UTC)": "2024-01-01T00:00:00Z",
-                "T2m [°C]": 8.0,
-                "G(h) [W/m2]": 0.0,
-                "Gb(n) [W/m2]": 0.0,
-                "Gd(h) [W/m2]": 0.0,
-                "RH [%]": 45.0,
-                "IR(h) [W/m2]": 280.0,
-                "WS10m [m/s]": 2.1,
-                "WD10m [°]": 90.0,
-                "SP [Pa]": 101325.0,
-            },
-            {
-                "Date & time (UTC)": "2024-01-01T01:00:00Z",
-                "T2m [°C]": 9.0,
-                "G(h) [W/m2]": 10.0,
-                "Gb(n) [W/m2]": 4.0,
-                "Gd(h) [W/m2]": 6.0,
-                "RH [%]": 42.0,
-                "IR(h) [W/m2]": 281.0,
-                "WS10m [m/s]": 2.4,
-                "WD10m [°]": 95.0,
-                "SP [Pa]": 101300.0,
-            },
-            {
-                "Date & time (UTC)": "2024-01-01T02:00:00Z",
-                "T2m [°C]": 11.0,
-                "G(h) [W/m2]": 30.0,
-                "Gb(n) [W/m2]": 12.0,
-                "Gd(h) [W/m2]": 18.0,
-                "RH [%]": 39.0,
-                "IR(h) [W/m2]": 282.0,
-                "WS10m [m/s]": 2.8,
-                "WD10m [°]": 100.0,
-                "SP [Pa]": 101280.0,
-            },
-        ],
-    }
-
-
-def _location_unavailable_response() -> dict[str, object]:
-    return {
-        "source_name": "PVGIS TMY",
-        "timezone_name": "America/Phoenix",
-        "status": "location-unavailable",
-        "available": False,
-        "error": "the requested coordinates are outside the supported coverage envelope",
-        "records": [],
-    }
+from tests.integration.weather.fixture_utils import (
+    LOCATION_UNAVAILABLE_RESPONSE_FIXTURE_PATH,
+    MISSING_REQUIRED_FIELD_RESPONSE_FIXTURE_PATH,
+    RECORDED_PVGIS_TMY_RESPONSE_FIXTURE_PATH,
+    load_weather_fixture,
+)
 
 
 def test_recorded_fit_workflow_persists_and_reloads_offline(tmp_path: Path) -> None:
@@ -82,7 +27,7 @@ def test_recorded_fit_workflow_persists_and_reloads_offline(tmp_path: Path) -> N
         fetch_calls += 1
         assert latitude == pytest.approx(33.4484)
         assert longitude == pytest.approx(-112.0740)
-        return _recorded_tmy_response()
+        return load_weather_fixture(RECORDED_PVGIS_TMY_RESPONSE_FIXTURE_PATH)
 
     artifact = fit_weather_model(
         33.4484,
@@ -101,13 +46,6 @@ def test_recorded_fit_workflow_persists_and_reloads_offline(tmp_path: Path) -> N
 
 
 def test_fit_weather_model_fails_fast_on_missing_canonical_fields() -> None:
-    response = _recorded_tmy_response()
-    records = response["records"]
-    assert isinstance(records, list)
-    second_record = dict(records[1])
-    second_record.pop("Gb(n) [W/m2]")
-    response["records"] = [records[0], second_record, records[2]]
-
     with pytest.raises(
         MissingCanonicalWeatherFieldError,
         match="direct_beam_irradiance_w_per_m2",
@@ -115,7 +53,9 @@ def test_fit_weather_model_fails_fast_on_missing_canonical_fields() -> None:
         fit_weather_model(
             33.4484,
             -112.0740,
-            recorded_response=response,
+            recorded_response=load_weather_fixture(
+                MISSING_REQUIRED_FIELD_RESPONSE_FIXTURE_PATH
+            ),
             fit_config=WeatherFitConfig(timestep_hours=1.0),
         )
 
@@ -128,6 +68,8 @@ def test_fit_weather_model_rejects_syntactically_valid_unavailable_locations() -
         fit_weather_model(
             33.4484,
             -112.0740,
-            recorded_response=_location_unavailable_response(),
+            recorded_response=load_weather_fixture(
+                LOCATION_UNAVAILABLE_RESPONSE_FIXTURE_PATH
+            ),
             fit_config=WeatherFitConfig(timestep_hours=1.0),
         )

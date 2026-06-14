@@ -6,11 +6,17 @@ from pathlib import Path
 
 import pytest
 
+from open_energy_lab.weather.artifact import (
+    UnsupportedWeatherArtifactVersionError,
+    load_weather_artifact,
+)
 from tests.integration.weather.fixture_utils import (
     COMMON_TOP_LEVEL_KEYS,
     FITTED_WEATHER_ARTIFACT_FIXTURE_PATH,
     LOCATION_UNAVAILABLE_RESPONSE_FIXTURE_PATH,
+    MISSING_REQUIRED_FIELD_RESPONSE_FIXTURE_PATH,
     RECORDED_PVGIS_TMY_RESPONSE_FIXTURE_PATH,
+    UNSUPPORTED_WEATHER_ARTIFACT_FIXTURE_PATH,
     WEATHER_FIXTURE_PATHS,
     load_all_weather_fixtures,
 )
@@ -53,6 +59,7 @@ def test_weather_fixture_common_schema(
     ("fixture_path", "expected_source_service"),
     (
         (RECORDED_PVGIS_TMY_RESPONSE_FIXTURE_PATH, "PVGIS TMY"),
+        (MISSING_REQUIRED_FIELD_RESPONSE_FIXTURE_PATH, "PVGIS TMY"),
         (LOCATION_UNAVAILABLE_RESPONSE_FIXTURE_PATH, "PVGIS TMY"),
     ),
 )
@@ -68,19 +75,47 @@ def test_weather_provider_response_fixture_schema(
     assert "schema_version" not in fixture_data
 
 
-def test_weather_artifact_fixture_schema() -> None:
+@pytest.mark.parametrize(
+    ("fixture_path", "expected_schema_version"),
+    (
+        (FITTED_WEATHER_ARTIFACT_FIXTURE_PATH, "v1"),
+        (UNSUPPORTED_WEATHER_ARTIFACT_FIXTURE_PATH, "v999"),
+    ),
+)
+def test_weather_artifact_fixture_schema(
+    fixture_path: Path,
+    expected_schema_version: str,
+) -> None:
+    fixture_data = next(
+        data for path, data in load_all_weather_fixtures() if path == fixture_path
+    )
+
+    assert fixture_data["schema_version"] == expected_schema_version
+    assert "source_service" not in fixture_data
+
+
+def test_supported_weather_artifact_fixture_loads_offline() -> None:
     fixture_data = next(
         data
         for path, data in load_all_weather_fixtures()
         if path == FITTED_WEATHER_ARTIFACT_FIXTURE_PATH
     )
 
-    assert "schema_version" in fixture_data
-    assert isinstance(fixture_data["schema_version"], str)
-    assert fixture_data["schema_version"]
-    assert "source_service" not in fixture_data
+    artifact = load_weather_artifact(fixture_data, expected_timestep_hours=24.0)
 
-    if fixture_data["fixture_status"] == "scaffold":
-        assert fixture_data["schema_version"] == "v1-scaffold"
-    else:
-        assert fixture_data["schema_version"].startswith("v")
+    assert artifact.artifact_id == "weather-artifact:synthetic-us1-daily"
+    assert artifact.training_record_summary["record_count"] == 2
+
+
+def test_unsupported_weather_artifact_fixture_fails_fast() -> None:
+    fixture_data = next(
+        data
+        for path, data in load_all_weather_fixtures()
+        if path == UNSUPPORTED_WEATHER_ARTIFACT_FIXTURE_PATH
+    )
+
+    with pytest.raises(
+        UnsupportedWeatherArtifactVersionError,
+        match="unsupported weather artifact schema_version 'v999'",
+    ):
+        load_weather_artifact(fixture_data)
