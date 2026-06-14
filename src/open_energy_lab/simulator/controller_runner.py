@@ -182,6 +182,24 @@ def evaluate_with_controller(
             price_signal=scenario.price_signal,
             objective=scenario.objective,
         )
+        blackout_active = scenario._blackout_active_series()
+        unmet_load_kw: list[float] = []
+        net_grid_power_kw = list(settlement.net_grid_power_kw)
+        net_grid_energy_kwh = list(settlement.net_grid_energy_kwh)
+        direction = list(settlement.direction)
+        step_settlement = list(settlement.step_settlement)
+        if any(blackout_active):
+            for step_index, is_active in enumerate(blackout_active):
+                if is_active:
+                    unmet_load_kw.append(max(0.0, net_grid_power_kw[step_index]))
+                    net_grid_power_kw[step_index] = 0.0
+                    net_grid_energy_kwh[step_index] = 0.0
+                    direction[step_index] = "neutral"
+                    step_settlement[step_index] = 0.0
+                else:
+                    unmet_load_kw.append(0.0)
+        else:
+            unmet_load_kw = [0.0] * scenario.time_grid.num_steps
         underlying_trace = BatteryLoadPVTrace(
             states=states,
             requested_power_kw=requested_power_kw,
@@ -189,11 +207,13 @@ def evaluate_with_controller(
             energy_delta_kwh=energy_delta_kwh,
             load_kw=load_kw,
             pv_generation_kw=pv_generation_kw,
-            net_grid_power_kw=settlement.net_grid_power_kw,
-            net_grid_energy_kwh=settlement.net_grid_energy_kwh,
-            direction=settlement.direction,
-            step_settlement=settlement.step_settlement,
-            total_settlement=settlement.total_settlement,
+            net_grid_power_kw=net_grid_power_kw,
+            net_grid_energy_kwh=net_grid_energy_kwh,
+            direction=direction,
+            unmet_load_kw=unmet_load_kw,
+            blackout_active=blackout_active,
+            step_settlement=step_settlement,
+            total_settlement=sum(step_settlement),
             constraint_events=constraint_events,
         )
 

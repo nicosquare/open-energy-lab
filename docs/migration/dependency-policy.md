@@ -276,5 +276,5 @@ Install mechanism: checked-out repo submodule only; no packaging path into the u
 Fallback or skip behavior: if legacy reference material is unavailable, document the missing evidence source rather than importing or copying runtime code wholesale
 External service, license, hardware, or scheduler assumptions: none
 Rationale: the feature cites exact legacy files for selective evidence while keeping the shipped library runtime free of legacy coupling
-Alternatives considered: runtime imports from legacy/* or whole-file migration were rejected by the repository constitution and feature spec
+Alternatives considered: runtime coupling to legacy reference code or whole-file migration was rejected by the repository constitution and feature spec
 ```

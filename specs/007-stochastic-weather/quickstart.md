@@ -540,6 +540,35 @@ uv run pytest tests/unit/simulator/test_stochastic_weather.py tests/integration/
 
 Routine local review should prefer recorded fixtures over live network fetches.
 
+## Recorded Validation Outcomes
+
+Recorded on `2026-06-14` from the default local conda plus `uv` environment:
+
+- `uv run pytest tests/unit/weather tests/integration/weather tests/integration/simulator`
+  passed with `96 passed`
+- `uv run pytest tests/unit/test_optional_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py`
+  passed with `32 passed`
+- `uv run python -c "import open_energy_lab; import open_energy_lab.weather; import open_energy_lab.simulator"`
+  passed without output
+- `rg "from legacy|import legacy" src/open_energy_lab/weather src/open_energy_lab/simulator tests/unit/weather tests/unit/simulator tests/integration/weather tests/integration/simulator docs/migration`
+  returned no matches after migration-doc wording was tightened to avoid a
+  false positive in documentation text
+
+Validation notes:
+
+- the first broad simulator validation run exposed a controller-runner
+  regression where controller-driven `BatteryLoadPVScenario` traces no longer
+  populated `unmet_load_kw` and `blackout_active`; the shipped implementation
+  now aligns controller evaluation with the deterministic blackout-aware trace
+  contract and the suite passes
+- live PVGIS fetch behavior was intentionally not exercised in the default
+  validation subset
+- optional live-fetch dependencies `pvlib` and `timezonefinder` were not
+  required for the recorded offline validation path because committed fixtures
+  covered fit-workflow review
+- no solver, GPU, SLURM, W&B, notebook, Rust, or external-service setup was
+  required for the executed subset
+
 ## Preserve / Improve / Reject Summary
 
 Preserve:
