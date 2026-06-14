@@ -49,8 +49,8 @@ auto_commit:
     enabled: true
     message: "[Spec Kit] Add tasks"
   after_implement:
-    enabled: false
-    message: "[Spec Kit] Implementation progress"
+    enabled: true
+    message: "[Spec Kit] Finalize stochastic weather migration guidance"
   after_checklist:
     enabled: false
     message: "[Spec Kit] Add checklist"

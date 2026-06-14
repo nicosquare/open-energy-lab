@@ -137,51 +137,66 @@ evolve. The package root now rejects root-level plotting access explicitly so
 ordinary imports remain import-light and callers must opt in through the
 focused plotting module.
 
-### Stochastic Weather Foundational Scaffolding
+### Stochastic Weather And Simulator Family Evaluation
 
-The `007-stochastic-weather` feature reserves a package-root weather surface
-and a focused simulator-side stochastic module, but this foundational slice
-does not promote shipped stochastic behavior to stable public API yet.
+The `007-stochastic-weather` feature now promotes the first shipped weather
+workflow and simulator-side stochastic family evaluation to stable public API.
 
-Reserved package-root imports:
+Stable weather package-root imports:
 
 ```python
 from open_energy_lab.weather import (
+    WeatherSamplingRequest,
     fit_weather_model,
     load_weather_artifact,
     sample_weather_family,
 )
 ```
 
-Focused simulator-side placeholder import:
+Stable simulator package-root imports:
 
 ```python
-from open_energy_lab.simulator.stochastic_weather import evaluate_weather_family
+from open_energy_lab.simulator import (
+    SUPPORTED_SUMMARY_OUTPUT_FIELDS,
+    WeatherFamilyEvaluationRequest,
+    WeatherFamilyEvaluationResult,
+    WeatherScenarioEvaluationResult,
+    evaluate_weather_family,
+)
 ```
 
-Current maturity status:
+These imports are stable because they now have:
 
-- `open_energy_lab.weather` exists as import-light foundational scaffolding
-  with lazy root exports and placeholder functions that raise
-  `NotImplementedError`
-- `open_energy_lab.weather._canonical`, `.tmy`, `.fit`, `.artifact`,
-  `.sampling`, and `.events` are implementation-facing modules reserved for
-  later user-story work
-- `open_energy_lab.simulator.stochastic_weather` is a focused placeholder
-  module that preserves simulator ownership of family evaluation without
-  widening `open_energy_lab.simulator.__all__`
+- focused unit and integration coverage for canonical normalization, artifact
+  schema and reload behavior, offline family sampling, simulator family
+  evaluation, blackout semantics, and preserved deterministic
+  `BatteryLoadPVScenario` debugging
+- deterministic committed fixtures for recorded fetch responses, fitted
+  artifacts, sampled weather families, and simulator family baselines
+- import-boundary, import-contract, and no-legacy-import coverage that names
+  both `open_energy_lab.weather` and stochastic simulator exports explicitly
+- migration documentation that records the stable fit/load/sample workflow,
+  blackout semantics, summary-field limits, and the explicit boundary between
+  artifact-preserved fields and simulator-consumed fields
+- documented dependency isolation proving offline artifact loading, sampling,
+  and simulator-family imports remain usable without live weather-service
+  dependencies
 
-These imports are not yet promoted as stable shipped behavior because this
-slice has only:
+Focused module imports remain intentionally narrower in maturity:
 
-- import-boundary, import-contract, and no-legacy-import coverage
-- documented dependency isolation for future fit/fetch work
-- package/module scaffolding rather than validated weather-model behavior,
-  artifact persistence, offline sampling, or simulator family evaluation
+```python
+from open_energy_lab.weather.fit import WeatherFitConfig
+```
 
-Promotion to stable public API remains gated on later user-story tasks adding
-focused behavioral tests, deterministic fixtures, and completed migration
-documentation for the shipped workflow.
+`WeatherFitConfig` is part of the shipped fit workflow, but it remains a
+focused module import instead of a package-root export so the stable root
+surface stays small.
+
+Implementation-facing modules such as `open_energy_lab.weather._canonical`,
+`.tmy`, `.fit`, `.artifact`, `.sampling`, `.events`, and
+`open_energy_lab.simulator.stochastic_weather` remain the hosts for the shipped
+logic. Callers may use those focused imports when needed, but the stable
+user-facing contract for ordinary use is the package-root surface shown above.
 
 ## Experimental API
 

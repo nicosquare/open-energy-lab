@@ -86,3 +86,41 @@ uv run pytest tests/unit/core tests/unit/simulator tests/integration/simulator
 - Do not treat solver stacks, RL frameworks, notebook tooling, W&B access,
   GPU runtimes, SLURM clients, or Rust parity tooling as prerequisites for
   this feature’s default validation path.
+
+## Stochastic Weather Notes
+
+The `007-stochastic-weather` feature keeps the same base environment shape and
+adds explicit assumptions for weather fitting, offline sampling, and
+simulator-family validation.
+
+## Default Validation Environment For Weather
+
+- Run the default weather and simulator-family checks from the local
+  `open-energy-lab` conda environment after `uv sync --dev`.
+- Assume CPU-only execution with no solver licenses, no W&B login, no GPU or
+  SLURM tooling, no Rust compilation, and no live weather-service
+  credentials.
+- Treat recorded-response fixtures as the default fit-workflow evidence so the
+  offline artifact-load, sampling, and simulator-family subset stays runnable
+  without network access.
+- Keep the default validation surface limited to `open_energy_lab.weather`,
+  `open_energy_lab.simulator`, their unit/integration tests, import checks,
+  and the `legacy` import scan documented in the feature quickstart.
+
+Example weather validation bootstrap:
+
+```bash
+conda activate open-energy-lab
+uv sync --dev
+uv run pytest tests/unit/weather tests/integration/weather tests/integration/simulator
+uv run pytest tests/unit/test_optional_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py
+uv run python -c "import open_energy_lab; import open_energy_lab.weather; import open_energy_lab.simulator"
+```
+
+## Optional Live-Fetch Assumptions
+
+- Live PVGIS fetches are outside the default validation subset.
+- If a reviewer exercises live fetch behavior, `pvlib` and `timezonefinder`
+  may be required locally and the run depends on network access.
+- Any skipped live-fetch check should be documented as an optional follow-up,
+  not reported as a failure of the default offline validation path.

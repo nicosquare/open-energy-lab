@@ -156,9 +156,9 @@ deterministic debugging behavior.
 **Purpose**: Finalize migration guidance, validation commands, and repository
 working notes that apply across all stories.
 
-- [ ] T041 [P] Update public API maturity and dependency classification for `open_energy_lab.weather` and simulator stochastic evaluation in `docs/migration/api-maturity.md` and `docs/migration/dependency-policy.md`
-- [ ] T042 [P] Update fixture, environment, and parity guidance for weather validation in `docs/migration/fixture-provenance.md`, `docs/migration/environment-assumptions.md`, and `docs/migration/parity-validation.md`
-- [ ] T043 [P] Update migration index and repository working guidance for the weather feature in `docs/migration/README.md`, `AGENTS.md`, and `specs/007-stochastic-weather/quickstart.md`
+- [X] T041 [P] Update public API maturity and dependency classification for `open_energy_lab.weather` and simulator stochastic evaluation in `docs/migration/api-maturity.md` and `docs/migration/dependency-policy.md`
+- [X] T042 [P] Update fixture, environment, and parity guidance for weather validation in `docs/migration/fixture-provenance.md`, `docs/migration/environment-assumptions.md`, and `docs/migration/parity-validation.md`
+- [X] T043 [P] Update migration index and repository working guidance for the weather feature in `docs/migration/README.md`, `AGENTS.md`, and `specs/007-stochastic-weather/quickstart.md`
 - [ ] T044 Run the validation commands documented in `specs/007-stochastic-weather/quickstart.md`: `uv run pytest tests/unit/weather tests/integration/weather tests/integration/simulator`, `uv run pytest tests/unit/test_optional_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py`, `uv run python -c "import open_energy_lab; import open_energy_lab.weather; import open_energy_lab.simulator"`, and `rg "from legacy|import legacy" src/open_energy_lab/weather src/open_energy_lab/simulator tests/unit/weather tests/integration/weather tests/integration/simulator docs/migration`
 - [ ] T045 Document final validation outcomes and any skipped live-fetch or optional-dependency checks in `specs/007-stochastic-weather/quickstart.md`
 

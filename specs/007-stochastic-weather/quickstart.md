@@ -449,7 +449,7 @@ Experimental or deferred behavior:
 - artifact auto-migration
 - blackout fitting or calibration from weather data
 
-## Planned Public Entry Points
+## Public Entry Points
 
 The stable weather package direction is:
 
@@ -491,14 +491,12 @@ The artifact-versus-simulator-consumed field boundary is explicit:
 
 ## Dependency Boundary Notes
 
-Planned dependency classification for implementation:
+Current dependency classification for the shipped implementation:
 
 - core weather capability:
   - Python standard library
-  - `numpy`
 - isolated fit/fetch workflow dependencies:
   - `pvlib`
-  - `pandas`
   - `timezonefinder`
 - optional validation tooling:
   - `pytest`
@@ -509,16 +507,30 @@ Heavy research stacks remain outside the base import path:
 TorchRL, PyTorch, solver stacks, notebooks, W&B, GPU/SLURM tooling, Rust
 toolchains, and CityLearn runtime.
 
-## Expected Checks After Tasks Exist
+Default review and validation stay offline unless a reviewer explicitly opts
+into live PVGIS fetch checks. Recorded fixtures are the primary evidence for
+the fit workflow.
+
+## Validation Commands
 
 ```bash
-uv run pytest tests/unit/weather tests/unit/simulator tests/integration/weather tests/integration/simulator
+uv run pytest tests/unit/weather tests/integration/weather tests/integration/simulator
 uv run pytest tests/unit/test_optional_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py
 uv run python -c "import open_energy_lab; import open_energy_lab.weather; import open_energy_lab.simulator"
 rg "from legacy|import legacy" src/open_energy_lab/weather src/open_energy_lab/simulator tests/unit/weather tests/unit/simulator tests/integration/weather tests/integration/simulator docs/migration
 ```
 
-Focused validation commands should include:
+## Migration Documentation Review
+
+Use the migration docs in this order when reviewing the shipped feature:
+
+1. `docs/migration/stochastic-weather.md`
+2. `docs/migration/api-maturity.md`
+3. `docs/migration/dependency-policy.md`
+4. `docs/migration/fixture-provenance.md`
+5. `docs/migration/environment-assumptions.md`
+
+## Focused Validation Commands
 
 ```bash
 uv run pytest tests/unit/weather/test_canonical_schema.py tests/unit/weather/test_artifact_schema.py tests/unit/weather/test_sampling.py

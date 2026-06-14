@@ -9,18 +9,26 @@ parity validation, and environment assumptions.
 - `controller-pack.md`: preserve/improve/reject decisions, shipped controller
   behavior, fixture evidence, and exact legacy references for
   `open_energy_lab.control`
+- `stochastic-weather.md`: shipped weather workflow behavior, simulator-family
+  semantics, blackout rules, stable versus deferred controls, and exact legacy
+  evidence for `open_energy_lab.weather` and stochastic simulator evaluation
 - `visualization-traces.md`: shipped inspection/reporting behavior, focused
   same-family comparison scope, experimental plotting split, and validation
   outcomes for `open_energy_lab.visualization`
 - `api-maturity.md`: stable public API promotion for
-  `open_energy_lab.control` package-root exports plus the visualization
-  stable-versus-experimental boundary
+  `open_energy_lab.control`, `open_energy_lab.weather`, and
+  `open_energy_lab.simulator` stochastic package-root exports plus the
+  visualization stable-versus-experimental boundary
 - `dependency-policy.md`: import-light dependency classification and rejected
-  runtime stacks for the controller pack and visualization feature
-- `parity-validation.md`: controller-pack validation minimums and preserved-path
-  regression rules
-- `environment-assumptions.md`: default local validation environment and skip
-  rules for non-core capabilities
+  runtime stacks for the controller pack, visualization feature, and
+  stochastic weather workflow
+- `parity-validation.md`: controller-pack validation minimums,
+  stochastic-weather validation minimums, and preserved-path regression rules
+- `environment-assumptions.md`: default local validation environment, weather
+  offline-validation assumptions, and skip rules for non-core capabilities
+- `fixture-provenance.md`: fixture record requirements, including weather and
+  simulator-family provenance rules for recorded responses and deterministic
+  baselines
 
 ## Visualization Review Path
 
@@ -40,6 +48,29 @@ order:
 
 This review path keeps the visualization feature anchored to shipped library
 behavior, not to the earlier scaffolding state.
+
+## Stochastic Weather Review Path
+
+For the `007-stochastic-weather` feature, read the migration docs in this
+order:
+
+1. `stochastic-weather.md` for the shipped fit/load/sample workflow,
+   simulator-family semantics, blackout behavior, and preserve/improve/reject
+   decisions.
+2. `api-maturity.md` for the stable package-root weather and stochastic
+   simulator exports versus narrower focused-module helpers.
+3. `dependency-policy.md` for the offline-first import boundary and optional
+   live-fetch dependency split.
+4. `fixture-provenance.md` together with `tests/fixtures/weather/README.md`
+   and `tests/fixtures/simulator/README.md` for recorded-response,
+   artifact-schema, sampled-family, and blackout-baseline provenance rules.
+5. `environment-assumptions.md` and
+   `specs/007-stochastic-weather/quickstart.md` for the default offline
+   validation subset and optional live-fetch follow-up checks.
+
+This review path keeps the weather feature anchored to the shipped offline
+workflow and simulator-family contract rather than the earlier scaffolding
+milestone.
 
 ## Working Rule
 
