@@ -47,6 +47,11 @@ class PVComponent:
         if self.generation_cap_kw is not None and self.generation_cap_kw <= 0:
             raise ValueError("generation_cap_kw must be positive when provided")
 
+    def consumed_weather_field_names(self) -> tuple[str, ...]:
+        """Return the weather fields the deterministic PV derivation consumes."""
+
+        return ("dry_bulb_air_temperature_c", *self.irradiance_field_names)
+
     def derive_generation_kw(self, weather: WeatherComponent) -> list[float]:
         generation_kw: list[float] = []
 

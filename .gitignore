@@ -223,6 +223,11 @@ Thumbs.db
 *.tmp
 *.swp
 .idea/
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.idea/
 .env*
 .venv/
 wandb/

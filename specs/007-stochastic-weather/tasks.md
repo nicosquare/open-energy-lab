@@ -138,9 +138,9 @@ deterministic debugging behavior.
 
 ### Implementation for User Story 3
 
-- [ ] T035 [US3] Implement simulator-side weather-family request, result, and summary types in `src/open_energy_lab/simulator/stochastic_weather.py`
-- [ ] T036 [US3] Extend simulator scenario and trace entities for blackout-aware family evaluation in `src/open_energy_lab/simulator/scenario.py`
-- [ ] T037 [US3] Preserve deterministic weather inputs while adapting sampled canonical weather traces for PV evaluation and enforcing the artifact-versus-simulator-consumed field boundary in `src/open_energy_lab/simulator/weather.py` and `src/open_energy_lab/simulator/pv.py` using `legacy/old_tpm/src_py/simulator/common/weather.py` and `legacy/old_tpm/src_py/simulator/common/pv.py` as reference-only evidence
+- [X] T035 [US3] Implement simulator-side weather-family request, result, and summary types in `src/open_energy_lab/simulator/stochastic_weather.py`
+- [X] T036 [US3] Extend simulator scenario and trace entities for blackout-aware family evaluation in `src/open_energy_lab/simulator/scenario.py`
+- [X] T037 [US3] Preserve deterministic weather inputs while adapting sampled canonical weather traces for PV evaluation and enforcing the artifact-versus-simulator-consumed field boundary in `src/open_energy_lab/simulator/weather.py` and `src/open_energy_lab/simulator/pv.py` using `legacy/old_tpm/src_py/simulator/common/weather.py` and `legacy/old_tpm/src_py/simulator/common/pv.py` as reference-only evidence
 - [ ] T038 [US3] Export the stochastic family evaluation surface from `src/open_energy_lab/simulator/__init__.py`
 - [ ] T039 [US3] Populate stochastic family and blackout fixtures with provenance in `tests/fixtures/simulator/stochastic_weather_family_case.json`, `tests/fixtures/simulator/blackout_weather_family_case.json`, and `tests/fixtures/simulator/README.md`
 - [ ] T040 [US3] Document simulator family semantics, preserved deterministic debugging, blackout behavior, and the artifact-versus-simulator-consumed field boundary in `docs/migration/stochastic-weather.md` and `specs/007-stochastic-weather/quickstart.md`
