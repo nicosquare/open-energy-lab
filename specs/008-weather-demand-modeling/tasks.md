@@ -46,10 +46,10 @@ blocks all user story work.
 - [X] T006 [P] Add demand package no-legacy-import coverage in `tests/unit/demand/test_no_legacy_imports.py`
 - [X] T007 [P] Extend root optional dependency boundary coverage for `open_energy_lab.demand` and `open_energy_lab.simulator.stochastic_demand` in `tests/unit/test_optional_dependency_boundaries.py`
 - [X] T008 [P] Extend stable package-surface and import-contract coverage for demand exports in `tests/unit/demand/test_package_surface.py` and `tests/unit/test_import_contract.py`
-- [ ] T009 [P] Add fixture loading helpers for demand and paired simulator cases in `tests/integration/demand/fixture_utils.py` and `tests/integration/simulator/demand_family_fixture_utils.py`
-- [ ] T010 [P] Add fixture-schema and provenance validation for demand artifacts, sampled demand family fixtures, and paired simulator cases in `tests/integration/demand/test_fixture_schema.py`, `tests/integration/demand/test_sampling_fixture_schema.py`, and `tests/integration/simulator/test_demand_family_fixture_schema.py`
-- [ ] T011 Create demand package module scaffolding and stable export placeholders in `src/open_energy_lab/demand/__init__.py`, `src/open_energy_lab/demand/_aligned_history.py`, `src/open_energy_lab/demand/_weather_response.py`, `src/open_energy_lab/demand/fit.py`, `src/open_energy_lab/demand/artifact.py`, and `src/open_energy_lab/demand/sampling.py`
-- [ ] T012 [P] Populate demand-feature API-maturity and dependency-boundary placeholders in `docs/migration/weather-demand-modeling.md`, `docs/migration/api-maturity.md`, and `docs/migration/dependency-policy.md`
+- [X] T009 [P] Add fixture loading helpers for demand and paired simulator cases in `tests/integration/demand/fixture_utils.py` and `tests/integration/simulator/demand_family_fixture_utils.py`
+- [X] T010 [P] Add fixture-schema and provenance validation for demand artifacts, sampled demand family fixtures, and paired simulator cases in `tests/integration/demand/test_fixture_schema.py`, `tests/integration/demand/test_sampling_fixture_schema.py`, and `tests/integration/simulator/test_demand_family_fixture_schema.py`
+- [X] T011 Create demand package module scaffolding and stable export placeholders in `src/open_energy_lab/demand/__init__.py`, `src/open_energy_lab/demand/_aligned_history.py`, `src/open_energy_lab/demand/_weather_response.py`, `src/open_energy_lab/demand/fit.py`, `src/open_energy_lab/demand/artifact.py`, and `src/open_energy_lab/demand/sampling.py`
+- [X] T012 [P] Populate demand-feature API-maturity and dependency-boundary placeholders in `docs/migration/weather-demand-modeling.md`, `docs/migration/api-maturity.md`, and `docs/migration/dependency-policy.md`
 
 **Checkpoint**: Shared package scaffolding, fixture helpers, and boundary
 validation are in place.

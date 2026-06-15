@@ -61,6 +61,51 @@ dependencies must not become required for the unified package.
 - Tests that require unavailable services, hardware, or licenses must be
   marked or separated so the default test subset remains runnable locally.
 
+## Weather-Conditioned Demand Foundational Classification
+
+The `008-weather-demand-modeling` feature currently reserves the demand package
+and simulator-side demand-family fixture paths without widening the runtime
+dependency boundary. The Phase 2 review record is:
+
+```text
+Dependency: Python standard library modules and existing open_energy_lab package layout only
+Requested by: 008-weather-demand-modeling Phase 2 foundational tasks
+Target module: src/open_energy_lab/demand/__init__.py, src/open_energy_lab/demand/_aligned_history.py, src/open_energy_lab/demand/_weather_response.py, src/open_energy_lab/demand/fit.py, src/open_energy_lab/demand/artifact.py, src/open_energy_lab/demand/sampling.py
+Classification: core
+Import boundary: allowed at import time for open_energy_lab.demand, with no package-root exports and no eager load of fit/fetch dependencies
+Install mechanism: base project environment via uv-managed Python
+Fallback or skip behavior: none for the reserved module paths; functional behavior remains deferred to later tasks
+External service, license, hardware, or scheduler assumptions: none
+Rationale: the feature needs a stable package location and reserved module hosts before shipping fit/load/sample behavior, but the foundational slice must stay import-light and offline-safe
+Alternatives considered: delaying module creation until user-story work was rejected because it weakens package-boundary validation and fixture-contract setup
+```
+
+```text
+Dependency: pytest-based demand fixture and simulator fixture schema validation
+Requested by: 008-weather-demand-modeling Phase 2 foundational tasks
+Target module: tests/integration/demand, tests/integration/simulator, tests/unit/demand, tests/unit/test_optional_dependency_boundaries.py, tests/unit/test_import_contract.py, tests/unit/test_no_legacy_imports.py
+Classification: optional
+Import boundary: test-only; must not affect library runtime imports
+Install mechanism: uv sync --dev
+Fallback or skip behavior: if dev dependencies are unavailable, document Phase 2 validation as blocked rather than broadening runtime requirements
+External service, license, hardware, or scheduler assumptions: none
+Rationale: fixture provenance and package-boundary evidence are required before later value-level behavior is added, but pytest remains non-runtime tooling
+Alternatives considered: ad hoc manual fixture review was rejected because it weakens repeatable contract validation
+```
+
+```text
+Dependency: pandas, pvlib, timezonefinder, live weather fetches, CityLearn, notebooks, solver stacks, W&B, GPU/SLURM tooling, and legacy reference runtimes
+Requested by: none for the Phase 2 foundational slice
+Target module: none in the reserved demand package root or fixture schema tests
+Classification: core local dependencies for later weather fit workflows, external-service-backed, optional, hardware-bound, or legacy-only depending on family
+Import boundary: excluded from open_energy_lab.demand package-root imports and the new scaffold modules during Phase 2
+Install mechanism: unchanged from existing project policy; no new install path introduced here
+Fallback or skip behavior: the default foundational review path remains offline and fixture-backed without them
+External service, license, hardware, or scheduler assumptions: not accepted for routine Phase 2 validation
+Rationale: the foundational slice exists specifically to keep future demand behavior isolated from heavier research or live-service dependencies
+Alternatives considered: allowing early fit/fetch dependencies into the reserved package root was rejected because it would violate the constitution and the active spec
+```
+
 ## Known Dependency Families
 
 Future specs should classify these before use:

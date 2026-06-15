@@ -20,6 +20,27 @@ An import path is stable public API when all conditions hold:
 Stable public APIs should preserve import paths and documented behavior across
 future migrations unless a deprecation decision is recorded.
 
+### Weather-Conditioned Demand Foundational Status
+
+The `008-weather-demand-modeling` feature has completed foundational package
+and fixture scaffolding, but it does not yet promote any demand imports into
+stable public API.
+
+Current Phase 2 status:
+
+- `open_energy_lab.demand` now exists as a stable package location only
+- the package-root export surface remains intentionally empty
+- `open_energy_lab.demand.fit`, `open_energy_lab.demand.artifact`,
+  `open_energy_lab.demand.sampling`, `open_energy_lab.demand._aligned_history`,
+  and `open_energy_lab.demand._weather_response` are reserved module paths,
+  not stable user-facing contracts
+- cooling-aware paired-family simulator evaluation is not yet promoted into
+  the `open_energy_lab.simulator` package root
+
+Promotion for this feature requires the later user-story tasks to add the
+documented fit/load/sample/evaluate behavior, populate active fixtures, and
+update this policy with the final stable imports.
+
 ### Controller Boundary MVP
 
 The `004-controller-boundary` feature promotes the following imports to stable
