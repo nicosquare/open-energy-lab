@@ -1,0 +1,14 @@
+{
+  "fixture_name": "sampling_request_case",
+  "fixture_status": "scaffold",
+  "purpose": "Placeholder for the positive offline demand sampling request fixture.",
+  "spec_feature": "008-weather-demand-modeling",
+  "provenance": {
+    "author": "OpenAI Codex",
+    "origin": "Phase 1 scaffold",
+    "legacy_evidence_paths": [],
+    "generation_command": null,
+    "random_seed": null,
+    "refresh_policy": "Populate with a deterministic request payload in T029."
+  }
+}

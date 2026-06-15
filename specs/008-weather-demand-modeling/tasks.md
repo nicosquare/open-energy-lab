@@ -30,10 +30,10 @@ implementation and testing of each story.
 **Purpose**: Establish demand-package, fixture, and migration-note scaffolding
 without expanding legacy runtime code.
 
-- [ ] T001 Create demand package and test package scaffolds in `src/open_energy_lab/demand/__init__.py`, `tests/unit/demand/__init__.py`, and `tests/integration/demand/__init__.py`
-- [ ] T002 [P] Create deterministic demand and paired-simulator fixture scaffolds in `tests/fixtures/demand/aligned_training_case.json`, `tests/fixtures/demand/aligned_training_case_missing_cooling.json`, `tests/fixtures/demand/aligned_training_case_missing_non_thermal.json`, `tests/fixtures/demand/fitted_demand_artifact_v1.json`, `tests/fixtures/demand/fitted_demand_artifact_unsupported_version.json`, `tests/fixtures/demand/sampling_request_case.json`, `tests/fixtures/demand/sampled_demand_family_case.json`, `tests/fixtures/simulator/demand_local_electric_family_case.json`, `tests/fixtures/simulator/demand_district_cooling_family_case.json`, and `tests/fixtures/simulator/demand_invalid_mixed_cooling_case.json`
-- [ ] T003 [P] Add demand fixture provenance placeholders in `tests/fixtures/demand/README.md` and `tests/fixtures/simulator/README.md`
-- [ ] T004 [P] Create the weather-conditioned-demand migration note file in `docs/migration/weather-demand-modeling.md`
+- [X] T001 Create demand package and test package scaffolds in `src/open_energy_lab/demand/__init__.py`, `tests/unit/demand/__init__.py`, and `tests/integration/demand/__init__.py`
+- [X] T002 [P] Create deterministic demand and paired-simulator fixture scaffolds in `tests/fixtures/demand/aligned_training_case.json`, `tests/fixtures/demand/aligned_training_case_missing_cooling.json`, `tests/fixtures/demand/aligned_training_case_missing_non_thermal.json`, `tests/fixtures/demand/fitted_demand_artifact_v1.json`, `tests/fixtures/demand/fitted_demand_artifact_unsupported_version.json`, `tests/fixtures/demand/sampling_request_case.json`, `tests/fixtures/demand/sampled_demand_family_case.json`, `tests/fixtures/simulator/demand_local_electric_family_case.json`, `tests/fixtures/simulator/demand_district_cooling_family_case.json`, and `tests/fixtures/simulator/demand_invalid_mixed_cooling_case.json`
+- [X] T003 [P] Add demand fixture provenance placeholders in `tests/fixtures/demand/README.md` and `tests/fixtures/simulator/README.md`
+- [X] T004 [P] Create the weather-conditioned-demand migration note file in `docs/migration/weather-demand-modeling.md`
 
 ---
 

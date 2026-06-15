@@ -3,6 +3,20 @@
 Fixtures in this directory support deterministic simulator validation for the
 battery arbitrage MVP and the battery + load + PV migration that builds on it.
 
+Spec `008-weather-demand-modeling` also reserves three Phase 1 scaffold files
+for later cooling-aware paired family validation:
+
+- `tests/fixtures/simulator/demand_local_electric_family_case.json`
+- `tests/fixtures/simulator/demand_district_cooling_family_case.json`
+- `tests/fixtures/simulator/demand_invalid_mixed_cooling_case.json`
+
+Current status:
+
+- all three files are scaffold placeholders only
+- they reserve stable paths for T041 fixture population
+- they must later record exact cooling-path evidence, scenario ordering,
+  numeric tolerance, and refresh policy
+
 ## Stochastic Weather Active Fixtures
 
 The `007-stochastic-weather` feature now ships these active simulator family

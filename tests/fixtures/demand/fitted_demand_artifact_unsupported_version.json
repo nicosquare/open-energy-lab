@@ -1,0 +1,14 @@
+{
+  "fixture_name": "fitted_demand_artifact_unsupported_version",
+  "fixture_status": "scaffold",
+  "purpose": "Placeholder for the unsupported-version fitted demand artifact fixture.",
+  "spec_feature": "008-weather-demand-modeling",
+  "provenance": {
+    "author": "OpenAI Codex",
+    "origin": "Phase 1 scaffold",
+    "legacy_evidence_paths": [],
+    "generation_command": null,
+    "random_seed": null,
+    "refresh_policy": "Populate with a deterministic unsupported-version artifact in T020."
+  }
+}
