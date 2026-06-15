@@ -99,6 +99,11 @@ def test_weather_import_does_not_load_optional_research_stacks() -> None:
     _assert_import_stays_clear_of_optional_research_stacks("open_energy_lab.weather")
 
 
+def test_demand_import_does_not_load_optional_research_stacks() -> None:
+    """The demand package import must stay isolated from heavy optional stacks."""
+    _assert_import_stays_clear_of_optional_research_stacks("open_energy_lab.demand")
+
+
 def test_visualization_import_does_not_load_optional_research_stacks() -> None:
     """The stable visualization package import must stay isolated from optional stacks."""
     _assert_import_stays_clear_of_optional_research_stacks("open_energy_lab.visualization")
@@ -119,6 +124,8 @@ def test_visualization_import_does_not_load_optional_research_stacks() -> None:
         "open_energy_lab.control.soc_guardrail",
         "open_energy_lab.control.pv_self_consumption",
         "open_energy_lab.weather",
+        "open_energy_lab.demand",
+        "open_energy_lab.simulator.stochastic_demand",
         *VISUALIZATION_MODULES,
     ),
 )
@@ -134,6 +141,8 @@ def test_simulator_submodule_imports_stay_clear_of_optional_research_stacks(
     (
         "open_energy_lab.weather",
         "open_energy_lab.simulator.stochastic_weather",
+        "open_energy_lab.demand",
+        "open_energy_lab.simulator.stochastic_demand",
     ),
 )
 def test_weather_related_imports_do_not_load_isolated_fetch_dependencies(
