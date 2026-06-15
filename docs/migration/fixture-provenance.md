@@ -53,3 +53,32 @@ local smoke fixture when practical.
 The fixture README mirrors these requirements and is the default place for the
 provenance template when a dedicated fixture-specific metadata file is not
 needed.
+
+## Stochastic Weather Fixture Guidance
+
+The `007-stochastic-weather` feature adds a fixture family that should remain
+small, deterministic, and reviewable:
+
+- recorded provider responses under `tests/fixtures/weather`
+- fitted weather artifacts and unsupported-version artifacts under
+  `tests/fixtures/weather`
+- deterministic sampling requests and sampled weather-family results under
+  `tests/fixtures/weather`
+- simulator family and blackout baselines under `tests/fixtures/simulator`
+
+For this feature, fixture provenance must also make these points explicit:
+
+- whether the fixture replaces a live PVGIS fetch in the default review path
+- which exact legacy weather or simulator files were consulted as
+  reference-only evidence
+- whether the fixture is synthetic, manually curated, or regenerated from the
+  current library implementation
+- the family seed, scenario ordering, timestep, and numeric tolerance used for
+  replayable weather or simulator-family validation
+- the refresh trigger for artifact-schema changes, sampling-contract changes,
+  blackout semantics changes, or summary-surface changes
+
+Default weather validation should prefer the committed fixtures over live
+network fetches. If a future refresh needs live PVGIS access or optional
+weather dependencies, document that requirement in the fixture README and in
+the feature quickstart rather than broadening the default validation path.

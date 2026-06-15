@@ -223,6 +223,11 @@ Thumbs.db
 *.tmp
 *.swp
 .idea/
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.idea/
 .env*
 .venv/
 wandb/
@@ -245,11 +250,6 @@ gurobi.log
 .ipynb_checkpoints/
 generated-data/
 generated_data/
-.DS_Store
-Thumbs.db
-*.tmp
-*.swp
-.idea/
 data/generated/
 .conda/
 .conda-env/

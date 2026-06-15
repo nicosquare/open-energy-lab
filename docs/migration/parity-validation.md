@@ -147,8 +147,54 @@ skip reason must be recorded in the relevant spec plan or quickstart,
 alongside any environment assumptions and the intended follow-up validation
 path.
 
+## Stochastic Weather Validation Governance
+
+The `007-stochastic-weather` migration adds a weather-specific validation shape
+that later work should preserve when it extends the shipped workflow:
+
+- Keep `src/open_energy_lab/weather` import-light at the package root, with
+  live-fetch dependencies isolated from offline artifact loading and sampling.
+- Keep `src/open_energy_lab/simulator` as the owner of scenario-family
+  execution semantics, blackout interpretation, and summary generation.
+- Treat the committed weather fixtures under `tests/fixtures/weather` as active
+  contract evidence for canonical normalization, artifact schema and reload
+  behavior, deterministic seed replay, and unsupported-version failures.
+- Treat the simulator family fixtures under `tests/fixtures/simulator` as
+  active deterministic baselines for no-blackout and explicit blackout paths.
+- Preserve the documented artifact-versus-simulator-consumed field boundary:
+  the artifact keeps the full canonical field set, while the current simulator
+  PV path consumes only the fields it documents.
+- Keep blackouts distinct from weather attenuation and validate them through
+  simulator-side outage traces rather than weather-model parity claims.
+
+Minimum stochastic-weather validation now includes:
+
+- `tests/unit/weather/test_canonical_schema.py`
+- `tests/unit/weather/test_artifact_schema.py`
+- `tests/unit/weather/test_sampling.py`
+- `tests/unit/weather/test_events.py`
+- `tests/unit/simulator/test_stochastic_weather.py`
+- `tests/unit/test_optional_dependency_boundaries.py`
+- `tests/unit/test_import_contract.py`
+- `tests/unit/test_no_legacy_imports.py`
+- `tests/integration/weather/test_fit_workflow.py`
+- `tests/integration/weather/test_fixture_schema.py`
+- `tests/integration/weather/test_offline_sampling.py`
+- `tests/integration/weather/test_sampling_statistics.py`
+- `tests/integration/simulator/test_stochastic_weather_family.py`
+- `tests/integration/simulator/test_blackout_semantics.py`
+- `tests/integration/simulator/test_weather_family_fixture_schema.py`
+- `tests/integration/simulator/test_battery_load_pv_trace.py`
+
+If future stochastic-weather work cannot run one of these checks locally, the
+skip reason must be recorded in the relevant spec plan or quickstart,
+including whether the blocked check was live-fetch behavior or part of the
+default offline validation subset.
+
 ## Out-of-Scope Boundary
 
-The foundation feature does not migrate simulator, TPM, RL, optimization,
-weather, planning, or control behavior. A later migration spec must handle
-those changes with its own validation path. That keeps out-of-scope algorithm migration explicit and reviewable.
+The foundation feature does not migrate TPM, RL, optimization, or planning
+behavior beyond the explicitly shipped features. A later
+migration spec must handle any further algorithm or dependency expansion with
+its own validation path. That keeps out-of-scope migration work explicit and
+reviewable.

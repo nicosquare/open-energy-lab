@@ -1,0 +1,167 @@
+{
+  "fixture_status": "active",
+  "fixture_path": "tests/fixtures/weather/fitted_weather_artifact_v1.json",
+  "purpose": "Deterministic supported weather artifact fixture for offline load validation.",
+  "origin": "Synthetic current-library artifact fixture kept intentionally small for schema and reload tests.",
+  "legacy_reference_paths": [
+    "legacy/old_tpm/src_py/weather/models/gaussian.py",
+    "legacy/old_tpm/src_py/weather/models/enhanced.py"
+  ],
+  "notes": [
+    "Uses a synthetic daily-timestep payload so the committed covariance matrix stays reviewable while still exercising the load contract.",
+    "Captures the full first-release artifact schema with explicit provenance and offline load metadata."
+  ],
+  "artifact_id": "weather-artifact:synthetic-us1-daily",
+  "schema_version": "v1",
+  "feature_name": "007-stochastic-weather",
+  "created_at": "2026-06-14T00:00:00Z",
+  "latitude": 33.4484,
+  "longitude": -112.074,
+  "timezone_name": "America/Phoenix",
+  "time_basis": "local_civil_time",
+  "timestep_hours": 24.0,
+  "canonical_field_order": [
+    "timestamp_utc",
+    "dry_bulb_air_temperature_c",
+    "global_horizontal_irradiance_w_per_m2",
+    "direct_beam_irradiance_w_per_m2",
+    "diffuse_horizontal_irradiance_w_per_m2",
+    "relative_humidity_pct",
+    "infrared_radiation_downwards_w_per_m2",
+    "windspeed_10m_m_per_s",
+    "wind_direction_10m_deg",
+    "surface_air_pressure_pa"
+  ],
+  "training_record_summary": {
+    "dataset_id": "synthetic-weather-daily:v1",
+    "record_count": 2,
+    "first_timestamp_utc": "2024-01-01T00:00:00Z",
+    "last_timestamp_utc": "2024-01-02T00:00:00Z",
+    "local_step_count": 2
+  },
+  "base_model_kind": "joint-daily-block-summary",
+  "base_model_parameters": {
+    "intervals_per_day": 1,
+    "field_order": [
+      "dry_bulb_air_temperature_c",
+      "global_horizontal_irradiance_w_per_m2",
+      "direct_beam_irradiance_w_per_m2",
+      "diffuse_horizontal_irradiance_w_per_m2",
+      "relative_humidity_pct",
+      "infrared_radiation_downwards_w_per_m2",
+      "windspeed_10m_m_per_s",
+      "wind_direction_10m_deg",
+      "surface_air_pressure_pa"
+    ],
+    "mean_vector": [
+      19.5,
+      540.0,
+      315.0,
+      225.0,
+      37.5,
+      332.5,
+      3.45,
+      155.0,
+      100975.0
+    ],
+    "covariance_matrix": [
+      [2.25, 12.0, 8.0, 6.0, -1.5, 3.0, 0.15, 4.0, -18.0],
+      [12.0, 6400.0, 4200.0, 2600.0, -35.0, 90.0, 4.0, 25.0, -120.0],
+      [8.0, 4200.0, 3025.0, 1800.0, -24.0, 70.0, 3.0, 20.0, -90.0],
+      [6.0, 2600.0, 1800.0, 1600.0, -18.0, 55.0, 2.5, 16.0, -72.0],
+      [-1.5, -35.0, -24.0, -18.0, 6.25, -4.0, -0.2, -1.5, 10.0],
+      [3.0, 90.0, 70.0, 55.0, -4.0, 56.25, 0.3, 2.0, -15.0],
+      [0.15, 4.0, 3.0, 2.5, -0.2, 0.3, 0.1225, 0.5, -1.2],
+      [4.0, 25.0, 20.0, 16.0, -1.5, 2.0, 0.5, 100.0, -8.0],
+      [-18.0, -120.0, -90.0, -72.0, 10.0, -15.0, -1.2, -8.0, 5625.0]
+    ],
+    "training_day_count": 2,
+    "regularization_note": "synthetic-committed-fixture",
+    "field_summaries": {
+      "dry_bulb_air_temperature_c": {"min": 18.0, "mean": 19.5, "max": 21.0},
+      "global_horizontal_irradiance_w_per_m2": {"min": 460.0, "mean": 540.0, "max": 620.0},
+      "direct_beam_irradiance_w_per_m2": {"min": 260.0, "mean": 315.0, "max": 370.0},
+      "diffuse_horizontal_irradiance_w_per_m2": {"min": 185.0, "mean": 225.0, "max": 265.0},
+      "relative_humidity_pct": {"min": 35.0, "mean": 37.5, "max": 40.0},
+      "infrared_radiation_downwards_w_per_m2": {"min": 325.0, "mean": 332.5, "max": 340.0},
+      "windspeed_10m_m_per_s": {"min": 3.1, "mean": 3.45, "max": 3.8},
+      "wind_direction_10m_deg": {"min": 145.0, "mean": 155.0, "max": 165.0},
+      "surface_air_pressure_pa": {"min": 100900.0, "mean": 100975.0, "max": 101050.0}
+    },
+    "physical_bounds_policy": {
+      "bounds_by_field": {
+        "dry_bulb_air_temperature_c": {"minimum": null, "maximum": null},
+        "global_horizontal_irradiance_w_per_m2": {"minimum": 0.0, "maximum": null},
+        "direct_beam_irradiance_w_per_m2": {"minimum": 0.0, "maximum": null},
+        "diffuse_horizontal_irradiance_w_per_m2": {"minimum": 0.0, "maximum": null},
+        "relative_humidity_pct": {"minimum": 0.0, "maximum": 100.0},
+        "infrared_radiation_downwards_w_per_m2": {"minimum": 0.0, "maximum": null},
+        "windspeed_10m_m_per_s": {"minimum": 0.0, "maximum": null},
+        "wind_direction_10m_deg": {"minimum": 0.0, "maximum": 360.0},
+        "surface_air_pressure_pa": {"minimum": 0.0, "maximum": null}
+      },
+      "non_negative_fields": [
+        "global_horizontal_irradiance_w_per_m2",
+        "direct_beam_irradiance_w_per_m2",
+        "diffuse_horizontal_irradiance_w_per_m2",
+        "relative_humidity_pct",
+        "infrared_radiation_downwards_w_per_m2",
+        "windspeed_10m_m_per_s",
+        "surface_air_pressure_pa"
+      ]
+    }
+  },
+  "cloud_event_model": {
+    "irradiance_fields": [
+      "global_horizontal_irradiance_w_per_m2",
+      "direct_beam_irradiance_w_per_m2",
+      "diffuse_horizontal_irradiance_w_per_m2"
+    ],
+    "start_probability_by_local_step": [
+      0.15
+    ],
+    "duration_distribution": {
+      "kind": "empirical",
+      "durations": [1],
+      "probabilities": [1.0]
+    },
+    "attenuation_distribution": {
+      "kind": "empirical",
+      "attenuation_values": [0.25],
+      "probabilities": [1.0]
+    },
+    "minimum_base_irradiance_w_per_m2": 50.0,
+    "calibration_summary": {
+      "event_count": 1,
+      "inferred_day_count": 2,
+      "training_record_count": 2
+    }
+  },
+  "provenance": {
+    "source_name": "Synthetic committed weather artifact",
+    "source_metadata": {
+      "generation_method": "manual-fixture",
+      "trimmed_for_commit": true,
+      "derived_from": "current-library-contract"
+    },
+    "source_field_labels": {
+      "timestamp_utc": "Date & time (UTC)",
+      "dry_bulb_air_temperature_c": "T2m [°C]",
+      "global_horizontal_irradiance_w_per_m2": "G(h) [W/m2]",
+      "direct_beam_irradiance_w_per_m2": "Gb(n) [W/m2]",
+      "diffuse_horizontal_irradiance_w_per_m2": "Gd(h) [W/m2]",
+      "relative_humidity_pct": "RH [%]",
+      "infrared_radiation_downwards_w_per_m2": "IR(h) [W/m2]",
+      "windspeed_10m_m_per_s": "WS10m [m/s]",
+      "wind_direction_10m_deg": "WD10m [°]",
+      "surface_air_pressure_pa": "SP [Pa]"
+    },
+    "fit_notes": [
+      "fixture-generation",
+      "daily synthetic payload to keep the committed artifact reviewable"
+    ]
+  },
+  "supported_load_modes": [
+    "offline"
+  ]
+}

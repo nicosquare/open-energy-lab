@@ -220,3 +220,61 @@ External service, license, hardware, or scheduler assumptions: may require large
 Rationale: plotting remains experimental and optional, so rendered output capabilities must not become prerequisites for ordinary inspection or comparison imports
 Alternatives considered: making a plotting backend mandatory at package import time or re-exporting plotting from the package root was rejected because it violates the core dependency boundary for the unified library
 ```
+
+## Stochastic Weather And Simulator Family Evaluation Classification
+
+The `007-stochastic-weather` feature now ships the weather workflow and
+simulator-family evaluation surface. The dependency review record for the
+shipped slice is:
+
+```text
+Dependency: Python standard library modules plus existing open_energy_lab simulator/weather modules
+Requested by: 007-stochastic-weather
+Target module: src/open_energy_lab/weather/__init__.py, src/open_energy_lab/weather/_canonical.py, src/open_energy_lab/weather/tmy.py, src/open_energy_lab/weather/fit.py, src/open_energy_lab/weather/artifact.py, src/open_energy_lab/weather/sampling.py, src/open_energy_lab/weather/events.py, src/open_energy_lab/simulator/stochastic_weather.py
+Classification: core
+Import boundary: allowed at import time for open_energy_lab.weather and open_energy_lab.simulator, with both package roots resolving documented exports lazily
+Install mechanism: base project environment via uv-managed Python
+Fallback or skip behavior: none for the shipped offline load/sample/evaluate path
+External service, license, hardware, or scheduler assumptions: none
+Rationale: the shipped feature stays CPU-local, fixture-driven, and import-light while providing fit configuration, artifact loading, offline sampling, and simulator-family evaluation without widening the default runtime stack
+Alternatives considered: eager package-root imports, moving fit/fetch into open_energy_lab.simulator, or deferring all public exports to focused modules were rejected because they weaken the intended stable user-facing boundary
+```
+
+```text
+Dependency: pvlib and timezonefinder, with dataframe-style provider results typically supplied through pvlib's pandas-backed fetch path
+Requested by: 007-stochastic-weather fit/fetch workflow
+Target module: src/open_energy_lab/weather/tmy.py and live-fetch callers of src/open_energy_lab/weather/fit.py
+Classification: core local dependencies for the promoted weather workflow plus external-service-backed when live PVGIS fetch is exercised
+Import boundary: excluded from open_energy_lab.weather package-root imports, offline artifact loading, offline sampling, and open_energy_lab.simulator imports
+Install mechanism: base project environment via uv-managed Python
+Fallback or skip behavior: recorded-response fixtures remain the default review path when PVGIS network access is unavailable
+External service, license, hardware, or scheduler assumptions: PVGIS network access for live fetches; no solver, GPU, scheduler, or account requirement accepted
+Rationale: the promoted weather surface should work in a standard project environment without a second install step, while still keeping ordinary imports and offline artifact workflows service-free
+Alternatives considered: keeping live-fetch tooling as a separate optional install was rejected because it weakens the first-class status of the shipped weather capability; treating network access as part of the default validation subset remains rejected because it harms reproducibility
+```
+
+```text
+Dependency: pytest-based weather and simulator stochastic validation
+Requested by: 007-stochastic-weather
+Target module: tests/unit/weather, tests/unit/simulator, tests/integration/weather, tests/integration/simulator, tests/unit/test_optional_dependency_boundaries.py, tests/unit/test_import_contract.py, tests/unit/test_no_legacy_imports.py
+Classification: optional
+Import boundary: test-only; must not affect library runtime imports
+Install mechanism: uv sync --dev
+Fallback or skip behavior: if dev dependencies are unavailable, document validation as blocked rather than broadening runtime requirements
+External service, license, hardware, or scheduler assumptions: none for the default subset
+Rationale: stable API promotion depends on deterministic unit, integration, fixture-schema, import-boundary, and legacy-import evidence, but pytest remains non-runtime tooling
+Alternatives considered: ad hoc scripts alone were rejected because they weaken repeatable validation evidence
+```
+
+```text
+Dependency: legacy weather and simulator reference files under legacy/old_tpm
+Requested by: 007-stochastic-weather migration evidence
+Target module: docs, fixtures, and tests that cite legacy paths as preserve/improve/reject evidence
+Classification: legacy-only
+Import boundary: excluded from src/open_energy_lab runtime imports
+Install mechanism: checked-out repo submodule only; no packaging path into the unified library
+Fallback or skip behavior: if legacy reference material is unavailable, document the missing evidence source rather than importing or copying runtime code wholesale
+External service, license, hardware, or scheduler assumptions: none
+Rationale: the feature cites exact legacy files for selective evidence while keeping the shipped library runtime free of legacy coupling
+Alternatives considered: runtime coupling to legacy reference code or whole-file migration was rejected by the repository constitution and feature spec
+```

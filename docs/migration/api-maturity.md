@@ -137,6 +137,67 @@ evolve. The package root now rejects root-level plotting access explicitly so
 ordinary imports remain import-light and callers must opt in through the
 focused plotting module.
 
+### Stochastic Weather And Simulator Family Evaluation
+
+The `007-stochastic-weather` feature now promotes the first shipped weather
+workflow and simulator-side stochastic family evaluation to stable public API.
+
+Stable weather package-root imports:
+
+```python
+from open_energy_lab.weather import (
+    WeatherSamplingRequest,
+    fit_weather_model,
+    load_weather_artifact,
+    sample_weather_family,
+)
+```
+
+Stable simulator package-root imports:
+
+```python
+from open_energy_lab.simulator import (
+    SUPPORTED_SUMMARY_OUTPUT_FIELDS,
+    WeatherFamilyEvaluationRequest,
+    WeatherFamilyEvaluationResult,
+    WeatherScenarioEvaluationResult,
+    evaluate_weather_family,
+)
+```
+
+These imports are stable because they now have:
+
+- focused unit and integration coverage for canonical normalization, artifact
+  schema and reload behavior, offline family sampling, simulator family
+  evaluation, blackout semantics, and preserved deterministic
+  `BatteryLoadPVScenario` debugging
+- deterministic committed fixtures for recorded fetch responses, fitted
+  artifacts, sampled weather families, and simulator family baselines
+- import-boundary, import-contract, and no-legacy-import coverage that names
+  both `open_energy_lab.weather` and stochastic simulator exports explicitly
+- migration documentation that records the stable fit/load/sample workflow,
+  blackout semantics, summary-field limits, and the explicit boundary between
+  artifact-preserved fields and simulator-consumed fields
+- documented dependency isolation proving offline artifact loading, sampling,
+  and simulator-family imports remain usable without live weather-service
+  dependencies
+
+Focused module imports remain intentionally narrower in maturity:
+
+```python
+from open_energy_lab.weather.fit import WeatherFitConfig
+```
+
+`WeatherFitConfig` is part of the shipped fit workflow, but it remains a
+focused module import instead of a package-root export so the stable root
+surface stays small.
+
+Implementation-facing modules such as `open_energy_lab.weather._canonical`,
+`.tmy`, `.fit`, `.artifact`, `.sampling`, `.events`, and
+`open_energy_lab.simulator.stochastic_weather` remain the hosts for the shipped
+logic. Callers may use those focused imports when needed, but the stable
+user-facing contract for ordinary use is the package-root surface shown above.
+
 ## Experimental API
 
 `open_energy_lab.experimental.*` is for immature migrations and incubating APIs.

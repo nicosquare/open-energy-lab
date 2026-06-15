@@ -43,11 +43,16 @@ def test_simulator_import_stays_lightweight() -> None:
         "DeterministicRulePolicy",
         "DispatchRequestSeries",
         "evaluate_with_controller",
+        "evaluate_weather_family",
         "LoadComponent",
         "PVComponent",
         "PriceSignal",
+        "SUPPORTED_SUMMARY_OUTPUT_FIELDS",
         "TimeGrid",
         "WeatherComponent",
+        "WeatherFamilyEvaluationRequest",
+        "WeatherFamilyEvaluationResult",
+        "WeatherScenarioEvaluationResult",
     ]
     assert module.ArbitrageScenario.__module__ == "open_energy_lab.simulator.scenario"
     assert module.BatteryLoadPVScenario.__module__ == "open_energy_lab.simulator.scenario"
@@ -55,10 +60,32 @@ def test_simulator_import_stays_lightweight() -> None:
         module.evaluate_with_controller.__module__
         == "open_energy_lab.simulator.controller_runner"
     )
+    assert (
+        module.evaluate_weather_family.__module__
+        == "open_energy_lab.simulator.stochastic_weather"
+    )
     assert module.LoadComponent.__module__ == "open_energy_lab.simulator.load"
     assert module.PriceSignal.__module__ == "open_energy_lab.simulator.pricing"
     assert module.PVComponent.__module__ == "open_energy_lab.simulator.pv"
     assert module.WeatherComponent.__module__ == "open_energy_lab.simulator.weather"
+    assert (
+        module.WeatherFamilyEvaluationRequest.__module__
+        == "open_energy_lab.simulator.stochastic_weather"
+    )
+    assert (
+        module.WeatherFamilyEvaluationResult.__module__
+        == "open_energy_lab.simulator.stochastic_weather"
+    )
+    assert (
+        module.WeatherScenarioEvaluationResult.__module__
+        == "open_energy_lab.simulator.stochastic_weather"
+    )
+    assert module.SUPPORTED_SUMMARY_OUTPUT_FIELDS == (
+        "pv_generation_kw",
+        "net_grid_power_kw",
+        "unmet_load_kw",
+        "step_settlement",
+    )
 
 
 def test_controller_runner_import_and_export_stay_lightweight() -> None:

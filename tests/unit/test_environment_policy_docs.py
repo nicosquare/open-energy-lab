@@ -23,7 +23,9 @@ def test_environment_files_define_conda_base_and_uv_python_workflow() -> None:
     assert "conda-forge" in environment_yml
     assert "python=3.11" in environment_yml
     assert "uv" in environment_yml
-    assert "dependencies = []" in pyproject_toml
+    assert '"pvlib"' in pyproject_toml
+    assert '"timezonefinder"' in pyproject_toml
+    assert '"pandas"' in pyproject_toml
     assert "[dependency-groups]" in pyproject_toml
     assert "pytest" in pyproject_toml
 

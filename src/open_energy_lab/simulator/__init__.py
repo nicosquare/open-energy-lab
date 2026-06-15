@@ -26,6 +26,13 @@ if TYPE_CHECKING:
         DispatchRequestSeries,
         TimeGrid,
     )
+    from .stochastic_weather import (
+        SUPPORTED_SUMMARY_OUTPUT_FIELDS,
+        WeatherFamilyEvaluationRequest,
+        WeatherFamilyEvaluationResult,
+        WeatherScenarioEvaluationResult,
+        evaluate_weather_family,
+    )
     from .weather import WeatherComponent
 
 
@@ -37,11 +44,28 @@ _EXPORT_MAP = {
     "DeterministicRulePolicy": (".pricing", "DeterministicRulePolicy"),
     "DispatchRequestSeries": (".scenario", "DispatchRequestSeries"),
     "evaluate_with_controller": (".controller_runner", "evaluate_with_controller"),
+    "evaluate_weather_family": (".stochastic_weather", "evaluate_weather_family"),
     "LoadComponent": (".load", "LoadComponent"),
     "PVComponent": (".pv", "PVComponent"),
     "PriceSignal": (".pricing", "PriceSignal"),
+    "SUPPORTED_SUMMARY_OUTPUT_FIELDS": (
+        ".stochastic_weather",
+        "SUPPORTED_SUMMARY_OUTPUT_FIELDS",
+    ),
     "TimeGrid": (".scenario", "TimeGrid"),
     "WeatherComponent": (".weather", "WeatherComponent"),
+    "WeatherFamilyEvaluationRequest": (
+        ".stochastic_weather",
+        "WeatherFamilyEvaluationRequest",
+    ),
+    "WeatherFamilyEvaluationResult": (
+        ".stochastic_weather",
+        "WeatherFamilyEvaluationResult",
+    ),
+    "WeatherScenarioEvaluationResult": (
+        ".stochastic_weather",
+        "WeatherScenarioEvaluationResult",
+    ),
 }
 
 __all__ = [
@@ -52,11 +76,16 @@ __all__ = [
     "DeterministicRulePolicy",
     "DispatchRequestSeries",
     "evaluate_with_controller",
+    "evaluate_weather_family",
     "LoadComponent",
     "PVComponent",
     "PriceSignal",
+    "SUPPORTED_SUMMARY_OUTPUT_FIELDS",
     "TimeGrid",
     "WeatherComponent",
+    "WeatherFamilyEvaluationRequest",
+    "WeatherFamilyEvaluationResult",
+    "WeatherScenarioEvaluationResult",
 ]
 
 

@@ -28,6 +28,12 @@ EXPECTED_VISUALIZATION_EXPORTS = [
     "load_persisted_run_output",
     "summarize_inspection_view",
 ]
+EXPECTED_WEATHER_EXPORTS = [
+    "fit_weather_model",
+    "load_weather_artifact",
+    "WeatherSamplingRequest",
+    "sample_weather_family",
+]
 
 
 def test_root_package_imports_from_source_tree_without_optional_stacks():
@@ -126,6 +132,34 @@ def test_visualization_package_imports_from_source_tree_without_optional_stacks(
         == "open_energy_lab.visualization.inspection"
     )
     assert "plot_inspection_view" not in module.__all__
+
+    newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
+        set(sys.modules) - before_import
+    )
+    assert newly_loaded_optional_modules == set()
+
+
+def test_weather_package_import_contract_stays_reserved_and_import_light():
+    before_import = set(sys.modules)
+    module_spec = importlib.util.find_spec("open_energy_lab.weather")
+
+    if module_spec is None:
+        assert "open_energy_lab.weather" not in sys.modules
+        return
+
+    module = importlib.import_module("open_energy_lab.weather")
+
+    assert module.__file__ is not None
+    module_file = Path(module.__file__).resolve()
+    assert module.__name__ == "open_energy_lab.weather"
+    assert module_file.name == "__init__.py"
+    assert module_file.parent.name == "weather"
+    assert module_file.parent.parent.name == "open_energy_lab"
+    assert module.__all__ == EXPECTED_WEATHER_EXPORTS
+    assert module.fit_weather_model.__module__ == "open_energy_lab.weather.fit"
+    assert module.load_weather_artifact.__module__ == "open_energy_lab.weather.artifact"
+    assert module.WeatherSamplingRequest.__module__ == "open_energy_lab.weather.sampling"
+    assert module.sample_weather_family.__module__ == "open_energy_lab.weather.sampling"
 
     newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
         set(sys.modules) - before_import

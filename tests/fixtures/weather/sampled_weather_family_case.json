@@ -1,0 +1,148 @@
+{
+  "fixture_status": "active",
+  "fixture_path": "tests/fixtures/weather/sampled_weather_family_case.json",
+  "purpose": "Deterministic sampled weather family fixture generated from the committed US2 artifact and request fixtures.",
+  "origin": "Synthetic current-library US2 family-result fixture for offline replay coverage.",
+  "legacy_reference_paths": [
+    "legacy/old_tpm/src_py/weather/models/gaussian.py",
+    "legacy/old_tpm/src_py/weather/models/enhanced.py",
+    "legacy/old_tpm/src_py/weather/analysis/drops.py"
+  ],
+  "notes": [
+    "Generated from tests/fixtures/weather/fitted_weather_artifact_v1.json with the request in tests/fixtures/weather/sampling_request_case.json.",
+    "Captures exact horizon length, stable family-seed replay, and explicit cloud-event annotations without requiring any live fetch or refit."
+  ],
+  "artifact_reference": "weather-artifact:synthetic-us1-daily",
+  "blackout_traces": [],
+  "family_id": "weather-family:f7dbcc3a131d",
+  "family_seed": 13,
+  "num_steps": 3,
+  "sampled_traces": [
+    {
+      "canonical_field_series": {
+        "diffuse_horizontal_irradiance_w_per_m2": [
+          176.0370699382117,
+          143.40349896110598,
+          301.6757393014583
+        ],
+        "direct_beam_irradiance_w_per_m2": [
+          316.59566781620975,
+          216.5245833622539,
+          414.73775189713604
+        ],
+        "dry_bulb_air_temperature_c": [
+          20.523790085263883,
+          20.33324713989647,
+          19.652554495604104
+        ],
+        "global_horizontal_irradiance_w_per_m2": [
+          539.3375007453556,
+          397.6607418265808,
+          663.9073429055862
+        ],
+        "infrared_radiation_downwards_w_per_m2": [
+          328.4280595827732,
+          331.1252706036651,
+          340.2410607736791
+        ],
+        "relative_humidity_pct": [
+          37.61117178362743,
+          38.48833072421184,
+          35.73792549215685
+        ],
+        "surface_air_pressure_pa": [
+          100931.93910244096,
+          100982.33095269323,
+          101044.76371625299
+        ],
+        "wind_direction_10m_deg": [
+          145.96091811962464,
+          152.04843112873377,
+          153.88196637606794
+        ],
+        "windspeed_10m_m_per_s": [
+          3.0010293654825713,
+          3.187701090204434,
+          3.765576012863661
+        ]
+      },
+      "cloud_event_annotations": [],
+      "derived_identity": "weather-artifact:synthetic-us1-daily:family-13:scenario-0",
+      "family_seed": 13,
+      "scenario_index": 0,
+      "timestamp_utc": [
+        "2024-01-01T00:00:00Z",
+        "2024-01-02T00:00:00Z",
+        "2024-01-03T00:00:00Z"
+      ],
+      "timestep_hours": 24.0
+    },
+    {
+      "canonical_field_series": {
+        "diffuse_horizontal_irradiance_w_per_m2": [
+          213.07865264250003,
+          240.45279137550864,
+          109.28961541066701
+        ],
+        "direct_beam_irradiance_w_per_m2": [
+          290.18472035750096,
+          313.8589464249962,
+          153.5601067218177
+        ],
+        "dry_bulb_air_temperature_c": [
+          19.568069706368547,
+          17.69679144068771,
+          21.572125299306958
+        ],
+        "global_horizontal_irradiance_w_per_m2": [
+          546.8231758693493,
+          538.254086611189,
+          294.8168087760353
+        ],
+        "infrared_radiation_downwards_w_per_m2": [
+          329.8569438315849,
+          339.3820773010248,
+          332.3761048905009
+        ],
+        "relative_humidity_pct": [
+          40.86806792477914,
+          34.45350932099294,
+          40.19228629619101
+        ],
+        "surface_air_pressure_pa": [
+          100902.7417881724,
+          101026.84933882453,
+          100899.81519914154
+        ],
+        "wind_direction_10m_deg": [
+          157.58582565472614,
+          175.033249644698,
+          162.98858389171815
+        ],
+        "windspeed_10m_m_per_s": [
+          3.3480652333395726,
+          3.6596975320845986,
+          3.370739011726981
+        ]
+      },
+      "cloud_event_annotations": [
+        {
+          "attenuation_fraction": 0.25,
+          "duration_steps": 1,
+          "start_index": 2
+        }
+      ],
+      "derived_identity": "weather-artifact:synthetic-us1-daily:family-13:scenario-1",
+      "family_seed": 13,
+      "scenario_index": 1,
+      "timestamp_utc": [
+        "2024-01-01T00:00:00Z",
+        "2024-01-02T00:00:00Z",
+        "2024-01-03T00:00:00Z"
+      ],
+      "timestep_hours": 24.0
+    }
+  ],
+  "scenario_count": 2,
+  "timestep_hours": 24.0
+}

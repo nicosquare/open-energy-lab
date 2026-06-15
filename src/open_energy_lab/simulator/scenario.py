@@ -250,6 +250,8 @@ class BatteryLoadPVTrace:
     net_grid_power_kw: list[float]
     net_grid_energy_kwh: list[float]
     direction: list[str]
+    unmet_load_kw: list[float]
+    blackout_active: list[bool]
     step_settlement: list[float]
     total_settlement: float
     constraint_events: list[str]
@@ -388,6 +390,7 @@ class BatteryLoadPVScenario:
     objective: ArbitrageObjectiveRepresentation
     dispatch_requests: DispatchRequestSeries | None = None
     rule_policy: DeterministicRulePolicy | None = None
+    blackout_grid_available: list[bool] | None = None
     numeric_tolerance: float = DEFAULT_ABSOLUTE_TOLERANCE
 
     def validate(self) -> ComponentGraph:
@@ -403,6 +406,11 @@ class BatteryLoadPVScenario:
         if self.dispatch_requests is not None:
             if len(self.dispatch_requests.requested_power_kw) != self.time_grid.num_steps:
                 raise ValueError("dispatch request length must match the time grid")
+        if self.blackout_grid_available is not None:
+            if len(self.blackout_grid_available) != self.time_grid.num_steps:
+                raise ValueError("blackout_grid_available length must match the time grid")
+            if any(not isinstance(value, bool) for value in self.blackout_grid_available):
+                raise ValueError("blackout_grid_available values must be booleans")
 
         if self.objective.allow_export and (
             self.objective.export_price_ratio != self.price_signal.export_price_ratio
@@ -410,7 +418,7 @@ class BatteryLoadPVScenario:
             raise ValueError("objective export discount must match the price signal")
         missing_irradiance = [
             field_name
-            for field_name in self.pv.irradiance_field_names
+            for field_name in self.pv.consumed_weather_field_names()
             if field_name not in self.weather.included_field_names()
         ]
         if missing_irradiance:
@@ -438,6 +446,10 @@ class BatteryLoadPVScenario:
         graph.add_connection(Connection("simulation_trace", "net_grid_trace", Relation.FEEDS))
         graph.add_connection(Connection("price_signal", "net_grid_trace", Relation.PRICES))
         graph.add_connection(Connection("net_grid_trace", "objective", Relation.SETTLES))
+        if self.blackout_grid_available is not None:
+            graph.add_component(ComponentRef(name="blackout_trace", kind="blackout-trace"))
+            graph.add_connection(Connection("time_grid", "blackout_trace", Relation.ALIGNS))
+            graph.add_connection(Connection("blackout_trace", "net_grid_trace", Relation.DRIVES))
 
         if self.dispatch_requests is not None:
             graph.add_component(ComponentRef(name="dispatch_requests", kind="dispatch"))
@@ -504,6 +516,24 @@ class BatteryLoadPVScenario:
             price_signal=self.price_signal,
             objective=self.objective,
         )
+        blackout_active = self._blackout_active_series()
+        unmet_load_kw: list[float] = []
+        net_grid_power_kw = list(settlement.net_grid_power_kw)
+        net_grid_energy_kwh = list(settlement.net_grid_energy_kwh)
+        direction = list(settlement.direction)
+        step_settlement = list(settlement.step_settlement)
+        if any(blackout_active):
+            for step_index, is_active in enumerate(blackout_active):
+                if is_active:
+                    unmet_load_kw.append(max(0.0, net_grid_power_kw[step_index]))
+                    net_grid_power_kw[step_index] = 0.0
+                    net_grid_energy_kwh[step_index] = 0.0
+                    direction[step_index] = "neutral"
+                    step_settlement[step_index] = 0.0
+                else:
+                    unmet_load_kw.append(0.0)
+        else:
+            unmet_load_kw = [0.0] * self.time_grid.num_steps
         return BatteryLoadPVTrace(
             states=states,
             requested_power_kw=requested_power_kw,
@@ -511,13 +541,20 @@ class BatteryLoadPVScenario:
             energy_delta_kwh=energy_delta_kwh,
             load_kw=list(self.load.demand_kw),
             pv_generation_kw=pv_generation_kw,
-            net_grid_power_kw=settlement.net_grid_power_kw,
-            net_grid_energy_kwh=settlement.net_grid_energy_kwh,
-            direction=settlement.direction,
-            step_settlement=settlement.step_settlement,
-            total_settlement=settlement.total_settlement,
+            net_grid_power_kw=net_grid_power_kw,
+            net_grid_energy_kwh=net_grid_energy_kwh,
+            direction=direction,
+            unmet_load_kw=unmet_load_kw,
+            blackout_active=blackout_active,
+            step_settlement=step_settlement,
+            total_settlement=sum(step_settlement),
             constraint_events=constraint_events,
         )
+
+    def _blackout_active_series(self) -> list[bool]:
+        if self.blackout_grid_available is None:
+            return [False] * self.time_grid.num_steps
+        return [not value for value in self.blackout_grid_available]
 
 
 __all__ = [

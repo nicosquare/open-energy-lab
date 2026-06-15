@@ -1,0 +1,19 @@
+{
+  "fixture_status": "active",
+  "fixture_path": "tests/fixtures/weather/sampling_request_case.json",
+  "purpose": "Deterministic offline sampling request fixture paired with the supported weather artifact fixture.",
+  "origin": "Current-library US2 request-contract fixture for exact family replay coverage.",
+  "legacy_reference_paths": [
+    "legacy/old_tpm/src_py/weather/models/gaussian.py",
+    "legacy/old_tpm/src_py/weather/models/enhanced.py"
+  ],
+  "notes": [
+    "Pairs with tests/fixtures/weather/fitted_weather_artifact_v1.json so offline family replay can stay deterministic and reviewable.",
+    "Keeps the first committed sampled-family fixture small by requesting only three daily steps across two scenarios."
+  ],
+  "artifact_fixture_path": "tests/fixtures/weather/fitted_weather_artifact_v1.json",
+  "expected_timestep_hours": 24.0,
+  "num_steps": 3,
+  "scenario_count": 2,
+  "family_seed": 13
+}

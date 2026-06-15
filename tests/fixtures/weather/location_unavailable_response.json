@@ -1,0 +1,20 @@
+{
+  "fixture_status": "active",
+  "fixture_path": "tests/fixtures/weather/location_unavailable_response.json",
+  "purpose": "Recorded provider failure fixture for unsupported or unavailable geolocations.",
+  "origin": "Deterministic User Story 1 failure fixture aligned with the current WeatherLocationUnavailableError contract.",
+  "source_service": "PVGIS TMY",
+  "source_name": "PVGIS TMY",
+  "timezone_name": "America/Phoenix",
+  "status": "location-unavailable",
+  "available": false,
+  "error": "the requested coordinates are outside the supported coverage envelope",
+  "legacy_reference_paths": [
+    "legacy/old_tpm/src_py/weather/fetch.py"
+  ],
+  "notes": [
+    "Uses a syntactically valid provider-style envelope with an empty records list so the workflow rejects the location before normalization.",
+    "Replaces routine live negative-path fetches in default validation."
+  ],
+  "records": []
+}
