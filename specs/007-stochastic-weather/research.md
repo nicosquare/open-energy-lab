@@ -22,12 +22,12 @@ workflow reusable outside one scenario type.
   because the spec requires a stable first-release workflow from fit through
   offline sampling and simulator consumption.
 
-## Decision 2: Use a PVGIS-backed TMY fetch workflow through isolated optional dependencies
+## Decision 2: Use a PVGIS-backed TMY fetch workflow as part of the shipped weather environment
 
 **Decision**: The fit/fetch workflow will follow the legacy PVGIS direction and
 use a library-owned TMY fetch adapter around `pvlib.iotools.get_pvgis_tmy`,
-with `pvlib`, `pandas`, and `timezonefinder` classified as isolated
-weather-workflow dependencies rather than base-library requirements.
+with `pvlib`, `pandas`, and `timezonefinder` treated as part of the shipped
+weather environment rather than a separate optional install.
 
 **Rationale**: The legacy weather subsystem already uses `pvlib` for PVGIS TMY
 fetch, which provides direct evidence for the requested geolocation-driven TMY
@@ -41,6 +41,8 @@ ordinary simulator imports or for using a previously fitted artifact.
   avoidable parsing and provider-format handling in the first release.
 - Require live fetch tooling for all sampling workflows: rejected because the
   spec explicitly requires offline artifact reuse.
+- Keep the live-fit stack as a separate optional install: rejected because it
+  weakens the first-class status of the shipped stochastic weather capability.
 
 ## Decision 3: Normalize all supported variables into one canonical schema in local civil time
 

@@ -495,8 +495,8 @@ Current dependency classification for the shipped implementation:
 
 - core weather capability:
   - Python standard library
-- isolated fit/fetch workflow dependencies:
   - `pvlib`
+  - `pandas`
   - `timezonefinder`
 - optional validation tooling:
   - `pytest`
@@ -563,9 +563,9 @@ Validation notes:
   contract and the suite passes
 - live PVGIS fetch behavior was intentionally not exercised in the default
   validation subset
-- optional live-fetch dependencies `pvlib` and `timezonefinder` were not
-  required for the recorded offline validation path because committed fixtures
-  covered fit-workflow review
+- live PVGIS fetch was intentionally not part of the recorded default
+  validation path even though the base environment now includes the weather
+  fit/fetch dependencies
 - no solver, GPU, SLURM, W&B, notebook, Rust, or external-service setup was
   required for the executed subset
 

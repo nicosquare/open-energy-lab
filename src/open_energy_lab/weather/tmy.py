@@ -165,25 +165,34 @@ def _build_recorded_response_from_pvgis_result(
 
     records: list[dict[str, object]] = []
     column_mapping = {
-        SOURCE_FIELD_LABELS["dry_bulb_air_temperature_c"]: "temp_air",
-        SOURCE_FIELD_LABELS["global_horizontal_irradiance_w_per_m2"]: "ghi",
-        SOURCE_FIELD_LABELS["direct_beam_irradiance_w_per_m2"]: "dni",
-        SOURCE_FIELD_LABELS["diffuse_horizontal_irradiance_w_per_m2"]: "dhi",
-        SOURCE_FIELD_LABELS["relative_humidity_pct"]: "relative_humidity",
-        SOURCE_FIELD_LABELS["infrared_radiation_downwards_w_per_m2"]: "ghi_infrared",
-        SOURCE_FIELD_LABELS["windspeed_10m_m_per_s"]: "wind_speed",
-        SOURCE_FIELD_LABELS["wind_direction_10m_deg"]: "wind_direction",
-        SOURCE_FIELD_LABELS["surface_air_pressure_pa"]: "pressure",
+        SOURCE_FIELD_LABELS["dry_bulb_air_temperature_c"]: ("temp_air",),
+        SOURCE_FIELD_LABELS["global_horizontal_irradiance_w_per_m2"]: ("ghi",),
+        SOURCE_FIELD_LABELS["direct_beam_irradiance_w_per_m2"]: ("dni",),
+        SOURCE_FIELD_LABELS["diffuse_horizontal_irradiance_w_per_m2"]: ("dhi",),
+        SOURCE_FIELD_LABELS["relative_humidity_pct"]: ("relative_humidity",),
+        SOURCE_FIELD_LABELS["infrared_radiation_downwards_w_per_m2"]: ("ghi_infrared", "IR(h)"),
+        SOURCE_FIELD_LABELS["windspeed_10m_m_per_s"]: ("wind_speed",),
+        SOURCE_FIELD_LABELS["wind_direction_10m_deg"]: ("wind_direction",),
+        SOURCE_FIELD_LABELS["surface_air_pressure_pa"]: ("pressure",),
     }
-    for column_name in column_mapping.values():
-        if column_name not in columns:
-            raise ValueError(f"PVGIS dataframe is missing required mapped column {column_name!r}")
+    resolved_columns: dict[str, str] = {}
+    for target_label, candidate_columns in column_mapping.items():
+        for candidate_column in candidate_columns:
+            if candidate_column in columns:
+                resolved_columns[target_label] = candidate_column
+                break
+        else:
+            formatted_candidates = ", ".join(repr(name) for name in candidate_columns)
+            raise ValueError(
+                "PVGIS dataframe is missing required mapped column for "
+                f"{target_label!r}; expected one of {formatted_candidates}"
+            )
 
     for row_index, timestamp in enumerate(index):
         record = {
             SOURCE_FIELD_LABELS["timestamp_utc"]: _format_utc_timestamp(timestamp),
         }
-        for target_label, column_name in column_mapping.items():
+        for target_label, column_name in resolved_columns.items():
             record[target_label] = float(data_frame.iloc[row_index][column_name])
         records.append(record)
 

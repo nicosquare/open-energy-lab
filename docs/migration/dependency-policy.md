@@ -244,13 +244,13 @@ Alternatives considered: eager package-root imports, moving fit/fetch into open_
 Dependency: pvlib and timezonefinder, with dataframe-style provider results typically supplied through pvlib's pandas-backed fetch path
 Requested by: 007-stochastic-weather fit/fetch workflow
 Target module: src/open_energy_lab/weather/tmy.py and live-fetch callers of src/open_energy_lab/weather/fit.py
-Classification: external-service-backed for live fetch workflow plus optional for timezone/provider helpers
+Classification: core local dependencies for the promoted weather workflow plus external-service-backed when live PVGIS fetch is exercised
 Import boundary: excluded from open_energy_lab.weather package-root imports, offline artifact loading, offline sampling, and open_energy_lab.simulator imports
-Install mechanism: isolated workflow dependency for users who need live PVGIS fetches; not required for default review or offline validation
-Fallback or skip behavior: recorded-response fixtures remain the default review path when these dependencies or PVGIS network access are unavailable
+Install mechanism: base project environment via uv-managed Python
+Fallback or skip behavior: recorded-response fixtures remain the default review path when PVGIS network access is unavailable
 External service, license, hardware, or scheduler assumptions: PVGIS network access for live fetches; no solver, GPU, scheduler, or account requirement accepted
-Rationale: the contracts require a geolocation-to-TMY workflow while also requiring artifact load, sampling, and simulator-family evaluation to stay usable offline
-Alternatives considered: making live-fetch tooling a base dependency or treating network access as part of the default validation subset was rejected because it violates the import-light and reproducibility boundaries
+Rationale: the promoted weather surface should work in a standard project environment without a second install step, while still keeping ordinary imports and offline artifact workflows service-free
+Alternatives considered: keeping live-fetch tooling as a separate optional install was rejected because it weakens the first-class status of the shipped weather capability; treating network access as part of the default validation subset remains rejected because it harms reproducibility
 ```
 
 ```text

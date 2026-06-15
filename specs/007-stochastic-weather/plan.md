@@ -34,11 +34,10 @@ explicitly distinct from weather attenuation.
 
 **Language/Version**: Python 3.11+ in `src/open_energy_lab`  
 **Primary Dependencies**: Python standard library plus existing
-`open_energy_lab.simulator` result types and `numpy` for weather-capability
-array math and sampling. Fit/fetch workflows may additionally use isolated
-optional dependencies for TMY access and normalization, specifically `pvlib`,
-`pandas`, and `timezonefinder`, but offline artifact loading and sampling must
-not require network access.  
+`open_energy_lab.simulator` result types. The promoted weather fit/fetch
+workflow also ships with `pvlib`, `pandas`, and `timezonefinder` in the base
+project environment, but offline artifact loading and sampling must still not
+require network access.  
 **Storage/Data**: Markdown design artifacts, versioned JSON weather-model
 artifacts, recorded fetch-normalization fixtures, and small committed JSON
 fixtures under `tests/fixtures/weather` and `tests/fixtures/simulator`.  

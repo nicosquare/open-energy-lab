@@ -19,7 +19,7 @@ OPTIONAL_RESEARCH_MODULES = {
     "torchrl",
     "wandb",
 }
-ISOLATED_WEATHER_WORKFLOW_MODULES = {
+WEATHER_WORKFLOW_MODULES = {
     "pandas",
     "pvlib",
     "timezonefinder",
@@ -139,8 +139,8 @@ def test_simulator_submodule_imports_stay_clear_of_optional_research_stacks(
 def test_weather_related_imports_do_not_load_isolated_fetch_dependencies(
     module_name: str,
 ) -> None:
-    """Weather-facing imports must not require network-backed fit dependencies at import time."""
+    """Weather-facing imports must not eagerly load fit/fetch dependencies at import time."""
     _assert_import_stays_clear_of_forbidden_modules(
         module_name,
-        ISOLATED_WEATHER_WORKFLOW_MODULES,
+        WEATHER_WORKFLOW_MODULES,
     )

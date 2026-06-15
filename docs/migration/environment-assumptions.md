@@ -25,7 +25,10 @@ uv sync --dev
 uv is the Python package manager for project dependencies, editable installs,
 locking, and command execution.
 
-- Keep runtime dependencies empty or minimal in `pyproject.toml`.
+- Keep runtime dependencies minimal in `pyproject.toml`.
+- The promoted stochastic weather surface now treats `pvlib`,
+  `timezonefinder`, and the pandas-backed PVGIS fetch path as part of the
+  normal project environment rather than a separate optional install.
 - Put test tooling and other development-only packages in dependency groups.
 - Defer optional extras until a future capability spec explicitly requires
   them.
@@ -119,8 +122,9 @@ uv run python -c "import open_energy_lab; import open_energy_lab.weather; import
 
 ## Optional Live-Fetch Assumptions
 
-- Live PVGIS fetches are outside the default validation subset.
-- If a reviewer exercises live fetch behavior, `pvlib` and `timezonefinder`
-  may be required locally and the run depends on network access.
+- Live PVGIS fetches are outside the default validation subset even though the
+  local dependency stack now ships with the project environment.
+- If a reviewer exercises live fetch behavior, the run still depends on
+  network access and the upstream PVGIS service.
 - Any skipped live-fetch check should be documented as an optional follow-up,
   not reported as a failure of the default offline validation path.

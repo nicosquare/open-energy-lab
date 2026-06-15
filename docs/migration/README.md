@@ -59,14 +59,14 @@ order:
    decisions.
 2. `api-maturity.md` for the stable package-root weather and stochastic
    simulator exports versus narrower focused-module helpers.
-3. `dependency-policy.md` for the offline-first import boundary and optional
-   live-fetch dependency split.
+3. `dependency-policy.md` for the offline-first import boundary and the
+   promoted live-fit dependency stance.
 4. `fixture-provenance.md` together with `tests/fixtures/weather/README.md`
    and `tests/fixtures/simulator/README.md` for recorded-response,
    artifact-schema, sampled-family, and blackout-baseline provenance rules.
 5. `environment-assumptions.md` and
    `specs/007-stochastic-weather/quickstart.md` for the default offline
-   validation subset and optional live-fetch follow-up checks.
+   validation subset and live-fetch follow-up checks.
 
 This review path keeps the weather feature anchored to the shipped offline
 workflow and simulator-family contract rather than the earlier scaffolding

@@ -188,8 +188,8 @@ Minimum stochastic-weather validation now includes:
 
 If future stochastic-weather work cannot run one of these checks locally, the
 skip reason must be recorded in the relevant spec plan or quickstart,
-including whether the blocked check was optional live-fetch behavior or part of
-the default offline validation subset.
+including whether the blocked check was live-fetch behavior or part of the
+default offline validation subset.
 
 ## Out-of-Scope Boundary
 
