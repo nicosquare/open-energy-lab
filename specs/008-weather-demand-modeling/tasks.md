@@ -69,9 +69,9 @@ validation for missing aligned inputs.
 
 ### Tests for User Story 1
 
-- [ ] T013 [P] [US1] Add aligned-history validation unit coverage for timestep alignment, missing cooling history, missing non-thermal history, and ambiguous double-counting inputs in `tests/unit/demand/test_aligned_history.py`
-- [ ] T014 [P] [US1] Add artifact schema, provenance, timestep lock, and unsupported-version unit coverage in `tests/unit/demand/test_artifact_schema.py`
-- [ ] T015 [P] [US1] Add fit-to-artifact integration coverage for offline reload and fail-fast aligned-input errors in `tests/integration/demand/test_fit_workflow.py`
+- [X] T013 [P] [US1] Add aligned-history validation unit coverage for timestep alignment, missing cooling history, missing non-thermal history, and ambiguous double-counting inputs in `tests/unit/demand/test_aligned_history.py`
+- [X] T014 [P] [US1] Add artifact schema, provenance, timestep lock, and unsupported-version unit coverage in `tests/unit/demand/test_artifact_schema.py`
+- [X] T015 [P] [US1] Add fit-to-artifact integration coverage for offline reload and fail-fast aligned-input errors in `tests/integration/demand/test_fit_workflow.py`
 
 ### Implementation for User Story 1
 
