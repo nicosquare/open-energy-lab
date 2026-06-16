@@ -101,10 +101,10 @@ from one shared paired-family seed.
 
 ### Tests for User Story 2
 
-- [ ] T022 [P] [US2] Add sampling-request fail-fast coverage for non-positive horizons, scenario counts, and timestep mismatches in `tests/unit/demand/test_sampling_request.py`
-- [ ] T023 [P] [US2] Add paired-seed replay and required-weather-field unit coverage in `tests/unit/demand/test_sampling_family.py`
-- [ ] T024 [P] [US2] Add offline artifact-to-family integration coverage for exact horizon outputs, scenario ordering, and successful sampling of at least 10 paired demand scenarios in `tests/integration/demand/test_offline_sampling.py`
-- [ ] T025 [P] [US2] Add paired weather-and-demand replay integration coverage that reruns the same request and compares per-step weather and demand outputs for exact reproducibility in `tests/integration/demand/test_paired_replay.py`
+- [X] T022 [P] [US2] Add sampling-request fail-fast coverage for non-positive horizons, scenario counts, and timestep mismatches in `tests/unit/demand/test_sampling_request.py`
+- [X] T023 [P] [US2] Add paired-seed replay and required-weather-field unit coverage in `tests/unit/demand/test_sampling_family.py`
+- [X] T024 [P] [US2] Add offline artifact-to-family integration coverage for exact horizon outputs, scenario ordering, and successful sampling of at least 10 paired demand scenarios in `tests/integration/demand/test_offline_sampling.py`
+- [X] T025 [P] [US2] Add paired weather-and-demand replay integration coverage that reruns the same request and compares per-step weather and demand outputs for exact reproducibility in `tests/integration/demand/test_paired_replay.py`
 
 ### Implementation for User Story 2
 
