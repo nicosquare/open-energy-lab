@@ -75,9 +75,9 @@ validation for missing aligned inputs.
 
 ### Implementation for User Story 1
 
-- [ ] T016 [US1] Implement aligned-history normalization and validation helpers in `src/open_energy_lab/demand/_aligned_history.py`
-- [ ] T017 [US1] Implement dual-output weather-response feature extraction and baseline fitting in `src/open_energy_lab/demand/_weather_response.py` using `legacy/fed_trpo/src/notebooks/ML_817_topic_I_lab_1.ipynb`, `legacy/fed_trpo/src/notebooks/ML_817_topic_I_lab_2.ipynb`, and `legacy/fed_trpo/src/notebooks/data_generation/naive_data_generation.ipynb` as conceptual-only reference evidence
-- [ ] T018 [US1] Implement demand artifact fitting, JSON persistence, supported-version loading, and explicit double-counting metadata in `src/open_energy_lab/demand/fit.py` and `src/open_energy_lab/demand/artifact.py`
+- [X] T016 [US1] Implement aligned-history normalization and validation helpers in `src/open_energy_lab/demand/_aligned_history.py`
+- [X] T017 [US1] Implement dual-output weather-response feature extraction and baseline fitting in `src/open_energy_lab/demand/_weather_response.py` using `legacy/fed_trpo/src/notebooks/ML_817_topic_I_lab_1.ipynb`, `legacy/fed_trpo/src/notebooks/ML_817_topic_I_lab_2.ipynb`, and `legacy/fed_trpo/src/notebooks/data_generation/naive_data_generation.ipynb` as conceptual-only reference evidence
+- [X] T018 [US1] Implement demand artifact fitting, JSON persistence, supported-version loading, and explicit double-counting metadata in `src/open_energy_lab/demand/fit.py` and `src/open_energy_lab/demand/artifact.py`
 - [ ] T019 [US1] Export `fit_demand_model` and `load_demand_artifact` from `src/open_energy_lab/demand/__init__.py`
 - [ ] T020 [US1] Populate aligned-training and fitted-artifact fixtures with provenance in `tests/fixtures/demand/aligned_training_case.json`, `tests/fixtures/demand/aligned_training_case_missing_cooling.json`, `tests/fixtures/demand/aligned_training_case_missing_non_thermal.json`, `tests/fixtures/demand/fitted_demand_artifact_v1.json`, `tests/fixtures/demand/fitted_demand_artifact_unsupported_version.json`, and `tests/fixtures/demand/README.md`
 - [ ] T021 [US1] Document fit-workflow preserve/improve/reject decisions and offline artifact usage in `docs/migration/weather-demand-modeling.md` and `specs/008-weather-demand-modeling/quickstart.md`
