@@ -1,14 +1,99 @@
 {
   "fixture_name": "aligned_training_case_missing_non_thermal",
-  "fixture_status": "scaffold",
-  "purpose": "Placeholder for the missing-non-thermal-history fail-fast training case.",
+  "fixture_status": "active",
+  "purpose": "Deterministic aligned training fixture that omits non-thermal electric demand for fail-fast validation.",
   "spec_feature": "008-weather-demand-modeling",
   "provenance": {
     "author": "OpenAI Codex",
-    "origin": "Phase 1 scaffold",
-    "legacy_evidence_paths": [],
-    "generation_command": null,
+    "origin": "Derived from the supported aligned training fixture by removing explicit non-thermal electric demand",
+    "legacy_evidence_paths": [
+      "legacy/fed_trpo/src/notebooks/ML_817_topic_I_lab_1.ipynb",
+      "legacy/fed_trpo/src/notebooks/ML_817_topic_I_lab_2.ipynb",
+      "legacy/fed_trpo/src/notebooks/data_generation/naive_data_generation.ipynb"
+    ],
+    "generation_command": "committed manually from the current-library fit contract",
     "random_seed": null,
-    "refresh_policy": "Populate with a deterministic failure-path fixture in T020."
-  }
+    "refresh_policy": "Update only when the documented fail-fast requirement for explicit non-thermal electric history intentionally changes.",
+    "notes": [
+      "Matches the positive aligned training case except for the missing non_thermal_electric_demand_kw field.",
+      "Used to verify that the fit workflow rejects ambiguous total-load-only training inputs."
+    ]
+  },
+  "dataset_id": "aligned-demand:phoenix-daily",
+  "timezone_name": "America/Phoenix",
+  "time_basis": "local_civil_time",
+  "timestep_hours": 24.0,
+  "timestamp_utc": [
+    "2024-07-01T07:00:00Z",
+    "2024-07-02T07:00:00Z",
+    "2024-07-03T07:00:00Z"
+  ],
+  "local_civil_step_labels": [
+    "2024-07-01T00:00:00-07:00",
+    "2024-07-02T00:00:00-07:00",
+    "2024-07-03T00:00:00-07:00"
+  ],
+  "canonical_weather_fields": [
+    "dry_bulb_air_temperature_c",
+    "global_horizontal_irradiance_w_per_m2",
+    "direct_beam_irradiance_w_per_m2",
+    "diffuse_horizontal_irradiance_w_per_m2",
+    "relative_humidity_pct",
+    "infrared_radiation_downwards_w_per_m2",
+    "windspeed_10m_m_per_s",
+    "wind_direction_10m_deg",
+    "surface_air_pressure_pa"
+  ],
+  "weather_field_series": {
+    "dry_bulb_air_temperature_c": [
+      39.0,
+      41.5,
+      37.0
+    ],
+    "global_horizontal_irradiance_w_per_m2": [
+      910.0,
+      935.0,
+      880.0
+    ],
+    "direct_beam_irradiance_w_per_m2": [
+      640.0,
+      655.0,
+      620.0
+    ],
+    "diffuse_horizontal_irradiance_w_per_m2": [
+      120.0,
+      126.0,
+      118.0
+    ],
+    "relative_humidity_pct": [
+      18.0,
+      22.0,
+      20.0
+    ],
+    "infrared_radiation_downwards_w_per_m2": [
+      355.0,
+      360.0,
+      350.0
+    ],
+    "windspeed_10m_m_per_s": [
+      3.0,
+      3.5,
+      2.8
+    ],
+    "wind_direction_10m_deg": [
+      180.0,
+      195.0,
+      205.0
+    ],
+    "surface_air_pressure_pa": [
+      100850.0,
+      100790.0,
+      100900.0
+    ]
+  },
+  "cooling_demand_rt": [
+    11.0,
+    13.5,
+    9.5
+  ]
 }

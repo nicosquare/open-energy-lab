@@ -34,7 +34,10 @@ EXPECTED_WEATHER_EXPORTS = [
     "WeatherSamplingRequest",
     "sample_weather_family",
 ]
-EXPECTED_DEMAND_EXPORTS: list[str] = []
+EXPECTED_DEMAND_EXPORTS = [
+    "fit_demand_model",
+    "load_demand_artifact",
+]
 
 
 def test_root_package_imports_from_source_tree_without_optional_stacks():
@@ -185,6 +188,8 @@ def test_demand_package_import_contract_stays_reserved_and_import_light():
     assert module_file.parent.name == "demand"
     assert module_file.parent.parent.name == "open_energy_lab"
     assert module.__all__ == EXPECTED_DEMAND_EXPORTS
+    assert module.fit_demand_model.__module__ == "open_energy_lab.demand.fit"
+    assert module.load_demand_artifact.__module__ == "open_energy_lab.demand.artifact"
 
     newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
         set(sys.modules) - before_import

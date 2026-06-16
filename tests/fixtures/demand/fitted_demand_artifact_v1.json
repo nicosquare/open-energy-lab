@@ -1,14 +1,116 @@
 {
   "fixture_name": "fitted_demand_artifact_v1",
-  "fixture_status": "scaffold",
-  "purpose": "Placeholder for the supported fitted demand artifact fixture.",
+  "fixture_status": "active",
+  "purpose": "Deterministic supported demand artifact fixture for offline load validation.",
   "spec_feature": "008-weather-demand-modeling",
   "provenance": {
     "author": "OpenAI Codex",
-    "origin": "Phase 1 scaffold",
-    "legacy_evidence_paths": [],
-    "generation_command": null,
+    "origin": "Synthetic current-library artifact fixture derived from the committed aligned demand training case",
+    "legacy_evidence_paths": [
+      "legacy/fed_trpo/src/notebooks/ML_817_topic_I_lab_1.ipynb",
+      "legacy/fed_trpo/src/notebooks/ML_817_topic_I_lab_2.ipynb",
+      "legacy/fed_trpo/src/notebooks/data_generation/naive_data_generation.ipynb"
+    ],
+    "generation_command": "committed manually from the current-library fit contract",
     "random_seed": null,
-    "refresh_policy": "Populate with a deterministic JSON artifact in T020."
-  }
+    "refresh_policy": "Update only when the documented demand artifact schema, demand-driver set, or preserved fit workflow semantics intentionally change.",
+    "notes": [
+      "This payload is intentionally small by using one interval per day while still carrying both explicit demand outputs and shared residual metadata.",
+      "The values were generated from the aligned_training_case fixture using the committed fit_demand_model implementation, then pinned for offline review."
+    ],
+    "training_dataset_id": "aligned-demand:phoenix-daily",
+    "fit_notes": [
+      "dual_output_local_civil_baseline",
+      "cooling_history_required"
+    ]
+  },
+  "artifact_id": "demand-artifact:aligned-demand:phoenix-daily",
+  "schema_version": "v1",
+  "feature_name": "008-weather-demand-modeling",
+  "created_at": "2026-06-16T00:00:00Z",
+  "timezone_name": "America/Phoenix",
+  "time_basis": "local_civil_time",
+  "timestep_hours": 24.0,
+  "required_weather_field_order": [
+    "dry_bulb_air_temperature_c",
+    "relative_humidity_pct",
+    "global_horizontal_irradiance_w_per_m2"
+  ],
+  "training_record_summary": {
+    "dataset_id": "aligned-demand:phoenix-daily",
+    "record_count": 3,
+    "first_timestamp_utc": "2024-07-01T07:00:00Z",
+    "last_timestamp_utc": "2024-07-03T07:00:00Z",
+    "local_step_count": 3
+  },
+  "non_thermal_electric_model": {
+    "model_kind": "local-civil-baseline",
+    "local_step_baseline_kw": [
+      -0.021696627128216406
+    ],
+    "weather_response_terms": {
+      "dry_bulb_air_temperature_c": 0.7285503569108125,
+      "relative_humidity_pct": 0.03991909295437458,
+      "global_horizontal_irradiance_w_per_m2": 0.020757899959192045
+    },
+    "training_day_count": 3,
+    "residual_scale_summary": {
+      "mae_kw": 2.606000203779028e-07,
+      "max_abs_error_kw": 4.0174833770834084e-07
+    },
+    "supported_weather_drivers": [
+      "dry_bulb_air_temperature_c",
+      "relative_humidity_pct",
+      "global_horizontal_irradiance_w_per_m2"
+    ]
+  },
+  "cooling_demand_model": {
+    "model_kind": "local-civil-baseline",
+    "local_step_baseline_rt": [
+      -0.04706436797781777
+    ],
+    "weather_response_terms": {
+      "dry_bulb_air_temperature_c": 1.5587601029007399,
+      "relative_humidity_pct": -0.008641116834613313,
+      "global_horizontal_irradiance_w_per_m2": -0.05449345024945407
+    },
+    "training_day_count": 3,
+    "residual_scale_summary": {
+      "mae_rt": 5.730703597587686e-07,
+      "max_abs_error_rt": 8.831377122930917e-07
+    },
+    "supported_weather_drivers": [
+      "dry_bulb_air_temperature_c",
+      "relative_humidity_pct",
+      "global_horizontal_irradiance_w_per_m2"
+    ],
+    "explicit_training_requirement": "historical_cooling_demand_rt_required"
+  },
+  "shared_residual_model": {
+    "model_kind": "gaussian-copula",
+    "intervals_per_day": 1,
+    "output_order": [
+      "non_thermal_electric_demand_kw",
+      "cooling_demand_rt"
+    ],
+    "joint_residual_summary": {
+      "training_day_count": 3,
+      "output_count": 2
+    },
+    "correlation_matrix": [
+      [
+        1.0,
+        0.9994617757635809
+      ],
+      [
+        0.9994617757635809,
+        1.0
+      ]
+    ],
+    "sampling_notes": "paired_residual_correlation"
+  },
+  "double_counting_policy": "explicit_cooling_separate_from_non_thermal_electric",
+  "supported_sampling_modes": [
+    "offline"
+  ]
 }

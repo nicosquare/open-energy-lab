@@ -7,6 +7,20 @@ artifacts, and offline weather-conditioned demand sampling, then integrates
 those sampled demand families into `open_energy_lab.simulator` without
 replacing the current deterministic path.
 
+## Preserve / Improve / Reject
+
+Keep these migration decisions in mind while reviewing or extending the
+feature:
+
+- Preserve: separate weather and demand artifacts, explicit non-thermal and
+  cooling outputs, offline default validation, and simulator-side ownership of
+  blackout and cooling-service semantics.
+- Improve: a stable `open_energy_lab.demand` root surface, committed active
+  US1 fixtures, and a fully offline aligned-history-to-artifact workflow.
+- Reject: merged weather-and-demand artifacts, total-load-only training input,
+  live-service assumptions in routine review, and partial artifact creation
+  after fail-fast input validation.
+
 ## Review The Feature
 
 ```bash
@@ -143,6 +157,36 @@ Expected result:
 - the reload step succeeds offline
 - the artifact preserves separate non-thermal electric and cooling outputs,
   required weather drivers, and provenance
+
+## After Implementation: Reload The Committed US1 Artifact Offline
+
+Use the committed artifact fixture directly when reviewing the stable reload
+surface without refitting:
+
+```bash
+uv run python -c '
+from pathlib import Path
+import json
+
+from open_energy_lab.demand import load_demand_artifact
+
+artifact = load_demand_artifact(
+    json.loads(Path("tests/fixtures/demand/fitted_demand_artifact_v1.json").read_text()),
+    expected_timestep_hours=24.0,
+)
+
+print(artifact.artifact_id)
+print(tuple(artifact.required_weather_field_order))
+print(artifact.double_counting_policy)
+'
+```
+
+Expected result:
+
+- artifact reload succeeds entirely offline from the committed JSON fixture
+- the timestep lock remains explicit
+- the required weather drivers and double-counting policy stay reviewable
+  without re-running the fit step
 
 ## After Implementation: Exercise The Planned US2 Offline Sampling Workflow
 
