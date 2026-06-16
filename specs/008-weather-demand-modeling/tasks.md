@@ -136,11 +136,11 @@ artifact.
 
 ### Tests for User Story 3
 
-- [ ] T031 [P] [US3] Add cooling-service configuration and electric-conversion unit coverage in `tests/unit/simulator/test_demand.py`
-- [ ] T032 [P] [US3] Add paired weather-and-demand family summary and alignment unit coverage in `tests/unit/simulator/test_stochastic_demand.py`
-- [ ] T033 [P] [US3] Add local-electric versus district-cooling integration coverage, including blackout-aware family evaluation that keeps blackout semantics simulator-side, in `tests/integration/simulator/test_stochastic_demand_family.py`
-- [ ] T034 [P] [US3] Add mixed cooling-path rejection, missing district-tariff rejection, district over-service rejection, and unserved-cooling integration coverage in `tests/integration/simulator/test_cooling_service_validation.py`
-- [ ] T035 [P] [US3] Extend deterministic `BatteryLoadPVScenario` regression coverage for preserved direct-load debugging in `tests/integration/simulator/test_battery_load_pv_trace.py`
+- [X] T031 [P] [US3] Add cooling-service configuration and electric-conversion unit coverage in `tests/unit/simulator/test_demand.py`
+- [X] T032 [P] [US3] Add paired weather-and-demand family summary and alignment unit coverage in `tests/unit/simulator/test_stochastic_demand.py`
+- [X] T033 [P] [US3] Add local-electric versus district-cooling integration coverage, including blackout-aware family evaluation that keeps blackout semantics simulator-side, in `tests/integration/simulator/test_stochastic_demand_family.py`
+- [X] T034 [P] [US3] Add mixed cooling-path rejection, missing district-tariff rejection, district over-service rejection, and unserved-cooling integration coverage in `tests/integration/simulator/test_cooling_service_validation.py`
+- [X] T035 [P] [US3] Extend deterministic `BatteryLoadPVScenario` regression coverage for preserved direct-load debugging in `tests/integration/simulator/test_battery_load_pv_trace.py`
 
 ### Implementation for User Story 3
 
