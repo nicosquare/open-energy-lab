@@ -12,15 +12,20 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from .artifact import load_demand_artifact
     from .fit import fit_demand_model
+    from .sampling import DemandSamplingRequest, sample_demand_family
 
 _EXPORT_MAP = {
     "fit_demand_model": (".fit", "fit_demand_model"),
     "load_demand_artifact": (".artifact", "load_demand_artifact"),
+    "DemandSamplingRequest": (".sampling", "DemandSamplingRequest"),
+    "sample_demand_family": (".sampling", "sample_demand_family"),
 }
 
 __all__ = [
     "fit_demand_model",
     "load_demand_artifact",
+    "DemandSamplingRequest",
+    "sample_demand_family",
 ]
 
 

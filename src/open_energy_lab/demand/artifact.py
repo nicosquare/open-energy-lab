@@ -199,6 +199,7 @@ __all__ = [
     "UnsupportedDemandArtifactVersionError",
     "DemandArtifact",
     "load_demand_artifact",
+    "validate_sampling_weather_family",
 ]
 
 
@@ -399,6 +400,91 @@ def _positive_int(value: object, *, field_name: str) -> int:
     if normalized <= 0:
         raise ValueError(f"{field_name} must be positive")
     return normalized
+
+
+def validate_sampling_weather_family(
+    artifact: DemandArtifact,
+    weather_family: object,
+    *,
+    expected_num_steps: int,
+    expected_scenario_count: int,
+    paired_family_seed: int,
+) -> tuple[object, ...]:
+    """Validate one weather family against the demand artifact sampling contract."""
+
+    family_timestep_hours = float(getattr(weather_family, "timestep_hours"))
+    if family_timestep_hours != artifact.timestep_hours:
+        raise ValueError(
+            "weather family timestep_hours must match artifact timestep_hours"
+        )
+
+    family_num_steps = int(getattr(weather_family, "num_steps"))
+    if family_num_steps != expected_num_steps:
+        raise ValueError("weather family num_steps must match demand sampling request")
+
+    family_scenario_count = int(getattr(weather_family, "scenario_count"))
+    if family_scenario_count != expected_scenario_count:
+        raise ValueError(
+            "weather family scenario_count must match demand sampling request"
+        )
+
+    family_seed = int(getattr(weather_family, "family_seed"))
+    if family_seed != paired_family_seed:
+        raise ValueError("weather family seed must match paired_family_seed")
+
+    sampled_traces = getattr(weather_family, "sampled_traces")
+    if not isinstance(sampled_traces, Sequence) or isinstance(sampled_traces, str):
+        raise TypeError("weather_family.sampled_traces must be a sequence")
+    if len(sampled_traces) != expected_scenario_count:
+        raise ValueError(
+            "weather_family.sampled_traces length must match scenario_count"
+        )
+
+    required_fields = set(artifact.required_weather_field_order)
+    normalized_traces: list[object] = []
+    for scenario_index, trace in enumerate(sampled_traces):
+        trace_index = int(getattr(trace, "scenario_index"))
+        if trace_index != scenario_index:
+            raise ValueError("weather family scenario ordering must be contiguous")
+
+        trace_timestep_hours = float(getattr(trace, "timestep_hours"))
+        if trace_timestep_hours != artifact.timestep_hours:
+            raise ValueError(
+                "weather trace timestep_hours must match artifact timestep_hours"
+            )
+
+        timestamp_utc = tuple(getattr(trace, "timestamp_utc"))
+        if len(timestamp_utc) != expected_num_steps:
+            raise ValueError("weather trace timestamp_utc length must match num_steps")
+
+        canonical_field_series = getattr(trace, "canonical_field_series")
+        if not isinstance(canonical_field_series, Mapping):
+            raise TypeError("weather trace canonical_field_series must be a mapping")
+
+        missing_fields = required_fields.difference(canonical_field_series)
+        if missing_fields:
+            missing_list = ", ".join(sorted(missing_fields))
+            raise ValueError(
+                "weather trace is missing required weather fields: "
+                f"{missing_list}"
+            )
+
+        for field_name in artifact.required_weather_field_order:
+            field_series = canonical_field_series[field_name]
+            if isinstance(field_series, str) or not isinstance(field_series, Sequence):
+                raise TypeError(
+                    f"weather field {field_name!r} must be a numeric sequence"
+                )
+            if len(field_series) != expected_num_steps:
+                raise ValueError(
+                    f"weather field {field_name!r} length must match num_steps"
+                )
+            for value in field_series:
+                float(value)
+
+        normalized_traces.append(trace)
+
+    return tuple(normalized_traces)
 
 
 def _string_sequence(value: object, *, field_name: str) -> tuple[str, ...]:

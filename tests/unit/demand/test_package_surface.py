@@ -11,6 +11,8 @@ DEMAND_PACKAGE = "open_energy_lab.demand"
 EXPECTED_ROOT_EXPORTS = [
     "fit_demand_model",
     "load_demand_artifact",
+    "DemandSamplingRequest",
+    "sample_demand_family",
 ]
 PLANNED_SUBMODULES = (
     "open_energy_lab.demand._aligned_history",
@@ -45,8 +47,10 @@ def test_demand_root_surface_stays_explicit_about_stable_exports() -> None:
     assert sorted(name for name in dir(module) if name in EXPECTED_ROOT_EXPORTS) == sorted(
         EXPECTED_ROOT_EXPORTS
     )
+    assert module.DemandSamplingRequest.__module__ == "open_energy_lab.demand.sampling"
     assert module.fit_demand_model.__module__ == "open_energy_lab.demand.fit"
     assert module.load_demand_artifact.__module__ == "open_energy_lab.demand.artifact"
+    assert module.sample_demand_family.__module__ == "open_energy_lab.demand.sampling"
 
 
 def test_demand_root_import_defers_planned_submodule_loading() -> None:

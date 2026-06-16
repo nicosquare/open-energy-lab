@@ -37,6 +37,8 @@ EXPECTED_WEATHER_EXPORTS = [
 EXPECTED_DEMAND_EXPORTS = [
     "fit_demand_model",
     "load_demand_artifact",
+    "DemandSamplingRequest",
+    "sample_demand_family",
 ]
 
 
@@ -188,8 +190,10 @@ def test_demand_package_import_contract_stays_reserved_and_import_light():
     assert module_file.parent.name == "demand"
     assert module_file.parent.parent.name == "open_energy_lab"
     assert module.__all__ == EXPECTED_DEMAND_EXPORTS
+    assert module.DemandSamplingRequest.__module__ == "open_energy_lab.demand.sampling"
     assert module.fit_demand_model.__module__ == "open_energy_lab.demand.fit"
     assert module.load_demand_artifact.__module__ == "open_energy_lab.demand.artifact"
+    assert module.sample_demand_family.__module__ == "open_energy_lab.demand.sampling"
 
     newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
         set(sys.modules) - before_import

@@ -108,9 +108,9 @@ from one shared paired-family seed.
 
 ### Implementation for User Story 2
 
-- [ ] T026 [US2] Implement sampling request models, paired-seed derivation, and demand-family generation in `src/open_energy_lab/demand/sampling.py`
-- [ ] T027 [US2] Extend artifact loading to validate required weather drivers and fixed timestep compatibility in `src/open_energy_lab/demand/artifact.py`
-- [ ] T028 [US2] Export `DemandSamplingRequest` and `sample_demand_family` from `src/open_energy_lab/demand/__init__.py`
+- [X] T026 [US2] Implement sampling request models, paired-seed derivation, and demand-family generation in `src/open_energy_lab/demand/sampling.py`
+- [X] T027 [US2] Extend artifact loading to validate required weather drivers and fixed timestep compatibility in `src/open_energy_lab/demand/artifact.py`
+- [X] T028 [US2] Export `DemandSamplingRequest` and `sample_demand_family` from `src/open_energy_lab/demand/__init__.py`
 - [ ] T029 [US2] Populate paired sampling fixtures and provenance notes in `tests/fixtures/demand/sampling_request_case.json`, `tests/fixtures/demand/sampled_demand_family_case.json`, and `tests/fixtures/demand/README.md`
 - [ ] T030 [US2] Document shared paired-family seed semantics and offline sampling workflow in `docs/migration/weather-demand-modeling.md` and `specs/008-weather-demand-modeling/quickstart.md`
 
