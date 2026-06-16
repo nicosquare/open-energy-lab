@@ -190,6 +190,20 @@ Expected result:
 
 ## After Implementation: Exercise The Planned US2 Offline Sampling Workflow
 
+The first-release paired-family contract is strict:
+
+- the weather family seed and `DemandSamplingRequest.paired_family_seed` must
+  match exactly
+- demand sampling preserves the weather family scenario ordering exactly
+- replaying the same weather family plus demand request reproduces the same
+  per-step demand outputs without refitting
+
+For a committed review path, the repository now includes:
+
+- `tests/fixtures/demand/sampling_request_case.json`
+- `tests/fixtures/demand/sampled_demand_family_case.json`
+- `tests/fixtures/weather/sampled_weather_family_case.json`
+
 Run the planned artifact-to-family sampling workflow from committed artifact
 and weather-family fixtures:
 
@@ -242,6 +256,8 @@ Expected result:
   outputs
 - replay from the same paired-family seed reproduces the same ordering and
   sampled values
+- the committed demand request and sampled-family fixtures remain auditable
+  examples of the exact shared-seed contract
 
 ## After Implementation: Exercise The Planned US3 Simulator Workflow
 

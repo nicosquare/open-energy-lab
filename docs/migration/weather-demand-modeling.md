@@ -1,12 +1,13 @@
 # Weather-Conditioned Demand Modeling Migration Note
 
-Status: User Story 1 fit and reload workflow implemented
+Status: User Story 2 fit, reload, and offline paired-family sampling workflow implemented
 
 Spec `008-weather-demand-modeling` adds a public `open_energy_lab.demand`
-package that now supports aligned-history fitting and offline artifact reload
-without widening the import boundary or coupling cooling-service behavior into
-the producer-side workflow. Later user stories will add offline paired-family
-sampling and simulator-side cooling-path evaluation on top of this US1 base.
+package that now supports aligned-history fitting, offline artifact reload,
+and offline paired-family sampling without widening the import boundary or
+coupling cooling-service behavior into the producer-side workflow. Later user
+stories will add simulator-side cooling-path evaluation on top of this US2
+base.
 
 ## Target Module Paths
 
@@ -37,26 +38,31 @@ sampling and simulator-side cooling-path evaluation on top of this US1 base.
 - `legacy/fed_trpo/src/notebooks/citylearn_ccai_tutorial.ipynb`
 - `legacy/fed_trpo/src/notebooks/data_generation/naive_data_generation.ipynb`
 
-## Implemented US1 Surface
+## Implemented US1 And US2 Surface
 
 The current implemented producer-side surface is:
 
 - `open_energy_lab.demand.fit_demand_model`
 - `open_energy_lab.demand.load_demand_artifact`
+- `open_energy_lab.demand.DemandSamplingRequest`
+- `open_energy_lab.demand.sample_demand_family`
 
 The package root now mirrors the lazy export pattern used by
 `open_energy_lab.weather`, so `import open_energy_lab.demand` stays
-import-light while still exposing the stable US1 entry points.
+import-light while still exposing the stable US1 and US2 entry points.
 
 ## Committed Offline Fixtures
 
-US1 now ships committed, active fixtures for:
+US1 and US2 now ship committed, active fixtures for:
 
 - positive aligned training history
 - missing-cooling fail-fast input
 - missing-non-thermal fail-fast input
 - supported demand artifact reload
 - unsupported-version artifact rejection
+- deterministic demand sampling request replay
+- deterministic sampled demand-family replay aligned to one committed weather
+  family fixture
 
 These fixtures live under `tests/fixtures/demand/` and support the offline
 review path described in the quickstart and integration tests.
@@ -84,6 +90,10 @@ review path described in the quickstart and integration tests.
   committed fit workflow
 - preserve deterministic fail-fast behavior for missing aligned inputs and
   unsupported artifact versions
+- add a stable offline demand-family sampling workflow that reuses one shared
+  paired-family seed and preserves exact weather-family ordering on replay
+- commit deterministic request and sampled-family fixtures that let reviewers
+  inspect explicit non-thermal electric and cooling outputs without refitting
 
 ### Reject
 
@@ -106,7 +116,25 @@ weather-sensitive demand separation:
 No legacy runtime imports or copied notebook code were introduced into the
 stable package.
 
-## Offline Artifact Usage
+## Shared Paired-Family Seed Semantics
+
+The committed US2 workflow now fixes one shared paired-family seed across both
+producers:
+
+1. `sample_weather_family(...)` owns the weather family seed and scenario
+   ordering.
+2. `DemandSamplingRequest.paired_family_seed` must match that weather family
+   seed exactly.
+3. `sample_demand_family(...)` derives demand-side scenario randomness from
+   the shared seed plus scenario index, preserving one-to-one ordering with
+   the weather traces.
+4. Replaying the same weather family and demand request reproduces the same
+   per-step demand outputs without refitting or live services.
+
+This keeps weather and demand as separate persisted artifacts while still
+giving the simulator one deterministic paired-family contract to consume.
+
+## Offline Artifact And Sampling Usage
 
 The intended offline usage path is:
 
@@ -116,6 +144,12 @@ The intended offline usage path is:
 3. Persist that artifact to disk for later replay or review.
 4. Call `load_demand_artifact(...)` on the persisted JSON with the expected
    timestep lock.
+5. Prepare or load one sampled weather family with the same fixed timestep as
+   the demand artifact.
+6. Build `DemandSamplingRequest(...)` with the shared paired-family seed,
+   positive horizon, and exact scenario count from that weather family.
+7. Call `sample_demand_family(...)` to produce explicit non-thermal electric
+   and cooling traces aligned to the referenced weather traces.
 
 The committed fixtures in `tests/fixtures/demand/` exercise both the positive
 path and the documented fail-fast negative paths without any live data fetch,

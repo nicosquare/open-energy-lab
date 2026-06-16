@@ -1,14 +1,75 @@
 {
   "fixture_name": "sampled_demand_family_case",
-  "fixture_status": "scaffold",
-  "purpose": "Placeholder for the sampled paired demand-family fixture.",
+  "fixture_status": "active",
+  "purpose": "Deterministic sampled demand family fixture generated from the committed demand artifact fixture and paired sampled weather family fixture.",
   "spec_feature": "008-weather-demand-modeling",
   "provenance": {
     "author": "OpenAI Codex",
-    "origin": "Phase 1 scaffold",
-    "legacy_evidence_paths": [],
-    "generation_command": null,
-    "random_seed": null,
-    "refresh_policy": "Populate with a deterministic replayable family fixture in T029."
-  }
+    "origin": "Synthetic current-library US2 family-result fixture for offline paired replay coverage.",
+    "legacy_evidence_paths": [
+      "legacy/fed_trpo/src/notebooks/ML_817_topic_I_lab_1.ipynb",
+      "legacy/fed_trpo/src/notebooks/ML_817_topic_I_lab_2.ipynb",
+      "legacy/fed_trpo/src/notebooks/data_generation/naive_data_generation.ipynb"
+    ],
+    "generation_command": "Replay the committed offline demand sampler against tests/fixtures/demand/fitted_demand_artifact_v1.json and tests/fixtures/weather/sampled_weather_family_case.json with paired_family_seed 13.",
+    "random_seed": 13,
+    "refresh_policy": "Update only when the stable offline demand sampling contract, weather-driver requirements, or deterministic paired-seed derivation intentionally change."
+  },
+  "family_id": "demand-family:91a2f195442c",
+  "artifact_reference": "demand-artifact:aligned-demand:phoenix-daily",
+  "weather_family_reference": "weather-family:f7dbcc3a131d",
+  "paired_family_seed": 13,
+  "scenario_count": 2,
+  "num_steps": 3,
+  "timestep_hours": 24.0,
+  "sampled_traces": [
+    {
+      "scenario_index": 0,
+      "paired_family_seed": 13,
+      "derived_identity": "demand-artifact:aligned-demand:phoenix-daily:weather-13:scenario-0",
+      "weather_trace_reference": "weather-artifact:synthetic-us1-daily:family-13:scenario-0",
+      "timestep_hours": 24.0,
+      "non_thermal_electric_demand_kw": [
+        27.627835506637776,
+        24.58311927826758,
+        29.50412645357472
+      ],
+      "cooling_demand_rt": [
+        2.229236527849241,
+        9.645102701737027,
+        0.0
+      ],
+      "local_civil_step_labels": [
+        "2023-12-31T17:00:00-07:00",
+        "2024-01-01T17:00:00-07:00",
+        "2024-01-02T17:00:00-07:00"
+      ]
+    },
+    {
+      "scenario_index": 1,
+      "paired_family_seed": 13,
+      "derived_identity": "demand-artifact:aligned-demand:phoenix-daily:weather-13:scenario-1",
+      "weather_trace_reference": "weather-artifact:synthetic-us1-daily:family-13:scenario-1",
+      "timestep_hours": 24.0,
+      "non_thermal_electric_demand_kw": [
+        27.216944503178514,
+        25.419684306339906,
+        23.418900688898194
+      ],
+      "cooling_demand_rt": [
+        0.30343467447408423,
+        0.0,
+        17.165813188149073
+      ],
+      "local_civil_step_labels": [
+        "2023-12-31T17:00:00-07:00",
+        "2024-01-01T17:00:00-07:00",
+        "2024-01-02T17:00:00-07:00"
+      ]
+    }
+  ],
+  "notes": [
+    "Generated against the committed weather family fixture with the same shared paired-family seed so scenario ordering and replay semantics remain exact across both producers.",
+    "Keeps the committed result small by reusing the three-step, two-scenario daily fixture pair while still exercising explicit non-thermal electric and cooling outputs."
+  ]
 }

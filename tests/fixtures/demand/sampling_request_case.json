@@ -1,14 +1,30 @@
 {
   "fixture_name": "sampling_request_case",
-  "fixture_status": "scaffold",
-  "purpose": "Placeholder for the positive offline demand sampling request fixture.",
+  "fixture_status": "active",
+  "purpose": "Deterministic offline demand sampling request fixture paired with the committed demand artifact and sampled weather family fixtures.",
   "spec_feature": "008-weather-demand-modeling",
   "provenance": {
     "author": "OpenAI Codex",
-    "origin": "Phase 1 scaffold",
-    "legacy_evidence_paths": [],
-    "generation_command": null,
-    "random_seed": null,
-    "refresh_policy": "Populate with a deterministic request payload in T029."
-  }
+    "origin": "Synthetic current-library US2 request-contract fixture for paired weather-and-demand replay coverage.",
+    "legacy_evidence_paths": [
+      "legacy/fed_trpo/src/notebooks/ML_817_topic_I_lab_1.ipynb",
+      "legacy/fed_trpo/src/notebooks/ML_817_topic_I_lab_2.ipynb",
+      "legacy/fed_trpo/src/notebooks/data_generation/naive_data_generation.ipynb"
+    ],
+    "generation_command": "Replay the committed offline demand sampler against tests/fixtures/demand/fitted_demand_artifact_v1.json and tests/fixtures/weather/sampled_weather_family_case.json.",
+    "random_seed": 13,
+    "refresh_policy": "Update only when the stable demand sampling request controls, shared paired-family seed contract, or supported artifact references intentionally change."
+  },
+  "artifact_fixture_path": "tests/fixtures/demand/fitted_demand_artifact_v1.json",
+  "weather_family_fixture_path": "tests/fixtures/weather/sampled_weather_family_case.json",
+  "artifact_reference": "demand-artifact:aligned-demand:phoenix-daily",
+  "weather_family_reference": "weather-family:f7dbcc3a131d",
+  "expected_timestep_hours": 24.0,
+  "num_steps": 3,
+  "scenario_count": 2,
+  "paired_family_seed": 13,
+  "notes": [
+    "Pairs the committed US1 demand artifact fixture with the committed US2 sampled weather family fixture so offline replay stays deterministic and reviewable.",
+    "Uses the same paired family seed as the referenced weather family because the first-release pairing contract requires exact shared seed lineage across both producers."
+  ]
 }
