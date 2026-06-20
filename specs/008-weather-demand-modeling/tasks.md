@@ -144,9 +144,9 @@ artifact.
 
 ### Implementation for User Story 3
 
-- [ ] T036 [US3] Implement cooling service configuration types and local-electric conversion helpers in `src/open_energy_lab/simulator/demand.py`
-- [ ] T037 [US3] Implement paired weather-and-demand family request, evaluation, and summary types while preserving blackout-semantics separation in `src/open_energy_lab/simulator/stochastic_demand.py`
-- [ ] T038 [US3] Extend deterministic load composition and scenario trace models for explicit cooling service balance outputs in `src/open_energy_lab/simulator/load.py` and `src/open_energy_lab/simulator/scenario.py`
+- [X] T036 [US3] Implement cooling service configuration types and local-electric conversion helpers in `src/open_energy_lab/simulator/demand.py`
+- [X] T037 [US3] Implement paired weather-and-demand family request, evaluation, and summary types while preserving blackout-semantics separation in `src/open_energy_lab/simulator/stochastic_demand.py`
+- [X] T038 [US3] Extend deterministic load composition and scenario trace models for explicit cooling service balance outputs in `src/open_energy_lab/simulator/load.py` and `src/open_energy_lab/simulator/scenario.py`
 - [ ] T039 [US3] Implement deterministic district-cooling settlement and served-`RT-hour` accounting in `src/open_energy_lab/simulator/pricing.py` and `src/open_energy_lab/simulator/objective.py` using `legacy/old_tpm/src_py/simulator/common/pricing.py` as migration evidence
 - [ ] T040 [US3] Export the cooling-aware family evaluation surface from `src/open_energy_lab/simulator/__init__.py`
 - [ ] T041 [US3] Populate paired simulator demand fixtures and document exact legacy evidence in `tests/fixtures/simulator/demand_local_electric_family_case.json`, `tests/fixtures/simulator/demand_district_cooling_family_case.json`, `tests/fixtures/simulator/demand_invalid_mixed_cooling_case.json`, `tests/fixtures/simulator/README.md`, `docs/migration/weather-demand-modeling.md`, and `specs/008-weather-demand-modeling/quickstart.md`

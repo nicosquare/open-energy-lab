@@ -130,37 +130,23 @@ def _base_scenario(weather_family) -> BatteryLoadPVScenario:
 
 
 def test_evaluate_demand_family_rejects_mixed_cooling_paths() -> None:
-    module = _stochastic_demand_module()
     demand_module = _simulator_demand_module()
-    weather_family = _sample_weather_family_fixture()
-    demand_family = _sample_demand_family_fixture(weather_family)
-
-    mixed_configuration = demand_module.CoolingServiceConfiguration(
-        service_path="local-electric",
-        local_electric_cooling=demand_module.LocalElectricCoolingConfiguration(
-            source_name="mixed-local-cooling",
-            electric_kw_per_rt=1.15,
-            valid_for_feature_version="008-weather-demand-modeling",
-        ),
-        district_cooling_tariff=demand_module.DistrictCoolingTariff(
-            currency="USD",
-            rate_per_rt_hour=0.22,
-            time_alignment="step-start",
-            tariff_name="mixed-district",
-        ),
-        source="integration-test",
-    )
 
     with pytest.raises(ValueError, match="exactly one|mixed|service path"):
-        module.evaluate_demand_family(
-            module.DemandFamilyEvaluationRequest(
-                base_scenario_reference=_base_scenario(weather_family),
-                weather_family=weather_family,
-                demand_family=demand_family,
-                cooling_service_configuration=mixed_configuration,
-                summary_output_fields=("served_cooling_rt",),
-                numeric_tolerance=DEFAULT_ABSOLUTE_TOLERANCE,
-            )
+        demand_module.CoolingServiceConfiguration(
+            service_path="local-electric",
+            local_electric_cooling=demand_module.LocalElectricCoolingConfiguration(
+                source_name="mixed-local-cooling",
+                electric_kw_per_rt=1.15,
+                valid_for_feature_version="008-weather-demand-modeling",
+            ),
+            district_cooling_tariff=demand_module.DistrictCoolingTariff(
+                currency="USD",
+                rate_per_rt_hour=0.22,
+                time_alignment="step-start",
+                tariff_name="mixed-district",
+            ),
+            source="integration-test",
         )
 
 

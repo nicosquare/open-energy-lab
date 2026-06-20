@@ -15,7 +15,7 @@ from ._units import (
 
 if TYPE_CHECKING:
     from .battery import BatteryState
-    from .load import LoadComponent
+    from .load import CoolingServiceBalance, LoadComponent
     from .pv import PVComponent
     from .pricing import (
         ArbitrageObjectiveRepresentation,
@@ -246,6 +246,11 @@ class BatteryLoadPVTrace:
     realized_power_kw: list[float]
     energy_delta_kwh: list[float]
     load_kw: list[float]
+    site_electric_load_kw: list[float]
+    local_cooling_electric_kw: list[float]
+    served_cooling_rt: list[float]
+    unserved_cooling_rt: list[float]
+    district_cooling_settlement: list[float]
     pv_generation_kw: list[float]
     net_grid_power_kw: list[float]
     net_grid_energy_kwh: list[float]
@@ -391,6 +396,7 @@ class BatteryLoadPVScenario:
     dispatch_requests: DispatchRequestSeries | None = None
     rule_policy: DeterministicRulePolicy | None = None
     blackout_grid_available: list[bool] | None = None
+    cooling_service_balance: "CoolingServiceBalance | None" = None
     numeric_tolerance: float = DEFAULT_ABSOLUTE_TOLERANCE
 
     def validate(self) -> ComponentGraph:
@@ -411,6 +417,9 @@ class BatteryLoadPVScenario:
                 raise ValueError("blackout_grid_available length must match the time grid")
             if any(not isinstance(value, bool) for value in self.blackout_grid_available):
                 raise ValueError("blackout_grid_available values must be booleans")
+        if self.cooling_service_balance is not None:
+            if self.cooling_service_balance.time_grid != self.time_grid:
+                raise ValueError("cooling service balance must align to the scenario time grid")
 
         if self.objective.allow_export and (
             self.objective.export_price_ratio != self.price_signal.export_price_ratio
@@ -450,6 +459,16 @@ class BatteryLoadPVScenario:
             graph.add_component(ComponentRef(name="blackout_trace", kind="blackout-trace"))
             graph.add_connection(Connection("time_grid", "blackout_trace", Relation.ALIGNS))
             graph.add_connection(Connection("blackout_trace", "net_grid_trace", Relation.DRIVES))
+        if self.cooling_service_balance is not None:
+            graph.add_component(
+                ComponentRef(name="cooling_service_balance", kind="cooling-service-balance")
+            )
+            graph.add_connection(
+                Connection("time_grid", "cooling_service_balance", Relation.ALIGNS)
+            )
+            graph.add_connection(
+                Connection("cooling_service_balance", "net_grid_trace", Relation.FEEDS)
+            )
 
         if self.dispatch_requests is not None:
             graph.add_component(ComponentRef(name="dispatch_requests", kind="dispatch"))
@@ -508,8 +527,17 @@ class BatteryLoadPVScenario:
             energy_delta_kwh.append(transition.energy_delta_kwh)
 
         pv_generation_kw = self.pv.derive_generation_kw(self.weather)
+        local_cooling_electric_kw = self._local_cooling_electric_kw()
+        site_electric_load_kw = [
+            base_load_kw + cooling_kw
+            for base_load_kw, cooling_kw in zip(
+                self.load.demand_kw,
+                local_cooling_electric_kw,
+                strict=True,
+            )
+        ]
         settlement = evaluate_net_grid_settlement(
-            load_kw=list(self.load.demand_kw),
+            load_kw=site_electric_load_kw,
             pv_generation_kw=pv_generation_kw,
             realized_battery_power_kw=realized_power_kw,
             time_step_hours=self.time_grid.time_step_hours,
@@ -540,6 +568,11 @@ class BatteryLoadPVScenario:
             realized_power_kw=realized_power_kw,
             energy_delta_kwh=energy_delta_kwh,
             load_kw=list(self.load.demand_kw),
+            site_electric_load_kw=site_electric_load_kw,
+            local_cooling_electric_kw=local_cooling_electric_kw,
+            served_cooling_rt=self._served_cooling_rt(),
+            unserved_cooling_rt=self._unserved_cooling_rt(),
+            district_cooling_settlement=self._district_cooling_settlement(),
             pv_generation_kw=pv_generation_kw,
             net_grid_power_kw=net_grid_power_kw,
             net_grid_energy_kwh=net_grid_energy_kwh,
@@ -555,6 +588,26 @@ class BatteryLoadPVScenario:
         if self.blackout_grid_available is None:
             return [False] * self.time_grid.num_steps
         return [not value for value in self.blackout_grid_available]
+
+    def _local_cooling_electric_kw(self) -> list[float]:
+        if self.cooling_service_balance is None:
+            return [0.0] * self.time_grid.num_steps
+        return list(self.cooling_service_balance.local_cooling_electric_kw)
+
+    def _served_cooling_rt(self) -> list[float]:
+        if self.cooling_service_balance is None:
+            return [0.0] * self.time_grid.num_steps
+        return list(self.cooling_service_balance.served_cooling_rt)
+
+    def _unserved_cooling_rt(self) -> list[float]:
+        if self.cooling_service_balance is None:
+            return [0.0] * self.time_grid.num_steps
+        return list(self.cooling_service_balance.unserved_cooling_rt)
+
+    def _district_cooling_settlement(self) -> list[float]:
+        if self.cooling_service_balance is None:
+            return [0.0] * self.time_grid.num_steps
+        return list(self.cooling_service_balance.district_cooling_settlement)
 
 
 __all__ = [
