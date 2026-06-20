@@ -61,49 +61,50 @@ dependencies must not become required for the unified package.
 - Tests that require unavailable services, hardware, or licenses must be
   marked or separated so the default test subset remains runnable locally.
 
-## Weather-Conditioned Demand Foundational Classification
+## Weather-Conditioned Demand And Cooling-Aware Simulator Classification
 
-The `008-weather-demand-modeling` feature currently reserves the demand package
-and simulator-side demand-family fixture paths without widening the runtime
-dependency boundary. The Phase 2 review record is:
+The `008-weather-demand-modeling` feature now ships stable demand workflow
+imports plus a cooling-aware simulator-family evaluation surface without
+widening the ordinary runtime boundary. The review record for the shipped slice
+is:
 
 ```text
-Dependency: Python standard library modules and existing open_energy_lab package layout only
-Requested by: 008-weather-demand-modeling Phase 2 foundational tasks
-Target module: src/open_energy_lab/demand/__init__.py, src/open_energy_lab/demand/_aligned_history.py, src/open_energy_lab/demand/_weather_response.py, src/open_energy_lab/demand/fit.py, src/open_energy_lab/demand/artifact.py, src/open_energy_lab/demand/sampling.py
+Dependency: Python standard library modules plus existing open_energy_lab weather and simulator package modules
+Requested by: 008-weather-demand-modeling
+Target module: src/open_energy_lab/demand/__init__.py, src/open_energy_lab/demand/_aligned_history.py, src/open_energy_lab/demand/_weather_response.py, src/open_energy_lab/demand/fit.py, src/open_energy_lab/demand/artifact.py, src/open_energy_lab/demand/sampling.py, src/open_energy_lab/simulator/demand.py, src/open_energy_lab/simulator/stochastic_demand.py
 Classification: core
-Import boundary: allowed at import time for open_energy_lab.demand, with no package-root exports and no eager load of fit/fetch dependencies
-Install mechanism: base project environment via uv-managed Python
-Fallback or skip behavior: none for the reserved module paths; functional behavior remains deferred to later tasks
+Import boundary: allowed at import time for open_energy_lab.demand and open_energy_lab.simulator, with package-root exports resolved lazily so ordinary imports, offline artifact loading, offline demand sampling, and simulator-family evaluation stay import-light
+Install mechanism: base project environment via conda plus uv
+Fallback or skip behavior: none; the shipped demand workflow and simulator-family evaluation are part of the normal library surface
 External service, license, hardware, or scheduler assumptions: none
-Rationale: the feature needs a stable package location and reserved module hosts before shipping fit/load/sample behavior, but the foundational slice must stay import-light and offline-safe
-Alternatives considered: delaying module creation until user-story work was rejected because it weakens package-boundary validation and fixture-contract setup
+Rationale: the first shipped demand feature must remain portable, offline-safe, and layered on top of the existing weather canonical contract and simulator execution surface instead of introducing notebook, service, or research-stack runtime assumptions
+Alternatives considered: keeping the demand package root empty, forcing callers into focused implementation modules, or coupling the shipped workflow to live weather fetches or CityLearn-style runtime state were rejected because they weaken discoverability and violate the feature boundary
 ```
 
 ```text
-Dependency: pytest-based demand fixture and simulator fixture schema validation
-Requested by: 008-weather-demand-modeling Phase 2 foundational tasks
-Target module: tests/integration/demand, tests/integration/simulator, tests/unit/demand, tests/unit/test_optional_dependency_boundaries.py, tests/unit/test_import_contract.py, tests/unit/test_no_legacy_imports.py
+Dependency: pytest-based demand, simulator, import-boundary, and fixture validation commands
+Requested by: 008-weather-demand-modeling
+Target module: tests/unit/demand, tests/unit/simulator, tests/integration/demand, tests/integration/simulator, tests/unit/test_optional_dependency_boundaries.py, tests/unit/test_import_contract.py, tests/unit/test_no_legacy_imports.py
 Classification: optional
 Import boundary: test-only; must not affect library runtime imports
 Install mechanism: uv sync --dev
-Fallback or skip behavior: if dev dependencies are unavailable, document Phase 2 validation as blocked rather than broadening runtime requirements
+Fallback or skip behavior: if dev dependencies are unavailable, document demand-feature validation as blocked rather than broadening runtime requirements
 External service, license, hardware, or scheduler assumptions: none
-Rationale: fixture provenance and package-boundary evidence are required before later value-level behavior is added, but pytest remains non-runtime tooling
-Alternatives considered: ad hoc manual fixture review was rejected because it weakens repeatable contract validation
+Rationale: stable demand API promotion depends on deterministic unit, integration, import-boundary, and fixture evidence, but pytest remains non-runtime tooling
+Alternatives considered: relying only on ad hoc scripts or fixture inspection was rejected because it weakens repeatable evidence for the shipped surface
 ```
 
 ```text
-Dependency: pandas, pvlib, timezonefinder, live weather fetches, CityLearn, notebooks, solver stacks, W&B, GPU/SLURM tooling, and legacy reference runtimes
-Requested by: none for the Phase 2 foundational slice
-Target module: none in the reserved demand package root or fixture schema tests
-Classification: core local dependencies for later weather fit workflows, external-service-backed, optional, hardware-bound, or legacy-only depending on family
-Import boundary: excluded from open_energy_lab.demand package-root imports and the new scaffold modules during Phase 2
-Install mechanism: unchanged from existing project policy; no new install path introduced here
-Fallback or skip behavior: the default foundational review path remains offline and fixture-backed without them
-External service, license, hardware, or scheduler assumptions: not accepted for routine Phase 2 validation
-Rationale: the foundational slice exists specifically to keep future demand behavior isolated from heavier research or live-service dependencies
-Alternatives considered: allowing early fit/fetch dependencies into the reserved package root was rejected because it would violate the constitution and the active spec
+Dependency: live weather fetches, CityLearn, notebooks, solver stacks, W&B, GPU/SLURM tooling, and legacy reference runtimes
+Requested by: none for the shipped demand workflow and cooling-aware simulator slice
+Target module: none in the stable open_energy_lab.demand package root or the stable demand-family simulator exports
+Classification: external-service-backed, optional, hardware-bound, or legacy-only depending on family
+Import boundary: excluded from open_energy_lab.demand package-root imports, offline artifact loading, offline demand sampling, and cooling-aware simulator-family evaluation
+Install mechanism: none for this feature
+Fallback or skip behavior: the default demand-feature review path remains fixture-backed and offline without them; any future blocked checks must be documented explicitly
+External service, license, hardware, or scheduler assumptions: network access, credentials, commercial licenses, GPU runtime, SLURM access, notebook execution, or legacy checkout context may be required only outside the shipped default validation subset
+Rationale: the feature deliberately keeps producer-side fitting, offline artifact replay, and simulator-side cooling accounting inside the lightweight library boundary rather than reopening the heavier research environment
+Alternatives considered: treating live services or legacy runtime stacks as default prerequisites was rejected because it would violate the constitution’s dependency boundary and the spec’s offline-review requirement
 ```
 
 ## Known Dependency Families

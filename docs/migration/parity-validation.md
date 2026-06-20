@@ -191,6 +191,62 @@ skip reason must be recorded in the relevant spec plan or quickstart,
 including whether the blocked check was live-fetch behavior or part of the
 default offline validation subset.
 
+## Weather-Conditioned Demand Validation Governance
+
+The `008-weather-demand-modeling` migration adds a demand-specific validation
+shape that later work should preserve when it extends the shipped workflow:
+
+- Keep `src/open_energy_lab/demand` import-light at the package root, with
+  aligned-history fitting, offline artifact loading, and offline paired-family
+  sampling clear of runtime `legacy/*` imports and live-service assumptions.
+- Keep `src/open_energy_lab/simulator` as the owner of cooling-service
+  semantics, demand-family evaluation, blackout interpretation, and settlement
+  reporting.
+- Treat the committed demand fixtures under `tests/fixtures/demand` as active
+  contract evidence for aligned-history validation, artifact schema and
+  reload behavior, unsupported-version rejection, and paired-seed replay.
+- Treat the committed demand-family simulator fixtures under
+  `tests/fixtures/simulator` as active deterministic evidence for
+  local-electric conversion, district-cooling settlement, one-path validation,
+  and explicit unserved-cooling reporting.
+- Preserve the producer-versus-simulator boundary: demand artifacts and
+  sampled demand traces keep explicit non-thermal electric and cooling outputs,
+  while cooling service choice and district settlement remain simulator-side
+  configuration.
+- Keep parity selective: use the cited pricing module and demand-related
+  notebooks as reference evidence for preserved semantics, but validate the
+  shipped feature primarily through deterministic fixtures, replay contracts,
+  and accounting invariants rather than broad CityLearn or notebook parity.
+
+Minimum weather-conditioned-demand validation now includes:
+
+- `tests/unit/demand/test_import_boundary.py`
+- `tests/unit/demand/test_no_legacy_imports.py`
+- `tests/unit/demand/test_package_surface.py`
+- `tests/unit/demand/test_aligned_history.py`
+- `tests/unit/demand/test_artifact_schema.py`
+- `tests/unit/demand/test_sampling_request.py`
+- `tests/unit/demand/test_sampling_family.py`
+- `tests/unit/simulator/test_demand.py`
+- `tests/unit/simulator/test_stochastic_demand.py`
+- `tests/unit/test_optional_dependency_boundaries.py`
+- `tests/unit/test_import_contract.py`
+- `tests/unit/test_no_legacy_imports.py`
+- `tests/integration/demand/test_fixture_schema.py`
+- `tests/integration/demand/test_sampling_fixture_schema.py`
+- `tests/integration/demand/test_fit_workflow.py`
+- `tests/integration/demand/test_offline_sampling.py`
+- `tests/integration/demand/test_paired_replay.py`
+- `tests/integration/simulator/test_demand_family_fixture_schema.py`
+- `tests/integration/simulator/test_stochastic_demand_family.py`
+- `tests/integration/simulator/test_cooling_service_validation.py`
+- `tests/integration/simulator/test_battery_load_pv_trace.py`
+
+If future weather-conditioned-demand work cannot run one of these checks
+locally, the skip reason must be recorded in the relevant spec plan or
+quickstart, including whether the blocked check fell outside the default
+offline validation subset.
+
 ## Out-of-Scope Boundary
 
 The foundation feature does not migrate TPM, RL, optimization, or planning

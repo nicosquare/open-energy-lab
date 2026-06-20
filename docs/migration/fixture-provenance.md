@@ -82,3 +82,33 @@ Default weather validation should prefer the committed fixtures over live
 network fetches. If a future refresh needs live PVGIS access or optional
 weather dependencies, document that requirement in the fixture README and in
 the feature quickstart rather than broadening the default validation path.
+
+## Weather-Conditioned Demand Fixture Guidance
+
+The `008-weather-demand-modeling` feature adds two active fixture families
+that should stay small, deterministic, and reviewable:
+
+- aligned training, artifact, sampling-request, and sampled-demand fixtures
+  under `tests/fixtures/demand`
+- cooling-aware simulator-family fixtures under `tests/fixtures/simulator`
+
+For this feature, fixture provenance must also make these points explicit:
+
+- which exact legacy notebook or simulator pricing paths were consulted as
+  reference-only evidence
+- whether the fixture is synthetic, manually curated, or regenerated from the
+  current library implementation
+- the paired-family seed, scenario ordering, timestep, and referenced weather
+  or demand fixture identities used for replayable paired-family validation
+- the cooling service path, local-electric conversion factor, or
+  district-cooling tariff assumptions when simulator settlement is part of the
+  fixture
+- the numeric tolerance and refresh trigger for aligned-history validation,
+  artifact-schema changes, paired-seed replay changes, cooling-accounting
+  semantics, or supported summary-surface changes
+
+Default demand validation should prefer the committed demand and simulator
+fixtures over notebook execution, live services, or ad hoc parity snapshots.
+If a future refresh needs optional weather fetch checks or environment-sensitive
+tooling, document that requirement in the fixture README and in the feature
+quickstart rather than broadening the default validation path.
