@@ -1,16 +1,163 @@
 {
   "fixture_name": "demand_local_electric_family_case",
-  "fixture_status": "scaffold",
-  "purpose": "Placeholder for the local-electric cooling paired simulator family fixture.",
+  "fixture_status": "active",
+  "purpose": "Deterministic local-electric cooling paired simulator family fixture verified against the committed sampled weather and demand family fixtures.",
   "spec_feature": "008-weather-demand-modeling",
   "provenance": {
     "author": "OpenAI Codex",
-    "origin": "Phase 1 scaffold",
+    "origin": "Synthetic current-library US3 paired-family fixture for local-electric cooling accounting.",
     "legacy_evidence_paths": [
-      "legacy/old_tpm/src_py/simulator/common/pricing.py"
+      "legacy/old_tpm/src_py/simulator/common/pricing.py",
+      "legacy/fed_trpo/src/notebooks/citylearn_ccai_tutorial.ipynb"
     ],
-    "generation_command": null,
-    "random_seed": null,
-    "refresh_policy": "Populate with a deterministic cooling-aware simulator family fixture in T041."
-  }
+    "generation_command": "Replay the committed sampled weather and demand family fixtures through open_energy_lab.simulator.evaluate_demand_family with the documented local-electric cooling conversion factor.",
+    "random_seed": 13,
+    "refresh_policy": "Update only when the documented local-electric cooling conversion contract, paired-family ordering, or one-net settlement semantics intentionally change."
+  },
+  "weather_family_fixture_path": "tests/fixtures/weather/sampled_weather_family_case.json",
+  "demand_family_fixture_path": "tests/fixtures/demand/sampled_demand_family_case.json",
+  "base_scenario_reference": {
+    "scenario_id": "fixture-base",
+    "battery": {
+      "capacity_kwh": 8.0,
+      "max_charge_kw": 3.0,
+      "max_discharge_kw": 3.0,
+      "initial_soc": 0.25
+    },
+    "pv": {
+      "rated_power_kw": 4.0,
+      "derivation_name": "ghi-linear-temperature-adjusted"
+    },
+    "price_signal": {
+      "currency": "USD",
+      "import_prices": [
+        0.1,
+        0.2,
+        0.3
+      ],
+      "export_price_ratio": 0.8,
+      "time_alignment": "step-start"
+    },
+    "dispatch_requests_kw": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "cooling_service_configuration": {
+    "service_path": "local-electric",
+    "source": "fixture-test",
+    "local_electric_cooling": {
+      "source_name": "fixture-local-cooling",
+      "electric_kw_per_rt": 1.15,
+      "valid_for_feature_version": "008-weather-demand-modeling",
+      "notes": "Deterministic first-release conversion factor."
+    }
+  },
+  "summary_output_fields": [
+    "site_electric_load_kw",
+    "local_cooling_electric_kw",
+    "served_cooling_rt",
+    "unserved_cooling_rt",
+    "net_grid_power_kw",
+    "step_settlement",
+    "district_cooling_settlement"
+  ],
+  "numeric_tolerance": 1e-06,
+  "expected_result": {
+    "family_id": "weather-family:f7dbcc3a131d|demand-family:91a2f195442c|local-electric",
+    "paired_family_seed": 13,
+    "scenario_order": [
+      0,
+      1
+    ],
+    "scenario_results": [
+      {
+        "scenario_index": 0,
+        "weather_reference": "weather-artifact:synthetic-us1-daily:family-13:scenario-0",
+        "demand_reference": "demand-artifact:aligned-demand:phoenix-daily:weather-13:scenario-0",
+        "site_electric_load_kw": [
+          30.191457513664403,
+          35.67498738526516,
+          29.50412645357472
+        ],
+        "local_cooling_electric_kw": [
+          2.563622007026627,
+          11.09186810699758,
+          0.0
+        ],
+        "served_cooling_rt": [
+          2.229236527849241,
+          9.645102701737027,
+          0.0
+        ],
+        "unserved_cooling_rt": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "district_cooling_settlement": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "net_grid_power_kw": [
+          27.995480504791374,
+          34.05465186749052,
+          26.79169374857388
+        ],
+        "step_settlement": [
+          -67.1891532114993,
+          -163.46232896395452,
+          -192.90019498973194
+        ],
+        "total_settlement": -423.55167716518577
+      },
+      {
+        "scenario_index": 1,
+        "weather_reference": "weather-artifact:synthetic-us1-daily:family-13:scenario-1",
+        "demand_reference": "demand-artifact:aligned-demand:phoenix-daily:weather-13:scenario-1",
+        "site_electric_load_kw": [
+          27.56589437882371,
+          25.419684306339906,
+          43.159585855269626
+        ],
+        "local_cooling_electric_kw": [
+          0.34894987564519686,
+          0.0,
+          19.74068516637143
+        ],
+        "served_cooling_rt": [
+          0.30343467447408423,
+          0.0,
+          17.165813188149073
+        ],
+        "unserved_cooling_rt": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "district_cooling_settlement": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "net_grid_power_kw": [
+          25.331076789358082,
+          23.20377225025637,
+          41.964149098883205
+        ],
+        "step_settlement": [
+          -60.794584294459405,
+          -111.37810680123057,
+          -302.14187351195903
+        ],
+        "total_settlement": -474.314564607649
+      }
+    ]
+  },
+  "notes": [
+    "This fixture preserves the deterministic one-net settlement direction from legacy/old_tpm/src_py/simulator/common/pricing.py while adding simulator-side local-electric cooling load composition.",
+    "Cooling demand remains explicit in RT and is converted to site electric load only through the configured kW-per-RT factor."
+  ]
 }

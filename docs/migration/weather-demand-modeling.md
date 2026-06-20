@@ -1,13 +1,15 @@
 # Weather-Conditioned Demand Modeling Migration Note
 
-Status: User Story 2 fit, reload, and offline paired-family sampling workflow implemented
+Status: User Story 3 fit, reload, offline paired-family sampling, and cooling-aware simulator evaluation implemented
 
 Spec `008-weather-demand-modeling` adds a public `open_energy_lab.demand`
 package that now supports aligned-history fitting, offline artifact reload,
 and offline paired-family sampling without widening the import boundary or
-coupling cooling-service behavior into the producer-side workflow. Later user
-stories will add simulator-side cooling-path evaluation on top of this US2
-base.
+coupling cooling-service behavior into the producer-side workflow. The
+simulator now consumes those sampled families through a cooling-aware
+evaluation surface that preserves deterministic `BatteryLoadPVScenario`
+behavior while adding explicit local-electric versus district-cooling
+accounting.
 
 ## Target Module Paths
 
@@ -17,7 +19,10 @@ base.
 - `src/open_energy_lab/demand/fit.py`
 - `src/open_energy_lab/demand/artifact.py`
 - `src/open_energy_lab/demand/sampling.py`
+- `src/open_energy_lab/simulator/__init__.py`
 - `src/open_energy_lab/simulator/demand.py`
+- `src/open_energy_lab/simulator/pricing.py`
+- `src/open_energy_lab/simulator/objective.py`
 - `src/open_energy_lab/simulator/stochastic_demand.py`
 
 ## Planned Validation Paths
@@ -38,9 +43,9 @@ base.
 - `legacy/fed_trpo/src/notebooks/citylearn_ccai_tutorial.ipynb`
 - `legacy/fed_trpo/src/notebooks/data_generation/naive_data_generation.ipynb`
 
-## Implemented US1 And US2 Surface
+## Implemented Producer Surface
 
-The current implemented producer-side surface is:
+The implemented producer-side surface is:
 
 - `open_energy_lab.demand.fit_demand_model`
 - `open_energy_lab.demand.load_demand_artifact`
@@ -50,6 +55,20 @@ The current implemented producer-side surface is:
 The package root now mirrors the lazy export pattern used by
 `open_energy_lab.weather`, so `import open_energy_lab.demand` stays
 import-light while still exposing the stable US1 and US2 entry points.
+
+## Implemented Simulator Surface
+
+The simulator root now exports the cooling-aware paired-family surface:
+
+- `open_energy_lab.simulator.evaluate_demand_family`
+- `open_energy_lab.simulator.DemandFamilyEvaluationRequest`
+- `open_energy_lab.simulator.DemandFamilyEvaluationResult`
+- `open_energy_lab.simulator.DemandScenarioEvaluationResult`
+- `open_energy_lab.simulator.DEMAND_SUPPORTED_SUMMARY_OUTPUT_FIELDS`
+
+This keeps the stable package root import-light while making the simulator-side
+consumer API discoverable without forcing callers to import
+`open_energy_lab.simulator.stochastic_demand` directly.
 
 ## Committed Offline Fixtures
 
@@ -66,6 +85,19 @@ US1 and US2 now ship committed, active fixtures for:
 
 These fixtures live under `tests/fixtures/demand/` and support the offline
 review path described in the quickstart and integration tests.
+
+## Committed Cooling-Aware Simulator Fixtures
+
+US3 now ships committed active fixtures for:
+
+- local-electric paired-family evaluation
+- district-cooling paired-family evaluation
+- invalid mixed-path rejection
+
+These fixtures live under `tests/fixtures/simulator/` and point back to the
+committed sampled weather and sampled demand family fixtures so a reviewer can
+inspect the exact deterministic scenario ordering, settlement values, and
+cooling-service accounting without generating new artifacts.
 
 ## Preserve / Improve / Reject
 
@@ -94,6 +126,12 @@ review path described in the quickstart and integration tests.
   paired-family seed and preserves exact weather-family ordering on replay
 - commit deterministic request and sampled-family fixtures that let reviewers
   inspect explicit non-thermal electric and cooling outputs without refitting
+- add a stable simulator root export surface for cooling-aware paired-family
+  evaluation
+- move district-cooling tariff settlement into shared simulator pricing and
+  objective helpers so served `RT-hour` accounting is documented and reusable
+- commit deterministic local-electric, district-cooling, and invalid mixed-path
+  simulator fixtures with explicit expected outputs
 
 ### Reject
 
@@ -115,6 +153,14 @@ weather-sensitive demand separation:
 
 No legacy runtime imports or copied notebook code were introduced into the
 stable package.
+
+US3 uses `legacy/old_tpm/src_py/simulator/common/pricing.py` as exact legacy
+evidence for step-aligned deterministic tariff treatment. The new
+district-cooling settlement is an inference from that preserved settlement
+direction: the simulator applies the same step-start tariff discipline to
+served `RT-hour` accounting instead of copying a district-cooling runtime path
+from the reference repositories, where no stable reusable district-cooling
+module exists.
 
 ## Shared Paired-Family Seed Semantics
 
@@ -150,7 +196,17 @@ The intended offline usage path is:
    positive horizon, and exact scenario count from that weather family.
 7. Call `sample_demand_family(...)` to produce explicit non-thermal electric
    and cooling traces aligned to the referenced weather traces.
+8. Build `DemandFamilyEvaluationRequest(...)` with one base deterministic
+   `BatteryLoadPVScenario`, the sampled weather family, the sampled demand
+   family, and exactly one cooling-service configuration.
+9. Call `evaluate_demand_family(...)` to compare local-electric versus
+   district-cooling outcomes without mutating the persisted producer-side
+   artifacts.
 
 The committed fixtures in `tests/fixtures/demand/` exercise both the positive
 path and the documented fail-fast negative paths without any live data fetch,
 CityLearn dependency, or simulator-side coupling.
+
+The committed fixtures in `tests/fixtures/simulator/` exercise the cooling-
+aware positive and negative simulator paths without introducing new runtime
+dependencies, live services, or runtime `legacy/*` imports.

@@ -1,16 +1,163 @@
 {
   "fixture_name": "demand_district_cooling_family_case",
-  "fixture_status": "scaffold",
-  "purpose": "Placeholder for the district-cooling paired simulator family fixture.",
+  "fixture_status": "active",
+  "purpose": "Deterministic district-cooling paired simulator family fixture verified against the committed sampled weather and demand family fixtures.",
   "spec_feature": "008-weather-demand-modeling",
   "provenance": {
     "author": "OpenAI Codex",
-    "origin": "Phase 1 scaffold",
+    "origin": "Synthetic current-library US3 paired-family fixture for district-cooling settlement accounting.",
     "legacy_evidence_paths": [
-      "legacy/old_tpm/src_py/simulator/common/pricing.py"
+      "legacy/old_tpm/src_py/simulator/common/pricing.py",
+      "legacy/fed_trpo/src/notebooks/citylearn_ccai_tutorial.ipynb"
     ],
-    "generation_command": null,
-    "random_seed": null,
-    "refresh_policy": "Populate with a deterministic cooling-aware simulator family fixture in T041."
-  }
+    "generation_command": "Replay the committed sampled weather and demand family fixtures through open_energy_lab.simulator.evaluate_demand_family with the documented district-cooling tariff.",
+    "random_seed": 13,
+    "refresh_policy": "Update only when the documented district-cooling tariff contract, paired-family ordering, or one-net settlement semantics intentionally change."
+  },
+  "weather_family_fixture_path": "tests/fixtures/weather/sampled_weather_family_case.json",
+  "demand_family_fixture_path": "tests/fixtures/demand/sampled_demand_family_case.json",
+  "base_scenario_reference": {
+    "scenario_id": "fixture-base",
+    "battery": {
+      "capacity_kwh": 8.0,
+      "max_charge_kw": 3.0,
+      "max_discharge_kw": 3.0,
+      "initial_soc": 0.25
+    },
+    "pv": {
+      "rated_power_kw": 4.0,
+      "derivation_name": "ghi-linear-temperature-adjusted"
+    },
+    "price_signal": {
+      "currency": "USD",
+      "import_prices": [
+        0.1,
+        0.2,
+        0.3
+      ],
+      "export_price_ratio": 0.8,
+      "time_alignment": "step-start"
+    },
+    "dispatch_requests_kw": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "cooling_service_configuration": {
+    "service_path": "district-cooling",
+    "source": "fixture-test",
+    "district_cooling_tariff": {
+      "currency": "USD",
+      "rate_per_rt_hour": 0.22,
+      "time_alignment": "step-start",
+      "tariff_name": "fixture-district-cooling"
+    }
+  },
+  "summary_output_fields": [
+    "site_electric_load_kw",
+    "local_cooling_electric_kw",
+    "served_cooling_rt",
+    "unserved_cooling_rt",
+    "net_grid_power_kw",
+    "step_settlement",
+    "district_cooling_settlement"
+  ],
+  "numeric_tolerance": 1e-06,
+  "expected_result": {
+    "family_id": "weather-family:f7dbcc3a131d|demand-family:91a2f195442c|district-cooling",
+    "paired_family_seed": 13,
+    "scenario_order": [
+      0,
+      1
+    ],
+    "scenario_results": [
+      {
+        "scenario_index": 0,
+        "weather_reference": "weather-artifact:synthetic-us1-daily:family-13:scenario-0",
+        "demand_reference": "demand-artifact:aligned-demand:phoenix-daily:weather-13:scenario-0",
+        "site_electric_load_kw": [
+          27.627835506637776,
+          24.58311927826758,
+          29.50412645357472
+        ],
+        "local_cooling_electric_kw": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "served_cooling_rt": [
+          2.229236527849241,
+          9.645102701737027,
+          0.0
+        ],
+        "unserved_cooling_rt": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "district_cooling_settlement": [
+          11.770368867043992,
+          50.92614226517151,
+          0.0
+        ],
+        "net_grid_power_kw": [
+          25.431858497764747,
+          22.962783760492936,
+          26.79169374857388
+        ],
+        "step_settlement": [
+          -61.03646039463539,
+          -110.2213620503661,
+          -192.90019498973194
+        ],
+        "total_settlement": -364.15801743473344
+      },
+      {
+        "scenario_index": 1,
+        "weather_reference": "weather-artifact:synthetic-us1-daily:family-13:scenario-1",
+        "demand_reference": "demand-artifact:aligned-demand:phoenix-daily:weather-13:scenario-1",
+        "site_electric_load_kw": [
+          27.216944503178514,
+          25.419684306339906,
+          23.418900688898194
+        ],
+        "local_cooling_electric_kw": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "served_cooling_rt": [
+          0.30343467447408423,
+          0.0,
+          17.165813188149073
+        ],
+        "unserved_cooling_rt": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "district_cooling_settlement": [
+          1.6021350812231647,
+          0.0,
+          90.6354936334271
+        ],
+        "net_grid_power_kw": [
+          24.982126913712886,
+          23.20377225025637,
+          22.223463932511773
+        ],
+        "step_settlement": [
+          -59.95710459291092,
+          -111.37810680123057,
+          -160.00894031408475
+        ],
+        "total_settlement": -331.34415170822626
+      }
+    ]
+  },
+  "notes": [
+    "This fixture preserves the deterministic step-start tariff alignment from legacy/old_tpm/src_py/simulator/common/pricing.py and applies it to served RT-hour settlement rather than folding district cooling into site electric load.",
+    "The district-cooling settlement values are the exact served RT-hours multiplied by the configured rate_per_rt_hour of 0.22 over a 24-hour timestep."
+  ]
 }

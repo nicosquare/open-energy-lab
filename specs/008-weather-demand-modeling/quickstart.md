@@ -5,7 +5,9 @@ implementation and validation workflow. The feature adds a reusable
 `open_energy_lab.demand` capability for aligned-history fitting, persisted
 artifacts, and offline weather-conditioned demand sampling, then integrates
 those sampled demand families into `open_energy_lab.simulator` without
-replacing the current deterministic path.
+replacing the current deterministic path. The current implementation now
+includes the simulator-side cooling-aware family surface and committed
+reviewable fixtures for both local-electric and district-cooling service.
 
 ## Preserve / Improve / Reject
 
@@ -78,6 +80,9 @@ rg -n "non_shiftable_load|cool|thermal|district|weather|temperature|demand" \
 Use these sources to confirm:
 
 - deterministic tariff direction remains relevant to simulator settlement
+- district-cooling settlement in the new simulator path is an inference from
+  that same step-start tariff discipline rather than a copied legacy runtime
+  district-cooling module
 - notebook material motivates weather-sensitive demand and explicit thermal
   load concepts
 - non-shiftable electric load and cooling-like thermal loads should not be
@@ -259,21 +264,172 @@ Expected result:
 - the committed demand request and sampled-family fixtures remain auditable
   examples of the exact shared-seed contract
 
-## After Implementation: Exercise The Planned US3 Simulator Workflow
+## After Implementation: Exercise The Implemented US3 Cooling-Aware Simulator Workflow
 
-Run the planned local-electric and district-cooling comparison workflow from
-committed paired family fixtures:
+The first-release simulator contract now adds one stable paired-family
+evaluation surface with exactly one configured cooling service path per family.
+
+Committed review fixtures include:
+
+- `tests/fixtures/simulator/demand_local_electric_family_case.json`
+- `tests/fixtures/simulator/demand_district_cooling_family_case.json`
+- `tests/fixtures/simulator/demand_invalid_mixed_cooling_case.json`
+
+Run the implemented cooling-aware family workflow from the committed weather
+and demand family fixtures:
 
 ```bash
-uv run pytest tests/integration/simulator -k "demand or cooling"
+uv run python -c '
+from pathlib import Path
+import json
+
+from open_energy_lab.demand import DemandSamplingRequest, load_demand_artifact, sample_demand_family
+from open_energy_lab.simulator import (
+    ArbitrageObjectiveRepresentation,
+    BatteryComponent,
+    BatteryLoadPVScenario,
+    DemandFamilyEvaluationRequest,
+    DispatchRequestSeries,
+    LoadComponent,
+    PVComponent,
+    PriceSignal,
+    evaluate_demand_family,
+)
+from open_energy_lab.simulator._units import POSITIVE_DISPATCH_MEANING
+from open_energy_lab.simulator.demand import (
+    CoolingServiceConfiguration,
+    DistrictCoolingTariff,
+    LocalElectricCoolingConfiguration,
+)
+from open_energy_lab.simulator.weather import weather_component_from_sampled_trace
+from open_energy_lab.weather import WeatherSamplingRequest, load_weather_artifact, sample_weather_family
+
+weather_artifact = load_weather_artifact(
+    json.loads(Path("tests/fixtures/weather/fitted_weather_artifact_v1.json").read_text()),
+    expected_timestep_hours=24.0,
+)
+weather_family = sample_weather_family(
+    weather_artifact,
+    request=WeatherSamplingRequest(num_steps=3, scenario_count=2, family_seed=13),
+    expected_timestep_hours=24.0,
+)
+demand_artifact = load_demand_artifact(
+    json.loads(Path("tests/fixtures/demand/fitted_demand_artifact_v1.json").read_text()),
+    expected_timestep_hours=24.0,
+)
+demand_family = sample_demand_family(
+    demand_artifact,
+    request=DemandSamplingRequest(
+        weather_family_reference=weather_family,
+        num_steps=3,
+        scenario_count=2,
+        paired_family_seed=13,
+    ),
+)
+
+weather = weather_component_from_sampled_trace(weather_family.sampled_traces[0])
+grid = weather.time_grid
+base_scenario = BatteryLoadPVScenario(
+    scenario_id="quickstart-demand-family",
+    time_grid=grid,
+    battery=BatteryComponent(
+        name="battery",
+        capacity_kwh=8.0,
+        max_charge_kw=3.0,
+        max_discharge_kw=3.0,
+        charge_efficiency=0.95,
+        discharge_efficiency=0.95,
+        initial_soc=0.25,
+    ),
+    load=LoadComponent(
+        name="placeholder-load",
+        demand_kw=[0.0] * grid.num_steps,
+        interpretation="exogenous-consumption",
+        time_grid=grid,
+        source="quickstart-placeholder",
+    ),
+    weather=weather,
+    pv=PVComponent(
+        name="pv",
+        rated_power_kw=4.0,
+        temperature_coefficient_pct_per_c=-0.4,
+        reference_irradiance_w_per_m2=1000.0,
+        reference_temperature_c=25.0,
+        derivation_name="ghi-linear-temperature-adjusted",
+        irradiance_field_names=("global_horizontal_irradiance_w_per_m2",),
+    ),
+    price_signal=PriceSignal(
+        currency="USD",
+        unit_rate_name="energy-price",
+        import_prices=[0.10, 0.20, 0.30],
+        export_price_ratio=0.8,
+        interpretation="discounted export relative to import prices",
+        time_alignment="step-start",
+        time_grid=grid,
+    ),
+    objective=ArbitrageObjectiveRepresentation(
+        objective_name="grid-settlement",
+        settlement_basis="grid-settlement",
+        allow_export=True,
+        export_price_ratio=0.8,
+    ),
+    dispatch_requests=DispatchRequestSeries(
+        requested_power_kw=[0.0, 0.0, 0.0],
+        sign_convention=POSITIVE_DISPATCH_MEANING,
+        source="quickstart",
+    ),
+)
+
+local_result = evaluate_demand_family(
+    DemandFamilyEvaluationRequest(
+        base_scenario_reference=base_scenario,
+        weather_family=weather_family,
+        demand_family=demand_family,
+        cooling_service_configuration=CoolingServiceConfiguration(
+            service_path="local-electric",
+            local_electric_cooling=LocalElectricCoolingConfiguration(
+                source_name="quickstart-local-cooling",
+                electric_kw_per_rt=1.15,
+                valid_for_feature_version="008-weather-demand-modeling",
+            ),
+            source="quickstart",
+        ),
+    )
+)
+
+district_result = evaluate_demand_family(
+    DemandFamilyEvaluationRequest(
+        base_scenario_reference=base_scenario,
+        weather_family=weather_family,
+        demand_family=demand_family,
+        cooling_service_configuration=CoolingServiceConfiguration(
+            service_path="district-cooling",
+            district_cooling_tariff=DistrictCoolingTariff(
+                currency="USD",
+                rate_per_rt_hour=0.22,
+                time_alignment="step-start",
+                tariff_name="quickstart-district",
+            ),
+            source="quickstart",
+        ),
+    )
+)
+
+print(local_result.cooling_service_path, local_result.scenario_results[0].site_electric_load_kw)
+print(district_result.cooling_service_path, district_result.scenario_results[0].district_cooling_settlement)
+'
 ```
 
 Expected result:
 
-- local electric cooling adds derived `kW` to site electric load
-- district cooling serves thermal demand directly in `RT`
-- served district cooling does not appear in site electric load
-- settlement reflects both electric and district-cooling accounting paths
+- the simulator root import exposes `evaluate_demand_family` and the demand-
+  family request/result types without widening the import boundary
+- local-electric cooling adds only the converted cooling electric load to site
+  electric demand
+- district-cooling service leaves site electric demand equal to non-thermal
+  electric demand and settles served cooling separately in served `RT-hour`
+  units
+- replay from the same paired-family seed and scenario ordering remains exact
 
 ## Planned Default Validation Commands
 

@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from .pricing import DistrictCoolingTariff
+
 
 _SUPPORTED_SERVICE_PATHS = {"local-electric", "district-cooling"}
 
@@ -25,26 +27,6 @@ class LocalElectricCoolingConfiguration:
             raise ValueError("source_name must be provided")
         if not self.valid_for_feature_version:
             raise ValueError("valid_for_feature_version must be provided")
-
-
-@dataclass(slots=True)
-class DistrictCoolingTariff:
-    """Deterministic district-cooling settlement definition."""
-
-    currency: str
-    rate_per_rt_hour: float
-    time_alignment: str
-    tariff_name: str
-
-    def __post_init__(self) -> None:
-        if self.rate_per_rt_hour < 0.0:
-            raise ValueError("rate_per_rt_hour must be non-negative")
-        if self.time_alignment != "step-start":
-            raise ValueError("time_alignment must be step-start")
-        if not self.currency:
-            raise ValueError("currency must be provided")
-        if not self.tariff_name:
-            raise ValueError("tariff_name must be provided")
 
 
 @dataclass(slots=True)

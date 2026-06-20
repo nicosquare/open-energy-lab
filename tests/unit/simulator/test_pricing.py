@@ -7,6 +7,7 @@ import pytest
 from open_energy_lab.simulator.pricing import (
     ArbitrageObjectiveRepresentation,
     DeterministicRulePolicy,
+    DistrictCoolingTariff,
     PriceSignal,
 )
 from open_energy_lab.simulator.scenario import TimeGrid
@@ -93,3 +94,24 @@ def test_objective_requires_discounted_export_settlement() -> None:
             allow_export=True,
             export_price_ratio=1.0,
         )
+
+
+def test_district_cooling_tariff_requires_step_start_alignment() -> None:
+    with pytest.raises(ValueError, match="step-start"):
+        DistrictCoolingTariff(
+            currency="USD",
+            rate_per_rt_hour=0.22,
+            time_alignment="hour-end",
+            tariff_name="invalid-district",
+        )
+
+
+def test_district_cooling_tariff_converts_to_step_rate() -> None:
+    tariff = DistrictCoolingTariff(
+        currency="USD",
+        rate_per_rt_hour=0.22,
+        time_alignment="step-start",
+        tariff_name="district-24h",
+    )
+
+    assert tariff.settlement_rate_for_step(24.0) == pytest.approx(5.28)

@@ -7,6 +7,7 @@ from dataclasses import dataclass, field, replace
 
 from .demand import CoolingServiceConfiguration, derive_local_cooling_electric_kw
 from .load import CoolingServiceBalance, LoadComponent
+from .objective import evaluate_district_cooling_settlement
 from .scenario import BatteryLoadPVScenario
 from .weather import weather_component_from_sampled_trace
 
@@ -308,19 +309,20 @@ def _cooling_service_balance(
         scenario_index=scenario_index,
         cooling_demand_rt=cooling_demand_rt,
     )
-    district_cooling_settlement = [
-        served_value * config.district_cooling_tariff.rate_per_rt_hour * time_step_hours
-        for served_value in served_cooling_rt
-    ]
+    district_settlement = evaluate_district_cooling_settlement(
+        served_cooling_rt=served_cooling_rt,
+        time_step_hours=time_step_hours,
+        tariff=config.district_cooling_tariff,
+    )
     return CoolingServiceBalance(
         time_grid=time_grid,
         local_cooling_electric_kw=[0.0] * time_grid.num_steps,
-        served_cooling_rt=served_cooling_rt,
+        served_cooling_rt=list(district_settlement.served_cooling_rt),
         unserved_cooling_rt=[
             demand_value - served_value
             for demand_value, served_value in zip(cooling_demand_rt, served_cooling_rt, strict=True)
         ],
-        district_cooling_settlement=district_cooling_settlement,
+        district_cooling_settlement=list(district_settlement.step_settlement),
         source=config.source,
     )
 

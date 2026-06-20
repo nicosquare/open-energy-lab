@@ -26,6 +26,13 @@ if TYPE_CHECKING:
         DispatchRequestSeries,
         TimeGrid,
     )
+    from .stochastic_demand import (
+        DemandFamilyEvaluationRequest,
+        DemandFamilyEvaluationResult,
+        DemandScenarioEvaluationResult,
+        SUPPORTED_SUMMARY_OUTPUT_FIELDS as DEMAND_SUPPORTED_SUMMARY_OUTPUT_FIELDS,
+        evaluate_demand_family,
+    )
     from .stochastic_weather import (
         SUPPORTED_SUMMARY_OUTPUT_FIELDS,
         WeatherFamilyEvaluationRequest,
@@ -41,8 +48,25 @@ _EXPORT_MAP = {
     "ArbitrageScenario": (".scenario", "ArbitrageScenario"),
     "BatteryLoadPVScenario": (".scenario", "BatteryLoadPVScenario"),
     "BatteryComponent": (".scenario", "BatteryComponent"),
+    "DEMAND_SUPPORTED_SUMMARY_OUTPUT_FIELDS": (
+        ".stochastic_demand",
+        "SUPPORTED_SUMMARY_OUTPUT_FIELDS",
+    ),
+    "DemandFamilyEvaluationRequest": (
+        ".stochastic_demand",
+        "DemandFamilyEvaluationRequest",
+    ),
+    "DemandFamilyEvaluationResult": (
+        ".stochastic_demand",
+        "DemandFamilyEvaluationResult",
+    ),
+    "DemandScenarioEvaluationResult": (
+        ".stochastic_demand",
+        "DemandScenarioEvaluationResult",
+    ),
     "DeterministicRulePolicy": (".pricing", "DeterministicRulePolicy"),
     "DispatchRequestSeries": (".scenario", "DispatchRequestSeries"),
+    "evaluate_demand_family": (".stochastic_demand", "evaluate_demand_family"),
     "evaluate_with_controller": (".controller_runner", "evaluate_with_controller"),
     "evaluate_weather_family": (".stochastic_weather", "evaluate_weather_family"),
     "LoadComponent": (".load", "LoadComponent"),
@@ -73,8 +97,13 @@ __all__ = [
     "ArbitrageScenario",
     "BatteryLoadPVScenario",
     "BatteryComponent",
+    "DEMAND_SUPPORTED_SUMMARY_OUTPUT_FIELDS",
+    "DemandFamilyEvaluationRequest",
+    "DemandFamilyEvaluationResult",
+    "DemandScenarioEvaluationResult",
     "DeterministicRulePolicy",
     "DispatchRequestSeries",
+    "evaluate_demand_family",
     "evaluate_with_controller",
     "evaluate_weather_family",
     "LoadComponent",
