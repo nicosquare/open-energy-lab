@@ -166,9 +166,9 @@ working notes that apply across all stories.
 
 - [X] T042 [P] Update public API maturity and dependency classification for `open_energy_lab.demand` and cooling-aware simulator evaluation in `docs/migration/api-maturity.md` and `docs/migration/dependency-policy.md`
 - [X] T043 [P] Update fixture provenance, environment, and parity guidance for demand validation in `docs/migration/fixture-provenance.md`, `docs/migration/environment-assumptions.md`, and `docs/migration/parity-validation.md`
-- [ ] T044 [P] Update migration index and repository working guidance for the demand feature in `docs/migration/README.md` and `AGENTS.md`
-- [ ] T045 Run the validation commands documented in `specs/008-weather-demand-modeling/quickstart.md`: `uv run pytest tests/unit/demand tests/integration/demand tests/integration/simulator`, `uv run pytest tests/unit/test_optional_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py`, `uv run python -c "import open_energy_lab; import open_energy_lab.demand; import open_energy_lab.simulator"`, and `rg "from legacy|import legacy" src/open_energy_lab/demand src/open_energy_lab/simulator tests/unit/demand tests/integration/demand tests/integration/simulator docs/migration`
-- [ ] T046 Document final validation outcomes and any skipped optional checks in `specs/008-weather-demand-modeling/quickstart.md`
+- [X] T044 [P] Update migration index and repository working guidance for the demand feature in `docs/migration/README.md` and `AGENTS.md`
+- [X] T045 Run the validation commands documented in `specs/008-weather-demand-modeling/quickstart.md`: `uv run pytest tests/unit/demand tests/integration/demand tests/integration/simulator`, `uv run pytest tests/unit/test_optional_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py`, `uv run python -c "import open_energy_lab; import open_energy_lab.demand; import open_energy_lab.simulator"`, and `rg "from legacy|import legacy" src/open_energy_lab/demand src/open_energy_lab/simulator tests/unit/demand tests/integration/demand tests/integration/simulator docs/migration`
+- [X] T046 Document final validation outcomes and any skipped optional checks in `specs/008-weather-demand-modeling/quickstart.md`
 
 ---
 

@@ -442,5 +442,25 @@ uv run python -c "import open_energy_lab; import open_energy_lab.demand; import 
 rg "from legacy|import legacy" src/open_energy_lab/demand src/open_energy_lab/simulator tests/unit/demand tests/integration/demand tests/integration/simulator docs/migration
 ```
 
+## Recorded Validation Outcome (2026-06-20)
+
+The default offline validation subset was run on 2026-06-20 with these
+results:
+
+- `uv run pytest tests/unit/demand tests/integration/demand tests/integration/simulator`:
+  passed (`91 passed`)
+- `uv run pytest tests/unit/test_optional_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py`:
+  passed (`38 passed`)
+- `uv run python -c "import open_energy_lab; import open_energy_lab.demand; import open_energy_lab.simulator"`:
+  passed
+- `rg "from legacy|import legacy" ...`:
+  returned no matches for the demand, simulator, test, or migration paths in
+  the default review subset
+
+No optional live weather fetches, notebook execution, legacy runtime checks,
+solver-backed checks, or GPU/SLURM validations were run as part of this
+feature’s default review path. Those checks remain outside the committed
+offline subset and should be documented separately if they are ever added.
+
 If optional checks outside the default review path are ever added, document
 them separately rather than widening the base environment requirements.
