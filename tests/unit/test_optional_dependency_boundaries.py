@@ -104,6 +104,16 @@ def test_demand_import_does_not_load_optional_research_stacks() -> None:
     _assert_import_stays_clear_of_optional_research_stacks("open_energy_lab.demand")
 
 
+def test_tpm_import_does_not_load_optional_research_stacks() -> None:
+    """The TPM package import must stay isolated from heavy optional stacks."""
+    _assert_import_stays_clear_of_optional_research_stacks("open_energy_lab.tpm")
+
+
+def test_planning_import_does_not_load_optional_research_stacks() -> None:
+    """The planning package import must stay isolated from heavy optional stacks."""
+    _assert_import_stays_clear_of_optional_research_stacks("open_energy_lab.planning")
+
+
 def test_visualization_import_does_not_load_optional_research_stacks() -> None:
     """The stable visualization package import must stay isolated from optional stacks."""
     _assert_import_stays_clear_of_optional_research_stacks("open_energy_lab.visualization")
@@ -126,6 +136,20 @@ def test_visualization_import_does_not_load_optional_research_stacks() -> None:
         "open_energy_lab.weather",
         "open_energy_lab.demand",
         "open_energy_lab.simulator.stochastic_demand",
+        "open_energy_lab.simulator.planning_export",
+        "open_energy_lab.tpm",
+        "open_energy_lab.tpm.artifact",
+        "open_energy_lab.tpm.data",
+        "open_energy_lab.tpm.features",
+        "open_energy_lab.tpm.fit",
+        "open_energy_lab.tpm.query",
+        "open_energy_lab.tpm.piecewise",
+        "open_energy_lab.tpm.optional_spflow",
+        "open_energy_lab.planning",
+        "open_energy_lab.planning.dataset",
+        "open_energy_lab.planning.problem",
+        "open_energy_lab.planning.piecewise",
+        "open_energy_lab.planning.optional_solver",
         *VISUALIZATION_MODULES,
     ),
 )

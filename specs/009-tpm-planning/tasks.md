@@ -42,13 +42,13 @@ without introducing runtime legacy dependencies.
 **Purpose**: Add shared validation infrastructure, package boundaries, and
 module scaffolding that block all user-story work.
 
-- [ ] T005 [P] Add import-boundary coverage for `open_energy_lab.tpm` and `open_energy_lab.planning` in `tests/unit/tpm/test_import_boundary.py` and `tests/unit/planning/test_import_boundary.py`
-- [ ] T006 [P] Add no-legacy-import coverage for TPM and planning modules in `tests/unit/tpm/test_no_legacy_imports.py` and `tests/unit/planning/test_no_legacy_imports.py`
-- [ ] T007 [P] Extend root dependency-boundary coverage so `open_energy_lab.tpm`, `open_energy_lab.planning`, and `open_energy_lab.simulator.planning_export` remain import-safe until SPFlow-backed or Pyomo-backed workflows are invoked in `tests/unit/test_optional_dependency_boundaries.py`
-- [ ] T008 [P] Extend stable package-surface and import-contract coverage for new TPM and planning exports in `tests/unit/tpm/test_package_surface.py`, `tests/unit/planning/test_package_surface.py`, and `tests/unit/test_import_contract.py`
-- [ ] T009 [P] Add shared fixture loading helpers for planning datasets, TPM artifacts, and planning problems in `tests/integration/planning/fixture_utils.py`
-- [ ] T010 [P] Add fixture-schema and provenance validation for planning and TPM artifacts in `tests/integration/planning/test_fixture_schema.py` and `tests/integration/planning/test_tpm_fixture_schema.py`
-- [ ] T010a [P] Add end-to-end reproducibility contract validation for export, TPM query, and planning assembly or solve behavior in `tests/integration/planning/test_reproducibility_contract.py`
+- [X] T005 [P] Add import-boundary coverage for `open_energy_lab.tpm` and `open_energy_lab.planning` in `tests/unit/tpm/test_import_boundary.py` and `tests/unit/planning/test_import_boundary.py`
+- [X] T006 [P] Add no-legacy-import coverage for TPM and planning modules in `tests/unit/tpm/test_no_legacy_imports.py` and `tests/unit/planning/test_no_legacy_imports.py`
+- [X] T007 [P] Extend root dependency-boundary coverage so `open_energy_lab.tpm`, `open_energy_lab.planning`, and `open_energy_lab.simulator.planning_export` remain import-safe until SPFlow-backed or Pyomo-backed workflows are invoked in `tests/unit/test_optional_dependency_boundaries.py`
+- [X] T008 [P] Extend stable package-surface and import-contract coverage for new TPM and planning exports in `tests/unit/tpm/test_package_surface.py`, `tests/unit/planning/test_package_surface.py`, and `tests/unit/test_import_contract.py`
+- [X] T009 [P] Add shared fixture loading helpers for planning datasets, TPM artifacts, and planning problems in `tests/integration/planning/fixture_utils.py`
+- [X] T010 [P] Add fixture-schema and provenance validation for planning and TPM artifacts in `tests/integration/planning/test_fixture_schema.py` and `tests/integration/planning/test_tpm_fixture_schema.py`
+- [X] T010a [P] Add end-to-end reproducibility contract validation for export, TPM query, and planning assembly or solve behavior in `tests/integration/planning/test_reproducibility_contract.py`
 - [ ] T011 Create foundational module scaffolds and lazy export placeholders in `src/open_energy_lab/simulator/planning_export.py`, `src/open_energy_lab/tpm/artifact.py`, `src/open_energy_lab/tpm/data.py`, `src/open_energy_lab/tpm/features.py`, `src/open_energy_lab/tpm/fit.py`, `src/open_energy_lab/tpm/query.py`, `src/open_energy_lab/tpm/piecewise.py`, `src/open_energy_lab/tpm/optional_spflow.py`, `src/open_energy_lab/planning/dataset.py`, `src/open_energy_lab/planning/problem.py`, `src/open_energy_lab/planning/piecewise.py`, and `src/open_energy_lab/planning/optional_solver.py`
 - [ ] T012 [P] Add feature-scope and dependency-boundary placeholders in `docs/migration/tpm-planning.md`, `docs/migration/api-maturity.md`, and `docs/migration/dependency-policy.md`
 

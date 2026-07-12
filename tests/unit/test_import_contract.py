@@ -40,6 +40,8 @@ EXPECTED_DEMAND_EXPORTS = [
     "DemandSamplingRequest",
     "sample_demand_family",
 ]
+TPM_SCAFFOLD_DOCSTRING_FRAGMENT = "Future TPM interface scaffold"
+PLANNING_SCAFFOLD_DOCSTRING_FRAGMENT = "Future planning interface scaffold"
 
 
 def test_root_package_imports_from_source_tree_without_optional_stacks():
@@ -194,6 +196,68 @@ def test_demand_package_import_contract_stays_reserved_and_import_light():
     assert module.fit_demand_model.__module__ == "open_energy_lab.demand.fit"
     assert module.load_demand_artifact.__module__ == "open_energy_lab.demand.artifact"
     assert module.sample_demand_family.__module__ == "open_energy_lab.demand.sampling"
+
+    newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
+        set(sys.modules) - before_import
+    )
+    assert newly_loaded_optional_modules == set()
+
+
+def test_tpm_package_imports_from_source_tree_without_optional_stacks():
+    before_import = set(sys.modules)
+    module_spec = importlib.util.find_spec("open_energy_lab.tpm")
+
+    if module_spec is None:
+        assert "open_energy_lab.tpm" not in sys.modules
+        return
+
+    module = importlib.import_module("open_energy_lab.tpm")
+
+    assert module.__file__ is not None
+    module_file = Path(module.__file__).resolve()
+    assert module.__name__ == "open_energy_lab.tpm"
+    assert module_file.name == "__init__.py"
+    assert module_file.parent.name == "tpm"
+    assert module_file.parent.parent.name == "open_energy_lab"
+
+    if hasattr(module, "__all__"):
+        assert isinstance(module.__all__, list)
+        assert all("." not in export_name for export_name in module.__all__)
+        assert all(not export_name.startswith("_") for export_name in module.__all__)
+    else:
+        assert module.__doc__ is not None
+        assert TPM_SCAFFOLD_DOCSTRING_FRAGMENT in module.__doc__
+
+    newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
+        set(sys.modules) - before_import
+    )
+    assert newly_loaded_optional_modules == set()
+
+
+def test_planning_package_imports_from_source_tree_without_optional_stacks():
+    before_import = set(sys.modules)
+    module_spec = importlib.util.find_spec("open_energy_lab.planning")
+
+    if module_spec is None:
+        assert "open_energy_lab.planning" not in sys.modules
+        return
+
+    module = importlib.import_module("open_energy_lab.planning")
+
+    assert module.__file__ is not None
+    module_file = Path(module.__file__).resolve()
+    assert module.__name__ == "open_energy_lab.planning"
+    assert module_file.name == "__init__.py"
+    assert module_file.parent.name == "planning"
+    assert module_file.parent.parent.name == "open_energy_lab"
+
+    if hasattr(module, "__all__"):
+        assert isinstance(module.__all__, list)
+        assert all("." not in export_name for export_name in module.__all__)
+        assert all(not export_name.startswith("_") for export_name in module.__all__)
+    else:
+        assert module.__doc__ is not None
+        assert PLANNING_SCAFFOLD_DOCSTRING_FRAGMENT in module.__doc__
 
     newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
         set(sys.modules) - before_import
