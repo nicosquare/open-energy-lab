@@ -1,0 +1,26 @@
+{
+  "fixture_name": "planning_dataset_export_case",
+  "fixture_status": "placeholder",
+  "purpose": "Reserve the offline simulator-family to planning-dataset export fixture path for spec 009.",
+  "spec_feature": "009-tpm-planning",
+  "provenance": {
+    "author": "codex",
+    "origin": "phase-1 scaffold placeholder",
+    "legacy_evidence_paths": [
+      "legacy/old_tpm/src_py/simulator/data_generation.py",
+      "legacy/old_tpm/src_py/simulator/feature_engineering.py"
+    ],
+    "generation_command": "created manually during Phase 1 scaffolding",
+    "random_seed": null,
+    "refresh_policy": "Replace with an active deterministic export fixture when User Story 1 is implemented."
+  },
+  "planned_contracts": [
+    "specs/009-tpm-planning/contracts/simulator-export-contract.md",
+    "specs/009-tpm-planning/contracts/planning-dataset-contract.md",
+    "specs/009-tpm-planning/contracts/validation-contract.md"
+  ],
+  "notes": [
+    "This placeholder does not represent a final dataset export payload.",
+    "The committed active fixture must remain offline, deterministic, and reviewable in git."
+  ]
+}

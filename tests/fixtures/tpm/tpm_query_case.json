@@ -1,0 +1,25 @@
+{
+  "fixture_name": "tpm_query_case",
+  "fixture_status": "placeholder",
+  "purpose": "Reserve the deterministic TPM query fixture path for spec 009.",
+  "spec_feature": "009-tpm-planning",
+  "provenance": {
+    "author": "codex",
+    "origin": "phase-1 scaffold placeholder",
+    "legacy_evidence_paths": [
+      "legacy/old_tpm/src_py/tpm/spn/main.py",
+      "legacy/old_tpm/src_py/tpm/data/encoding.py"
+    ],
+    "generation_command": "created manually during Phase 1 scaffolding",
+    "random_seed": null,
+    "refresh_policy": "Replace with an active deterministic query fixture when User Story 2 is implemented."
+  },
+  "planned_contracts": [
+    "specs/009-tpm-planning/contracts/tpm-artifact-contract.md",
+    "specs/009-tpm-planning/contracts/validation-contract.md"
+  ],
+  "notes": [
+    "The final fixture should cover conditional probability or log-likelihood outputs for the configured shortfall target.",
+    "The final fixture should preserve explicit marginalization and decision-feature assignment expectations."
+  ]
+}

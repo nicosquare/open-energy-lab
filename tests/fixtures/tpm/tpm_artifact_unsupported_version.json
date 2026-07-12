@@ -1,0 +1,24 @@
+{
+  "fixture_name": "tpm_artifact_unsupported_version",
+  "fixture_status": "placeholder",
+  "purpose": "Reserve the unsupported-version TPM artifact fixture path for spec 009.",
+  "spec_feature": "009-tpm-planning",
+  "provenance": {
+    "author": "codex",
+    "origin": "phase-1 scaffold placeholder",
+    "legacy_evidence_paths": [
+      "legacy/old_tpm/src_py/tpm/spn/main.py"
+    ],
+    "generation_command": "created manually during Phase 1 scaffolding",
+    "random_seed": null,
+    "refresh_policy": "Replace with an active unsupported-version fixture when User Story 2 artifact loading is implemented."
+  },
+  "planned_contracts": [
+    "specs/009-tpm-planning/contracts/tpm-artifact-contract.md",
+    "specs/009-tpm-planning/contracts/validation-contract.md"
+  ],
+  "notes": [
+    "The final fixture should be derived from the supported TPM artifact fixture with only the schema version changed.",
+    "Loading an unsupported version must fail fast."
+  ]
+}

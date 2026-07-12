@@ -30,10 +30,10 @@ implementation and testing of each story.
 **Purpose**: Establish TPM, planning, fixture, and migration-note scaffolding
 without introducing runtime legacy dependencies.
 
-- [ ] T001 Create TPM and planning package scaffolds in `src/open_energy_lab/tpm/__init__.py`, `tests/unit/tpm/__init__.py`, `tests/unit/planning/__init__.py`, and `tests/integration/planning/__init__.py`
-- [ ] T002 [P] Create planning and TPM fixture scaffolds in `tests/fixtures/planning/planning_dataset_export_case.json`, `tests/fixtures/planning/planning_problem_case.json`, `tests/fixtures/tpm/planning_dataset_v1.json`, `tests/fixtures/tpm/tpm_artifact_v1.json`, `tests/fixtures/tpm/tpm_artifact_unsupported_version.json`, and `tests/fixtures/tpm/tpm_query_case.json`
-- [ ] T003 [P] Add fixture provenance placeholders in `tests/fixtures/planning/README.md` and `tests/fixtures/tpm/README.md`
-- [ ] T004 [P] Create the TPM-planning migration note scaffold in `docs/migration/tpm-planning.md`
+- [X] T001 Create TPM and planning package scaffolds in `src/open_energy_lab/tpm/__init__.py`, `tests/unit/tpm/__init__.py`, `tests/unit/planning/__init__.py`, and `tests/integration/planning/__init__.py`
+- [X] T002 [P] Create planning and TPM fixture scaffolds in `tests/fixtures/planning/planning_dataset_export_case.json`, `tests/fixtures/planning/planning_problem_case.json`, `tests/fixtures/tpm/planning_dataset_v1.json`, `tests/fixtures/tpm/tpm_artifact_v1.json`, `tests/fixtures/tpm/tpm_artifact_unsupported_version.json`, and `tests/fixtures/tpm/tpm_query_case.json`
+- [X] T003 [P] Add fixture provenance placeholders in `tests/fixtures/planning/README.md` and `tests/fixtures/tpm/README.md`
+- [X] T004 [P] Create the TPM-planning migration note scaffold in `docs/migration/tpm-planning.md`
 
 ---
 

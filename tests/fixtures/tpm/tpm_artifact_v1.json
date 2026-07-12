@@ -1,0 +1,26 @@
+{
+  "fixture_name": "tpm_artifact_v1",
+  "fixture_status": "placeholder",
+  "purpose": "Reserve the supported TPM artifact fixture path for spec 009.",
+  "spec_feature": "009-tpm-planning",
+  "provenance": {
+    "author": "codex",
+    "origin": "phase-1 scaffold placeholder",
+    "legacy_evidence_paths": [
+      "legacy/old_tpm/src_py/tpm/data/datahandler.py",
+      "legacy/old_tpm/src_py/tpm/data/features/feature.py",
+      "legacy/old_tpm/src_py/tpm/spn/main.py"
+    ],
+    "generation_command": "created manually during Phase 1 scaffolding",
+    "random_seed": null,
+    "refresh_policy": "Replace with an active supported TPM artifact fixture when User Story 2 is implemented."
+  },
+  "planned_contracts": [
+    "specs/009-tpm-planning/contracts/tpm-artifact-contract.md",
+    "specs/009-tpm-planning/contracts/validation-contract.md"
+  ],
+  "notes": [
+    "The final artifact should keep typed feature metadata explicit and versioned.",
+    "The final artifact should document the SPN payload representation rather than rely on pickle-only ownership."
+  ]
+}
