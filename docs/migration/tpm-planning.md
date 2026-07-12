@@ -129,3 +129,44 @@ These Phase 2 modules are still scaffolds. They intentionally reserve the
 runtime and documentation surface without claiming that dataset export, TPM
 artifact reload, backend-backed querying, or planning-model solve behavior is
 already implemented.
+
+## Phase 3 User Story 1: Export Flattening And Target Semantics
+
+`src/open_energy_lab/simulator/planning_export.py` now documents and preserves
+the selected simulator export behavior with exact legacy evidence from
+`legacy/old_tpm/src_py/simulator/feature_engineering.py`.
+
+### Legacy Evidence Used
+
+- `add_aggregate_features()`
+- `add_battery_panel_capacity_features()`
+- `add_simple_binary_indicator()`
+
+### Preserve
+
+- Keep the legacy file's core intuition that simulator-produced horizon series
+  are the right starting point for TPM-oriented learning inputs.
+- Keep scenario-level design metadata beside those series so each exported row
+  remains one design-and-weather outcome.
+
+### Improve
+
+- Export a stable library-owned contract with deterministic raw flattened
+  columns using `<field>_<step>` names such as `ghi_0`, `load_0`, and
+  `unmet_load_0`.
+- Derive `shortfall` directly from simulator `unmet_load_kw`,
+  `site_electric_load_kw`, and `timestep_hours` as a horizon-level energy
+  ratio.
+- Record this behavior in import-safe library code instead of notebook or
+  dataframe-only feature-engineering steps.
+
+### Reject
+
+- Do not migrate the full legacy aggregate feature expansion from
+  `add_aggregate_features()` into the first persisted planning-dataset
+  contract.
+- Do not migrate engineered blackout-label behavior from
+  `add_simple_binary_indicator()`; the first planning target is the numeric
+  `shortfall` ratio, not a binary failure label.
+- Do not treat `legacy/old_tpm/src_py/simulator/feature_engineering.py` as a
+  runtime dependency or a source of required pandas-based preprocessing.

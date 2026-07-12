@@ -22,8 +22,17 @@ class PlanningDatasetArtifact:
 
     dataset_id: str
     schema_version: str
+    created_at: str = ""
+    row_count: int = 0
+    horizon_steps: int = 0
+    timestep_hours: float = 0.0
     column_order: tuple[str, ...] = field(default_factory=tuple)
+    rows: tuple[Mapping[str, object], ...] = field(default_factory=tuple)
+    design_feature_schema: tuple[Mapping[str, object], ...] = field(default_factory=tuple)
+    series_field_schema: Mapping[str, Mapping[str, object]] = field(default_factory=dict)
+    target_metadata: Mapping[str, object] = field(default_factory=dict)
     provenance: Mapping[str, object] = field(default_factory=dict)
+    export_configuration: Mapping[str, object] = field(default_factory=dict)
 
 
 def load_planning_dataset(source: str | Path | Mapping[str, Any]) -> PlanningDatasetArtifact:

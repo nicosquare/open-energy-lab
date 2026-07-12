@@ -70,14 +70,14 @@ derivation, and provenance metadata.
 
 ### Tests for User Story 1
 
-- [ ] T013 [P] [US1] Add unit coverage for export request validation, scenario alignment failures, and unsupported flattened fields in `tests/unit/simulator/test_planning_export.py`
-- [ ] T014 [P] [US1] Add unit coverage for planning dataset schema versioning, row ordering, `shortfall` aggregation semantics, and export reproducibility metadata in `tests/unit/planning/test_dataset_schema.py`
-- [ ] T015 [P] [US1] Add offline simulator-family-to-dataset integration coverage in `tests/integration/planning/test_dataset_export.py`
+- [X] T013 [P] [US1] Add unit coverage for export request validation, scenario alignment failures, and unsupported flattened fields in `tests/unit/simulator/test_planning_export.py`
+- [X] T014 [P] [US1] Add unit coverage for planning dataset schema versioning, row ordering, `shortfall` aggregation semantics, and export reproducibility metadata in `tests/unit/planning/test_dataset_schema.py`
+- [X] T015 [P] [US1] Add offline simulator-family-to-dataset integration coverage in `tests/integration/planning/test_dataset_export.py`
 
 ### Implementation for User Story 1
 
-- [ ] T016 [US1] Implement export request models, flattened column naming, and horizon-level `shortfall` derivation in `src/open_energy_lab/simulator/planning_export.py`
-- [ ] T016a [US1] Document and preserve the selected simulator feature-flattening and planning-target derivation behavior from `legacy/old_tpm/src_py/simulator/feature_engineering.py` in `src/open_energy_lab/simulator/planning_export.py` and `docs/migration/tpm-planning.md`
+- [X] T016 [US1] Implement export request models, flattened column naming, and horizon-level `shortfall` derivation in `src/open_energy_lab/simulator/planning_export.py`
+- [X] T016a [US1] Document and preserve the selected simulator feature-flattening and planning-target derivation behavior from `legacy/old_tpm/src_py/simulator/feature_engineering.py` in `src/open_energy_lab/simulator/planning_export.py` and `docs/migration/tpm-planning.md`
 - [ ] T017 [US1] Implement planning dataset artifact models, versioned persistence, reload helpers, seed lineage, numeric tolerances, and export reproducibility metadata in `src/open_energy_lab/planning/dataset.py`
 - [ ] T017a [US1] Define and validate the canonical persisted planning-dataset payload shape, including whether JSON stores rows directly or wraps tabular content with metadata, in `src/open_energy_lab/planning/dataset.py` and `tests/unit/planning/test_dataset_schema.py`
 - [ ] T018 [US1] Export the planning-dataset workflow from `src/open_energy_lab/simulator/__init__.py` and `src/open_energy_lab/planning/__init__.py`
