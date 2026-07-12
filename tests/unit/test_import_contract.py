@@ -40,8 +40,11 @@ EXPECTED_DEMAND_EXPORTS = [
     "DemandSamplingRequest",
     "sample_demand_family",
 ]
+EXPECTED_PLANNING_EXPORTS = [
+    "PlanningDatasetArtifact",
+    "load_planning_dataset",
+]
 TPM_SCAFFOLD_DOCSTRING_FRAGMENT = "Future TPM interface scaffold"
-PLANNING_SCAFFOLD_DOCSTRING_FRAGMENT = "Future planning interface scaffold"
 
 
 def test_root_package_imports_from_source_tree_without_optional_stacks():
@@ -250,14 +253,9 @@ def test_planning_package_imports_from_source_tree_without_optional_stacks():
     assert module_file.name == "__init__.py"
     assert module_file.parent.name == "planning"
     assert module_file.parent.parent.name == "open_energy_lab"
-
-    if hasattr(module, "__all__"):
-        assert isinstance(module.__all__, list)
-        assert all("." not in export_name for export_name in module.__all__)
-        assert all(not export_name.startswith("_") for export_name in module.__all__)
-    else:
-        assert module.__doc__ is not None
-        assert PLANNING_SCAFFOLD_DOCSTRING_FRAGMENT in module.__doc__
+    assert module.__all__ == EXPECTED_PLANNING_EXPORTS
+    assert module.PlanningDatasetArtifact.__module__ == "open_energy_lab.planning.dataset"
+    assert module.load_planning_dataset.__module__ == "open_energy_lab.planning.dataset"
 
     newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
         set(sys.modules) - before_import

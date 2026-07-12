@@ -8,6 +8,7 @@ import json
 import pytest
 
 from open_energy_lab.planning.dataset import (
+    PLANNING_DATASET_REQUIRED_KEYS,
     PlanningDatasetArtifact,
     SUPPORTED_PLANNING_DATASET_SCHEMA_VERSIONS,
     UnsupportedPlanningDatasetVersionError,
@@ -142,12 +143,73 @@ def test_planning_dataset_artifact_preserves_minimal_identity_fields() -> None:
     assert artifact.provenance["family_id"] == "fixture-family"
 
 
+def test_planning_dataset_to_dict_uses_top_level_rows_payload_shape() -> None:
+    artifact = load_planning_dataset(_dataset_payload())
+
+    payload = artifact.to_dict()
+
+    assert tuple(payload) == PLANNING_DATASET_REQUIRED_KEYS
+    assert isinstance(payload["rows"], list)
+    assert isinstance(payload["rows"][0], dict)
+    assert "table" not in payload
+    assert "metadata" not in payload
+
+
+def test_planning_dataset_write_json_round_trips_without_prewrapped_payload(tmp_path) -> None:
+    payload = _dataset_payload()
+    payload["created_at"] = ""
+
+    artifact = PlanningDatasetArtifact(
+        dataset_id=str(payload["dataset_id"]),
+        schema_version=str(payload["schema_version"]),
+        created_at=str(payload["created_at"]),
+        row_count=int(payload["row_count"]),
+        horizon_steps=int(payload["horizon_steps"]),
+        timestep_hours=float(payload["timestep_hours"]),
+        column_order=tuple(payload["column_order"]),
+        rows=tuple(payload["rows"]),
+        design_feature_schema=tuple(payload["design_feature_schema"]),
+        series_field_schema=dict(payload["series_field_schema"]),
+        target_metadata=dict(payload["target_metadata"]),
+        provenance=dict(payload["provenance"]),
+        export_configuration=dict(payload["export_configuration"]),
+    )
+    dataset_path = tmp_path / "planning_dataset_v1.json"
+
+    artifact.write_json(dataset_path)
+    persisted_payload = json.loads(dataset_path.read_text(encoding="utf-8"))
+    loaded = load_planning_dataset(dataset_path)
+
+    assert tuple(persisted_payload) == PLANNING_DATASET_REQUIRED_KEYS
+    assert persisted_payload["created_at"]
+    assert "table" not in persisted_payload
+    assert "metadata" not in persisted_payload
+    assert loaded.dataset_id == artifact.dataset_id
+    assert loaded.created_at == persisted_payload["created_at"]
+
+
 def test_load_planning_dataset_rejects_unsupported_schema_version() -> None:
     payload = _dataset_payload()
     payload["schema_version"] = "v9"
 
     with pytest.raises(UnsupportedPlanningDatasetVersionError, match="unsupported|version"):
         load_planning_dataset(payload)
+
+
+def test_load_planning_dataset_rejects_wrapped_tabular_payload_shape() -> None:
+    wrapped_payload = {
+        "metadata": {
+            key: value
+            for key, value in _dataset_payload().items()
+            if key != "rows"
+        },
+        "table": {
+            "rows": _dataset_payload()["rows"],
+        },
+    }
+
+    with pytest.raises(ValueError, match="top level|wrapped|rows directly"):
+        load_planning_dataset(wrapped_payload)
 
 
 def test_load_planning_dataset_preserves_row_and_column_order(tmp_path) -> None:

@@ -47,9 +47,11 @@ def test_simulator_import_stays_lightweight() -> None:
         "DeterministicRulePolicy",
         "DispatchRequestSeries",
         "evaluate_demand_family",
+        "export_planning_dataset",
         "evaluate_with_controller",
         "evaluate_weather_family",
         "LoadComponent",
+        "PlanningExportRequest",
         "PVComponent",
         "PriceSignal",
         "SUPPORTED_SUMMARY_OUTPUT_FIELDS",
@@ -70,10 +72,18 @@ def test_simulator_import_stays_lightweight() -> None:
         == "open_energy_lab.simulator.stochastic_demand"
     )
     assert (
+        module.export_planning_dataset.__module__
+        == "open_energy_lab.simulator.planning_export"
+    )
+    assert (
         module.evaluate_weather_family.__module__
         == "open_energy_lab.simulator.stochastic_weather"
     )
     assert module.LoadComponent.__module__ == "open_energy_lab.simulator.load"
+    assert (
+        module.PlanningExportRequest.__module__
+        == "open_energy_lab.simulator.planning_export"
+    )
     assert module.PriceSignal.__module__ == "open_energy_lab.simulator.pricing"
     assert module.PVComponent.__module__ == "open_energy_lab.simulator.pv"
     assert module.WeatherComponent.__module__ == "open_energy_lab.simulator.weather"

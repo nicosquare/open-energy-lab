@@ -78,9 +78,9 @@ derivation, and provenance metadata.
 
 - [X] T016 [US1] Implement export request models, flattened column naming, and horizon-level `shortfall` derivation in `src/open_energy_lab/simulator/planning_export.py`
 - [X] T016a [US1] Document and preserve the selected simulator feature-flattening and planning-target derivation behavior from `legacy/old_tpm/src_py/simulator/feature_engineering.py` in `src/open_energy_lab/simulator/planning_export.py` and `docs/migration/tpm-planning.md`
-- [ ] T017 [US1] Implement planning dataset artifact models, versioned persistence, reload helpers, seed lineage, numeric tolerances, and export reproducibility metadata in `src/open_energy_lab/planning/dataset.py`
-- [ ] T017a [US1] Define and validate the canonical persisted planning-dataset payload shape, including whether JSON stores rows directly or wraps tabular content with metadata, in `src/open_energy_lab/planning/dataset.py` and `tests/unit/planning/test_dataset_schema.py`
-- [ ] T018 [US1] Export the planning-dataset workflow from `src/open_energy_lab/simulator/__init__.py` and `src/open_energy_lab/planning/__init__.py`
+- [X] T017 [US1] Implement planning dataset artifact models, versioned persistence, reload helpers, seed lineage, numeric tolerances, and export reproducibility metadata in `src/open_energy_lab/planning/dataset.py`
+- [X] T017a [US1] Define and validate the canonical persisted planning-dataset payload shape, including whether JSON stores rows directly or wraps tabular content with metadata, in `src/open_energy_lab/planning/dataset.py` and `tests/unit/planning/test_dataset_schema.py`
+- [X] T018 [US1] Export the planning-dataset workflow from `src/open_energy_lab/simulator/__init__.py` and `src/open_energy_lab/planning/__init__.py`
 - [ ] T019 [US1] Populate committed planning-dataset export fixtures and provenance in `tests/fixtures/planning/planning_dataset_export_case.json`, `tests/fixtures/tpm/planning_dataset_v1.json`, `tests/fixtures/planning/README.md`, and `tests/fixtures/tpm/README.md`
 - [ ] T020 [US1] Document dataset export usage, target semantics, and preserve/improve/reject notes in `docs/migration/tpm-planning.md` and `specs/009-tpm-planning/quickstart.md`
 
