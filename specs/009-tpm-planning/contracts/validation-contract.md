@@ -6,8 +6,8 @@
 - simulator export, dataset reload, TPM metadata validation, query fixtures,
   and planning model assembly checks must run without notebooks, live
   services, GPUs, or commercial solver licenses
-- package-root import checks must continue to pass without optional TPM or
-  solver dependencies installed
+- package-root import checks must continue to pass without backend
+  dependencies installed
 
 ## Required Fixture Coverage
 
@@ -21,7 +21,7 @@
 
 - solver-backed planning solve checks when supported solver binaries or
   licenses are available
-- SPFlow-backed fit or query follow-up checks when the optional dependency is
+- SPFlow-backed fit or query follow-up checks when the backend dependency is
   installed
 - legacy tangent test comparisons when Pyomo and a supported solver are
   available

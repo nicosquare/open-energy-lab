@@ -18,7 +18,7 @@ design decisions.
 ## Assembly Requirements
 
 - model assembly must validate feature types, bounds, and target compatibility
-- model assembly must succeed without solving when optional solver backends are
+- model assembly must succeed without solving when solver backends are
   unavailable
 - model metadata must record approximation settings and solver assumptions
 
@@ -35,5 +35,5 @@ design decisions.
 
 - unsupported decision-variable requests outside first-release scope fail fast
 - incompatible target definitions or missing cost terms fail fast
-- unavailable optional solver dependencies surface only when the solve path is
-  invoked explicitly
+- unavailable solver backends surface only when the solve path is invoked
+  explicitly

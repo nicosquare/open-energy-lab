@@ -8,7 +8,7 @@ feature before implementation and to confirm the expected validation boundary.
 Keep these migration decisions in mind:
 
 - Preserve: simulator-owned family evaluation semantics, the legacy TPM typed
-  feature model where it is already structured, and optional solver-facing
+  feature model where it is already structured, and canonical solver-facing
   SPN encodings validated by fixtures.
 - Improve: explicit versioned planning dataset and TPM artifact contracts,
   library-owned `shortfall` semantics, and stable public APIs under
@@ -55,7 +55,7 @@ Before implementation, make sure the contracts agree on:
 - explicit feature typing and ordering
 - canonical piecewise approximation metadata
 - direct chance-constraint semantics
-- optional dependency and solver boundaries
+- lazy backend and solver boundaries
 
 ## Review The Current Library Surfaces
 
@@ -76,7 +76,7 @@ Confirm from these files that:
 - root packages are lazy and import-light
 - `open_energy_lab.planning` is still a scaffold and can now be expanded
   under an explicit spec
-- optional-dependency boundaries already exist and should be extended rather
+- dependency-boundary checks already exist and should be extended rather
   than relaxed
 
 ## Review The Legacy Evidence
@@ -110,9 +110,10 @@ conda activate open-energy-lab
 uv sync --dev
 ```
 
-Default validation must remain offline and fixture-backed. SPFlow, Pyomo, and
-solver binaries are optional follow-up dependencies, not routine review
-requirements.
+Default validation must remain offline and fixture-backed. SPFlow and Pyomo
+are canonical TPM and planning backends, but they must be loaded lazily so
+routine package-import review does not require them. Solver binaries remain
+follow-up dependencies rather than routine review requirements.
 
 ## Planned Review Checks
 
@@ -133,4 +134,5 @@ cd legacy/old_tpm && pytest src_py/tpm/spn/test_tangent_lower_bound.py
 ```
 
 If SPFlow, Pyomo, or a supported solver backend is unavailable, document the
-skipped follow-up checks instead of widening the base environment.
+skipped backend-specific follow-up checks instead of widening the base
+environment.

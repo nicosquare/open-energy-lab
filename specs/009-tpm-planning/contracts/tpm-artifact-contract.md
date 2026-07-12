@@ -27,12 +27,13 @@ tractable probabilistic model from planning datasets.
   non-decision features
 - the query surface returns conditional probability or log-likelihood outputs
   for the configured `shortfall` target
-- numeric tolerances, approximation assumptions, and any optional dependency
+- numeric tolerances, approximation assumptions, and any backend dependency
   requirements are documented in the artifact metadata
 
 ## Scope Boundaries
 
 - runtime imports from `legacy/*` are forbidden
-- SPFlow-backed fit or query code must stay behind optional adapters
+- SPFlow-backed fit or query code must stay behind lazy adapters so ordinary
+  package imports remain light
 - lower-tangent-only behavior is not the canonical first-release planning
   contract

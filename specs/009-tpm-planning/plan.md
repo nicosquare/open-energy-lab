@@ -8,9 +8,9 @@
 Promote a first reusable TPM-backed planning slice into the unified library by
 adding a simulator-owned planning-dataset export workflow, migrating the
 validated typed-feature and SPN-training/query surfaces from
-`legacy/old_tpm/src_py/tpm`, and defining an optional planning surface under
-`open_energy_lab.planning` that assembles a piecewise MILP for direct battery
-and solar design decisions. The feature keeps default review offline and
+`legacy/old_tpm/src_py/tpm`, and defining a lazily loaded planning surface
+under `open_energy_lab.planning` that assembles a piecewise MILP for direct
+battery and solar design decisions. The feature keeps default review offline and
 fixture-backed, treats heavy solver and SPFlow dependencies as optional, and
 uses explicit versioned dataset and TPM artifact contracts instead of
 notebook-only or pickle-only workflows.
@@ -21,12 +21,15 @@ notebook-only or pickle-only workflows.
 **Primary Dependencies**: Python standard library plus existing
 `open_energy_lab.simulator`, `open_energy_lab.weather`, and
 `open_energy_lab.demand` surfaces; `pandas` already ships in the base
-environment; SPFlow, Pyomo, and MILP solver backends remain optional and must
-stay outside ordinary imports.  
+environment; SPFlow is the canonical TPM fit-query backend, Pyomo is the
+canonical planning-model backend, and MILP solver backends remain required only
+for solve execution; all three must stay outside ordinary imports through lazy
+workflow-boundary loading.  
 **Storage/Data**: Markdown planning artifacts, versioned JSON planning-dataset
-artifacts, versioned TPM artifacts with JSON metadata plus a documented SPN
-payload representation or payload locator defined by the artifact schema,
-committed fixture datasets under `tests/fixtures/planning` or
+artifacts whose schema contains both the flattened tabular payload and its
+provenance and contract metadata, versioned TPM artifacts with JSON metadata
+plus a documented SPN payload representation or payload locator defined by the
+artifact schema, committed fixture datasets under `tests/fixtures/planning` or
 `tests/fixtures/tpm`, and optional solver-assembly fixtures.  
 **Testing**: `pytest` for new `tests/unit/tpm`, `tests/unit/planning`,
 `tests/integration/planning`, import-boundary checks, no-legacy-import
@@ -45,7 +48,8 @@ fixture-backed planning dataset offline, and assemble a first-release
 piecewise planning model for battery and solar decisions without requiring a
 solver in the routine review path.  
 **Constraints**: Preserve import-light package roots; avoid runtime imports
-from `legacy/*`; keep SPFlow, Pyomo, and solver dependencies optional; define
+from `legacy/*`; keep package roots import-light while making SPFlow-backed TPM
+workflows and Pyomo-backed planning workflows first-class feature paths; define
 `shortfall` canonically as horizon-level unmet electric energy ratio; bound
 first-release planning to battery and solar decisions; document solver
 reproducibility assumptions and tolerances; keep routine validation offline
@@ -72,9 +76,10 @@ equipment decisions in the first release.
   for dataset export, feature typing, TPM artifact reload, conditional query
   behavior, piecewise approximation assembly, and import boundaries before
   broad migration claims.
-- **Dependency isolation**: SPFlow, Pyomo, and solver backends stay optional
-  and outside `open_energy_lab`, `open_energy_lab.tpm`, and
-  `open_energy_lab.planning` root imports.
+- **Dependency isolation**: SPFlow and Pyomo are canonical workflow backends,
+  and solver backends are solve-time dependencies, but all remain outside
+  `open_energy_lab`, `open_energy_lab.tpm`, and `open_energy_lab.planning`
+  root imports.
 - **Reproducibility**: Dataset provenance, seeds, solver configuration notes,
   shortfall derivation, artifact schema versions, and approximation tolerances
   are all part of the planned contracts.
@@ -201,8 +206,8 @@ Research outcomes are captured in [research.md](./research.md). They resolve:
   a stable planning dataset
 - which legacy TPM behaviors are preserved closely versus replaced with new
   artifact contracts
-- how optional SPFlow and Pyomo integrations remain isolated from ordinary
-  imports and routine review
+- how SPFlow-backed TPM workflows and Pyomo-backed planning workflows remain
+  isolated from ordinary imports and routine review through lazy loading
 - what the canonical first-release piecewise solver-facing path is and how its
   validation should be bounded
 - how first-release planning should consume a fitted TPM artifact while keeping
@@ -220,6 +225,10 @@ Design artifacts are captured in [data-model.md](./data-model.md),
   provenance and reproducibility fields
 - the planning problem definition, direct chance-constraint contract, and
   optional solver boundary
+- a single validation contract that defines deterministic row ordering,
+  artifact version expectations, numeric tolerances, seed handling, solver
+  configuration recording, and repeated-run acceptance rules across export,
+  TPM, and planning
 - fixture provenance and the exact review commands for offline validation
 
 ## Phase 2: Implementation Strategy
@@ -230,13 +239,14 @@ Design artifacts are captured in [data-model.md](./data-model.md),
 2. Migrate the typed-feature metadata, normalization, and encoding surface from
    legacy TPM sources into a native `open_energy_lab.tpm` package with JSON
    artifact contracts and no runtime legacy imports.
-3. Add optional SPFlow-backed fit and query adapters that produce deterministic
-   metadata artifacts, support marginalization of non-decision variables, and
-   preserve fixture-backed conditional-query behavior.
+3. Add SPFlow-backed fit and query adapters that produce deterministic metadata
+   artifacts, support marginalization of non-decision variables, and preserve
+   fixture-backed conditional-query behavior while loading SPFlow only when
+   those workflows are invoked.
 4. Expand `open_energy_lab.planning` with a stable problem-definition and
-   model-assembly surface that consumes TPM artifacts, encodes battery and
-   solar decisions directly, and uses the canonical piecewise approximation
-   path for the first release.
+   Pyomo-backed model-assembly surface that consumes TPM artifacts, encodes
+   battery and solar decisions directly, and uses the canonical piecewise
+   approximation path for the first release.
 5. Add unit, integration, import-boundary, and optional-dependency tests plus
    committed planning and TPM fixtures before claiming fixture-backed
    migration validation.

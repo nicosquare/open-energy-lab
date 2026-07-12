@@ -14,7 +14,8 @@ tractable probabilistic model workflow from `legacy/old_tpm` into a native
 chance-constrained design decisions across multiple simulated uncertainty
 instances. The feature moves Open Energy Lab toward a reusable research library
 by replacing notebook-only and legacy-only TPM workflows with versioned
-artifacts, explicit dataset contracts, and a bounded optional planning surface.
+artifacts, explicit dataset contracts, and a bounded planning surface with
+lazy backend loading.
 
 ## Clarifications
 
@@ -245,8 +246,10 @@ cost, adequacy diagnostics, and repeated-run reproducibility.
   or chance-constrained planning problems driven by the explicit `shortfall`
   target.
 - **FR-010a**: The first release MUST support direct optimization over the
-  selected native decision-variable types preserved by the migrated TPM feature
-  schema rather than limiting planning to pre-enumerated catalog selection.
+  selected native decision-variable types required by the first-release battery
+  and solar planning surface, and MUST defer any additional categorical or
+  mixed decision support unless it is covered by explicit fixtures and tests,
+  rather than limiting planning to pre-enumerated catalog selection.
 - **FR-010b**: The adequacy threshold for `shortfall` MUST be configurable per
   planning problem, while fixture-backed validation and examples MAY define a
   documented default threshold.
@@ -260,11 +263,16 @@ cost, adequacy diagnostics, and repeated-run reproducibility.
   chance constraint `P(shortfall > threshold) <= epsilon`, where `epsilon` is
   configurable per planning problem and remains distinct from the configurable
   `shortfall` threshold.
-- **FR-011**: The first release MUST keep SPFlow, Pyomo, and solver backends
-  optional and outside ordinary package-root imports and routine review flows.
+- **FR-011**: The first release MUST treat SPFlow as the canonical TPM
+  fit-query backend and Pyomo as the canonical planning-model backend, while
+  keeping those dependencies outside ordinary package-root imports so they are
+  required when TPM or planning workflows are invoked rather than at import
+  time.
 - **FR-012**: The default validation path MUST remain offline and
   fixture-backed and MUST NOT require notebooks, W&B, live weather fetches,
-  GPU or SLURM tooling, or commercial solver licenses.
+  GPU or SLURM tooling, or commercial solver licenses; the feature quickstart
+  and follow-up validation guidance MUST still document SPFlow-backed TPM
+  checks and Pyomo-backed planning checks as part of the intended workflow.
 - **FR-013**: The feature MUST identify exact legacy TPM files whose behavior
   is preserved, improved, or rejected, and MUST avoid runtime imports from
   `legacy/*`.
@@ -316,10 +324,13 @@ cost, adequacy diagnostics, and repeated-run reproducibility.
 
 ### Key Entities *(include if feature involves data or API design)*
 
-- **Planning Dataset Artifact**: A persisted tabular dataset with one row per
-  simulation instance, caller-provided design metadata, flattened
-  horizon-indexed weather and demand fields, derived planning targets, and
-  provenance metadata tying the dataset back to simulator families and seeds.
+- **Planning Dataset Artifact**: A versioned persisted artifact consisting of a
+  tabular row set plus explicit metadata, with one row per simulation
+  instance, caller-provided design metadata, flattened horizon-indexed weather
+  and demand fields, derived planning targets, and provenance metadata tying
+  the dataset back to simulator families and seeds. The first release stores
+  this artifact as JSON with a documented schema that preserves row ordering,
+  column ordering, feature metadata, target semantics, and provenance.
 - **TPM Artifact**: A versioned persisted probabilistic model artifact that
   stores feature schema, target definition, query assumptions, and
   reproducibility metadata together with the documented SPN payload
@@ -341,8 +352,9 @@ cost, adequacy diagnostics, and repeated-run reproducibility.
   `open_energy_lab.simulator`, `open_energy_lab.weather`, and
   `open_energy_lab.demand` surfaces used to build fixture-backed planning
   datasets
-- **Optional dependencies**: SPFlow, Pyomo, and solver backends such as Gurobi
-  or other supported MILP solvers
+- **Workflow backends**: SPFlow for TPM fit-query, Pyomo for planning-model
+  assembly, and supported MILP solver backends such as Gurobi or other
+  supported MILP solvers for solve execution
 - **External services**: None in the default workflow
 - **Hardware assumptions**: CPU-only local validation by default; no GPU or
   scheduler requirement accepted for the routine review path

@@ -85,21 +85,24 @@ documented input bounds instead of relying on opaque serialized state.
 - Persist raw Python objects only: rejected because the new library needs
   explicit contracts and offline reviewable fixtures.
 
-## Decision 5: Keep SPFlow and Pyomo integrations behind optional adapters
+## Decision 5: Keep SPFlow and Pyomo as canonical workflow backends behind lazy adapters
 
-**Decision**: Fitting and solver-facing encoding will be exposed through
-optional adapters inside `open_energy_lab.tpm` and `open_energy_lab.planning`,
-while package roots remain import-light.
+**Decision**: Fitting and solver-facing model assembly will use SPFlow and
+Pyomo as the canonical backends inside `open_energy_lab.tpm` and
+`open_energy_lab.planning`, while package roots remain import-light through
+lazy adapters.
 
 **Rationale**: The constitution and current repo tests already enforce import
-boundaries. SPFlow and Pyomo are valid research dependencies for this feature,
-but they should load only when callers explicitly fit TPMs or assemble solver
-models that require them.
+boundaries. SPFlow and Pyomo are not peripheral to this feature; they are the
+intended TPM-learning and planning-model backends. They should still load only
+when callers explicitly fit TPMs, query TPM artifacts through backend-backed
+paths, or assemble solver models that require them.
 
 **Alternatives considered**:
 
-- Make SPFlow and Pyomo base dependencies: rejected because it widens the core
-  environment and breaks the current dependency policy.
+- Make SPFlow and Pyomo unconditional import-time dependencies: rejected
+  because it widens ordinary package imports and breaks the import-light
+  boundary expected elsewhere in the library.
 - Skip library-owned fit/query support entirely: rejected because the feature
   explicitly includes fitting, reload, and query workflows.
 
