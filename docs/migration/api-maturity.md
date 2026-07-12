@@ -20,6 +20,42 @@ An import path is stable public API when all conditions hold:
 Stable public APIs should preserve import paths and documented behavior across
 future migrations unless a deprecation decision is recorded.
 
+### TPM-Backed Planning Foundational Scaffolds
+
+The `009-tpm-planning` feature has not yet promoted simulator planning export,
+TPM artifact workflows, or planning-model assembly to stable public API.
+Phase 2 now reserves the implementation-facing module paths and the lazy
+backend boundaries, but the package roots remain intentionally unpromoted
+until the user-story tasks ship validated behavior.
+
+Current `009` status:
+
+- `open_energy_lab.simulator.planning_export` exists as a scaffold module for
+  the future simulator-owned dataset export workflow
+- `open_energy_lab.tpm.artifact`, `open_energy_lab.tpm.data`,
+  `open_energy_lab.tpm.features`, `open_energy_lab.tpm.fit`,
+  `open_energy_lab.tpm.query`, `open_energy_lab.tpm.piecewise`, and
+  `open_energy_lab.tpm.optional_spflow` now exist as focused implementation
+  paths, but `open_energy_lab.tpm` still does not promise stable root exports
+- `open_energy_lab.planning.dataset`, `open_energy_lab.planning.problem`,
+  `open_energy_lab.planning.piecewise`, and
+  `open_energy_lab.planning.optional_solver` now exist as focused
+  implementation paths, but `open_energy_lab.planning` still does not promise
+  stable root exports
+
+These paths are not yet stable public API because they currently have:
+
+- foundational import-boundary, no-legacy-import, fixture-schema, and
+  reproducibility-contract coverage, but not user-story behavior validation
+- placeholder dataclasses and reserved entry points instead of shipped
+  dataset-export, artifact-reload, query, or solve semantics
+- explicit documentation that SPFlow and Pyomo remain lazy backend boundaries
+  rather than routine import-time dependencies
+
+Promotion of any `009` root or focused imports into stable public API remains
+deferred to later tasks once the workflow contracts are implemented and
+validated.
+
 ### Weather-Conditioned Demand And Cooling-Aware Simulator Evaluation
 
 The `008-weather-demand-modeling` feature now promotes the first shipped demand
