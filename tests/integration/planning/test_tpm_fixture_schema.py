@@ -2,9 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+import pytest
+
 from open_energy_lab.planning.dataset import load_planning_dataset
+from open_energy_lab.tpm import (
+    TPMQueryRequest,
+    UnsupportedTPMArtifactVersionError,
+    load_tpm_artifact,
+    query_tpm_artifact,
+)
 from tests.integration.planning.fixture_utils import (
     COMMON_LIST_KEYS,
     COMMON_PROVENANCE_KEYS,
@@ -18,6 +27,14 @@ from tests.integration.planning.fixture_utils import (
     load_planning_fixture,
     load_all_tpm_fixtures,
 )
+
+
+def _normalize(value: object) -> object:
+    if isinstance(value, Mapping):
+        return {key: _normalize(item) for key, item in value.items()}
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return [_normalize(item) for item in value]
+    return value
 
 
 def _fixture_data_for(path: Path) -> dict[str, object]:
@@ -112,11 +129,25 @@ def test_planning_dataset_artifact_fixture_tracks_dataset_contract() -> None:
 def test_supported_tpm_artifact_fixture_tracks_schema_expectations() -> None:
     fixture_data = _fixture_data_for(TPM_ARTIFACT_FIXTURE_PATH)
 
-    assert fixture_data["fixture_status"] == "placeholder"
+    assert fixture_data["fixture_status"] == "active"
     assert set(fixture_data["planned_contracts"]) == {
         "specs/009-tpm-planning/contracts/tpm-artifact-contract.md",
         "specs/009-tpm-planning/contracts/validation-contract.md",
     }
+    artifact = load_tpm_artifact(fixture_data)
+
+    assert artifact.artifact_id == "tpm-artifact:planning-dataset-export-integration"
+    assert artifact.dataset_reference == "planning-dataset-export-integration"
+    assert artifact.provenance["dataset_fixture_path"] == "tests/fixtures/tpm/planning_dataset_v1.json"
+    assert artifact.provenance["training_random_seed"] == 13
+    assert artifact.query_configuration["required_decision_features"] == [
+        "battery_capacity_kwh",
+        "solar_capacity_kw",
+        "design_name",
+    ]
+    assert artifact.approximation_metadata["approximation_kind"] == "piecewise"
+    assert artifact.spn_payload["backend_module"] == "spflow.testing"
+    assert artifact.spn_payload["backend_version"] == "0.test"
     notes = " ".join(str(note).lower() for note in fixture_data["notes"])
     assert "typed feature metadata" in notes
     assert "spn payload representation" in notes
@@ -125,21 +156,46 @@ def test_supported_tpm_artifact_fixture_tracks_schema_expectations() -> None:
 def test_unsupported_tpm_artifact_fixture_reserves_version_failure_case() -> None:
     fixture_data = _fixture_data_for(UNSUPPORTED_TPM_ARTIFACT_FIXTURE_PATH)
 
-    assert fixture_data["fixture_status"] == "placeholder"
+    assert fixture_data["fixture_status"] == "active"
     notes = " ".join(str(note).lower() for note in fixture_data["notes"])
     assert "supported tpm artifact fixture" in notes
     assert "schema version changed" in notes
     assert "fail fast" in notes
 
+    with pytest.raises(
+        UnsupportedTPMArtifactVersionError,
+        match="unsupported tpm artifact schema_version 'v999'",
+    ):
+        load_tpm_artifact(fixture_data)
+
 
 def test_tpm_query_fixture_tracks_query_reproducibility_expectations() -> None:
     fixture_data = _fixture_data_for(TPM_QUERY_FIXTURE_PATH)
 
-    assert fixture_data["fixture_status"] == "placeholder"
+    assert fixture_data["fixture_status"] == "active"
     assert set(fixture_data["planned_contracts"]) == {
         "specs/009-tpm-planning/contracts/tpm-artifact-contract.md",
         "specs/009-tpm-planning/contracts/validation-contract.md",
     }
+    artifact_fixture_path = Path(str(fixture_data["artifact_fixture_path"]))
+    assert artifact_fixture_path == TPM_ARTIFACT_FIXTURE_PATH
+    assert artifact_fixture_path.is_file()
+
+    query_request = fixture_data["query_request"]
+    assert isinstance(query_request, dict)
+
+    artifact = load_tpm_artifact(_fixture_data_for(artifact_fixture_path))
+    result = query_tpm_artifact(
+        artifact,
+        TPMQueryRequest(
+            decision_assignments=dict(query_request["decision_assignments"]),
+            marginalized_features=tuple(query_request["marginalized_features"]),
+            output_mode=str(query_request["output_mode"]),
+            target_name=str(query_request["target_name"]),
+        ),
+    )
+
+    assert _normalize(result) == _normalize(fixture_data["expected_result"])
     notes = " ".join(str(note).lower() for note in fixture_data["notes"])
     assert "conditional probability" in notes or "log-likelihood" in notes
     assert "marginalization" in notes

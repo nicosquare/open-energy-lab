@@ -1,25 +1,58 @@
 {
   "fixture_name": "tpm_query_case",
-  "fixture_status": "placeholder",
-  "purpose": "Reserve the deterministic TPM query fixture path for spec 009.",
+  "fixture_status": "active",
+  "purpose": "Deterministic TPM query fixture that replays a committed conditional-probability request against the supported TPM artifact fixture.",
   "spec_feature": "009-tpm-planning",
   "provenance": {
-    "author": "codex",
-    "origin": "phase-1 scaffold placeholder",
+    "author": "OpenAI Codex",
+    "origin": "Current-library query-contract fixture derived from the committed supported TPM artifact and planning-dataset fixtures",
     "legacy_evidence_paths": [
       "legacy/old_tpm/src_py/tpm/spn/main.py",
+      "legacy/old_tpm/src_py/tpm/spn/encoding.py",
       "legacy/old_tpm/src_py/tpm/data/encoding.py"
     ],
-    "generation_command": "created manually during Phase 1 scaffolding",
-    "random_seed": null,
-    "refresh_policy": "Replace with an active deterministic query fixture when User Story 2 is implemented."
+    "generation_command": "Replay query_tpm_artifact(load_tpm_artifact(\"tests/fixtures/tpm/tpm_artifact_v1.json\"), TPMQueryRequest(...)) using the committed supported artifact and persist the exact expected result payload.",
+    "random_seed": 13,
+    "refresh_policy": "Update only when the TPM query request contract, empirical replay source, or expected response semantics intentionally change."
   },
   "planned_contracts": [
     "specs/009-tpm-planning/contracts/tpm-artifact-contract.md",
     "specs/009-tpm-planning/contracts/validation-contract.md"
   ],
   "notes": [
-    "The final fixture should cover conditional probability or log-likelihood outputs for the configured shortfall target.",
-    "The final fixture should preserve explicit marginalization and decision-feature assignment expectations."
-  ]
+    "The fixture covers a conditional probability query for the configured shortfall target.",
+    "The request preserves explicit marginalization and decision-feature assignment expectations.",
+    "The expected result is sourced from the committed planning-dataset fixture through the supported TPM artifact provenance."
+  ],
+  "artifact_fixture_path": "tests/fixtures/tpm/tpm_artifact_v1.json",
+  "query_request": {
+    "decision_assignments": {
+      "battery_capacity_kwh": 8.0,
+      "design_name": "baseline-a"
+    },
+    "marginalized_features": [
+      "solar_capacity_kw"
+    ],
+    "output_mode": "conditional_probability",
+    "target_name": "shortfall"
+  },
+  "expected_result": {
+    "artifact_id": "tpm-artifact:planning-dataset-export-integration",
+    "dataset_reference": "planning-dataset-export-integration",
+    "target_name": "shortfall",
+    "output_mode": "conditional_probability",
+    "target_threshold": 0.05,
+    "decision_assignments": {
+      "battery_capacity_kwh": 8.0,
+      "design_name": "baseline-a"
+    },
+    "marginalized_features": [
+      "solar_capacity_kw"
+    ],
+    "matched_row_count": 1,
+    "total_row_count": 2,
+    "source": "empirical_fixture",
+    "value": 0.0,
+    "conditional_probability": 0.0
+  }
 }

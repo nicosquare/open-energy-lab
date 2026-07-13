@@ -44,7 +44,26 @@ EXPECTED_PLANNING_EXPORTS = [
     "PlanningDatasetArtifact",
     "load_planning_dataset",
 ]
-TPM_SCAFFOLD_DOCSTRING_FRAGMENT = "Future TPM interface scaffold"
+EXPECTED_TPM_EXPORTS = [
+    "TPMArtifact",
+    "UnsupportedTPMArtifactVersionError",
+    "load_tpm_artifact",
+    "TPMTrainingData",
+    "normalize_training_data",
+    "TPMFeatureSpec",
+    "dump_feature_schema",
+    "infer_feature_role",
+    "load_feature_schema",
+    "TPMFitConfig",
+    "fit_tpm_artifact",
+    "SPFlowDependencyUnavailableError",
+    "PiecewiseApproximationMetadata",
+    "PiecewiseBreakpointPolicy",
+    "build_piecewise_metadata",
+    "load_piecewise_metadata",
+    "TPMQueryRequest",
+    "query_tpm_artifact",
+]
 
 
 def test_root_package_imports_from_source_tree_without_optional_stacks():
@@ -222,14 +241,9 @@ def test_tpm_package_imports_from_source_tree_without_optional_stacks():
     assert module_file.name == "__init__.py"
     assert module_file.parent.name == "tpm"
     assert module_file.parent.parent.name == "open_energy_lab"
-
-    if hasattr(module, "__all__"):
-        assert isinstance(module.__all__, list)
-        assert all("." not in export_name for export_name in module.__all__)
-        assert all(not export_name.startswith("_") for export_name in module.__all__)
-    else:
-        assert module.__doc__ is not None
-        assert TPM_SCAFFOLD_DOCSTRING_FRAGMENT in module.__doc__
+    assert module.__all__ == EXPECTED_TPM_EXPORTS
+    assert all("." not in export_name for export_name in module.__all__)
+    assert all(not export_name.startswith("_") for export_name in module.__all__)
 
     newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
         set(sys.modules) - before_import

@@ -1,10 +1,11 @@
 # Quickstart: TPM-Backed Planning And Simulator Dataset Export
 
 Use this quickstart to review the implemented User Story 1 simulator-export
-slice and the remaining planned TPM and planning work. The current repository
-now includes a stable simulator-owned planning-dataset export surface, a
-stable planning-dataset reload surface, and committed offline fixtures for
-deterministic export replay and inspection.
+slice and User Story 2 TPM fit/query slice. The current repository now
+includes a stable simulator-owned planning-dataset export surface, a stable
+planning-dataset reload surface, a stable TPM fit/reload/query surface, and
+committed offline fixtures for deterministic export replay, artifact review,
+and query inspection.
 
 ## Preserve / Improve / Reject
 
@@ -17,8 +18,8 @@ feature:
 - Improve: explicit versioned planning dataset and TPM artifact contracts,
   library-owned `shortfall` semantics, stable public APIs under
   `open_energy_lab.simulator`, `open_energy_lab.tpm`, and
-  `open_energy_lab.planning`, and committed active US1 fixtures for export
-  replay and reload.
+  `open_energy_lab.planning`, and committed active US1 and US2 fixtures for
+  export replay, artifact reload, and query review.
 - Reject: notebook-only dataset assembly, pickle-only artifact ownership,
   runtime imports from `legacy/*`, and mandatory SPFlow or solver installs in
   the routine review path.
@@ -42,8 +43,9 @@ Confirm the intended split:
 - `shortfall` is one horizon-level energy-ratio target, not an implicit
   notebook variable
 - battery and solar are the only first-release planning decision sets
-- the currently implemented stable slice is dataset export plus dataset reload;
-  TPM fit/query and planning solve remain later user stories
+- the currently implemented stable slices are dataset export/reload and TPM
+  fit/reload/query
+- planning model assembly and optional solve remain the later user story
 
 ## Review The Contracts
 
@@ -74,6 +76,11 @@ sed -n '220,620p' src/open_energy_lab/simulator/scenario.py
 sed -n '1,220p' src/open_energy_lab/demand/__init__.py
 sed -n '1,220p' src/open_energy_lab/planning/__init__.py
 sed -n '1,280p' src/open_energy_lab/planning/dataset.py
+sed -n '1,260p' src/open_energy_lab/tpm/__init__.py
+sed -n '1,320p' src/open_energy_lab/tpm/features.py
+sed -n '1,280p' src/open_energy_lab/tpm/fit.py
+sed -n '1,320p' src/open_energy_lab/tpm/query.py
+sed -n '1,220p' src/open_energy_lab/tpm/optional_spflow.py
 sed -n '1,220p' tests/unit/test_optional_dependency_boundaries.py
 sed -n '1,220p' tests/unit/test_import_contract.py
 ```
@@ -85,6 +92,9 @@ Confirm from these files that:
 - root packages are lazy and import-light
 - `open_energy_lab.planning` now ships the persisted dataset reload surface
   while broader model assembly remains scaffolded
+- `open_energy_lab.tpm` now ships the lazy root exports, typed feature
+  handling, persisted artifact contract, fit configuration capture, and query
+  workflow needed for the current TPM slice
 - dependency-boundary checks already exist and should be extended rather
   than relaxed
 
@@ -124,12 +134,15 @@ are canonical TPM and planning backends, but they must be loaded lazily so
 routine package-import review does not require them. Solver binaries remain
 follow-up dependencies rather than routine review requirements.
 
-## Review The Committed US1 Fixtures
+## Review The Committed US1 And US2 Fixtures
 
-The repository now includes the active User Story 1 fixture pair:
+The repository now includes these active TPM-planning fixtures:
 
 - `tests/fixtures/planning/planning_dataset_export_case.json`
 - `tests/fixtures/tpm/planning_dataset_v1.json`
+- `tests/fixtures/tpm/tpm_artifact_v1.json`
+- `tests/fixtures/tpm/tpm_artifact_unsupported_version.json`
+- `tests/fixtures/tpm/tpm_query_case.json`
 
 Use them to confirm that:
 
@@ -140,6 +153,11 @@ Use them to confirm that:
 - the committed artifact preserves top-level JSON rows plus metadata rather
   than a wrapped dataframe payload
 - provenance records the shared family seed and the source export fixture path
+- the supported TPM artifact preserves explicit typed feature ordering,
+  required decision features, canonical piecewise metadata, and a documented
+  fake-backend SPN payload summary
+- the query fixture records one deterministic request plus its expected
+  response from the empirical replay path
 
 ## Implemented US1 Workflow Shape
 
@@ -161,6 +179,51 @@ The current root-level public entry points are:
 - `open_energy_lab.planning.PlanningDatasetArtifact`
 - `open_energy_lab.planning.load_planning_dataset`
 
+## Implemented US2 Workflow Shape
+
+The stable TPM fit/reload/query workflow is:
+
+1. Reload the committed planning-dataset artifact through
+   `open_energy_lab.planning.load_planning_dataset(...)`.
+2. Fit a TPM artifact with `open_energy_lab.tpm.fit_tpm_artifact(...)`.
+3. Persist the returned `TPMArtifact` as JSON or inspect it directly in
+   memory.
+4. Reload the same payload offline through
+   `open_energy_lab.tpm.load_tpm_artifact(...)`.
+5. Evaluate a deterministic query with
+   `open_energy_lab.tpm.query_tpm_artifact(...)`.
+
+The current root-level TPM entry points are:
+
+- `open_energy_lab.tpm.TPMArtifact`
+- `open_energy_lab.tpm.load_tpm_artifact`
+- `open_energy_lab.tpm.TPMFeatureSpec`
+- `open_energy_lab.tpm.normalize_training_data`
+- `open_energy_lab.tpm.TPMFitConfig`
+- `open_energy_lab.tpm.fit_tpm_artifact`
+- `open_energy_lab.tpm.TPMQueryRequest`
+- `open_energy_lab.tpm.query_tpm_artifact`
+- `open_energy_lab.tpm.PiecewiseApproximationMetadata`
+- `open_energy_lab.tpm.build_piecewise_metadata`
+- `open_energy_lab.tpm.SPFlowDependencyUnavailableError`
+
+## Implemented Typed-Feature Migration
+
+The current typed-feature slice preserves these first-release feature types:
+
+- `continuous`
+- `binary`
+- `categorical`
+- `mixed`
+
+Keep these constraints in mind:
+
+- feature ordering is persisted and must remain stable across fit and reload
+- decision, context, and target roles stay explicit in artifact metadata
+- categorical domains and numeric bounds are explicit because query validation
+  depends on them
+- the target feature remains `shortfall`
+
 ## Implemented `shortfall` Semantics
 
 The first-release target is fixed as the horizon-level electric-energy ratio:
@@ -177,6 +240,20 @@ Keep these constraints in mind:
   distinct from the `shortfall` threshold itself.
 - if total horizon load energy is effectively zero while unmet energy is
   non-zero, the dataset contract should fail fast rather than invent a ratio.
+
+## Implemented Lazy SPFlow Boundary
+
+The current TPM fit path treats SPFlow as canonical but lazy:
+
+- importing `open_energy_lab.tpm` does not import SPFlow
+- importing `open_energy_lab.tpm.fit` does not import SPFlow
+- `fit_tpm_artifact(...)` only resolves the real backend when no injected
+  backend is supplied
+- unavailable real-backend behavior surfaces as
+  `SPFlowDependencyUnavailableError`
+
+This keeps routine review import-light while still documenting the real fit
+boundary.
 
 ## After Implementation: Replay The Implemented US1 Export Workflow
 
@@ -221,6 +298,70 @@ Expected result:
   `solar_capacity_kw`, and `design_name`
 - the aggregation rule stays explicit and reviewable without loading SPFlow,
   Pyomo, or solver binaries
+
+## After Implementation: Reload The Committed US2 TPM Artifact Offline
+
+Use the committed supported TPM artifact directly through the stable public
+reload surface:
+
+```bash
+uv run python -c '
+from pathlib import Path
+
+from open_energy_lab.tpm import load_tpm_artifact
+
+artifact = load_tpm_artifact(Path("tests/fixtures/tpm/tpm_artifact_v1.json"))
+
+print(artifact.artifact_id)
+print(tuple(artifact.query_configuration["required_decision_features"]))
+print(artifact.spn_payload["backend_module"])
+'
+```
+
+Expected result:
+
+- TPM artifact reload succeeds entirely offline from the committed JSON fixture
+- required decision features remain `battery_capacity_kwh`,
+  `solar_capacity_kw`, and `design_name`
+- the persisted SPN payload representation stays reviewable as
+  `spflow.testing` metadata rather than an opaque pickle payload
+
+## After Implementation: Replay The Committed US2 Query Fixture
+
+Use the committed supported artifact and deterministic query fixture together:
+
+```bash
+uv run python -c '
+import json
+from pathlib import Path
+
+from open_energy_lab.tpm import TPMQueryRequest, load_tpm_artifact, query_tpm_artifact
+
+artifact = load_tpm_artifact(Path("tests/fixtures/tpm/tpm_artifact_v1.json"))
+fixture = json.loads(Path("tests/fixtures/tpm/tpm_query_case.json").read_text())
+
+result = query_tpm_artifact(
+    artifact,
+    TPMQueryRequest(
+        decision_assignments=fixture["query_request"]["decision_assignments"],
+        marginalized_features=tuple(fixture["query_request"]["marginalized_features"]),
+        output_mode=fixture["query_request"]["output_mode"],
+        target_name=fixture["query_request"]["target_name"],
+    ),
+)
+
+print(result["source"])
+print(result["matched_row_count"])
+print(result["value"])
+'
+```
+
+Expected result:
+
+- the replay stays entirely offline from committed JSON fixtures
+- the query result source is `empirical_fixture`
+- the deterministic `baseline-a` request matches exactly one row and returns
+  `0.0`
 
 ## Planned Review Checks
 
