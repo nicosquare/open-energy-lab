@@ -4,15 +4,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from open_energy_lab.planning.dataset import load_planning_dataset
 from tests.integration.planning.fixture_utils import (
     COMMON_LIST_KEYS,
     COMMON_PROVENANCE_KEYS,
     COMMON_TOP_LEVEL_KEYS,
     PLANNING_DATASET_ARTIFACT_FIXTURE_PATH,
+    PLANNING_DATASET_EXPORT_FIXTURE_PATH,
     TPM_ARTIFACT_FIXTURE_PATH,
     TPM_FIXTURE_PATHS,
     TPM_QUERY_FIXTURE_PATH,
     UNSUPPORTED_TPM_ARTIFACT_FIXTURE_PATH,
+    load_planning_fixture,
     load_all_tpm_fixtures,
 )
 
@@ -79,11 +82,26 @@ def test_tpm_fixture_common_schema() -> None:
 def test_planning_dataset_artifact_fixture_tracks_dataset_contract() -> None:
     fixture_data = _fixture_data_for(PLANNING_DATASET_ARTIFACT_FIXTURE_PATH)
 
-    assert fixture_data["fixture_status"] == "placeholder"
+    assert fixture_data["fixture_status"] == "active"
     assert set(fixture_data["planned_contracts"]) == {
         "specs/009-tpm-planning/contracts/planning-dataset-contract.md",
         "specs/009-tpm-planning/contracts/validation-contract.md",
     }
+    loaded = load_planning_dataset(fixture_data)
+    export_fixture = load_planning_fixture(PLANNING_DATASET_EXPORT_FIXTURE_PATH)
+
+    assert loaded.dataset_id == export_fixture["expected_dataset_id"]
+    assert loaded.row_count == export_fixture["expected_row_count"]
+    assert loaded.horizon_steps == export_fixture["expected_horizon_steps"]
+    assert list(loaded.column_order) == export_fixture["expected_column_order"]
+    assert loaded.export_configuration["flattened_series_fields"] == export_fixture[
+        "flattened_series_fields"
+    ]
+    assert loaded.provenance["dataset_fixture_path"] == (
+        "tests/fixtures/planning/planning_dataset_export_case.json"
+    )
+    assert loaded.provenance["family_seed"] == 13
+    assert loaded.provenance["paired_family_seed"] == 13
     notes = " ".join(str(note).lower() for note in fixture_data["notes"])
     assert "column order" in notes
     assert "row order" in notes

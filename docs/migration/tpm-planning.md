@@ -1,11 +1,13 @@
 # TPM-Backed Planning Migration Note
 
-Status: Phase 2 foundational scaffolding in place
+Status: User Story 1 simulator export, persisted planning-dataset reload, and committed offline fixtures implemented
 
-Spec `009-tpm-planning` reserves the target library, fixture, and validation
-paths for a simulator-owned planning-dataset export workflow, a native
-`open_energy_lab.tpm` package, and a planning assembly surface that remains
-offline-reviewable by default.
+Spec `009-tpm-planning` now ships the first simulator-owned planning-dataset
+export slice under `open_energy_lab.simulator`, the persisted planning-dataset
+artifact contract under `open_energy_lab.planning`, and committed offline
+fixtures for deterministic export replay and reload. The broader TPM fit/query
+and planning assembly surfaces remain reserved for later user stories and must
+still remain offline-reviewable by default.
 
 ## Target Module Paths
 
@@ -32,6 +34,32 @@ offline-reviewable by default.
 - `tests/integration/planning/`
 - `tests/fixtures/planning/`
 - `tests/fixtures/tpm/`
+
+## Implemented Stable US1 Surface
+
+The implemented first-release public surface is:
+
+- `open_energy_lab.simulator.PlanningExportRequest`
+- `open_energy_lab.simulator.export_planning_dataset`
+- `open_energy_lab.planning.PlanningDatasetArtifact`
+- `open_energy_lab.planning.load_planning_dataset`
+
+The stable package roots remain import-light. Callers can discover the export
+and reload entry points from `open_energy_lab.simulator` and
+`open_energy_lab.planning` without importing optional TPM or solver stacks.
+
+## Committed Offline US1 Fixtures
+
+User Story 1 now ships committed active fixtures for:
+
+- export-request replay and expected dataset metadata in
+  `tests/fixtures/planning/planning_dataset_export_case.json`
+- supported planning-dataset artifact reload in
+  `tests/fixtures/tpm/planning_dataset_v1.json`
+
+These fixtures let reviewers inspect deterministic design metadata, flattened
+column ordering, target semantics, and provenance without refitting a TPM,
+running a solver, or loading any runtime `legacy/*` module.
 
 ## Reserved Legacy Evidence Paths
 
@@ -66,6 +94,8 @@ offline-reviewable by default.
 - library-owned `shortfall` target semantics and reproducibility metadata
 - stable package paths under `open_energy_lab.simulator`,
   `open_energy_lab.tpm`, and `open_energy_lab.planning`
+- stable simulator-root and planning-root exports for the implemented US1
+  export and reload workflow
 - committed deterministic fixtures for export, artifact reload, query, and
   planning assembly review
 
@@ -136,6 +166,24 @@ already implemented.
 the selected simulator export behavior with exact legacy evidence from
 `legacy/old_tpm/src_py/simulator/feature_engineering.py`.
 
+The implemented export path is:
+
+1. Evaluate one aligned simulator family so scenario ordering, horizon length,
+   timestep, and paired family seed are already fixed.
+2. Build `PlanningExportRequest(...)` with one deterministic
+   `scenario_index`-ordered design metadata row per scenario and one explicit
+   target name (`shortfall`).
+3. Call `export_planning_dataset(...)` from `open_energy_lab.simulator`.
+4. Persist or inspect the returned `PlanningDatasetArtifact` directly as JSON.
+5. Reload the same payload offline through
+   `open_energy_lab.planning.load_planning_dataset(...)`.
+
+The committed review path for this workflow is backed by:
+
+- `tests/integration/planning/test_dataset_export.py`
+- `tests/fixtures/planning/planning_dataset_export_case.json`
+- `tests/fixtures/tpm/planning_dataset_v1.json`
+
 ### Legacy Evidence Used
 
 - `add_aggregate_features()`
@@ -159,6 +207,9 @@ the selected simulator export behavior with exact legacy evidence from
   ratio.
 - Record this behavior in import-safe library code instead of notebook or
   dataframe-only feature-engineering steps.
+- Keep the committed review payload loadable at the top level as JSON rows and
+  metadata rather than introducing wrapped table payloads that need a notebook
+  or dataframe tool to inspect.
 
 ### Reject
 
@@ -170,3 +221,24 @@ the selected simulator export behavior with exact legacy evidence from
   `shortfall` ratio, not a binary failure label.
 - Do not treat `legacy/old_tpm/src_py/simulator/feature_engineering.py` as a
   runtime dependency or a source of required pandas-based preprocessing.
+
+## Implemented `shortfall` Target Semantics
+
+The first-release target is fixed as:
+
+`shortfall = sum(unmet_load_kw * timestep_hours) / sum(site_electric_load_kw * timestep_hours)`
+
+This is a horizon-level electric-energy ratio, not a per-step binary label,
+cooling-service adequacy score, or chance-limit parameter. The current US1
+artifact metadata also pins:
+
+- `numerator_source_field = unmet_load_kw`
+- `denominator_source_field = site_electric_load_kw`
+- `supported_query_mode = exceedance-probability`
+- `threshold_default = 0.05`
+
+The threshold default is recorded for downstream TPM and planning workflows,
+but it is distinct from the later planning chance-limit `epsilon`. The loader
+also preserves the current fail-fast rule: if total horizon load energy is
+effectively zero while unmet energy is non-zero, the dataset contract is
+invalid rather than silently manufacturing a ratio.

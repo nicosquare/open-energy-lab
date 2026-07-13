@@ -81,8 +81,8 @@ derivation, and provenance metadata.
 - [X] T017 [US1] Implement planning dataset artifact models, versioned persistence, reload helpers, seed lineage, numeric tolerances, and export reproducibility metadata in `src/open_energy_lab/planning/dataset.py`
 - [X] T017a [US1] Define and validate the canonical persisted planning-dataset payload shape, including whether JSON stores rows directly or wraps tabular content with metadata, in `src/open_energy_lab/planning/dataset.py` and `tests/unit/planning/test_dataset_schema.py`
 - [X] T018 [US1] Export the planning-dataset workflow from `src/open_energy_lab/simulator/__init__.py` and `src/open_energy_lab/planning/__init__.py`
-- [ ] T019 [US1] Populate committed planning-dataset export fixtures and provenance in `tests/fixtures/planning/planning_dataset_export_case.json`, `tests/fixtures/tpm/planning_dataset_v1.json`, `tests/fixtures/planning/README.md`, and `tests/fixtures/tpm/README.md`
-- [ ] T020 [US1] Document dataset export usage, target semantics, and preserve/improve/reject notes in `docs/migration/tpm-planning.md` and `specs/009-tpm-planning/quickstart.md`
+- [X] T019 [US1] Populate committed planning-dataset export fixtures and provenance in `tests/fixtures/planning/planning_dataset_export_case.json`, `tests/fixtures/tpm/planning_dataset_v1.json`, `tests/fixtures/planning/README.md`, and `tests/fixtures/tpm/README.md`
+- [X] T020 [US1] Document dataset export usage, target semantics, and preserve/improve/reject notes in `docs/migration/tpm-planning.md` and `specs/009-tpm-planning/quickstart.md`
 
 **Checkpoint**: User Story 1 is functional and independently testable through
 `tests/integration/planning/test_dataset_export.py`.

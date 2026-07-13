@@ -77,12 +77,25 @@ def test_planning_fixture_common_schema() -> None:
 def test_planning_dataset_export_fixture_tracks_export_contracts() -> None:
     fixture_data = _fixture_data_for(PLANNING_DATASET_EXPORT_FIXTURE_PATH)
 
-    assert fixture_data["fixture_status"] == "placeholder"
+    assert fixture_data["fixture_status"] == "active"
     assert set(fixture_data["planned_contracts"]) == {
         "specs/009-tpm-planning/contracts/simulator-export-contract.md",
         "specs/009-tpm-planning/contracts/planning-dataset-contract.md",
         "specs/009-tpm-planning/contracts/validation-contract.md",
     }
+    assert fixture_data["dataset_artifact_fixture_path"] == "tests/fixtures/tpm/planning_dataset_v1.json"
+    assert fixture_data["expected_dataset_id"] == "planning-dataset-export-integration"
+    assert fixture_data["target_name"] == "shortfall"
+    assert fixture_data["flattened_series_fields"] == [
+        "global_horizontal_irradiance_w_per_m2",
+        "site_electric_load_kw",
+        "unmet_load_kw",
+    ]
+    assert fixture_data["expected_row_count"] == 2
+    assert fixture_data["expected_horizon_steps"] == 3
+    assert len(fixture_data["design_metadata_rows"]) == fixture_data["expected_row_count"]
+    assert fixture_data["expected_column_order"][0] == "scenario_index"
+    assert fixture_data["expected_column_order"][-1] == "shortfall"
     notes = " ".join(str(note).lower() for note in fixture_data["notes"])
     assert "deterministic" in notes
     assert "offline" in notes

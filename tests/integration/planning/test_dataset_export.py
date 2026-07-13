@@ -40,10 +40,16 @@ from tests.integration.demand.fixture_utils import (
     FITTED_DEMAND_ARTIFACT_FIXTURE_PATH,
     load_demand_fixture,
 )
+from tests.integration.planning.fixture_utils import (
+    PLANNING_DATASET_ARTIFACT_FIXTURE_PATH,
+    PLANNING_DATASET_EXPORT_FIXTURE_PATH,
+    load_planning_fixture,
+)
 from tests.integration.weather.fixture_utils import (
     FITTED_WEATHER_ARTIFACT_FIXTURE_PATH,
     load_weather_fixture,
 )
+from open_energy_lab.planning.dataset import load_planning_dataset
 
 
 def _sample_weather_family_fixture():
@@ -267,4 +273,35 @@ def test_export_planning_dataset_records_shortfall_and_reproducibility_metadata(
         "global_horizontal_irradiance_w_per_m2",
         "site_electric_load_kw",
         "unmet_load_kw",
+    ]
+
+
+def test_committed_planning_dataset_fixture_replays_the_export_contract() -> None:
+    weather_family, family_result = _evaluated_demand_family()
+    export_fixture = load_planning_fixture(PLANNING_DATASET_EXPORT_FIXTURE_PATH)
+    committed_dataset = load_planning_dataset(PLANNING_DATASET_ARTIFACT_FIXTURE_PATH)
+
+    dataset = export_planning_dataset(
+        family_result_reference=family_result,
+        weather_family_reference=weather_family,
+        request=_request(),
+    )
+
+    assert committed_dataset.dataset_id == export_fixture["expected_dataset_id"]
+    assert committed_dataset.row_count == export_fixture["expected_row_count"]
+    assert committed_dataset.horizon_steps == export_fixture["expected_horizon_steps"]
+    assert tuple(export_fixture["expected_column_order"]) == committed_dataset.column_order
+    assert committed_dataset.column_order == dataset.column_order
+    assert committed_dataset.rows == dataset.rows
+    assert committed_dataset.design_feature_schema == dataset.design_feature_schema
+    assert committed_dataset.series_field_schema == dataset.series_field_schema
+    assert committed_dataset.target_metadata == dataset.target_metadata
+    assert committed_dataset.export_configuration["flattened_series_fields"] == export_fixture[
+        "flattened_series_fields"
+    ]
+    assert committed_dataset.provenance["family_id"] == dataset.provenance["family_id"]
+    assert committed_dataset.provenance["weather_family_id"] == dataset.provenance["weather_family_id"]
+    assert committed_dataset.provenance["family_seed"] == dataset.provenance["family_seed"]
+    assert committed_dataset.provenance["paired_family_seed"] == dataset.provenance[
+        "paired_family_seed"
     ]
