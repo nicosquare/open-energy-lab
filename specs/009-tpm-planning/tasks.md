@@ -136,11 +136,11 @@ supported backend to confirm reproducible cost and risk summaries.
 
 ### Tests for User Story 3
 
-- [ ] T033 [P] [US3] Add planning-problem validation unit coverage for battery-and-solar scope, threshold semantics, and chance-limit validation in `tests/unit/planning/test_problem.py`
-- [ ] T033a [P] [US3] Add unit coverage for the exact first-release decision-variable types supported by battery and solar planning in `tests/unit/planning/test_problem.py`
-- [ ] T034 [P] [US3] Add piecewise-assembly, reproducibility-metadata, and optional-solver boundary unit coverage in `tests/unit/planning/test_piecewise.py` and `tests/unit/planning/test_optional_solver.py`
-- [ ] T035 [P] [US3] Add offline planning-model assembly integration coverage in `tests/integration/planning/test_problem_assembly.py`
-- [ ] T036 [P] [US3] Add repeated-run optional solve coverage that compares selected design, objective value, estimated risk, or infeasibility diagnostics, and deterministic skip coverage in `tests/integration/planning/test_optional_solve.py`
+- [X] T033 [P] [US3] Add planning-problem validation unit coverage for battery-and-solar scope, threshold semantics, and chance-limit validation in `tests/unit/planning/test_problem.py`
+- [X] T033a [P] [US3] Add unit coverage for the exact first-release decision-variable types supported by battery and solar planning in `tests/unit/planning/test_problem.py`
+- [X] T034 [P] [US3] Add piecewise-assembly, reproducibility-metadata, and optional-solver boundary unit coverage in `tests/unit/planning/test_piecewise.py` and `tests/unit/planning/test_optional_solver.py`
+- [X] T035 [P] [US3] Add offline planning-model assembly integration coverage in `tests/integration/planning/test_problem_assembly.py`
+- [X] T036 [P] [US3] Add repeated-run optional solve coverage that compares selected design, objective value, estimated risk, or infeasibility diagnostics, and deterministic skip coverage in `tests/integration/planning/test_optional_solve.py`
 
 ### Implementation for User Story 3
 
