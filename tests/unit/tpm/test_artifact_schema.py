@@ -12,11 +12,6 @@ from open_energy_lab.tpm.artifact import (
 )
 
 
-_PENDING_US2_IMPLEMENTATION = (
-    "User Story 2 implementation tasks T025-T029 are still pending."
-)
-
-
 def _artifact_payload() -> dict[str, object]:
     return {
         "artifact_id": "tpm-artifact-unit",
@@ -123,7 +118,6 @@ def test_tpm_artifact_placeholder_preserves_minimal_identity_fields() -> None:
     assert artifact.provenance["dataset_reference"] == "planning-dataset-export-integration"
 
 
-@pytest.mark.xfail(strict=True, reason=_PENDING_US2_IMPLEMENTATION)
 def test_load_tpm_artifact_preserves_schema_target_and_query_metadata() -> None:
     artifact = load_tpm_artifact(_artifact_payload())
 
@@ -137,7 +131,6 @@ def test_load_tpm_artifact_preserves_schema_target_and_query_metadata() -> None:
     ]
 
 
-@pytest.mark.xfail(strict=True, reason=_PENDING_US2_IMPLEMENTATION)
 def test_load_tpm_artifact_rejects_unsupported_schema_version() -> None:
     payload = _artifact_payload()
     payload["schema_version"] = "v999"
@@ -149,7 +142,6 @@ def test_load_tpm_artifact_rejects_unsupported_schema_version() -> None:
         load_tpm_artifact(payload)
 
 
-@pytest.mark.xfail(strict=True, reason=_PENDING_US2_IMPLEMENTATION)
 def test_loaded_tpm_artifact_rejects_unseen_categorical_values_and_out_of_bounds_assignments() -> None:
     artifact = load_tpm_artifact(_artifact_payload())
 
@@ -158,4 +150,3 @@ def test_loaded_tpm_artifact_rejects_unseen_categorical_values_and_out_of_bounds
 
     with pytest.raises(ValueError, match="battery_capacity_kwh|bounds|21"):
         artifact.validate_feature_assignments({"battery_capacity_kwh": 21.0})
-
