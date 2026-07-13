@@ -54,6 +54,38 @@ The fixture README mirrors these requirements and is the default place for the
 provenance template when a dedicated fixture-specific metadata file is not
 needed.
 
+## TPM-Backed Planning Fixture Guidance
+
+The `009-tpm-planning` feature adds two active fixture families that should
+stay small, deterministic, and reviewable:
+
+- simulator-export and planning-problem workflow fixtures under
+  `tests/fixtures/planning`
+- persisted planning-dataset, TPM artifact, and query fixtures under
+  `tests/fixtures/tpm`
+
+For this feature, fixture provenance must also make these points explicit:
+
+- which exact legacy simulator, typed-feature, SPN, or piecewise paths were
+  consulted as reference-only evidence
+- whether the fixture is synthetic, manually curated, or regenerated from the
+  current library implementation
+- the paired family seed, training seed, scenario ordering, timestep, and
+  numeric tolerance used for replayable export, query, or planning validation
+- the referenced planning-dataset or TPM artifact fixture identities when one
+  fixture derives from another committed payload
+- whether the fixture uses fake-backend SPFlow summaries or fake-backend
+  optional-solve expectations to preserve the default offline review path
+- the refresh trigger for planning-dataset schema changes, TPM artifact schema
+  changes, typed-feature ordering changes, piecewise contract changes, or
+  planning decision-scope and solver-metadata changes
+
+Default TPM-planning validation should prefer the committed planning and TPM
+fixtures over notebook execution, live services, solver-backed parity runs, or
+legacy runtime checks. If a future refresh needs optional SPFlow, Pyomo, or
+solver access, document that requirement in the fixture README and in the
+feature quickstart rather than broadening the default validation path.
+
 ## Stochastic Weather Fixture Guidance
 
 The `007-stochastic-weather` feature adds a fixture family that should remain

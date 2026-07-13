@@ -49,6 +49,48 @@ promotes them:
 These capabilities may be documented and prepared for later migration, but
 they must not block ordinary library import or the foundation unit tests.
 
+## TPM-Backed Planning Notes
+
+The `009-tpm-planning` feature keeps the same base environment shape and adds
+explicit assumptions for simulator export, persisted artifact reload, TPM
+query replay, planning assembly, and optional solve follow-up checks.
+
+## Default Validation Environment For TPM Planning
+
+- Run the default TPM-planning checks from the local `open-energy-lab` conda
+  environment after `uv sync --dev`.
+- Assume CPU-only execution with no solver licenses, no W&B login, no GPU or
+  SLURM tooling, no notebook runtime, and no runtime imports from `legacy/*`.
+- Treat the committed planning and TPM fixtures as the default evidence so
+  export replay, persisted artifact reload, deterministic query behavior, and
+  planning assembly stay runnable offline.
+- Keep the default validation surface limited to
+  `open_energy_lab.simulator` planning export, `open_energy_lab.tpm`,
+  `open_energy_lab.planning`, their unit/integration tests, import checks,
+  and the `legacy` import scan documented in the feature quickstart.
+
+Example TPM-planning validation bootstrap:
+
+```bash
+conda activate open-energy-lab
+uv sync --dev
+uv run pytest tests/unit/planning tests/unit/tpm tests/integration/planning
+uv run pytest tests/unit/test_optional_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py
+uv run python -c "import open_energy_lab; import open_energy_lab.simulator; import open_energy_lab.tpm; import open_energy_lab.planning"
+```
+
+## Optional TPM-Planning Follow-Up Assumptions
+
+- The shipped TPM review path does not require SPFlow, Pyomo, or solver
+  binaries for default fixture-backed validation.
+- `fit_tpm_artifact(...)` requires SPFlow when the caller uses the canonical
+  backend path without an injected backend.
+- `solve_planning_problem(...)` requires Pyomo and may require extra solver
+  binaries or licenses depending on the requested solver configuration.
+- If a reviewer exercises optional backend-backed fit or solve checks outside
+  the default subset, record the blocked dependency or solver assumption in
+  the feature quickstart instead of widening runtime requirements.
+
 ## Controller Boundary MVP Notes
 
 The `004-controller-boundary` feature inherits the same minimal environment

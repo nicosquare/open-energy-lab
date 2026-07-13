@@ -20,41 +20,118 @@ An import path is stable public API when all conditions hold:
 Stable public APIs should preserve import paths and documented behavior across
 future migrations unless a deprecation decision is recorded.
 
-### TPM-Backed Planning Foundational Scaffolds
+### TPM-Backed Planning Stable Surface
 
-The `009-tpm-planning` feature has not yet promoted simulator planning export,
-TPM artifact workflows, or planning-model assembly to stable public API.
-Phase 2 now reserves the implementation-facing module paths and the lazy
-backend boundaries, but the package roots remain intentionally unpromoted
-until the user-story tasks ship validated behavior.
+The `009-tpm-planning` feature now promotes the shipped simulator export,
+planning dataset and assembly surface, and TPM fit/reload/query surface to
+stable public API.
 
-Current `009` status:
+Stable simulator package-root imports:
 
-- `open_energy_lab.simulator.planning_export` exists as a scaffold module for
-  the future simulator-owned dataset export workflow
-- `open_energy_lab.tpm.artifact`, `open_energy_lab.tpm.data`,
-  `open_energy_lab.tpm.features`, `open_energy_lab.tpm.fit`,
-  `open_energy_lab.tpm.query`, `open_energy_lab.tpm.piecewise`, and
-  `open_energy_lab.tpm.optional_spflow` now exist as focused implementation
-  paths, but `open_energy_lab.tpm` still does not promise stable root exports
-- `open_energy_lab.planning.dataset`, `open_energy_lab.planning.problem`,
-  `open_energy_lab.planning.piecewise`, and
-  `open_energy_lab.planning.optional_solver` now exist as focused
-  implementation paths, but `open_energy_lab.planning` still does not promise
-  stable root exports
+```python
+from open_energy_lab.simulator import (
+    PlanningExportRequest,
+    export_planning_dataset,
+)
+```
 
-These paths are not yet stable public API because they currently have:
+Stable planning package-root imports:
 
-- foundational import-boundary, no-legacy-import, fixture-schema, and
-  reproducibility-contract coverage, but not user-story behavior validation
-- placeholder dataclasses and reserved entry points instead of shipped
-  dataset-export, artifact-reload, query, or solve semantics
-- explicit documentation that SPFlow and Pyomo remain lazy backend boundaries
-  rather than routine import-time dependencies
+```python
+from open_energy_lab.planning import (
+    PlanningDatasetArtifact,
+    PlanningProblemAssembly,
+    PlanningProblemDefinition,
+    PlanningSolveConfig,
+    PlanningSolveSummary,
+    PlanningSolverDependencyUnavailableError,
+    PlanningSolverUnavailableError,
+    assemble_planning_problem,
+    load_planning_dataset,
+    solve_planning_problem,
+)
+```
 
-Promotion of any `009` root or focused imports into stable public API remains
-deferred to later tasks once the workflow contracts are implemented and
-validated.
+Stable TPM package-root imports:
+
+```python
+from open_energy_lab.tpm import (
+    PiecewiseApproximationMetadata,
+    PiecewiseBreakpointPolicy,
+    SPFlowDependencyUnavailableError,
+    TPMArtifact,
+    TPMFeatureSpec,
+    TPMFitConfig,
+    TPMQueryRequest,
+    TPMTrainingData,
+    UnsupportedTPMArtifactVersionError,
+    build_piecewise_metadata,
+    dump_feature_schema,
+    fit_tpm_artifact,
+    infer_feature_role,
+    load_feature_schema,
+    load_piecewise_metadata,
+    load_tpm_artifact,
+    normalize_training_data,
+    query_tpm_artifact,
+)
+```
+
+These imports are stable because they now have:
+
+- focused unit and integration coverage for dataset export, persisted dataset
+  reload, typed-feature normalization, TPM artifact reload, deterministic
+  query behavior, planning problem validation, piecewise assembly, and
+  optional solve handling
+- deterministic committed fixtures for simulator export replay, persisted
+  planning datasets, supported and unsupported TPM artifacts, deterministic
+  query replay, planning-problem assembly, and fake-backend optional solve
+  expectations
+- import-boundary, import-contract, optional-dependency-boundary, and
+  no-legacy-import coverage that names the simulator export, planning, and TPM
+  roots explicitly
+- migration documentation that records the simulator-owned export boundary,
+  library-owned `shortfall` semantics, typed feature preservation, canonical
+  piecewise metadata, solver reproducibility expectations, and offline review
+  contract
+- documented lazy dependency boundaries proving `open_energy_lab.simulator`,
+  `open_energy_lab.planning`, and `open_energy_lab.tpm` stay import-light
+  until callers explicitly invoke SPFlow-backed fit paths or Pyomo-backed
+  solve paths
+
+Focused module imports remain intentionally narrower in maturity:
+
+```python
+from open_energy_lab.simulator.planning_export import (
+    PlanningExportRequest,
+    export_planning_dataset,
+)
+
+from open_energy_lab.planning.dataset import PlanningDatasetArtifact, load_planning_dataset
+from open_energy_lab.planning.problem import (
+    PlanningProblemAssembly,
+    PlanningProblemDefinition,
+    assemble_planning_problem,
+)
+from open_energy_lab.planning.optional_solver import (
+    PlanningSolveConfig,
+    PlanningSolveSummary,
+    PlanningSolverDependencyUnavailableError,
+    PlanningSolverUnavailableError,
+    solve_planning_problem,
+)
+
+from open_energy_lab.tpm.artifact import TPMArtifact, load_tpm_artifact
+from open_energy_lab.tpm.data import TPMTrainingData, normalize_training_data
+from open_energy_lab.tpm.features import TPMFeatureSpec
+from open_energy_lab.tpm.fit import TPMFitConfig, fit_tpm_artifact
+from open_energy_lab.tpm.piecewise import PiecewiseApproximationMetadata
+from open_energy_lab.tpm.query import TPMQueryRequest, query_tpm_artifact
+```
+
+These focused imports host the shipped implementation and remain appropriate
+for advanced callers and tests, but the stable user-facing contract for
+ordinary use is the package-root surface shown above.
 
 ### Weather-Conditioned Demand And Cooling-Aware Simulator Evaluation
 

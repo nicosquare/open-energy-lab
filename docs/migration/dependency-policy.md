@@ -61,63 +61,63 @@ dependencies must not become required for the unified package.
 - Tests that require unavailable services, hardware, or licenses must be
   marked or separated so the default test subset remains runnable locally.
 
-## TPM-Backed Planning Foundational Classification
+## TPM-Backed Planning Classification
 
-The `009-tpm-planning` feature now ships foundational scaffold modules and
-lazy backend boundaries, but it does not yet ship the dataset export, TPM
-artifact, or planning solve workflows themselves. The review record for the
-current Phase 2 slice is:
+The `009-tpm-planning` feature now ships stable simulator export, TPM
+fit/reload/query, planning dataset reload, planning assembly, and optional
+solve entry points without widening the ordinary import boundary. The review
+record for the shipped slice is:
 
 ```text
-Dependency: Python standard library dataclass/importlib/pathlib/typing support
+Dependency: Python standard library modules plus existing open_energy_lab simulator, demand, weather, and planning package modules
 Requested by: 009-tpm-planning
-Target module: src/open_energy_lab/simulator/planning_export.py, src/open_energy_lab/tpm/artifact.py, src/open_energy_lab/tpm/data.py, src/open_energy_lab/tpm/features.py, src/open_energy_lab/tpm/fit.py, src/open_energy_lab/tpm/query.py, src/open_energy_lab/tpm/piecewise.py, src/open_energy_lab/tpm/optional_spflow.py, src/open_energy_lab/planning/dataset.py, src/open_energy_lab/planning/problem.py, src/open_energy_lab/planning/piecewise.py, src/open_energy_lab/planning/optional_solver.py
+Target module: src/open_energy_lab/simulator/planning_export.py, src/open_energy_lab/tpm/artifact.py, src/open_energy_lab/tpm/data.py, src/open_energy_lab/tpm/features.py, src/open_energy_lab/tpm/fit.py, src/open_energy_lab/tpm/query.py, src/open_energy_lab/tpm/piecewise.py, src/open_energy_lab/tpm/optional_spflow.py, src/open_energy_lab/planning/__init__.py, src/open_energy_lab/planning/dataset.py, src/open_energy_lab/planning/problem.py, src/open_energy_lab/planning/piecewise.py, src/open_energy_lab/planning/optional_solver.py
 Classification: core
-Import boundary: allowed at import time for scaffold modules because they stay import-light and do not initialize SPFlow, Pyomo, solver binaries, or legacy runtimes
+Import boundary: allowed at import time for open_energy_lab.simulator, open_energy_lab.tpm, and open_energy_lab.planning, with package-root exports resolved lazily so ordinary imports, persisted artifact loading, empirical query replay, and planning assembly stay import-light
 Install mechanism: base project environment via conda plus uv
-Fallback or skip behavior: none for import; reserved entry points raise clear not-yet-implemented errors when invoked before the user-story tasks land
+Fallback or skip behavior: none; simulator export, persisted artifact handling, empirical query replay, and offline planning assembly are part of the normal library surface
 External service, license, hardware, or scheduler assumptions: none
-Rationale: the foundational phase needs stable file ownership and reserved entry points without widening the routine import boundary before behavior is implemented
-Alternatives considered: leaving the runtime files absent until later tasks or importing optional research backends eagerly were rejected because they weaken boundary validation and violate the constitution
+Rationale: the shipped TPM-planning slice must remain portable, offline-reviewable, and layered on top of the current simulator and artifact contracts instead of making notebook, solver, or SPFlow installations part of ordinary imports
+Alternatives considered: keeping the package roots unpromoted or making backend-bound workflows unconditional runtime dependencies were rejected because they weaken discoverability or violate the constitution's import-light boundary
 ```
 
 ```text
 Dependency: SPFlow
-Requested by: future TPM fit and backend-backed query workflows under 009-tpm-planning
-Target module: src/open_energy_lab/tpm/optional_spflow.py and later TPM fit/query implementations
+Requested by: 009-tpm-planning TPM fit workflows and any future backend-backed TPM extensions
+Target module: src/open_energy_lab/tpm/fit.py and src/open_energy_lab/tpm/optional_spflow.py
 Classification: optional
-Import boundary: lazy; excluded from open_energy_lab, open_energy_lab.tpm, and ordinary TPM submodule imports until a caller explicitly requests the backend
-Install mechanism: future TPM-specific optional dependency or documented environment add-on
-Fallback or skip behavior: import-light modules continue to work without SPFlow; backend-specific workflows must raise a clear dependency error or remain documented as unavailable
+Import boundary: lazy; excluded from open_energy_lab and open_energy_lab.tpm imports until a caller invokes fit_tpm_artifact without an injected backend
+Install mechanism: documented environment add-on for TPM workflow execution
+Fallback or skip behavior: package-root TPM imports, persisted artifact reload, typed-feature handling, and deterministic empirical query replay continue to work without SPFlow; fit workflows raise a clear dependency error when the backend is unavailable
 External service, license, hardware, or scheduler assumptions: none inherent, but local package installation is required
-Rationale: SPFlow is the canonical TPM backend for this feature, but the routine review path must remain offline and import-light
-Alternatives considered: making SPFlow a core dependency or hiding the backend contract until full implementation were rejected because they either widen imports too early or leave the dependency boundary undocumented
+Rationale: SPFlow is the canonical TPM fit backend, but the default review path must stay offline and import-light
+Alternatives considered: making SPFlow a core dependency or hiding the fit boundary behind private APIs were rejected because they either widen imports or weaken the documented public workflow
 ```
 
 ```text
 Dependency: Pyomo plus downstream solver binaries or licenses
-Requested by: future planning assembly and optional solve workflows under 009-tpm-planning
-Target module: src/open_energy_lab/planning/optional_solver.py and later planning solve implementations
+Requested by: 009-tpm-planning optional planning solve workflows
+Target module: src/open_energy_lab/planning/optional_solver.py
 Classification: optional for Pyomo and hardware-bound or external-service-backed for some solver backends depending on the solver family
-Import boundary: lazy; excluded from open_energy_lab, open_energy_lab.planning, and ordinary planning submodule imports until a caller explicitly requests solving
-Install mechanism: future planning-specific optional dependency or documented environment add-on
-Fallback or skip behavior: assembly-oriented imports remain available without Pyomo; solve-specific workflows must raise a clear dependency error or remain documented as optional follow-up validation only
+Import boundary: lazy; excluded from open_energy_lab and open_energy_lab.planning imports until a caller invokes solve_planning_problem
+Install mechanism: documented environment add-on for planning solve execution
+Fallback or skip behavior: planning dataset reload and offline assembly remain available without Pyomo; solve workflows raise a clear dependency error or return a deterministic skipped summary when configured with skip_if_unavailable
 External service, license, hardware, or scheduler assumptions: some solver choices may require commercial licenses or specialized local installations
 Rationale: the feature treats Pyomo as the canonical planning-model backend while keeping solve-time dependencies out of routine imports and default review
-Alternatives considered: making solver dependencies part of the base environment or deferring all backend-boundary documentation until after solver implementation were rejected because they either widen the base environment or leave the review contract underspecified
+Alternatives considered: making solver dependencies part of the base environment or deferring the solve surface until a solver is always present were rejected because they widen the default environment and weaken the shipped contract
 ```
 
 ```text
-Dependency: pytest-based TPM/planning foundational validation
+Dependency: pytest-based TPM/planning validation
 Requested by: 009-tpm-planning
-Target module: tests/unit/tpm, tests/unit/planning, tests/integration/planning, tests/unit/test_optional_dependency_boundaries.py, tests/unit/test_import_contract.py, tests/unit/test_no_legacy_imports.py
+Target module: tests/unit/tpm, tests/unit/planning, tests/unit/simulator/test_planning_export.py, tests/integration/planning, tests/unit/test_optional_dependency_boundaries.py, tests/unit/test_import_contract.py, tests/unit/test_no_legacy_imports.py
 Classification: optional
 Import boundary: test-only; must not affect library runtime imports
 Install mechanism: uv sync --dev
-Fallback or skip behavior: if dev dependencies are unavailable, document foundational validation as blocked rather than broadening runtime requirements
-External service, license, hardware, or scheduler assumptions: none
-Rationale: Phase 2 promotion depends on deterministic import-boundary, fixture-schema, and reproducibility-contract evidence, but pytest remains non-runtime tooling
-Alternatives considered: relying only on manual fixture inspection or postponing validation until user-story implementation were rejected because they weaken the migration evidence for the reserved runtime surface
+Fallback or skip behavior: if dev dependencies are unavailable, document TPM-planning validation as blocked rather than broadening runtime requirements
+External service, license, hardware, or scheduler assumptions: none for the default fixture-backed subset; optional solve follow-ups may require extra local solver setup
+Rationale: stable TPM-planning API promotion depends on deterministic unit, integration, import-boundary, and fixture evidence, but pytest remains non-runtime tooling
+Alternatives considered: relying only on manual artifact inspection or optional backend-backed checks was rejected because it weakens repeatable review evidence for the shipped surface
 ```
 
 ## Weather-Conditioned Demand And Cooling-Aware Simulator Classification

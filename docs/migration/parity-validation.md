@@ -70,6 +70,69 @@ capture the intended clean behavior.
   settlement, or trace semantics, and allow cleaner implementation choices
   everywhere else.
 
+## TPM-Backed Planning Validation Governance
+
+The `009-tpm-planning` migration adds a TPM/planning-specific validation shape
+that later work should preserve when it extends the shipped workflow:
+
+- Keep `src/open_energy_lab/simulator` as the owner of simulator-family export
+  semantics, flattened-series selection, and `shortfall` derivation inputs.
+- Keep `src/open_energy_lab/tpm` import-light at the package root, with typed
+  feature handling, persisted artifact reload, and empirical query replay
+  clear of runtime `legacy/*` imports.
+- Keep `src/open_energy_lab/planning` import-light at the package root, with
+  persisted dataset reload and offline planning assembly clear of runtime
+  solver requirements.
+- Treat the committed planning fixtures under `tests/fixtures/planning` as
+  active workflow evidence for deterministic export replay, planning-problem
+  scope, solver metadata, and fake-backend optional-solve expectations.
+- Treat the committed TPM fixtures under `tests/fixtures/tpm` as active
+  contract evidence for persisted dataset reload, supported and unsupported
+  TPM artifact behavior, typed feature ordering, piecewise metadata, and
+  deterministic query replay.
+- Preserve the simulator-versus-artifact-versus-planning boundary: simulator
+  export owns flattened dataset construction, TPM artifacts own feature and
+  query metadata, and planning owns decision-scope validation and optional
+  solve behavior.
+- Keep parity selective: use the cited legacy feature-engineering, typed
+  feature, SPN, and piecewise files as reference evidence, but validate the
+  shipped feature primarily through deterministic fixtures, reload contracts,
+  query semantics, and assembly invariants rather than broad legacy runtime
+  parity.
+
+Minimum TPM-planning validation now includes:
+
+- `tests/unit/simulator/test_planning_export.py`
+- `tests/unit/tpm/test_import_boundary.py`
+- `tests/unit/tpm/test_no_legacy_imports.py`
+- `tests/unit/tpm/test_package_surface.py`
+- `tests/unit/tpm/test_features.py`
+- `tests/unit/tpm/test_data_handler.py`
+- `tests/unit/tpm/test_artifact_schema.py`
+- `tests/unit/tpm/test_query.py`
+- `tests/unit/planning/test_import_boundary.py`
+- `tests/unit/planning/test_no_legacy_imports.py`
+- `tests/unit/planning/test_package_surface.py`
+- `tests/unit/planning/test_dataset_schema.py`
+- `tests/unit/planning/test_problem.py`
+- `tests/unit/planning/test_piecewise.py`
+- `tests/unit/planning/test_optional_solver.py`
+- `tests/unit/test_optional_dependency_boundaries.py`
+- `tests/unit/test_import_contract.py`
+- `tests/unit/test_no_legacy_imports.py`
+- `tests/integration/planning/test_fixture_schema.py`
+- `tests/integration/planning/test_tpm_fixture_schema.py`
+- `tests/integration/planning/test_reproducibility_contract.py`
+- `tests/integration/planning/test_dataset_export.py`
+- `tests/integration/planning/test_tpm_fit_workflow.py`
+- `tests/integration/planning/test_problem_assembly.py`
+- `tests/integration/planning/test_optional_solve.py`
+
+If future TPM-planning work cannot run one of these checks locally, the skip
+reason must be recorded in the relevant spec plan or quickstart, including
+whether the blocked check depended on optional SPFlow, Pyomo, or solver
+availability outside the default offline validation subset.
+
 ## Controller Boundary Governance
 
 The `004-controller-boundary` migration adds a controller-specific validation
