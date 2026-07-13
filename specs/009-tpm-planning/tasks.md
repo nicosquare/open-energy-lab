@@ -102,10 +102,10 @@ and fixture-backed piecewise metadata behavior.
 
 ### Tests for User Story 2
 
-- [ ] T021 [P] [US2] Add typed-feature and data-handler unit coverage for continuous, binary, categorical, and mixed feature schemas in `tests/unit/tpm/test_features.py` and `tests/unit/tpm/test_data_handler.py`
-- [ ] T022 [P] [US2] Add TPM artifact schema, unsupported-version, unseen categorical value, and out-of-bounds feature assignment unit coverage in `tests/unit/tpm/test_artifact_schema.py`
-- [ ] T023 [P] [US2] Add conditional-query, marginalization, missing required decision-feature, and incompatible target-request unit coverage in `tests/unit/tpm/test_query.py`
-- [ ] T024 [P] [US2] Add fit-reload-query integration coverage for exported planning datasets in `tests/integration/planning/test_tpm_fit_workflow.py`
+- [X] T021 [P] [US2] Add typed-feature and data-handler unit coverage for continuous, binary, categorical, and mixed feature schemas in `tests/unit/tpm/test_features.py` and `tests/unit/tpm/test_data_handler.py`
+- [X] T022 [P] [US2] Add TPM artifact schema, unsupported-version, unseen categorical value, and out-of-bounds feature assignment unit coverage in `tests/unit/tpm/test_artifact_schema.py`
+- [X] T023 [P] [US2] Add conditional-query, marginalization, missing required decision-feature, and incompatible target-request unit coverage in `tests/unit/tpm/test_query.py`
+- [X] T024 [P] [US2] Add fit-reload-query integration coverage for exported planning datasets in `tests/integration/planning/test_tpm_fit_workflow.py`
 
 ### Implementation for User Story 2
 
