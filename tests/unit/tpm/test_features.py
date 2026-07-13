@@ -9,11 +9,6 @@ import pytest
 from open_energy_lab.tpm.features import SUPPORTED_TPM_FEATURE_TYPES, TPMFeatureSpec
 
 
-_PENDING_US2_IMPLEMENTATION = (
-    "User Story 2 implementation tasks T025-T029 are still pending."
-)
-
-
 @pytest.mark.parametrize(
     ("feature_type", "feature_role", "discrete_values"),
     (
@@ -49,7 +44,6 @@ def test_tpm_feature_spec_can_represent_each_supported_feature_type(
     assert spec.discrete_values == discrete_values
 
 
-@pytest.mark.xfail(strict=True, reason=_PENDING_US2_IMPLEMENTATION)
 def test_tpm_feature_spec_tracks_documented_typed_schema_fields() -> None:
     field_names = {field.name for field in fields(TPMFeatureSpec)}
 
@@ -64,4 +58,3 @@ def test_tpm_feature_spec_tracks_documented_typed_schema_fields() -> None:
         "ordering",
         "normalization_rule",
     }.issubset(field_names)
-

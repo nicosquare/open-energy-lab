@@ -7,11 +7,6 @@ import pytest
 from open_energy_lab.tpm.data import TPMTrainingData, normalize_training_data
 
 
-_PENDING_US2_IMPLEMENTATION = (
-    "User Story 2 implementation tasks T025-T029 are still pending."
-)
-
-
 def _training_rows() -> tuple[dict[str, object], ...]:
     return (
         {
@@ -50,7 +45,6 @@ def test_tpm_training_data_placeholder_preserves_column_order_and_rows() -> None
     assert training_data.rows[0]["shortfall"] == pytest.approx(0.0)
 
 
-@pytest.mark.xfail(strict=True, reason=_PENDING_US2_IMPLEMENTATION)
 def test_normalize_training_data_supports_continuous_binary_categorical_and_mixed_inputs() -> None:
     normalized = normalize_training_data(_training_rows())
 
@@ -71,13 +65,15 @@ def test_normalize_training_data_supports_continuous_binary_categorical_and_mixe
         "solar_tilt_choice": "mixed",
         "shortfall": "continuous",
     }
+    assert normalized.normalized_rows[0]["battery_capacity_kwh"] == pytest.approx(0.0)
+    assert normalized.normalized_rows[1]["solar_has_tracking"] == pytest.approx(0.0)
+    assert normalized.normalized_rows[2]["solar_tilt_choice"] == pytest.approx(-2.0)
+    assert normalized.normalized_rows[2]["shortfall"] == pytest.approx(1.0)
 
 
-@pytest.mark.xfail(strict=True, reason=_PENDING_US2_IMPLEMENTATION)
 def test_normalize_training_data_rejects_inconsistent_feature_keys_across_rows() -> None:
     invalid_rows = [dict(row) for row in _training_rows()]
     invalid_rows[1].pop("design_name")
 
     with pytest.raises(ValueError, match="same keys|schema|rows"):
         normalize_training_data(invalid_rows)
-
