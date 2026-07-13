@@ -1,14 +1,15 @@
 # TPM-Backed Planning Migration Note
 
-Status: User Story 1 simulator export and dataset reload, plus User Story 2 TPM fit, reload, query, and committed offline fixtures implemented
+Status: User Story 1 simulator export and dataset reload, User Story 2 TPM fit, reload, and query, and User Story 3 planning assembly and optional solve with committed offline fixtures implemented
 
-Spec `009-tpm-planning` now ships the first simulator-owned planning-dataset
-export slice under `open_energy_lab.simulator`, the persisted planning-dataset
-artifact contract under `open_energy_lab.planning`, a stable TPM fit/reload/query
-surface under `open_energy_lab.tpm`, and committed offline fixtures for
-deterministic export replay, TPM artifact reload, and query review. Planning
-assembly and optional solve remain reserved for the later planning user story
-and must still remain offline-reviewable by default.
+Spec `009-tpm-planning` now ships the simulator-owned planning-dataset export
+slice under `open_energy_lab.simulator`, the persisted planning-dataset and
+planning-assembly surface under `open_energy_lab.planning`, a stable TPM
+fit/reload/query surface under `open_energy_lab.tpm`, and committed offline
+fixtures for deterministic export replay, TPM artifact reload, planning
+problem assembly, and optional solve review. The planning solve path remains
+solver-optional in the default review flow, but it is no longer just a
+reserved future boundary.
 
 ## Target Module Paths
 
@@ -36,7 +37,7 @@ and must still remain offline-reviewable by default.
 - `tests/fixtures/planning/`
 - `tests/fixtures/tpm/`
 
-## Implemented Stable US1 And US2 Surfaces
+## Implemented Stable US1, US2, And US3 Surfaces
 
 The implemented first-release public surface is:
 
@@ -44,6 +45,14 @@ The implemented first-release public surface is:
 - `open_energy_lab.simulator.export_planning_dataset`
 - `open_energy_lab.planning.PlanningDatasetArtifact`
 - `open_energy_lab.planning.load_planning_dataset`
+- `open_energy_lab.planning.PlanningProblemDefinition`
+- `open_energy_lab.planning.PlanningProblemAssembly`
+- `open_energy_lab.planning.assemble_planning_problem`
+- `open_energy_lab.planning.PlanningSolveConfig`
+- `open_energy_lab.planning.PlanningSolveSummary`
+- `open_energy_lab.planning.PlanningSolverDependencyUnavailableError`
+- `open_energy_lab.planning.PlanningSolverUnavailableError`
+- `open_energy_lab.planning.solve_planning_problem`
 - `open_energy_lab.tpm.TPMArtifact`
 - `open_energy_lab.tpm.load_tpm_artifact`
 - `open_energy_lab.tpm.TPMFeatureSpec`
@@ -57,16 +66,20 @@ The implemented first-release public surface is:
 - `open_energy_lab.tpm.SPFlowDependencyUnavailableError`
 
 The stable package roots remain import-light. Callers can discover the export,
-dataset reload, and TPM entry points from `open_energy_lab.simulator`,
-`open_energy_lab.planning`, and `open_energy_lab.tpm` without importing
-optional SPFlow or solver stacks at package import time.
+planning reload, planning assembly, optional solve, and TPM entry points from
+`open_energy_lab.simulator`, `open_energy_lab.planning`, and
+`open_energy_lab.tpm` without importing optional SPFlow or solver stacks at
+package import time.
 
-## Committed Offline US1 And US2 Fixtures
+## Committed Offline US1, US2, And US3 Fixtures
 
 The repository now ships committed active fixtures for:
 
 - export-request replay and expected dataset metadata in
   `tests/fixtures/planning/planning_dataset_export_case.json`
+- planning-problem definition, deterministic assembly baseline, and
+  optional-solve expectations in
+  `tests/fixtures/planning/planning_problem_case.json`
 - supported planning-dataset artifact reload in
   `tests/fixtures/tpm/planning_dataset_v1.json`
 - supported TPM artifact reload in `tests/fixtures/tpm/tpm_artifact_v1.json`
@@ -76,9 +89,11 @@ The repository now ships committed active fixtures for:
 
 These fixtures let reviewers inspect deterministic design metadata, flattened
 column ordering, typed feature metadata, target semantics, artifact/query
-provenance, and version compatibility without running a solver or loading any
-runtime `legacy/*` module. The supported TPM artifact fixture uses a fake
-SPFlow backend summary so the persisted payload remains offline and reviewable.
+provenance, planning-problem provenance, deterministic candidate baselines,
+and version compatibility without loading any runtime `legacy/*` module. The
+supported TPM artifact fixture uses a fake SPFlow backend summary, and the
+planning-problem fixture uses fake-backend optional-solve expectations, so the
+persisted review path stays offline and reviewable.
 
 ## Reserved Legacy Evidence Paths
 
@@ -379,3 +394,143 @@ path yields:
 
 If no empirical dataset fixture is available, the current implementation falls
 back to metadata-only behavior rather than importing SPFlow automatically.
+
+## Phase 5 User Story 3: Planning Assembly, Optional Solve, And Unified Reproducibility
+
+`src/open_energy_lab/planning/problem.py`,
+`src/open_energy_lab/planning/piecewise.py`, and
+`src/open_energy_lab/planning/optional_solver.py` now promote the first stable
+planning-facing slice into the public library. The current implementation
+consumes a committed TPM artifact, validates the first-release battery and
+solar decision set, assembles deterministic candidate designs with canonical
+piecewise metadata, and optionally hands that assembly off to a Pyomo-backed
+solve boundary.
+
+### Preserve
+
+- Keep the first-release planning scope limited to battery and solar decision
+  variables.
+- Keep planning assembly offline and fixture-backed even when no real solver
+  backend is installed.
+- Keep the canonical piecewise planning path explicit and tied to the TPM
+  artifact metadata rather than notebook-only solver glue.
+
+### Improve
+
+- Export planning assembly and optional solve directly from
+  `open_energy_lab.planning` so the public root surface matches the shipped
+  feature.
+- Persist a committed planning-problem fixture with the full
+  `PlanningProblemDefinition`, deterministic candidate baseline, and
+  fake-backend optional-solve expectations.
+- Record solver configuration, numeric tolerance, dataset fixture path, and
+  deterministic baseline expectations as reproducibility metadata instead of
+  leaving them implicit in test code.
+
+### Reject
+
+- Do not widen ordinary imports to require Pyomo or a solver binary.
+- Do not broaden the first-release decision scope to inverter or other
+  equipment choices.
+- Do not treat solver-backed execution as required for the default review path.
+
+## Implemented US3 Workflow Shape
+
+The current stable planning workflow is:
+
+1. Reload the committed TPM artifact through
+   `open_energy_lab.tpm.load_tpm_artifact(...)` or provide the same artifact in
+   memory.
+2. Build one `PlanningProblemDefinition(...)` with explicit decision features,
+   `shortfall_threshold`, `chance_limit_epsilon`, deterministic `cost_terms`,
+   solver configuration, approximation contract, and fixture baseline
+   expectations.
+3. Assemble the deterministic offline problem through
+   `open_energy_lab.planning.assemble_planning_problem(...)`.
+4. Optionally solve the assembled problem through
+   `open_energy_lab.planning.solve_planning_problem(...)`, either with an
+   injected backend or through the lazy Pyomo boundary.
+5. Inspect the returned `PlanningSolveSummary` or deterministic skip or
+   infeasibility diagnostics.
+
+The committed review path for this workflow is backed by:
+
+- `tests/integration/planning/test_problem_assembly.py`
+- `tests/integration/planning/test_optional_solve.py`
+- `tests/fixtures/planning/planning_problem_case.json`
+
+## Direct Chance-Constraint Semantics
+
+The first-release planning adequacy rule is fixed as:
+
+`P(shortfall > threshold) <= epsilon`
+
+Keep these distinctions explicit:
+
+- `threshold` is the target-event threshold for the persisted `shortfall`
+  metric and defaults from the target definition to `0.05` in the committed
+  fixtures.
+- `epsilon` is the chance-limit bound supplied by the planning problem and is
+  distinct from the target threshold itself.
+- the current committed planning fixture uses `shortfall_threshold = 0.05`
+  and `chance_limit_epsilon = 0.1`
+- the first-release candidate baseline is deterministic: both committed
+  candidate designs are feasible, and the lower-cost `baseline-a` design is
+  selected with objective value `13400.0` and estimated shortfall risk `0.0`
+
+## Lazy Pyomo Boundary
+
+Pyomo is the canonical planning-model backend, but it remains outside
+import-time package boundaries:
+
+- importing `open_energy_lab`, `open_energy_lab.planning`, or
+  `open_energy_lab.planning.problem` does not import Pyomo
+- `open_energy_lab.planning.require_pyomo_backend()` is only invoked when the
+  optional solve path needs the real backend and the caller has not injected
+  one
+- missing Pyomo surfaces as `PlanningSolverDependencyUnavailableError`
+- unavailable requested solvers surface as
+  `PlanningSolverUnavailableError`, or as deterministic skipped summaries when
+  `skip_if_unavailable=True`
+
+This keeps routine review import-light while still documenting the real solve
+boundary and failure semantics explicitly.
+
+## Unified Reproducibility Contract
+
+The committed export, TPM, and planning fixtures now share one reproducibility
+contract across the feature:
+
+- the export fixture records the deterministic design rows, flattened field
+  request, expected dataset id, and committed dataset artifact path
+- the TPM artifact fixture records the training dataset fixture path, typed
+  feature ordering, fit seed lineage, query configuration, and canonical
+  piecewise metadata
+- the planning fixture records the committed TPM artifact path, exact planning
+  problem definition, solver configuration, deterministic candidate baseline,
+  and fake-backend optional-solve expectations
+
+Together these fixtures preserve:
+
+- one shared feature id, `009-tpm-planning`
+- explicit legacy evidence paths per workflow slice
+- generation commands and refresh policies for every committed artifact
+- deterministic row ordering, numeric tolerances, and solver assumptions
+- a default offline review path that stays clear of mandatory SPFlow, Pyomo,
+  or solver installation
+
+## Backend-Specific Follow-Up Validation Guidance
+
+Default review remains fixture-backed and solver-optional. Use these follow-up
+checks only when the relevant backend is actually available:
+
+- `SPFlow`: rerun the TPM fit path with the real backend to confirm the
+  shipped artifact contract still matches the intended fit boundary and query
+  semantics.
+- `Pyomo`: rerun the planning optional-solve path with the real backend and a
+  supported solver binary to confirm the shipped handoff metadata and solve
+  summary match the committed fake-backend expectations closely enough for the
+  selected solver environment.
+
+If either backend is unavailable, document the skipped follow-up check rather
+than widening the base environment or weakening the offline review contract.

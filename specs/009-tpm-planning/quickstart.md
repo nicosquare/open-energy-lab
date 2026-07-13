@@ -1,11 +1,12 @@
 # Quickstart: TPM-Backed Planning And Simulator Dataset Export
 
 Use this quickstart to review the implemented User Story 1 simulator-export
-slice and User Story 2 TPM fit/query slice. The current repository now
-includes a stable simulator-owned planning-dataset export surface, a stable
-planning-dataset reload surface, a stable TPM fit/reload/query surface, and
-committed offline fixtures for deterministic export replay, artifact review,
-and query inspection.
+slice, User Story 2 TPM fit/query slice, and User Story 3 planning
+assembly/optional-solve slice. The current repository now includes a stable
+simulator-owned planning-dataset export surface, a stable planning-dataset
+reload and planning-assembly surface, a stable TPM fit/reload/query surface,
+and committed offline fixtures for deterministic export replay, artifact
+review, planning assembly, and optional-solve inspection.
 
 ## Preserve / Improve / Reject
 
@@ -18,8 +19,9 @@ feature:
 - Improve: explicit versioned planning dataset and TPM artifact contracts,
   library-owned `shortfall` semantics, stable public APIs under
   `open_energy_lab.simulator`, `open_energy_lab.tpm`, and
-  `open_energy_lab.planning`, and committed active US1 and US2 fixtures for
-  export replay, artifact reload, and query review.
+  `open_energy_lab.planning`, and committed active US1, US2, and US3 fixtures
+  for export replay, artifact reload, query review, planning assembly, and
+  optional-solve review.
 - Reject: notebook-only dataset assembly, pickle-only artifact ownership,
   runtime imports from `legacy/*`, and mandatory SPFlow or solver installs in
   the routine review path.
@@ -43,9 +45,8 @@ Confirm the intended split:
 - `shortfall` is one horizon-level energy-ratio target, not an implicit
   notebook variable
 - battery and solar are the only first-release planning decision sets
-- the currently implemented stable slices are dataset export/reload and TPM
-  fit/reload/query
-- planning model assembly and optional solve remain the later user story
+- the currently implemented stable slices are dataset export/reload, TPM
+  fit/reload/query, and planning assembly/optional solve
 
 ## Review The Contracts
 
@@ -90,8 +91,8 @@ Confirm from these files that:
 - current simulator families already expose the signals needed for shortfall
   derivation and flattened export
 - root packages are lazy and import-light
-- `open_energy_lab.planning` now ships the persisted dataset reload surface
-  while broader model assembly remains scaffolded
+- `open_energy_lab.planning` now ships the persisted dataset reload,
+  problem-assembly, and optional-solve root exports while keeping Pyomo lazy
 - `open_energy_lab.tpm` now ships the lazy root exports, typed feature
   handling, persisted artifact contract, fit configuration capture, and query
   workflow needed for the current TPM slice
@@ -134,11 +135,12 @@ are canonical TPM and planning backends, but they must be loaded lazily so
 routine package-import review does not require them. Solver binaries remain
 follow-up dependencies rather than routine review requirements.
 
-## Review The Committed US1 And US2 Fixtures
+## Review The Committed US1, US2, And US3 Fixtures
 
 The repository now includes these active TPM-planning fixtures:
 
 - `tests/fixtures/planning/planning_dataset_export_case.json`
+- `tests/fixtures/planning/planning_problem_case.json`
 - `tests/fixtures/tpm/planning_dataset_v1.json`
 - `tests/fixtures/tpm/tpm_artifact_v1.json`
 - `tests/fixtures/tpm/tpm_artifact_unsupported_version.json`
@@ -158,6 +160,9 @@ Use them to confirm that:
   fake-backend SPN payload summary
 - the query fixture records one deterministic request plus its expected
   response from the empirical replay path
+- the planning fixture records the exact first-release problem definition,
+  deterministic candidate baseline, and fake-backend optional-solve
+  expectations used by the offline US3 review path
 
 ## Implemented US1 Workflow Shape
 
@@ -207,6 +212,36 @@ The current root-level TPM entry points are:
 - `open_energy_lab.tpm.build_piecewise_metadata`
 - `open_energy_lab.tpm.SPFlowDependencyUnavailableError`
 
+## Implemented US3 Workflow Shape
+
+The stable planning assembly and optional solve workflow is:
+
+1. Reload the committed TPM artifact through
+   `open_energy_lab.tpm.load_tpm_artifact(...)`.
+2. Build one `PlanningProblemDefinition(...)` with explicit first-release
+   decision features, deterministic `cost_terms`, `shortfall_threshold`,
+   `chance_limit_epsilon`, solver configuration, approximation contract, and
+   fixture baseline expectations.
+3. Assemble the offline planning problem through
+   `open_energy_lab.planning.assemble_planning_problem(...)`.
+4. Optionally solve the assembled problem through
+   `open_energy_lab.planning.solve_planning_problem(...)`.
+5. Inspect the returned `PlanningSolveSummary`, deterministic skip summary, or
+   infeasibility diagnostics.
+
+The current root-level planning entry points are:
+
+- `open_energy_lab.planning.PlanningDatasetArtifact`
+- `open_energy_lab.planning.load_planning_dataset`
+- `open_energy_lab.planning.PlanningProblemDefinition`
+- `open_energy_lab.planning.PlanningProblemAssembly`
+- `open_energy_lab.planning.assemble_planning_problem`
+- `open_energy_lab.planning.PlanningSolveConfig`
+- `open_energy_lab.planning.PlanningSolveSummary`
+- `open_energy_lab.planning.PlanningSolverDependencyUnavailableError`
+- `open_energy_lab.planning.PlanningSolverUnavailableError`
+- `open_energy_lab.planning.solve_planning_problem`
+
 ## Implemented Typed-Feature Migration
 
 The current typed-feature slice preserves these first-release feature types:
@@ -254,6 +289,64 @@ The current TPM fit path treats SPFlow as canonical but lazy:
 
 This keeps routine review import-light while still documenting the real fit
 boundary.
+
+## Implemented Lazy Pyomo Boundary
+
+The current planning solve path treats Pyomo as canonical but lazy:
+
+- importing `open_energy_lab.planning` does not import Pyomo
+- importing `open_energy_lab.planning.problem` or
+  `open_energy_lab.planning.optional_solver` does not import Pyomo
+- `solve_planning_problem(...)` only resolves the real backend when no
+  injected backend is supplied
+- unavailable real-backend behavior surfaces as
+  `PlanningSolverDependencyUnavailableError`
+- unavailable requested solvers surface as
+  `PlanningSolverUnavailableError`, or as deterministic skipped summaries when
+  `skip_if_unavailable=True`
+
+This keeps routine review import-light while still documenting the real solve
+boundary and deterministic skip behavior.
+
+## Implemented Direct Chance-Constraint Semantics
+
+The first-release planning adequacy rule is:
+
+`P(shortfall > threshold) <= epsilon`
+
+Keep these constraints in mind:
+
+- `threshold` is the target-event threshold for the persisted `shortfall`
+  metric and defaults from the target definition to `0.05` in the committed
+  fixtures.
+- `epsilon` is the planning chance-limit bound and stays distinct from the
+  target threshold itself.
+- the committed planning fixture uses `shortfall_threshold = 0.05` and
+  `chance_limit_epsilon = 0.1`
+- the deterministic candidate baseline keeps both committed candidate designs
+  feasible and selects the lower-cost `baseline-a` design with objective value
+  `13400.0` and estimated shortfall risk `0.0`
+
+## Unified Reproducibility Contract
+
+The current export, TPM, and planning fixtures now share one review contract:
+
+- `planning_dataset_export_case.json` records the deterministic design rows,
+  flattened field request, target semantics, and expected dataset artifact
+  path.
+- `tpm_artifact_v1.json` records training dataset provenance, typed feature
+  ordering, query configuration, and canonical piecewise metadata.
+- `planning_problem_case.json` records the exact planning definition, solver
+  configuration, deterministic candidate baseline, and fake-backend
+  optional-solve expectations.
+
+Together these fixtures preserve:
+
+- one shared feature id, `009-tpm-planning`
+- explicit legacy evidence paths per workflow slice
+- generation commands, refresh policies, seeds, and solver assumptions
+- a default offline review path without mandatory SPFlow, Pyomo, or solver
+  installation
 
 ## After Implementation: Replay The Implemented US1 Export Workflow
 
@@ -363,6 +456,37 @@ Expected result:
 - the deterministic `baseline-a` request matches exactly one row and returns
   `0.0`
 
+## After Implementation: Replay The Committed US3 Planning Assembly Workflow
+
+Run the committed fixture-backed planning assembly path:
+
+```bash
+uv run pytest tests/integration/planning/test_problem_assembly.py
+```
+
+Expected result:
+
+- the assembly stays entirely offline from committed TPM and planning fixtures
+- the assembled problem preserves the first-release battery-and-solar decision
+  scope and canonical piecewise metadata
+- the deterministic baseline matches the committed
+  `tests/fixtures/planning/planning_problem_case.json` expectations
+
+## After Implementation: Replay The Committed US3 Optional Solve Workflow
+
+Run the committed fake-backend optional solve path:
+
+```bash
+uv run pytest tests/integration/planning/test_optional_solve.py
+```
+
+Expected result:
+
+- repeated runs return the same selected design and solve summary
+- the fake-backend optimal path selects the committed `baseline-a` design
+- backend-unavailable and solver-unavailable paths return deterministic
+  skipped summaries without requiring a real solver installation
+
 ## Planned Review Checks
 
 Run the checks relevant to the files changed:
@@ -380,6 +504,12 @@ Optional follow-up checks when dependencies are available:
 ```bash
 cd legacy/old_tpm && pytest src_py/tpm/spn/test_tangent_lower_bound.py
 ```
+
+Backend-specific follow-up guidance:
+
+- `SPFlow`: rerun the TPM fit path with the real backend when available.
+- `Pyomo`: rerun the planning optional-solve path with the real backend and a
+  supported solver binary when available.
 
 If SPFlow, Pyomo, or a supported solver backend is unavailable, document the
 skipped backend-specific follow-up checks instead of widening the base

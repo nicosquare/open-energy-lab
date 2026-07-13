@@ -150,8 +150,8 @@ supported backend to confirm reproducible cost and risk summaries.
 - [X] T039 [US3] Implement Pyomo-backed solver-model handoff, lazy backend loading, unavailable-backend diagnostics, and solve-summary handling in `src/open_energy_lab/planning/optional_solver.py`
 - [X] T040 [US3] Export planning assembly and optional solve APIs from `src/open_energy_lab/planning/__init__.py`
 - [X] T041 [US3] Populate planning-problem and optional-solve fixtures with provenance, solver-configuration metadata, and deterministic baseline expectations in `tests/fixtures/planning/planning_problem_case.json` and `tests/fixtures/planning/README.md`
-- [ ] T042 [US3] Document planning model assembly, Pyomo-backed solve behavior, direct chance-constraint semantics, solver reproducibility expectations, and explicit backend-specific follow-up validation guidance for SPFlow and Pyomo in `docs/migration/tpm-planning.md` and `specs/009-tpm-planning/quickstart.md`
-- [ ] T042a [US3] Document the unified reproducibility contract in `specs/009-tpm-planning/quickstart.md` and `docs/migration/tpm-planning.md`
+- [X] T042 [US3] Document planning model assembly, Pyomo-backed solve behavior, direct chance-constraint semantics, solver reproducibility expectations, and explicit backend-specific follow-up validation guidance for SPFlow and Pyomo in `docs/migration/tpm-planning.md` and `specs/009-tpm-planning/quickstart.md`
+- [X] T042a [US3] Document the unified reproducibility contract in `specs/009-tpm-planning/quickstart.md` and `docs/migration/tpm-planning.md`
 
 **Checkpoint**: User Story 3 is functional and independently testable through
 `tests/integration/planning/test_problem_assembly.py`, with solve checks
