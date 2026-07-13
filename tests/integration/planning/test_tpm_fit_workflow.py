@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -38,6 +39,31 @@ def test_planning_dataset_fixture_exposes_tpm_fit_preconditions() -> None:
     }
 
 
+def test_fit_reload_workflow_persists_tpm_artifact_offline(
+    tmp_path: Path,
+) -> None:
+    dataset = load_planning_dataset(PLANNING_DATASET_ARTIFACT_FIXTURE_PATH)
+    artifact_path = tmp_path / "tpm-artifact-v1.json"
+    fake_backend = SimpleNamespace(__name__="spflow.testing", __version__="0.test")
+
+    fitted_artifact = fit_tpm_artifact(
+        dataset,
+        output_path=artifact_path,
+        spflow_backend=fake_backend,
+    )
+    reloaded_artifact = load_tpm_artifact(artifact_path)
+
+    assert artifact_path.is_file()
+    assert reloaded_artifact.artifact_id == fitted_artifact.artifact_id
+    assert reloaded_artifact.dataset_reference == dataset.dataset_id
+    assert reloaded_artifact.fit_configuration["backend_name"] == "spflow"
+    assert reloaded_artifact.query_configuration["required_decision_features"] == [
+        "battery_capacity_kwh",
+        "solar_capacity_kw",
+        "design_name",
+    ]
+
+
 @pytest.mark.xfail(strict=True, reason=_PENDING_US2_IMPLEMENTATION)
 def test_fit_reload_query_workflow_runs_from_exported_planning_dataset(
     tmp_path: Path,
@@ -64,4 +90,3 @@ def test_fit_reload_query_workflow_runs_from_exported_planning_dataset(
     assert reloaded_artifact.artifact_id == fitted_artifact.artifact_id
     assert result["target_name"] == "shortfall"
     assert result["output_mode"] == "conditional_probability"
-
