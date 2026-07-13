@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import pytest
 
 from open_energy_lab.tpm.artifact import load_tpm_artifact
@@ -163,3 +165,27 @@ def test_query_tpm_artifact_supports_log_likelihood_output() -> None:
     assert result["target_name"] == "shortfall"
     assert result["output_mode"] == "log_likelihood"
     assert isinstance(result["value"], float)
+
+
+def test_query_tpm_artifact_uses_piecewise_query_tolerance_for_zero_match_log_likelihood() -> None:
+    payload = _artifact_payload()
+    payload["approximation_metadata"] = {
+        "approximation_kind": "piecewise",
+        "query_numeric_tolerance": 1e-6,
+    }
+    artifact = load_tpm_artifact(payload)
+
+    result = query_tpm_artifact(
+        artifact,
+        TPMQueryRequest(
+            decision_assignments={
+                "battery_capacity_kwh": 20.0,
+                "design_name": "baseline-a",
+            },
+            marginalized_features=("solar_has_tracking",),
+            output_mode="log_likelihood",
+        ),
+    )
+
+    assert result["matched_row_count"] == 0
+    assert result["value"] == pytest.approx(math.log(1e-6))

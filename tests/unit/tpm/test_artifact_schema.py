@@ -129,6 +129,12 @@ def test_load_tpm_artifact_preserves_schema_target_and_query_metadata() -> None:
         "conditional_probability",
         "log_likelihood",
     ]
+    assert artifact.approximation_metadata["approximation_kind"] == "piecewise"
+    assert artifact.approximation_metadata["leaf_encoding_mode"] == "histogram"
+    assert artifact.approximation_metadata["sum_encoding_mode"] == "piecewise"
+    assert artifact.approximation_metadata["breakpoint_policy"]["policy_name"] == (
+        "legacy-logspace-v1"
+    )
 
 
 def test_load_tpm_artifact_rejects_unsupported_schema_version() -> None:

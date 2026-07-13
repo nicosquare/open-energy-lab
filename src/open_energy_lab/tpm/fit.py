@@ -14,6 +14,11 @@ from .artifact import FEATURE_NAME, TPMArtifact
 from .data import TPMTrainingData, normalize_training_data
 from .features import TPMFeatureSpec, dump_feature_schema
 from .optional_spflow import fit_spflow_model
+from .piecewise import (
+    CANONICAL_PIECEWISE_LEGACY_REFERENCE_PATHS,
+    DEFAULT_QUERY_NUMERIC_TOLERANCE,
+    build_piecewise_metadata,
+)
 
 
 CANONICAL_OUTPUT_MODES = (
@@ -24,11 +29,7 @@ FIT_LEGACY_EVIDENCE_PATHS = (
     "legacy/old_tpm/src_py/tpm/data/datahandler.py",
     "legacy/old_tpm/src_py/tpm/spn/main.py",
 )
-PIECEWISE_LEGACY_EVIDENCE_PATHS = (
-    "legacy/old_tpm/src_py/tpm/spn/encoding.py",
-    "legacy/old_tpm/src_py/tpm/spn/utils_tangent.py",
-    "legacy/old_tpm/src_py/utils/densities.py",
-)
+PIECEWISE_LEGACY_EVIDENCE_PATHS = CANONICAL_PIECEWISE_LEGACY_REFERENCE_PATHS
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +105,12 @@ def fit_tpm_artifact(
         backend=spflow_backend,
     )
 
+    piecewise_metadata = build_piecewise_metadata(
+        fit_numeric_tolerance=float(dataset.export_configuration["numeric_tolerance"]),
+        query_numeric_tolerance=DEFAULT_QUERY_NUMERIC_TOLERANCE,
+        legacy_reference_paths=PIECEWISE_LEGACY_EVIDENCE_PATHS,
+    )
+
     artifact = TPMArtifact(
         artifact_id=f"tpm-artifact:{dataset.dataset_id}",
         schema_version="v1",
@@ -127,11 +134,7 @@ def fit_tpm_artifact(
                 str(feature["feature_name"]) for feature in dataset.design_feature_schema
             ],
         },
-        approximation_metadata={
-            "approximation_kind": "piecewise",
-            "tolerance": float(dataset.export_configuration["numeric_tolerance"]),
-            "legacy_reference_paths": list(PIECEWISE_LEGACY_EVIDENCE_PATHS),
-        },
+        approximation_metadata=piecewise_metadata.to_dict(),
         provenance=_artifact_provenance(
             dataset=dataset,
             training_random_seed=training_random_seed,

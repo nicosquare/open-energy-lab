@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .features import TPMFeatureSpec, dump_feature_schema, load_feature_schema
+from .piecewise import load_piecewise_metadata
 
 FEATURE_NAME = "009-tpm-planning"
 SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS = ("v1",)
@@ -165,8 +166,7 @@ class TPMArtifact:
             data["approximation_metadata"],
             field_name="approximation_metadata",
         )
-        if not str(approximation_metadata.get("approximation_kind", "")):
-            raise ValueError("approximation_metadata.approximation_kind must be non-empty")
+        approximation_metadata = load_piecewise_metadata(approximation_metadata).to_dict()
 
         provenance = _mapping(data["provenance"], field_name="provenance")
 

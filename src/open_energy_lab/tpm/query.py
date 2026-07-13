@@ -11,8 +11,10 @@ from typing import Any
 
 from .artifact import TPMArtifact, load_tpm_artifact
 from .features import TPMFeatureSpec
-
-DEFAULT_QUERY_NUMERIC_TOLERANCE = 1e-9
+from .piecewise import (
+    DEFAULT_QUERY_NUMERIC_TOLERANCE,
+    resolve_query_numeric_tolerance,
+)
 
 
 def _is_non_boolean_real(value: object) -> bool:
@@ -193,9 +195,9 @@ def _build_query_context(
     numeric_tolerance = float(
         request.numeric_tolerance
         if request.numeric_tolerance is not None
-        else artifact.approximation_metadata.get(
-            "tolerance",
-            DEFAULT_QUERY_NUMERIC_TOLERANCE,
+        else resolve_query_numeric_tolerance(
+            artifact.approximation_metadata,
+            default=DEFAULT_QUERY_NUMERIC_TOLERANCE,
         )
     )
 
