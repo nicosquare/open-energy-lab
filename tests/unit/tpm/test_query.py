@@ -8,11 +8,6 @@ from open_energy_lab.tpm.artifact import load_tpm_artifact
 from open_energy_lab.tpm.query import TPMQueryRequest, query_tpm_artifact
 
 
-_PENDING_US2_IMPLEMENTATION = (
-    "User Story 2 implementation tasks T025-T029 are still pending."
-)
-
-
 def _artifact_payload() -> dict[str, object]:
     return {
         "artifact_id": "tpm-artifact-query-unit",
@@ -98,7 +93,6 @@ def test_tpm_query_request_defaults_to_conditional_probability_shortfall() -> No
     assert request.target_name == "shortfall"
 
 
-@pytest.mark.xfail(strict=True, reason=_PENDING_US2_IMPLEMENTATION)
 def test_query_tpm_artifact_supports_conditional_queries_with_marginalization() -> None:
     artifact = load_tpm_artifact(_artifact_payload())
 
@@ -118,9 +112,10 @@ def test_query_tpm_artifact_supports_conditional_queries_with_marginalization() 
     assert result["target_name"] == "shortfall"
     assert result["output_mode"] == "conditional_probability"
     assert result["marginalized_features"] == ("solar_has_tracking",)
+    assert result["value"] >= 0.0
+    assert result["value"] <= 1.0
 
 
-@pytest.mark.xfail(strict=True, reason=_PENDING_US2_IMPLEMENTATION)
 def test_query_tpm_artifact_rejects_missing_required_decision_feature() -> None:
     artifact = load_tpm_artifact(_artifact_payload())
 
@@ -134,7 +129,6 @@ def test_query_tpm_artifact_rejects_missing_required_decision_feature() -> None:
         )
 
 
-@pytest.mark.xfail(strict=True, reason=_PENDING_US2_IMPLEMENTATION)
 def test_query_tpm_artifact_rejects_incompatible_target_requests() -> None:
     artifact = load_tpm_artifact(_artifact_payload())
 
@@ -150,3 +144,22 @@ def test_query_tpm_artifact_rejects_incompatible_target_requests() -> None:
             ),
         )
 
+
+def test_query_tpm_artifact_supports_log_likelihood_output() -> None:
+    artifact = load_tpm_artifact(_artifact_payload())
+
+    result = query_tpm_artifact(
+        artifact,
+        TPMQueryRequest(
+            decision_assignments={
+                "battery_capacity_kwh": 8.0,
+                "design_name": "baseline-a",
+            },
+            marginalized_features=("solar_has_tracking",),
+            output_mode="log_likelihood",
+        ),
+    )
+
+    assert result["target_name"] == "shortfall"
+    assert result["output_mode"] == "log_likelihood"
+    assert isinstance(result["value"], float)

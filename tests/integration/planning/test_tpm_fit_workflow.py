@@ -14,11 +14,6 @@ from open_energy_lab.tpm.query import TPMQueryRequest, query_tpm_artifact
 from tests.integration.planning.fixture_utils import PLANNING_DATASET_ARTIFACT_FIXTURE_PATH
 
 
-_PENDING_US2_IMPLEMENTATION = (
-    "User Story 2 implementation tasks T025-T029 are still pending."
-)
-
-
 def test_planning_dataset_fixture_exposes_tpm_fit_preconditions() -> None:
     dataset = load_planning_dataset(PLANNING_DATASET_ARTIFACT_FIXTURE_PATH)
     feature_types = {
@@ -64,14 +59,18 @@ def test_fit_reload_workflow_persists_tpm_artifact_offline(
     ]
 
 
-@pytest.mark.xfail(strict=True, reason=_PENDING_US2_IMPLEMENTATION)
 def test_fit_reload_query_workflow_runs_from_exported_planning_dataset(
     tmp_path: Path,
 ) -> None:
     dataset = load_planning_dataset(PLANNING_DATASET_ARTIFACT_FIXTURE_PATH)
     artifact_path = tmp_path / "tpm-artifact-v1.json"
+    fake_backend = SimpleNamespace(__name__="spflow.testing", __version__="0.test")
 
-    fitted_artifact = fit_tpm_artifact(dataset, output_path=artifact_path)
+    fitted_artifact = fit_tpm_artifact(
+        dataset,
+        output_path=artifact_path,
+        spflow_backend=fake_backend,
+    )
     reloaded_artifact = load_tpm_artifact(artifact_path)
     result = query_tpm_artifact(
         reloaded_artifact,
@@ -90,3 +89,5 @@ def test_fit_reload_query_workflow_runs_from_exported_planning_dataset(
     assert reloaded_artifact.artifact_id == fitted_artifact.artifact_id
     assert result["target_name"] == "shortfall"
     assert result["output_mode"] == "conditional_probability"
+    assert result["marginalized_features"] == ("solar_capacity_kw",)
+    assert result["value"] == pytest.approx(0.0)
