@@ -144,9 +144,9 @@ supported backend to confirm reproducible cost and risk summaries.
 
 ### Implementation for User Story 3
 
-- [ ] T037 [US3] Implement planning problem definitions, decision validation, chance-constraint metadata, solver-configuration reproducibility fields, and deterministic fixture baseline handling in `src/open_energy_lab/planning/problem.py`
-- [ ] T038 [US3] Implement solver-facing piecewise assembly helpers that consume TPM approximation metadata in `src/open_energy_lab/planning/piecewise.py`
-- [ ] T038a [US3] Document and enforce the supported first-release planning decision-variable set in `src/open_energy_lab/planning/problem.py` and `src/open_energy_lab/planning/piecewise.py`
+- [X] T037 [US3] Implement planning problem definitions, decision validation, chance-constraint metadata, solver-configuration reproducibility fields, and deterministic fixture baseline handling in `src/open_energy_lab/planning/problem.py`
+- [X] T038 [US3] Implement solver-facing piecewise assembly helpers that consume TPM approximation metadata in `src/open_energy_lab/planning/piecewise.py`
+- [X] T038a [US3] Document and enforce the supported first-release planning decision-variable set in `src/open_energy_lab/planning/problem.py` and `src/open_energy_lab/planning/piecewise.py`
 - [ ] T039 [US3] Implement Pyomo-backed solver-model handoff, lazy backend loading, unavailable-backend diagnostics, and solve-summary handling in `src/open_energy_lab/planning/optional_solver.py`
 - [ ] T040 [US3] Export planning assembly and optional solve APIs from `src/open_energy_lab/planning/__init__.py`
 - [ ] T041 [US3] Populate planning-problem and optional-solve fixtures with provenance, solver-configuration metadata, and deterministic baseline expectations in `tests/fixtures/planning/planning_problem_case.json` and `tests/fixtures/planning/README.md`

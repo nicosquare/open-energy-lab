@@ -10,6 +10,8 @@ from open_energy_lab.planning.problem import (
     PlanningProblemDefinition,
     SUPPORTED_FIRST_RELEASE_DECISION_TYPES,
     SUPPORTED_FIRST_RELEASE_DECISION_VARIABLE_TYPES,
+    SUPPORTED_OBJECTIVE_DIRECTIONS,
+    SUPPORTED_PLANNING_BACKENDS,
 )
 
 
@@ -150,4 +152,90 @@ def test_planning_problem_definition_tracks_documented_problem_fields() -> None:
         "shortfall_threshold",
         "chance_limit_epsilon",
         "cost_terms",
+        "tpm_artifact_reference",
+        "objective_direction",
+        "solver_configuration",
+        "approximation_contract",
+        "fixture_baseline",
     }.issubset(field_names)
+
+
+def test_planning_problem_definition_normalizes_reproducibility_metadata() -> None:
+    problem = PlanningProblemDefinition(
+        problem_id="planning-problem-unit",
+        tpm_artifact_reference="tests/fixtures/tpm/tpm_artifact_v1.json",
+        decision_features=("battery_capacity_kwh", "solar_capacity_kw"),
+        decision_feature_types={
+            "battery_capacity_kwh": "continuous",
+            "solar_capacity_kw": "continuous",
+        },
+        shortfall_threshold=0.05,
+        chance_limit_epsilon=0.1,
+        cost_terms={
+            "battery_capacity_kwh": 1200.0,
+            "solar_capacity_kw": 950.0,
+        },
+        solver_configuration={
+            "backend_name": "pyomo",
+            "solver_name": "fake-pyomo",
+            "numeric_tolerance": 1e-8,
+            "random_seed": 13,
+        },
+        approximation_contract={
+            "approximation_kind": "piecewise",
+            "leaf_encoding_mode": "histogram",
+        },
+        fixture_baseline={
+            "label": "planning-baseline-a",
+            "source_fixture_path": "tests/fixtures/planning/planning_problem_case.json",
+            "expected_status": "optimal",
+            "expected_selected_design": {
+                "battery_capacity_kwh": 8.0,
+                "solar_capacity_kw": 4.0,
+            },
+            "expected_objective_value": 13400.0,
+            "expected_estimated_shortfall_risk": 0.0,
+            "expected_candidate_count": 2,
+            "expected_feasible_candidate_count": 2,
+        },
+    )
+
+    assert SUPPORTED_OBJECTIVE_DIRECTIONS == ("minimize",)
+    assert SUPPORTED_PLANNING_BACKENDS == ("pyomo",)
+    assert problem.objective_direction == "minimize"
+    assert problem.solver_configuration["backend_name"] == "pyomo"
+    assert problem.solver_configuration["solver_name"] == "fake-pyomo"
+    assert problem.solver_configuration["numeric_tolerance"] == pytest.approx(1e-8)
+    assert problem.solver_configuration["random_seed"] == 13
+    assert problem.approximation_contract["approximation_kind"] == "piecewise"
+    assert problem.fixture_baseline["expected_candidate_count"] == 2
+    assert problem.fixture_baseline["expected_selected_design"] == {
+        "battery_capacity_kwh": 8.0,
+        "solar_capacity_kw": 4.0,
+    }
+
+
+def test_planning_problem_definition_rejects_unsupported_solver_backend() -> None:
+    with pytest.raises(ValueError, match="solver_configuration.backend_name"):
+        PlanningProblemDefinition(
+            problem_id="planning-problem-unit",
+            decision_features=("battery_capacity_kwh",),
+            decision_feature_types={"battery_capacity_kwh": "continuous"},
+            shortfall_threshold=0.05,
+            chance_limit_epsilon=0.1,
+            solver_configuration={"backend_name": "docplex"},
+        )
+
+
+def test_planning_problem_definition_rejects_fixture_baseline_with_unknown_decision_feature() -> None:
+    with pytest.raises(ValueError, match="fixture_baseline.expected_selected_design"):
+        PlanningProblemDefinition(
+            problem_id="planning-problem-unit",
+            decision_features=("battery_capacity_kwh",),
+            decision_feature_types={"battery_capacity_kwh": "continuous"},
+            shortfall_threshold=0.05,
+            chance_limit_epsilon=0.1,
+            fixture_baseline={
+                "expected_selected_design": {"solar_capacity_kw": 4.0},
+            },
+        )
