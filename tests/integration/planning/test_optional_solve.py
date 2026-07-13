@@ -18,6 +18,7 @@ from open_energy_lab.planning.problem import (
 )
 from open_energy_lab.tpm import load_tpm_artifact
 from tests.integration.planning.fixture_utils import (
+    PLANNING_PROBLEM_FIXTURE_PATH,
     TPM_ARTIFACT_FIXTURE_PATH,
     load_planning_fixture,
 )
@@ -48,59 +49,62 @@ class _FakePyomoBackend(SimpleNamespace):
 
 def _assembled_problem():
     artifact = load_tpm_artifact(load_planning_fixture(TPM_ARTIFACT_FIXTURE_PATH))
+    planning_fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
+    problem_definition = planning_fixture["problem_definition"]
+    assert isinstance(problem_definition, dict)
     return assemble_planning_problem(
-        PlanningProblemDefinition(
-            problem_id="planning-optional-solve-integration",
-            decision_features=("battery_capacity_kwh", "solar_capacity_kw"),
-            decision_feature_types={
-                "battery_capacity_kwh": "continuous",
-                "solar_capacity_kw": "continuous",
-            },
-            shortfall_threshold=0.05,
-            chance_limit_epsilon=0.1,
-            cost_terms={
-                "battery_capacity_kwh": 1200.0,
-                "solar_capacity_kw": 950.0,
-            },
-        ),
+        PlanningProblemDefinition(**problem_definition),
         artifact,
     )
 
 
 def test_optional_solve_repeated_runs_return_the_same_selected_design_and_summary() -> None:
     assembled_problem = _assembled_problem()
+    planning_fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
+    expected_optional_solve = planning_fixture["expected_optional_solve"]
+    assert isinstance(expected_optional_solve, dict)
+    solve_config = expected_optional_solve["solve_config"]
+    optimal_summary = expected_optional_solve["optimal_summary"]
+    assert isinstance(solve_config, dict)
+    assert isinstance(optimal_summary, dict)
     backend = _FakePyomoBackend(__name__="pyomo.testing", __version__="0.test")
 
     first = solve_planning_problem(
         assembled_problem,
-        solve_config=PlanningSolveConfig(solver_name="fake-pyomo"),
+        solve_config=PlanningSolveConfig(**solve_config),
         pyomo_backend=backend,
     )
     second = solve_planning_problem(
         assembled_problem,
-        solve_config=PlanningSolveConfig(solver_name="fake-pyomo"),
+        solve_config=PlanningSolveConfig(**solve_config),
         pyomo_backend=backend,
     )
 
     assert first == second
-    assert first.status == "optimal"
-    assert first.selected_design == {
-        "battery_capacity_kwh": 8.0,
-        "solar_capacity_kw": 4.0,
-    }
-    assert first.objective_value == pytest.approx(13400.0)
-    assert first.estimated_shortfall_risk == pytest.approx(0.0)
-    assert first.solver_metadata["backend_module"] == "pyomo.testing"
-    assert first.solver_metadata["handoff_strategy"] == "custom-backend-hook"
-    assert first.feasibility_diagnostics["model_name"] == (
-        "planning-optional-solve-integration-handoff"
+    assert first.status == optimal_summary["status"]
+    assert first.selected_design == optimal_summary["selected_design"]
+    assert first.objective_value == pytest.approx(optimal_summary["objective_value"])
+    assert first.estimated_shortfall_risk == pytest.approx(
+        optimal_summary["estimated_shortfall_risk"]
     )
+    assert first.solver_metadata["backend_module"] == optimal_summary["backend_module"]
+    assert first.solver_metadata["handoff_strategy"] == optimal_summary["handoff_strategy"]
+    assert (
+        first.solver_metadata["solve_execution_mode"]
+        == optimal_summary["solve_execution_mode"]
+    )
+    assert first.feasibility_diagnostics["model_name"] == optimal_summary["model_name"]
 
 
 def test_optional_solve_can_report_deterministic_skip_when_backend_is_unavailable(
     monkeypatch,
 ) -> None:
     assembled_problem = _assembled_problem()
+    planning_fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
+    expected_optional_solve = planning_fixture["expected_optional_solve"]
+    assert isinstance(expected_optional_solve, dict)
+    expected_skip = expected_optional_solve["skip_when_backend_unavailable"]
+    assert isinstance(expected_skip, dict)
 
     def _raise_dependency_error():
         raise PlanningSolverDependencyUnavailableError("pyomo missing")
@@ -115,20 +119,27 @@ def test_optional_solve_can_report_deterministic_skip_when_backend_is_unavailabl
         solve_config=PlanningSolveConfig(skip_if_unavailable=True),
     )
 
-    assert summary.status == "skipped"
+    assert summary.status == expected_skip["status"]
     assert summary.objective_value is None
     assert summary.estimated_shortfall_risk is None
-    assert summary.feasibility_diagnostics["reason"] == "optional pyomo backend unavailable"
+    assert summary.feasibility_diagnostics["reason"] == expected_skip["reason"]
     assert summary.solver_metadata["status"] == "skipped"
 
 
 def test_optional_solve_can_skip_when_requested_solver_is_unavailable() -> None:
     assembled_problem = _assembled_problem()
+    planning_fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
+    expected_optional_solve = planning_fixture["expected_optional_solve"]
+    assert isinstance(expected_optional_solve, dict)
+    solve_config = expected_optional_solve["solve_config"]
+    expected_skip = expected_optional_solve["skip_when_requested_solver_unavailable"]
+    assert isinstance(solve_config, dict)
+    assert isinstance(expected_skip, dict)
 
     summary = solve_planning_problem(
         assembled_problem,
         solve_config=PlanningSolveConfig(
-            solver_name="fake-pyomo",
+            solver_name=str(solve_config["solver_name"]),
             skip_if_unavailable=True,
         ),
         pyomo_backend=_FakePyomoBackend(
@@ -138,7 +149,7 @@ def test_optional_solve_can_skip_when_requested_solver_is_unavailable() -> None:
         ),
     )
 
-    assert summary.status == "skipped"
-    assert summary.feasibility_diagnostics["reason"] == "requested planning solver unavailable"
-    assert "fake solver unavailable" in summary.feasibility_diagnostics["error"]
-    assert summary.solver_metadata["handoff_strategy"] == "custom-backend-hook"
+    assert summary.status == expected_skip["status"]
+    assert summary.feasibility_diagnostics["reason"] == expected_skip["reason"]
+    assert expected_skip["error_substring"] in summary.feasibility_diagnostics["error"]
+    assert summary.solver_metadata["handoff_strategy"] == expected_skip["handoff_strategy"]

@@ -1,26 +1,158 @@
 {
   "fixture_name": "planning_problem_case",
-  "fixture_status": "placeholder",
-  "purpose": "Reserve the offline planning-problem assembly fixture path for spec 009.",
+  "fixture_status": "active",
+  "purpose": "Deterministic first-release planning-problem and optional-solve fixture for offline assembly and solver-boundary review.",
   "spec_feature": "009-tpm-planning",
   "provenance": {
-    "author": "codex",
-    "origin": "phase-1 scaffold placeholder",
+    "author": "OpenAI Codex",
+    "origin": "Current-library planning assembly contract derived from the committed TPM artifact fixture and deterministic battery-solar cost metadata",
     "legacy_evidence_paths": [
       "legacy/old_tpm/src_py/tpm/spn/encoding.py",
       "legacy/old_tpm/src_py/tpm/spn/utils_tangent.py",
       "legacy/old_tpm/src_py/utils/densities.py"
     ],
-    "generation_command": "created manually during Phase 1 scaffolding",
-    "random_seed": null,
-    "refresh_policy": "Replace with an active deterministic planning-problem fixture when User Story 3 is implemented."
+    "generation_command": "Replay tests/integration/planning/test_problem_assembly.py and tests/integration/planning/test_optional_solve.py against the committed TPM artifact fixture and persist the reviewed planning definition plus deterministic expectations.",
+    "random_seed": 13,
+    "refresh_policy": "Update only when the first-release planning problem contract, solver configuration metadata, deterministic baseline, or optional solve expectations intentionally change.",
+    "tpm_artifact_fixture_path": "tests/fixtures/tpm/tpm_artifact_v1.json",
+    "dataset_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json",
+    "created_from_fixture": true,
+    "canonical_backend": "pyomo",
+    "solver_name": "fake-pyomo"
   },
   "planned_contracts": [
     "specs/009-tpm-planning/contracts/planning-solve-contract.md",
     "specs/009-tpm-planning/contracts/validation-contract.md"
   ],
   "notes": [
-    "The first release supports battery and solar decision variables only.",
-    "The final committed fixture must remain solver-optional for the default review path."
-  ]
+    "This active fixture keeps the first-release planning scope limited to battery and solar decision variables while remaining offline and reviewable in git.",
+    "It records the exact planning definition, solver-configuration provenance, deterministic candidate baseline, and optional-solve expectations used by the fixture-backed US3 review path.",
+    "The default review path remains solver-optional because unavailable backend behavior is part of the committed expectations."
+  ],
+  "tpm_artifact_fixture_path": "tests/fixtures/tpm/tpm_artifact_v1.json",
+  "problem_definition": {
+    "problem_id": "planning-problem-assembly-integration",
+    "tpm_artifact_reference": "tests/fixtures/tpm/tpm_artifact_v1.json",
+    "decision_features": [
+      "battery_capacity_kwh",
+      "solar_capacity_kw"
+    ],
+    "decision_feature_types": {
+      "battery_capacity_kwh": "continuous",
+      "solar_capacity_kw": "continuous"
+    },
+    "shortfall_threshold": 0.05,
+    "chance_limit_epsilon": 0.1,
+    "cost_terms": {
+      "battery_capacity_kwh": 1200.0,
+      "solar_capacity_kw": 950.0
+    },
+    "objective_direction": "minimize",
+    "solver_configuration": {
+      "backend_name": "pyomo",
+      "solver_name": "fake-pyomo",
+      "numeric_tolerance": 1e-09,
+      "random_seed": 13
+    },
+    "approximation_contract": {
+      "approximation_kind": "piecewise",
+      "leaf_encoding_mode": "histogram",
+      "sum_encoding_mode": "piecewise"
+    },
+    "fixture_baseline": {
+      "label": "planning-baseline-a",
+      "source_fixture_path": "tests/fixtures/planning/planning_problem_case.json",
+      "expected_status": "optimal",
+      "expected_selected_design": {
+        "battery_capacity_kwh": 8.0,
+        "solar_capacity_kw": 4.0
+      },
+      "expected_objective_value": 13400.0,
+      "expected_estimated_shortfall_risk": 0.0,
+      "expected_candidate_count": 2,
+      "expected_feasible_candidate_count": 2
+    }
+  },
+  "expected_assembly": {
+    "artifact_id": "tpm-artifact:planning-dataset-export-integration",
+    "dataset_reference": "planning-dataset-export-integration",
+    "target_name": "shortfall",
+    "candidate_designs": [
+      {
+        "selected_design": {
+          "battery_capacity_kwh": 8.0,
+          "solar_capacity_kw": 4.0
+        },
+        "objective_value": 13400.0,
+        "estimated_shortfall_risk": 0.0,
+        "matched_row_count": 1
+      },
+      {
+        "selected_design": {
+          "battery_capacity_kwh": 10.0,
+          "solar_capacity_kw": 5.0
+        },
+        "objective_value": 16750.0,
+        "estimated_shortfall_risk": 0.0,
+        "matched_row_count": 1
+      }
+    ],
+    "chance_constraint_metadata": {
+      "target_name": "shortfall",
+      "comparison": ">",
+      "threshold": 0.05,
+      "chance_limit_epsilon": 0.1,
+      "supported_query_mode": "exceedance-probability"
+    },
+    "solver_metadata": {
+      "canonical_backend": "pyomo",
+      "solver_name": "fake-pyomo",
+      "dataset_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json"
+    },
+    "approximation_contract": {
+      "sum_encoding_mode": "piecewise"
+    },
+    "deterministic_fixture_baseline": {
+      "candidate_count": 2,
+      "feasible_candidate_count": 2,
+      "dataset_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json",
+      "numeric_tolerance": 1e-09,
+      "status": "optimal",
+      "selected_design": {
+        "battery_capacity_kwh": 8.0,
+        "solar_capacity_kw": 4.0
+      },
+      "objective_value": 13400.0,
+      "estimated_shortfall_risk": 0.0,
+      "matched_row_count": 1
+    }
+  },
+  "expected_optional_solve": {
+    "solve_config": {
+      "solver_name": "fake-pyomo"
+    },
+    "optimal_summary": {
+      "status": "optimal",
+      "selected_design": {
+        "battery_capacity_kwh": 8.0,
+        "solar_capacity_kw": 4.0
+      },
+      "objective_value": 13400.0,
+      "estimated_shortfall_risk": 0.0,
+      "backend_module": "pyomo.testing",
+      "handoff_strategy": "custom-backend-hook",
+      "solve_execution_mode": "custom-backend-hook",
+      "model_name": "planning-problem-assembly-integration-handoff"
+    },
+    "skip_when_backend_unavailable": {
+      "status": "skipped",
+      "reason": "optional pyomo backend unavailable"
+    },
+    "skip_when_requested_solver_unavailable": {
+      "status": "skipped",
+      "reason": "requested planning solver unavailable",
+      "error_substring": "fake solver unavailable",
+      "handoff_strategy": "custom-backend-hook"
+    }
+  }
 }

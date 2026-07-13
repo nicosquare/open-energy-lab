@@ -105,11 +105,34 @@ def test_planning_dataset_export_fixture_tracks_export_contracts() -> None:
 def test_planning_problem_fixture_tracks_first_release_scope() -> None:
     fixture_data = _fixture_data_for(PLANNING_PROBLEM_FIXTURE_PATH)
 
-    assert fixture_data["fixture_status"] == "placeholder"
+    assert fixture_data["fixture_status"] == "active"
     assert set(fixture_data["planned_contracts"]) == {
         "specs/009-tpm-planning/contracts/planning-solve-contract.md",
         "specs/009-tpm-planning/contracts/validation-contract.md",
     }
+    assert fixture_data["tpm_artifact_fixture_path"] == "tests/fixtures/tpm/tpm_artifact_v1.json"
+    problem_definition = fixture_data["problem_definition"]
+    expected_assembly = fixture_data["expected_assembly"]
+    expected_optional_solve = fixture_data["expected_optional_solve"]
+    assert isinstance(problem_definition, dict)
+    assert isinstance(expected_assembly, dict)
+    assert isinstance(expected_optional_solve, dict)
+    assert problem_definition["problem_id"] == "planning-problem-assembly-integration"
+    assert problem_definition["decision_features"] == [
+        "battery_capacity_kwh",
+        "solar_capacity_kw",
+    ]
+    assert problem_definition["solver_configuration"]["backend_name"] == "pyomo"
+    assert problem_definition["solver_configuration"]["solver_name"] == "fake-pyomo"
+    assert problem_definition["fixture_baseline"]["expected_status"] == "optimal"
+    assert expected_assembly["artifact_id"] == "tpm-artifact:planning-dataset-export-integration"
+    assert expected_assembly["deterministic_fixture_baseline"]["candidate_count"] == 2
+    assert expected_optional_solve["optimal_summary"]["status"] == "optimal"
+    assert expected_optional_solve["skip_when_backend_unavailable"]["status"] == "skipped"
+    assert (
+        expected_optional_solve["skip_when_requested_solver_unavailable"]["handoff_strategy"]
+        == "custom-backend-hook"
+    )
     notes = " ".join(str(note).lower() for note in fixture_data["notes"])
     assert "battery and solar" in notes
     assert "solver-optional" in notes

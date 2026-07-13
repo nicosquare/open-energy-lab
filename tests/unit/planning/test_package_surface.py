@@ -9,6 +9,14 @@ PLANNING_PACKAGE = "open_energy_lab.planning"
 EXPECTED_ROOT_EXPORTS = [
     "PlanningDatasetArtifact",
     "load_planning_dataset",
+    "PlanningProblemAssembly",
+    "PlanningProblemDefinition",
+    "assemble_planning_problem",
+    "PlanningSolveConfig",
+    "PlanningSolveSummary",
+    "PlanningSolverDependencyUnavailableError",
+    "PlanningSolverUnavailableError",
+    "solve_planning_problem",
 ]
 
 

@@ -43,6 +43,14 @@ EXPECTED_DEMAND_EXPORTS = [
 EXPECTED_PLANNING_EXPORTS = [
     "PlanningDatasetArtifact",
     "load_planning_dataset",
+    "PlanningProblemAssembly",
+    "PlanningProblemDefinition",
+    "assemble_planning_problem",
+    "PlanningSolveConfig",
+    "PlanningSolveSummary",
+    "PlanningSolverDependencyUnavailableError",
+    "PlanningSolverUnavailableError",
+    "solve_planning_problem",
 ]
 EXPECTED_TPM_EXPORTS = [
     "TPMArtifact",
@@ -270,6 +278,20 @@ def test_planning_package_imports_from_source_tree_without_optional_stacks():
     assert module.__all__ == EXPECTED_PLANNING_EXPORTS
     assert module.PlanningDatasetArtifact.__module__ == "open_energy_lab.planning.dataset"
     assert module.load_planning_dataset.__module__ == "open_energy_lab.planning.dataset"
+    assert module.PlanningProblemAssembly.__module__ == "open_energy_lab.planning.problem"
+    assert module.PlanningProblemDefinition.__module__ == "open_energy_lab.planning.problem"
+    assert module.assemble_planning_problem.__module__ == "open_energy_lab.planning.problem"
+    assert module.PlanningSolveConfig.__module__ == "open_energy_lab.planning.optional_solver"
+    assert module.PlanningSolveSummary.__module__ == "open_energy_lab.planning.optional_solver"
+    assert (
+        module.PlanningSolverDependencyUnavailableError.__module__
+        == "open_energy_lab.planning.optional_solver"
+    )
+    assert (
+        module.PlanningSolverUnavailableError.__module__
+        == "open_energy_lab.planning.optional_solver"
+    )
+    assert module.solve_planning_problem.__module__ == "open_energy_lab.planning.optional_solver"
 
     newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
         set(sys.modules) - before_import
