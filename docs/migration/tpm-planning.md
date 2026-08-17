@@ -1,6 +1,10 @@
 # TPM-Backed Planning Migration Note
 
-Status: User Story 1 simulator export and dataset reload, User Story 2 TPM fit, reload, and query, and User Story 3 planning assembly and optional solve with committed offline fixtures implemented
+Status: User Story 1 simulator export and dataset reload, User Story 2 TPM fit,
+reload, and query, and User Story 3 planning assembly and optional solve with
+committed offline fixtures implemented. The real SPFlow backend path and the
+SPN-backed MIO planning path have also been exercised on this machine and are
+now documented through tracked examples under `examples/tpm_planning/`.
 
 Spec `009-tpm-planning` now ships the simulator-owned planning-dataset export
 slice under `open_energy_lab.simulator`, the persisted planning-dataset and
@@ -10,6 +14,70 @@ fixtures for deterministic export replay, TPM artifact reload, planning
 problem assembly, and optional solve review. The planning solve path remains
 solver-optional in the default review flow, but it is no longer just a
 reserved future boundary.
+
+## Current Readiness As Of August 17, 2026
+
+### Ready Now
+
+- simulator-owned planning-dataset export with canonical `shortfall`
+- TPM artifact fitting from exported datasets and from arbitrary row tuples
+- dual-target TPM contract with canonical `shortfall` plus derived binary
+  event target
+- real SPFlow-sidecar persistence through `spn_payload_format="pickle-path"`
+- real backend TPM query with `source="spflow_backend"` when the legacy
+  `spn.*` API is available
+- planning assembly with automatic `risk_evaluation_mode="spn_mip"` selection
+  when the artifact exposes a serialized SPN MIO payload and Pyomo is present
+- direct SPN chance-model solve through Pyomo and Gurobi
+- fixture-backed offline fallback paths when SPFlow or a solver is unavailable
+
+### Reproduced On This Machine
+
+The real-backend replay exercised here used:
+
+- `spflow==0.0.41`
+- `pyomo==6.10.1`
+- `scikit-learn==1.9.0`
+- `networkx==3.6.1`
+- `scipy==1.17.1`
+- `gurobipy==13.0.2`
+
+The detected SPFlow capability state was:
+
+- `installed_backend_module = "spn"`
+- `legacy_api_module_prefix = "spn"`
+- `supports_real_spn_training = true`
+- `supports_real_spn_query = true`
+- `supports_spn_mip_serialization = true`
+
+The tracked replay entry points are:
+
+- `examples/tpm_planning/run_real_backend_pipeline.py`
+- `examples/tpm_planning/run_generic_rows_pipeline.py`
+- `examples/tpm_planning/README.md`
+
+### Not Yet Fully Productized
+
+- the optional real-backend stack is not yet declared in `pyproject.toml`
+- solver installation and licensing are still external machine concerns
+- generated example artifacts stay under ignored `tmp/` paths rather than
+  being committed evidence
+- no single bootstrap command currently provisions the exact optional runtime
+  stack used for the August 17, 2026 replay
+
+## Real Backend Replay Evidence
+
+The current branch now has two tracked example scripts that document the
+real-backend replay path:
+
+- `examples/tpm_planning/run_real_backend_pipeline.py` covers simulator export,
+  TPM fitting, backend query, planning assembly, and Pyomo/Gurobi solve
+- `examples/tpm_planning/run_generic_rows_pipeline.py` covers generic row-based
+  TPM fitting plus direct SPN chance-model solving without simulator export
+
+Both scripts write their generated artifacts to
+`tmp/open-energy-lab-pipeline-real-backends/` so the replay remains
+inspectable without polluting tracked source directories.
 
 ## Target Module Paths
 

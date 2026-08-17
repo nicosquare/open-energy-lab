@@ -148,6 +148,43 @@ API is unavailable, TPM fitting falls back to a reviewable sidecar payload with
 `query_strategy='table'`, query responses report `source='spflow_sidecar_table'`,
 and planning falls back to `risk_evaluation_mode='empirical_dataset'`.
 
+Real-backend replay on this machine used the following optional stack on
+August 17, 2026:
+
+- `spflow==0.0.41`
+- `pyomo==6.10.1`
+- `scikit-learn==1.9.0`
+- `networkx==3.6.1`
+- `scipy==1.17.1`
+- `gurobipy==13.0.2`
+
+## Tracked Real-Backend Examples
+
+The repository now keeps tracked replay scripts under `examples/tpm_planning/`
+instead of only under ignored `tmp/` paths:
+
+- `examples/tpm_planning/run_real_backend_pipeline.py`
+- `examples/tpm_planning/run_generic_rows_pipeline.py`
+- `examples/tpm_planning/README.md`
+
+Run them from the repository root:
+
+```bash
+uv run python examples/tpm_planning/run_real_backend_pipeline.py
+uv run python examples/tpm_planning/run_generic_rows_pipeline.py
+```
+
+Both examples write generated artifacts to
+`tmp/open-energy-lab-pipeline-real-backends/`.
+
+Expected real-backend success signals:
+
+- `pipeline_summary.json` reports `query_result.source = "spflow_backend"`
+- `pipeline_summary.json` reports `risk_evaluation_mode = "spn_mip"`
+- `pipeline_summary.json` reports `solve_status = "optimal"`
+- `generic_rows_pipeline_summary.json` reports `query_result.source = "spflow_backend"`
+- `generic_rows_pipeline_summary.json` reports `solve_status = "optimal"`
+
 ## Review The Committed US1, US2, And US3 Fixtures
 
 The repository now includes these active TPM-planning fixtures:
@@ -284,6 +321,9 @@ Keep these constraints in mind:
   adequacy semantics.
 - `threshold_default = 0.05` is recorded in dataset metadata for later TPM and
   planning workflows.
+- a derived event target such as `shortfall_exceeds_threshold` is persisted for
+  backend fit/query/planning workflows while `shortfall` remains the canonical
+  exported metric.
 - the planning chance-limit `epsilon` is a later planning concern and remains
   distinct from the `shortfall` threshold itself.
 - if total horizon load energy is effectively zero while unmet energy is
@@ -548,16 +588,18 @@ cd legacy/old_tpm && pytest src_py/tpm/spn/test_tangent_lower_bound.py
 
 Backend-specific follow-up guidance:
 
-- `SPFlow`: rerun the TPM fit path with the real backend when available.
-- `Pyomo`: rerun the planning optional-solve path with the real backend and a
-  supported solver binary when available.
+- `SPFlow`: rerun the tracked examples in `examples/tpm_planning/` and the
+  integration tests under `tests/integration/tpm/` when the real backend is
+  available.
+- `Pyomo`: rerun the planning solve path with the real backend and a supported
+  solver binary when available.
 
 If SPFlow, Pyomo, or a supported solver backend is unavailable, document the
 skipped backend-specific follow-up checks instead of widening the base
 environment.
 
-Skipped optional follow-up checks in the default review path:
+Checks that remain optional in the default offline review path:
 
 - legacy SPFlow tangent validation in `legacy/old_tpm`
-- real-backend TPM fitting with SPFlow installed
+- real-backend TPM fitting and querying through the optional SPFlow stack
 - real-backend planning solve with Pyomo plus a supported solver binary

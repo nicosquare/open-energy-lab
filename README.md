@@ -13,6 +13,7 @@ tests under `tests`.
 ```text
 environment.yml
 pyproject.toml
+examples/
 src/open_energy_lab/
 tests/unit/
 tests/integration/
@@ -22,18 +23,23 @@ docs/architecture/
 docs/migration/
 ```
 
-Roadmap package areas are scaffolded under `src/open_energy_lab`:
+Current library package areas under `src/open_energy_lab`:
 
-- `experimental`: immature migrations and incubating APIs.
-- `simulator`: first likely migration area for simulator components.
-- `core`: future reusable methods such as TPM, RL, MPC, optimization, and rules.
-- `planning`: future interfaces or contracts only.
-- `control`: future interfaces or contracts only.
-- `visualization`: future inspection tools.
+- `weather`: fitted weather artifacts and offline sampling flows.
+- `demand`: fitted demand artifacts and weather-conditioned demand sampling.
+- `simulator`: scenario components, family evaluation, and planning-dataset
+  export.
+- `tpm`: typed-feature TPM artifacts, fit/query flows, optional SPFlow-backed
+  runtime payloads, and SPN-to-MIO helpers.
+- `planning`: planning-dataset reload, planning assembly, and optional
+  Pyomo-backed solve flows.
+- `experimental`, `control`, and `visualization`: incubating or still-thin
+  areas.
 
-This foundation does not migrate algorithms, training loops, optimization
-models, simulator internals, notebooks, W&B workflows, GPU/SLURM workflows, Rust
-bindings, or legacy behavior.
+The repository still treats `legacy/*` as reference material rather than
+runtime code. Optional TPM/planning backends now exist, but they remain behind
+lazy workflow boundaries instead of becoming mandatory root-import
+dependencies.
 
 ## Environment
 
@@ -55,6 +61,8 @@ external data APIs.
 - [API maturity policy](docs/migration/api-maturity.md)
 - [Dependency policy](docs/migration/dependency-policy.md)
 - [Environment assumptions](docs/migration/environment-assumptions.md)
+- [TPM planning migration note](docs/migration/tpm-planning.md)
+- [Tracked TPM planning examples](examples/tpm_planning/README.md)
 - [Fixture provenance rules](tests/fixtures/README.md)
 - [Active Spec Kit plan](specs/001-library-foundation/plan.md)
 
