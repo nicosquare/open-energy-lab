@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
-Current Spec Kit plan: `specs/007-stochastic-weather/plan.md`
+Current Spec Kit plan: `specs/008-weather-demand-modeling/plan.md`
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan.
@@ -48,15 +48,31 @@ target architecture.
   document that in the feature quickstart or final response instead of
   widening the base environment requirements.
 
+## Current Demand Feature Guidance
+
+- For `008-weather-demand-modeling`, keep default validation offline and
+  fixture-backed. Do not make notebook execution, live weather fetches, or
+  legacy runtime checks part of the routine review path.
+- Preserve the explicit producer-side boundary between persisted demand
+  artifacts and sampled weather families. Do not merge the weather and demand
+  artifacts or blur the required weather-driver contract.
+- Keep cooling-service choice, district-cooling settlement, and blackout
+  semantics simulator-side. Do not couple service-path behavior into demand
+  fitting, artifact loading, or demand-family sampling.
+- If optional notebook, live-fetch, or environment-sensitive follow-up checks
+  are unavailable, document that in the feature quickstart or final response
+  instead of widening the base environment requirements.
+
 ## Useful Checks
 
 Run only the checks relevant to the files changed:
 
 ```bash
+uv run pytest tests/unit/demand tests/integration/demand tests/integration/simulator
 uv run pytest tests/unit/weather tests/integration/weather tests/integration/simulator
 uv run pytest tests/unit/test_optional_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py
-uv run python -c "import open_energy_lab; import open_energy_lab.weather; import open_energy_lab.simulator"
-rg "from legacy|import legacy" src/open_energy_lab/weather src/open_energy_lab/simulator tests/unit/weather tests/integration/weather tests/integration/simulator docs/migration
+uv run python -c "import open_energy_lab; import open_energy_lab.weather; import open_energy_lab.demand; import open_energy_lab.simulator"
+rg "from legacy|import legacy" src/open_energy_lab/weather src/open_energy_lab/demand src/open_energy_lab/simulator tests/unit/weather tests/unit/demand tests/integration/weather tests/integration/demand tests/integration/simulator docs/migration
 
 cd legacy/old_tpm && cargo test
 cd legacy/old_tpm && python scripts/test_battery_consistency.py

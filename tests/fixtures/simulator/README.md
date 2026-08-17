@@ -1,7 +1,26 @@
 # Simulator Fixtures
 
 Fixtures in this directory support deterministic simulator validation for the
-battery arbitrage MVP and the battery + load + PV migration that builds on it.
+battery arbitrage MVP, the battery + load + PV migration that builds on it,
+and the cooling-aware paired demand-family simulator path for spec
+`008-weather-demand-modeling`.
+
+Spec `008-weather-demand-modeling` now ships these active paired-demand
+fixtures:
+
+- `tests/fixtures/simulator/demand_local_electric_family_case.json`
+- `tests/fixtures/simulator/demand_district_cooling_family_case.json`
+- `tests/fixtures/simulator/demand_invalid_mixed_cooling_case.json`
+
+Current status:
+
+- all three files are active deterministic validation artifacts
+- the local-electric and district-cooling cases point to the committed sampled
+  weather and demand family fixtures under `tests/fixtures/weather/` and
+  `tests/fixtures/demand/`
+- the invalid case records the expected fail-fast mixed-path validation error
+- all three files record exact cooling-path evidence, scenario ordering,
+  numeric tolerance, and refresh policy
 
 ## Stochastic Weather Active Fixtures
 
@@ -67,6 +86,61 @@ Both fixture paths record:
 - numeric tolerance: absolute `1e-6`
 - refresh policy: update only when the documented blackout contract, baseline
   scenario inputs, or summary semantics intentionally change
+
+## Cooling-Aware Demand Family Fixtures
+
+`demand_local_electric_family_case.json`
+
+- source: verified against the shipped demand-aware simulator family-evaluation
+  path with the committed sampled weather and sampled demand family fixtures
+- author: OpenAI Codex
+- random seed: paired family seed `13`
+- exact legacy evidence:
+  - `legacy/old_tpm/src_py/simulator/common/pricing.py`
+  - `legacy/fed_trpo/src/notebooks/citylearn_ccai_tutorial.ipynb`
+- expected validation target:
+  - local-electric cooling converts served cooling demand in `RT` into site
+    electric load only through the documented `kW`-per-`RT` factor
+  - district settlement remains zero for every step
+  - scenario ordering stays `[0, 1]`
+- numeric tolerance: absolute `1e-6`
+- refresh policy: update only when the documented local-electric conversion,
+  paired-family ordering, or one-net settlement semantics intentionally change
+
+`demand_district_cooling_family_case.json`
+
+- source: verified against the shipped demand-aware simulator family-evaluation
+  path with the committed sampled weather and sampled demand family fixtures
+- author: OpenAI Codex
+- random seed: paired family seed `13`
+- exact legacy evidence:
+  - `legacy/old_tpm/src_py/simulator/common/pricing.py`
+  - `legacy/fed_trpo/src/notebooks/citylearn_ccai_tutorial.ipynb`
+- expected validation target:
+  - served district cooling stays out of site electric load
+  - district settlement equals served `RT-hour` multiplied by the configured
+    deterministic tariff
+  - scenario ordering stays `[0, 1]`
+- numeric tolerance: absolute `1e-6`
+- refresh policy: update only when the documented district-cooling tariff,
+  paired-family ordering, or one-net settlement semantics intentionally change
+
+`demand_invalid_mixed_cooling_case.json`
+
+- source: verified against the current cooling-service configuration
+  validation path rather than a generated simulator trace
+- author: OpenAI Codex
+- random seed: paired family seed `13`
+- exact legacy evidence:
+  - `legacy/old_tpm/src_py/simulator/common/pricing.py`
+  - `legacy/fed_trpo/src/notebooks/citylearn_ccai_tutorial.ipynb`
+- expected validation target:
+  - exactly one cooling service path must be configured
+  - mixed local-electric plus district-cooling configuration fails fast before
+    paired-family evaluation begins
+- numeric tolerance: absolute `1e-6`
+- refresh policy: update only when the documented one-path cooling-service
+  contract or validation message wording intentionally change
 
 Committed simulator fixtures currently include:
 

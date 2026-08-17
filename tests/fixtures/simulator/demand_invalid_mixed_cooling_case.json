@@ -1,0 +1,44 @@
+{
+  "fixture_name": "demand_invalid_mixed_cooling_case",
+  "fixture_status": "active",
+  "purpose": "Deterministic invalid mixed-cooling-path fixture documenting the expected fail-fast simulator configuration error.",
+  "spec_feature": "008-weather-demand-modeling",
+  "provenance": {
+    "author": "OpenAI Codex",
+    "origin": "Synthetic current-library US3 invalid-configuration fixture for cooling-service path validation.",
+    "legacy_evidence_paths": [
+      "legacy/old_tpm/src_py/simulator/common/pricing.py",
+      "legacy/fed_trpo/src/notebooks/citylearn_ccai_tutorial.ipynb"
+    ],
+    "generation_command": "Construct an invalid CoolingServiceConfiguration that combines local-electric and district-cooling parameters and assert that initialization fails before paired-family evaluation begins.",
+    "random_seed": 13,
+    "refresh_policy": "Update only when the documented one-path cooling-service contract or validation message wording intentionally changes."
+  },
+  "weather_family_fixture_path": "tests/fixtures/weather/sampled_weather_family_case.json",
+  "demand_family_fixture_path": "tests/fixtures/demand/sampled_demand_family_case.json",
+  "cooling_service_configuration": {
+    "service_path": "mixed-invalid",
+    "source": "fixture-test",
+    "local_electric_cooling": {
+      "source_name": "mixed-local-cooling",
+      "electric_kw_per_rt": 1.15,
+      "valid_for_feature_version": "008-weather-demand-modeling"
+    },
+    "district_cooling_tariff": {
+      "currency": "USD",
+      "rate_per_rt_hour": 0.22,
+      "time_alignment": "step-start",
+      "tariff_name": "mixed-district"
+    }
+  },
+  "numeric_tolerance": 1e-06,
+  "expected_error_substrings": [
+    "exactly one",
+    "mixed",
+    "service path"
+  ],
+  "notes": [
+    "The stable first-release simulator surface allows exactly one cooling service path per paired family.",
+    "This fixture keeps the invalid configuration reviewable without requiring a separate generated artifact."
+  ]
+}

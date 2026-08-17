@@ -1,11 +1,15 @@
-"""Pricing and arbitrage objective types for the battery arbitrage MVP."""
+"""Pricing and settlement types for simulator execution paths."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from ._units import DEFAULT_ABSOLUTE_TOLERANCE, is_close
+from ._units import (
+    DEFAULT_ABSOLUTE_TOLERANCE,
+    is_close,
+    validate_positive_time_step_hours,
+)
 
 if TYPE_CHECKING:
     from .scenario import TimeGrid
@@ -41,6 +45,31 @@ class PriceSignal:
 
     def export_price_at_step(self, step_index: int) -> float:
         return self.import_prices[step_index] * self.export_price_ratio
+
+
+@dataclass(slots=True)
+class DistrictCoolingTariff:
+    """Deterministic district-cooling settlement aligned to the scenario grid."""
+
+    currency: str
+    rate_per_rt_hour: float
+    time_alignment: str
+    tariff_name: str
+
+    def __post_init__(self) -> None:
+        if self.rate_per_rt_hour < 0.0:
+            raise ValueError("rate_per_rt_hour must be non-negative")
+        if self.time_alignment != "step-start":
+            raise ValueError("time_alignment must be step-start")
+        if not self.currency:
+            raise ValueError("currency must be provided")
+        if not self.tariff_name:
+            raise ValueError("tariff_name must be provided")
+
+    def settlement_rate_for_step(self, time_step_hours: float) -> float:
+        """Return the deterministic settlement rate for one served-RT step."""
+
+        return self.rate_per_rt_hour * validate_positive_time_step_hours(time_step_hours)
 
 
 @dataclass(slots=True)
@@ -89,5 +118,6 @@ class ArbitrageObjectiveRepresentation:
 __all__ = [
     "ArbitrageObjectiveRepresentation",
     "DeterministicRulePolicy",
+    "DistrictCoolingTariff",
     "PriceSignal",
 ]

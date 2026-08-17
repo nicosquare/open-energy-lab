@@ -1,0 +1,104 @@
+{
+  "fixture_name": "aligned_training_case",
+  "fixture_status": "active",
+  "purpose": "Deterministic aligned weather-plus-demand training fixture for offline fit and reload validation.",
+  "spec_feature": "008-weather-demand-modeling",
+  "provenance": {
+    "author": "OpenAI Codex",
+    "origin": "Synthetic current-library aligned demand fixture",
+    "legacy_evidence_paths": [
+      "legacy/fed_trpo/src/notebooks/ML_817_topic_I_lab_1.ipynb",
+      "legacy/fed_trpo/src/notebooks/ML_817_topic_I_lab_2.ipynb",
+      "legacy/fed_trpo/src/notebooks/data_generation/naive_data_generation.ipynb"
+    ],
+    "generation_command": "committed manually from the current-library fit contract",
+    "random_seed": null,
+    "refresh_policy": "Update only when the documented aligned-history contract or first-release fitted artifact schema intentionally changes.",
+    "notes": [
+      "Three daily records keep the fixture reviewable while still exercising canonical weather alignment and both explicit demand outputs.",
+      "The values match the committed US1 fit workflow tests and the supported artifact fixture in this directory."
+    ]
+  },
+  "dataset_id": "aligned-demand:phoenix-daily",
+  "timezone_name": "America/Phoenix",
+  "time_basis": "local_civil_time",
+  "timestep_hours": 24.0,
+  "timestamp_utc": [
+    "2024-07-01T07:00:00Z",
+    "2024-07-02T07:00:00Z",
+    "2024-07-03T07:00:00Z"
+  ],
+  "local_civil_step_labels": [
+    "2024-07-01T00:00:00-07:00",
+    "2024-07-02T00:00:00-07:00",
+    "2024-07-03T00:00:00-07:00"
+  ],
+  "canonical_weather_fields": [
+    "dry_bulb_air_temperature_c",
+    "global_horizontal_irradiance_w_per_m2",
+    "direct_beam_irradiance_w_per_m2",
+    "diffuse_horizontal_irradiance_w_per_m2",
+    "relative_humidity_pct",
+    "infrared_radiation_downwards_w_per_m2",
+    "windspeed_10m_m_per_s",
+    "wind_direction_10m_deg",
+    "surface_air_pressure_pa"
+  ],
+  "weather_field_series": {
+    "dry_bulb_air_temperature_c": [
+      39.0,
+      41.5,
+      37.0
+    ],
+    "global_horizontal_irradiance_w_per_m2": [
+      910.0,
+      935.0,
+      880.0
+    ],
+    "direct_beam_irradiance_w_per_m2": [
+      640.0,
+      655.0,
+      620.0
+    ],
+    "diffuse_horizontal_irradiance_w_per_m2": [
+      120.0,
+      126.0,
+      118.0
+    ],
+    "relative_humidity_pct": [
+      18.0,
+      22.0,
+      20.0
+    ],
+    "infrared_radiation_downwards_w_per_m2": [
+      355.0,
+      360.0,
+      350.0
+    ],
+    "windspeed_10m_m_per_s": [
+      3.0,
+      3.5,
+      2.8
+    ],
+    "wind_direction_10m_deg": [
+      180.0,
+      195.0,
+      205.0
+    ],
+    "surface_air_pressure_pa": [
+      100850.0,
+      100790.0,
+      100900.0
+    ]
+  },
+  "non_thermal_electric_demand_kw": [
+    48.0,
+    50.5,
+    46.0
+  ],
+  "cooling_demand_rt": [
+    11.0,
+    13.5,
+    9.5
+  ]
+}

@@ -5,9 +5,13 @@ from __future__ import annotations
 import pytest
 
 from open_energy_lab.simulator._units import DEFAULT_ABSOLUTE_TOLERANCE
-from open_energy_lab.simulator.objective import evaluate_arbitrage_settlement
+from open_energy_lab.simulator.objective import (
+    evaluate_arbitrage_settlement,
+    evaluate_district_cooling_settlement,
+)
 from open_energy_lab.simulator.pricing import (
     ArbitrageObjectiveRepresentation,
+    DistrictCoolingTariff,
     PriceSignal,
 )
 from open_energy_lab.simulator.scenario import TimeGrid
@@ -62,6 +66,32 @@ def test_evaluate_arbitrage_settlement_total_matches_step_sum() -> None:
         objective=_objective(),
     )
 
+    assert settlement.total_settlement == pytest.approx(
+        sum(settlement.step_settlement),
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
+
+
+def test_evaluate_district_cooling_settlement_tracks_served_rt_hours() -> None:
+    settlement = evaluate_district_cooling_settlement(
+        served_cooling_rt=[0.0, 2.0, 1.5],
+        time_step_hours=24.0,
+        tariff=DistrictCoolingTariff(
+            currency="USD",
+            rate_per_rt_hour=0.22,
+            time_alignment="step-start",
+            tariff_name="district-daily",
+        ),
+    )
+
+    assert settlement.served_cooling_rt_hours == pytest.approx(
+        [0.0, 48.0, 36.0],
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
+    assert settlement.step_settlement == pytest.approx(
+        [0.0, 10.56, 7.92],
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
     assert settlement.total_settlement == pytest.approx(
         sum(settlement.step_settlement),
         abs=DEFAULT_ABSOLUTE_TOLERANCE,

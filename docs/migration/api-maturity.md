@@ -20,6 +20,77 @@ An import path is stable public API when all conditions hold:
 Stable public APIs should preserve import paths and documented behavior across
 future migrations unless a deprecation decision is recorded.
 
+### Weather-Conditioned Demand And Cooling-Aware Simulator Evaluation
+
+The `008-weather-demand-modeling` feature now promotes the first shipped demand
+workflow and simulator-side demand-family evaluation surface to stable public
+API.
+
+Stable demand package-root imports:
+
+```python
+from open_energy_lab.demand import (
+    DemandSamplingRequest,
+    fit_demand_model,
+    load_demand_artifact,
+    sample_demand_family,
+)
+```
+
+Stable simulator package-root imports:
+
+```python
+from open_energy_lab.simulator import (
+    DEMAND_SUPPORTED_SUMMARY_OUTPUT_FIELDS,
+    DemandFamilyEvaluationRequest,
+    DemandFamilyEvaluationResult,
+    DemandScenarioEvaluationResult,
+    evaluate_demand_family,
+)
+```
+
+These imports are stable because they now have:
+
+- focused unit and integration coverage for aligned-history validation,
+  artifact schema and reload behavior, offline paired-family sampling,
+  cooling-service configuration, paired-family alignment, and preserved
+  deterministic `BatteryLoadPVScenario` behavior
+- deterministic committed fixtures for aligned training history, supported and
+  unsupported artifacts, offline sampled demand families, and local-electric
+  versus district-cooling simulator-family baselines
+- import-boundary, import-contract, and no-legacy-import coverage that names
+  both `open_energy_lab.demand` and the demand-family simulator exports
+  explicitly
+- migration documentation that records the producer-versus-simulator
+  ownership split, explicit non-thermal-versus-cooling separation, paired-seed
+  replay contract, and simulator-side cooling settlement semantics
+- documented dependency isolation proving package-root demand imports,
+  offline artifact loading, offline demand sampling, and simulator-family
+  evaluation remain import-light and clear of live-service assumptions
+
+Focused imports remain intentionally narrower in maturity:
+
+```python
+from open_energy_lab.simulator.demand import (
+    CoolingServiceConfiguration,
+    DistrictCoolingTariff,
+    LocalElectricCoolingConfiguration,
+)
+```
+
+These cooling-service configuration types are part of the shipped workflow,
+but they remain focused module imports instead of package-root simulator
+exports so the stable root surface stays small.
+
+Implementation-facing modules such as `open_energy_lab.demand._aligned_history`,
+`open_energy_lab.demand._weather_response`,
+`open_energy_lab.demand.fit`, `open_energy_lab.demand.artifact`,
+`open_energy_lab.demand.sampling`, and
+`open_energy_lab.simulator.stochastic_demand` remain the hosts for the
+shipped logic. Callers may use those focused imports when needed, but the
+stable user-facing contract for ordinary use is the package-root surface shown
+above.
+
 ### Controller Boundary MVP
 
 The `004-controller-boundary` feature promotes the following imports to stable

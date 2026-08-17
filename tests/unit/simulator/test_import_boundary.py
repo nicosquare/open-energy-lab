@@ -40,8 +40,13 @@ def test_simulator_import_stays_lightweight() -> None:
         "ArbitrageScenario",
         "BatteryLoadPVScenario",
         "BatteryComponent",
+        "DEMAND_SUPPORTED_SUMMARY_OUTPUT_FIELDS",
+        "DemandFamilyEvaluationRequest",
+        "DemandFamilyEvaluationResult",
+        "DemandScenarioEvaluationResult",
         "DeterministicRulePolicy",
         "DispatchRequestSeries",
+        "evaluate_demand_family",
         "evaluate_with_controller",
         "evaluate_weather_family",
         "LoadComponent",
@@ -61,6 +66,10 @@ def test_simulator_import_stays_lightweight() -> None:
         == "open_energy_lab.simulator.controller_runner"
     )
     assert (
+        module.evaluate_demand_family.__module__
+        == "open_energy_lab.simulator.stochastic_demand"
+    )
+    assert (
         module.evaluate_weather_family.__module__
         == "open_energy_lab.simulator.stochastic_weather"
     )
@@ -68,6 +77,18 @@ def test_simulator_import_stays_lightweight() -> None:
     assert module.PriceSignal.__module__ == "open_energy_lab.simulator.pricing"
     assert module.PVComponent.__module__ == "open_energy_lab.simulator.pv"
     assert module.WeatherComponent.__module__ == "open_energy_lab.simulator.weather"
+    assert (
+        module.DemandFamilyEvaluationRequest.__module__
+        == "open_energy_lab.simulator.stochastic_demand"
+    )
+    assert (
+        module.DemandFamilyEvaluationResult.__module__
+        == "open_energy_lab.simulator.stochastic_demand"
+    )
+    assert (
+        module.DemandScenarioEvaluationResult.__module__
+        == "open_energy_lab.simulator.stochastic_demand"
+    )
     assert (
         module.WeatherFamilyEvaluationRequest.__module__
         == "open_energy_lab.simulator.stochastic_weather"
@@ -85,6 +106,15 @@ def test_simulator_import_stays_lightweight() -> None:
         "net_grid_power_kw",
         "unmet_load_kw",
         "step_settlement",
+    )
+    assert module.DEMAND_SUPPORTED_SUMMARY_OUTPUT_FIELDS == (
+        "site_electric_load_kw",
+        "local_cooling_electric_kw",
+        "served_cooling_rt",
+        "unserved_cooling_rt",
+        "net_grid_power_kw",
+        "step_settlement",
+        "district_cooling_settlement",
     )
 
 

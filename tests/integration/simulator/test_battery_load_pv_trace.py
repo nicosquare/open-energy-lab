@@ -344,3 +344,58 @@ def test_fixed_weather_trace_preserves_debuggable_inputs_and_algebra() -> None:
         original_irradiance,
         abs=DEFAULT_ABSOLUTE_TOLERANCE,
     )
+
+
+def test_direct_load_debugging_remains_available_without_any_demand_artifact() -> None:
+    fixture = _load_case()
+    grid, battery, load, weather, pv, price_signal, objective = _build_common_scenario_parts(
+        fixture
+    )
+    zero_pv_weather = WeatherComponent(
+        name=f"{weather.name}-zero-pv",
+        time_grid=grid,
+        timestamp_utc=list(weather.timestamp_utc),
+        dry_bulb_air_temperature_c=list(weather.dry_bulb_air_temperature_c),
+        global_horizontal_irradiance_w_per_m2=[0.0] * grid.num_steps,
+        deferred_fields=weather.deferred_field_names,
+        source="direct-load-debug-regression",
+    )
+    scenario = BatteryLoadPVScenario(
+        scenario_id=f"{fixture['case_id']}-direct-load-debug",
+        time_grid=grid,
+        battery=battery,
+        load=load,
+        weather=zero_pv_weather,
+        pv=pv,
+        price_signal=price_signal,
+        objective=objective,
+        dispatch_requests=DispatchRequestSeries(
+            requested_power_kw=[0.0] * grid.num_steps,
+            sign_convention=POSITIVE_DISPATCH_MEANING,
+            source="direct-load-debug-regression",
+        ),
+    )
+
+    trace = scenario.evaluate_trace()
+
+    assert trace.requested_power_kw == pytest.approx(
+        [0.0] * grid.num_steps,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
+    assert trace.realized_power_kw == pytest.approx(
+        [0.0] * grid.num_steps,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
+    assert trace.pv_generation_kw == pytest.approx(
+        [0.0] * grid.num_steps,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
+    assert trace.load_kw == pytest.approx(load.demand_kw, abs=DEFAULT_ABSOLUTE_TOLERANCE)
+    assert trace.net_grid_power_kw == pytest.approx(
+        load.demand_kw,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
+    assert trace.unmet_load_kw == pytest.approx(
+        [0.0] * grid.num_steps,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )

@@ -174,8 +174,17 @@ def evaluate_with_controller(
     else:
         load_kw = prepared_inputs["load_kw"]
         pv_generation_kw = prepared_inputs["pv_generation_kw"]
+        local_cooling_electric_kw = scenario._local_cooling_electric_kw()
+        site_electric_load_kw = [
+            base_load_kw + cooling_kw
+            for base_load_kw, cooling_kw in zip(
+                load_kw,
+                local_cooling_electric_kw,
+                strict=True,
+            )
+        ]
         settlement = evaluate_net_grid_settlement(
-            load_kw=load_kw,
+            load_kw=site_electric_load_kw,
             pv_generation_kw=pv_generation_kw,
             realized_battery_power_kw=realized_power_kw,
             time_step_hours=scenario.time_grid.time_step_hours,
@@ -206,6 +215,11 @@ def evaluate_with_controller(
             realized_power_kw=realized_power_kw,
             energy_delta_kwh=energy_delta_kwh,
             load_kw=load_kw,
+            site_electric_load_kw=site_electric_load_kw,
+            local_cooling_electric_kw=local_cooling_electric_kw,
+            served_cooling_rt=scenario._served_cooling_rt(),
+            unserved_cooling_rt=scenario._unserved_cooling_rt(),
+            district_cooling_settlement=scenario._district_cooling_settlement(),
             pv_generation_kw=pv_generation_kw,
             net_grid_power_kw=net_grid_power_kw,
             net_grid_energy_kwh=net_grid_energy_kwh,

@@ -8,7 +8,11 @@ from typing import TYPE_CHECKING
 from ._units import validate_positive_time_step_hours
 
 if TYPE_CHECKING:
-    from .pricing import ArbitrageObjectiveRepresentation, PriceSignal
+    from .pricing import (
+        ArbitrageObjectiveRepresentation,
+        DistrictCoolingTariff,
+        PriceSignal,
+    )
 
 
 @dataclass(slots=True)
@@ -26,6 +30,16 @@ class NetGridSettlementResult:
     net_grid_power_kw: list[float]
     net_grid_energy_kwh: list[float]
     direction: list[str]
+    step_settlement: list[float]
+    total_settlement: float
+
+
+@dataclass(slots=True)
+class DistrictCoolingSettlementResult:
+    """Deterministic district-cooling settlement from served thermal demand."""
+
+    served_cooling_rt: list[float]
+    served_cooling_rt_hours: list[float]
     step_settlement: list[float]
     total_settlement: float
 
@@ -125,9 +139,39 @@ def evaluate_net_grid_settlement(
     )
 
 
+def evaluate_district_cooling_settlement(
+    *,
+    served_cooling_rt: list[float],
+    time_step_hours: float,
+    tariff: DistrictCoolingTariff,
+) -> DistrictCoolingSettlementResult:
+    """Evaluate deterministic district-cooling settlement from served RT."""
+
+    duration_hours = validate_positive_time_step_hours(time_step_hours)
+    served_cooling_rt_hours: list[float] = []
+    step_settlement: list[float] = []
+
+    for served_value in served_cooling_rt:
+        served_cooling = float(served_value)
+        if served_cooling < 0.0:
+            raise ValueError("served_cooling_rt values must be non-negative")
+        served_rt_hours = served_cooling * duration_hours
+        served_cooling_rt_hours.append(served_rt_hours)
+        step_settlement.append(served_rt_hours * tariff.rate_per_rt_hour)
+
+    return DistrictCoolingSettlementResult(
+        served_cooling_rt=list(served_cooling_rt),
+        served_cooling_rt_hours=served_cooling_rt_hours,
+        step_settlement=step_settlement,
+        total_settlement=sum(step_settlement),
+    )
+
+
 __all__ = [
+    "DistrictCoolingSettlementResult",
     "NetGridSettlementResult",
     "SettlementResult",
     "evaluate_arbitrage_settlement",
+    "evaluate_district_cooling_settlement",
     "evaluate_net_grid_settlement",
 ]

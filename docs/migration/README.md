@@ -12,23 +12,30 @@ parity validation, and environment assumptions.
 - `stochastic-weather.md`: shipped weather workflow behavior, simulator-family
   semantics, blackout rules, stable versus deferred controls, and exact legacy
   evidence for `open_energy_lab.weather` and stochastic simulator evaluation
+- `weather-demand-modeling.md`: shipped demand fit/load/sample behavior,
+  cooling-aware simulator-family semantics, explicit electric-versus-cooling
+  separation, and exact legacy evidence for `open_energy_lab.demand` plus the
+  paired demand-family simulator surface
 - `visualization-traces.md`: shipped inspection/reporting behavior, focused
   same-family comparison scope, experimental plotting split, and validation
   outcomes for `open_energy_lab.visualization`
 - `api-maturity.md`: stable public API promotion for
-  `open_energy_lab.control`, `open_energy_lab.weather`, and
-  `open_energy_lab.simulator` stochastic package-root exports plus the
-  visualization stable-versus-experimental boundary
+  `open_energy_lab.control`, `open_energy_lab.weather`,
+  `open_energy_lab.demand`, and `open_energy_lab.simulator` stochastic and
+  cooling-aware package-root exports plus the visualization
+  stable-versus-experimental boundary
 - `dependency-policy.md`: import-light dependency classification and rejected
-  runtime stacks for the controller pack, visualization feature, and
-  stochastic weather workflow
+  runtime stacks for the controller pack, visualization feature,
+  stochastic-weather workflow, and weather-conditioned demand workflow
 - `parity-validation.md`: controller-pack validation minimums,
-  stochastic-weather validation minimums, and preserved-path regression rules
+  stochastic-weather validation minimums, weather-conditioned demand validation
+  minimums, and preserved-path regression rules
 - `environment-assumptions.md`: default local validation environment, weather
-  offline-validation assumptions, and skip rules for non-core capabilities
-- `fixture-provenance.md`: fixture record requirements, including weather and
-  simulator-family provenance rules for recorded responses and deterministic
-  baselines
+  and demand offline-validation assumptions, and skip rules for non-core
+  capabilities
+- `fixture-provenance.md`: fixture record requirements, including weather,
+  demand, and simulator-family provenance rules for recorded responses and
+  deterministic baselines
 
 ## Visualization Review Path
 
@@ -69,6 +76,29 @@ order:
    validation subset and live-fetch follow-up checks.
 
 This review path keeps the weather feature anchored to the shipped offline
+workflow and simulator-family contract rather than the earlier scaffolding
+milestone.
+
+## Weather-Conditioned Demand Review Path
+
+For the `008-weather-demand-modeling` feature, read the migration docs in this
+order:
+
+1. `weather-demand-modeling.md` for the shipped aligned-history fit/load/sample
+   workflow, cooling-aware simulator-family semantics, preserve/improve/reject
+   decisions, and exact legacy evidence.
+2. `api-maturity.md` for the stable package-root demand imports and
+   cooling-aware simulator exports versus narrower focused-module helpers.
+3. `dependency-policy.md` for the offline-first import boundary and the
+   promoted demand-workflow plus simulator-family dependency stance.
+4. `fixture-provenance.md` together with `tests/fixtures/demand/README.md`
+   and `tests/fixtures/simulator/README.md` for aligned-history, artifact,
+   paired-family, and cooling-accounting provenance rules.
+5. `environment-assumptions.md` and
+   `specs/008-weather-demand-modeling/quickstart.md` for the default offline
+   validation subset and any optional follow-up checks.
+
+This review path keeps the demand feature anchored to the shipped producer
 workflow and simulator-family contract rather than the earlier scaffolding
 milestone.
 
