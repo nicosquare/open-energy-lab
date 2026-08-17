@@ -135,6 +135,19 @@ are canonical TPM and planning backends, but they must be loaded lazily so
 routine package-import review does not require them. Solver binaries remain
 follow-up dependencies rather than routine review requirements.
 
+Before claiming a real SPFlow-backed TPM fit/query/planning run, inspect the
+runtime capability state explicitly:
+
+```bash
+uv run python -c "from open_energy_lab.tpm import detect_spflow_backend_capabilities; import json; print(json.dumps(detect_spflow_backend_capabilities(), indent=2))"
+```
+
+The current library uses the legacy SPFlow `spn.*` API for real SPN training,
+marginalization, log-likelihood queries, and SPN-to-MIO serialization. If that
+API is unavailable, TPM fitting falls back to a reviewable sidecar payload with
+`query_strategy='table'`, query responses report `source='spflow_sidecar_table'`,
+and planning falls back to `risk_evaluation_mode='empirical_dataset'`.
+
 ## Review The Committed US1, US2, And US3 Fixtures
 
 The repository now includes these active TPM-planning fixtures:
@@ -499,6 +512,34 @@ uv run python -c "import open_energy_lab; import open_energy_lab.simulator; impo
 rg "from legacy|import legacy" src/open_energy_lab/tpm src/open_energy_lab/planning src/open_energy_lab/simulator tests/unit/planning tests/unit/tpm tests/integration/planning docs/migration
 ```
 
+## Validation Outcomes
+
+The documented review commands were run for feature `009-tpm-planning` in the
+default offline environment.
+
+Observed results:
+
+- `uv run pytest tests/unit/planning tests/unit/tpm tests/integration/planning`
+  passed with `106 passed`.
+- `uv run pytest tests/unit/test_optional_dependency_boundaries.py
+  tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py`
+  passed with `56 passed`.
+- `uv run pytest tests/unit/demand tests/unit/simulator
+  tests/integration/demand tests/integration/simulator` passed with `161
+  passed`.
+- `uv run python -c "import open_energy_lab; import open_energy_lab.simulator;
+  import open_energy_lab.tpm; import open_energy_lab.planning"` completed with
+  no import errors.
+- `rg "from legacy|import legacy" ...` returned one expected match in
+  `tests/integration/planning/test_reproducibility_contract.py`, where the
+  test asserts that this exact review command remains documented in this
+  quickstart. No library or migration source files matched after validation.
+
+During validation, the no-legacy-import suite initially flagged a comment in
+`src/open_energy_lab/simulator/planning_export.py` because it contained the
+phrase `from legacy`. The comment wording was tightened so the import-boundary
+guard now passes without relaxing the check.
+
 Optional follow-up checks when dependencies are available:
 
 ```bash
@@ -514,3 +555,9 @@ Backend-specific follow-up guidance:
 If SPFlow, Pyomo, or a supported solver backend is unavailable, document the
 skipped backend-specific follow-up checks instead of widening the base
 environment.
+
+Skipped optional follow-up checks in the default review path:
+
+- legacy SPFlow tangent validation in `legacy/old_tpm`
+- real-backend TPM fitting with SPFlow installed
+- real-backend planning solve with Pyomo plus a supported solver binary

@@ -91,7 +91,6 @@ def test_build_piecewise_planning_terms_preserves_reproducibility_metadata() -> 
     assert first.legacy_reference_paths == (
         "legacy/old_tpm/src_py/tpm/spn/main.py",
         "legacy/old_tpm/src_py/tpm/spn/encoding.py",
-        "legacy/old_tpm/src_py/tpm/spn/utils_tangent.py",
         "legacy/old_tpm/src_py/utils/densities.py",
     )
 

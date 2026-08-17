@@ -40,14 +40,22 @@ def _artifact_payload() -> dict[str, object]:
             },
             {
                 "feature_name": "shortfall",
-                "feature_role": "target",
+                "feature_role": "metric_target",
                 "feature_type": "continuous",
                 "bounds": [0.0, 1.0],
+                "modifiable": False,
+            },
+            {
+                "feature_name": "shortfall_exceeds_threshold",
+                "feature_role": "target",
+                "feature_type": "binary",
+                "discrete_values": [0.0, 1.0],
                 "modifiable": False,
             },
         ],
         "target_definition": {
             "target_name": "shortfall",
+            "event_target_name": "shortfall_exceeds_threshold",
             "threshold_default": 0.05,
             "supported_query_mode": "exceedance-probability",
         },
@@ -77,7 +85,7 @@ def _artifact_payload() -> dict[str, object]:
     }
 
 
-def test_tpm_query_request_defaults_to_conditional_probability_shortfall() -> None:
+def test_tpm_query_request_defaults_to_conditional_probability_and_artifact_target() -> None:
     request = TPMQueryRequest(
         decision_assignments={
             "battery_capacity_kwh": 8.0,
@@ -92,7 +100,7 @@ def test_tpm_query_request_defaults_to_conditional_probability_shortfall() -> No
     }
     assert request.marginalized_features == ("solar_has_tracking",)
     assert request.output_mode == "conditional_probability"
-    assert request.target_name == "shortfall"
+    assert request.target_name == ""
 
 
 def test_query_tpm_artifact_supports_conditional_queries_with_marginalization() -> None:
@@ -112,6 +120,7 @@ def test_query_tpm_artifact_supports_conditional_queries_with_marginalization() 
     )
 
     assert result["target_name"] == "shortfall"
+    assert result["resolved_target_name"] == "shortfall_exceeds_threshold"
     assert result["output_mode"] == "conditional_probability"
     assert result["marginalized_features"] == ("solar_has_tracking",)
     assert result["value"] >= 0.0
@@ -163,6 +172,7 @@ def test_query_tpm_artifact_supports_log_likelihood_output() -> None:
     )
 
     assert result["target_name"] == "shortfall"
+    assert result["resolved_target_name"] == "shortfall_exceeds_threshold"
     assert result["output_mode"] == "log_likelihood"
     assert isinstance(result["value"], float)
 

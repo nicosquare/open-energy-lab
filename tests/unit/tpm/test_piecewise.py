@@ -32,6 +32,17 @@ def test_build_piecewise_metadata_preserves_canonical_contract() -> None:
     assert metadata.legacy_reference_paths == CANONICAL_PIECEWISE_LEGACY_REFERENCE_PATHS
 
 
+def test_load_piecewise_metadata_accepts_max_sum_encoding() -> None:
+    metadata = load_piecewise_metadata(
+        {
+            "approximation_kind": "piecewise",
+            "sum_encoding_mode": "max",
+        }
+    )
+
+    assert metadata.sum_encoding_mode == "max"
+
+
 def test_load_piecewise_metadata_rejects_non_canonical_lower_tangent_sum_encoding() -> None:
     with pytest.raises(ValueError, match="lower_tangent"):
         load_piecewise_metadata(

@@ -11,6 +11,7 @@ from typing import Any
 
 from .artifact import TPMArtifact, load_tpm_artifact
 from .features import TPMFeatureSpec
+from .optional_spflow import evaluate_spflow_query
 from .piecewise import (
     DEFAULT_QUERY_NUMERIC_TOLERANCE,
     resolve_query_numeric_tolerance,
@@ -28,7 +29,7 @@ class TPMQueryRequest:
     decision_assignments: Mapping[str, object] = field(default_factory=dict)
     marginalized_features: tuple[str, ...] = field(default_factory=tuple)
     output_mode: str = "conditional_probability"
-    target_name: str = "shortfall"
+    target_name: str = ""
     numeric_tolerance: float | None = None
     target_threshold: float | None = None
 
@@ -56,8 +57,6 @@ class TPMQueryRequest:
         object.__setattr__(self, "output_mode", output_mode)
 
         target_name = str(self.target_name)
-        if not target_name:
-            raise ValueError("target_name must be non-empty")
         object.__setattr__(self, "target_name", target_name)
 
         if self.numeric_tolerance is not None:
@@ -75,7 +74,8 @@ class _QueryContext:
     feature_by_name: Mapping[str, TPMFeatureSpec]
     supported_output_modes: tuple[str, ...]
     required_decision_features: tuple[str, ...]
-    target_name: str
+    canonical_target_name: str
+    event_target_name: str
     target_threshold: float
     numeric_tolerance: float
 
@@ -88,14 +88,25 @@ def query_tpm_artifact(
 
     resolved_artifact = _load_artifact(artifact)
     context = _build_query_context(resolved_artifact, request)
-    result = _evaluate_empirical_query(resolved_artifact, request, context)
+    result = evaluate_spflow_query(
+        resolved_artifact,
+        feature_specs=context.feature_by_name,
+        decision_assignments=request.decision_assignments,
+        marginalized_features=request.marginalized_features,
+        canonical_target_name=context.canonical_target_name,
+        event_target_name=context.event_target_name,
+        output_mode=request.output_mode,
+        numeric_tolerance=context.numeric_tolerance,
+    )
+    if result is None:
+        result = _evaluate_empirical_query(resolved_artifact, request, context)
     if result is None:
         result = _evaluate_fallback_query(request, context)
 
     response = {
         "artifact_id": resolved_artifact.artifact_id,
         "dataset_reference": resolved_artifact.dataset_reference,
-        "target_name": context.target_name,
+        "target_name": context.canonical_target_name,
         "output_mode": request.output_mode,
         "target_threshold": context.target_threshold,
         "decision_assignments": dict(request.decision_assignments),
@@ -105,6 +116,8 @@ def query_tpm_artifact(
         "source": result["source"],
         "value": float(result["value"]),
     }
+    if "resolved_target_name" in result:
+        response["resolved_target_name"] = str(result["resolved_target_name"])
     response[request.output_mode] = response["value"]
     return response
 
@@ -127,10 +140,15 @@ def _build_query_context(
     request: TPMQueryRequest,
 ) -> _QueryContext:
     feature_by_name = {feature.feature_name: feature for feature in artifact.feature_specs}
-    target_name = str(artifact.target_definition.get("target_name", ""))
-    if request.target_name != target_name:
+    canonical_target_name = str(artifact.target_definition.get("target_name", ""))
+    event_target_name = str(
+        artifact.target_definition.get("event_target_name", canonical_target_name)
+    )
+    resolved_request_target_name = request.target_name or canonical_target_name
+    if resolved_request_target_name not in {canonical_target_name, event_target_name}:
         raise ValueError(
-            f"unsupported target request {request.target_name!r}; expected {target_name!r}"
+            f"unsupported target request {resolved_request_target_name!r}; expected one of "
+            f"{(canonical_target_name, event_target_name)!r}"
         )
 
     supported_output_modes = tuple(
@@ -151,10 +169,13 @@ def _build_query_context(
             "features cannot be both assigned and marginalized: " + ", ".join(overlap)
         )
 
-    if target_name in assignment_names:
-        raise ValueError(f"target feature {target_name!r} cannot appear in decision_assignments")
-    if target_name in marginalized_names:
-        raise ValueError(f"target feature {target_name!r} cannot be marginalized")
+    for target_name in (canonical_target_name, event_target_name):
+        if target_name in assignment_names:
+            raise ValueError(
+                f"target feature {target_name!r} cannot appear in decision_assignments"
+            )
+        if target_name in marginalized_names:
+            raise ValueError(f"target feature {target_name!r} cannot be marginalized")
 
     artifact.validate_feature_assignments(request.decision_assignments)
     for feature_name in request.decision_assignments:
@@ -205,7 +226,8 @@ def _build_query_context(
         feature_by_name=feature_by_name,
         supported_output_modes=supported_output_modes,
         required_decision_features=required_decision_features,
-        target_name=target_name,
+        canonical_target_name=canonical_target_name,
+        event_target_name=event_target_name,
         target_threshold=target_threshold,
         numeric_tolerance=numeric_tolerance,
     )
@@ -220,7 +242,8 @@ def _evaluate_empirical_query(
     if dataset is None:
         return None
 
-    target_name = context.target_name
+    target_name = context.canonical_target_name
+    event_target_name = context.event_target_name
     required_columns = set(request.decision_assignments)
     required_columns.add(target_name)
     if not required_columns.issubset(dataset.column_order):
@@ -243,9 +266,12 @@ def _evaluate_empirical_query(
         if matched_row_count == 0:
             value = 0.0
         else:
-            value = sum(
-                float(row[target_name]) > context.target_threshold for row in matching_rows
-            ) / matched_row_count
+            if event_target_name in dataset.column_order:
+                value = sum(int(row[event_target_name]) for row in matching_rows) / matched_row_count
+            else:
+                value = sum(
+                    float(row[target_name]) > context.target_threshold for row in matching_rows
+                ) / matched_row_count
     else:
         evidence_probability = matched_row_count / total_row_count if total_row_count else 0.0
         value = math.log(max(evidence_probability, context.numeric_tolerance))
@@ -255,20 +281,33 @@ def _evaluate_empirical_query(
         "total_row_count": total_row_count,
         "source": "empirical_fixture",
         "value": float(value),
+        "resolved_target_name": event_target_name,
     }
 
 
 def _load_empirical_dataset(artifact: TPMArtifact) -> Any | None:
-    dataset_fixture_path = artifact.provenance.get("dataset_fixture_path")
-    if not isinstance(dataset_fixture_path, str) or not dataset_fixture_path:
+    dataset_path = _resolved_dataset_path(artifact.provenance)
+    if dataset_path is None:
         return None
 
     from open_energy_lab.planning.dataset import load_planning_dataset
 
     try:
-        return load_planning_dataset(Path(dataset_fixture_path))
+        return load_planning_dataset(dataset_path)
     except (FileNotFoundError, TypeError, ValueError):
         return None
+
+
+def _resolved_dataset_path(provenance: Mapping[str, object]) -> Path | None:
+    for key in (
+        "training_dataset_path",
+        "training_dataset_fixture_path",
+        "dataset_fixture_path",
+    ):
+        value = provenance.get(key)
+        if isinstance(value, str) and value:
+            return Path(value)
+    return None
 
 
 def _row_matches_assignments(
@@ -333,6 +372,7 @@ def _evaluate_fallback_query(
         "total_row_count": 0,
         "source": "artifact_metadata_fallback",
         "value": float(value),
+        "resolved_target_name": context.event_target_name,
     }
 
 

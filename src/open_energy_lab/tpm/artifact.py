@@ -50,6 +50,7 @@ class TPMArtifact:
     query_configuration: Mapping[str, object] = field(default_factory=dict)
     approximation_metadata: Mapping[str, object] = field(default_factory=dict)
     provenance: Mapping[str, object] = field(default_factory=dict)
+    source_path: str = ""
 
     def __post_init__(self) -> None:
         if self.schema_version not in SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS:
@@ -213,10 +214,30 @@ def load_tpm_artifact(source: str | Path | Mapping[str, Any]) -> TPMArtifact:
 
     if isinstance(source, Mapping):
         raw_payload = source
+        source_path = ""
     else:
-        raw_payload = json.loads(Path(source).read_text(encoding="utf-8"))
+        path = Path(source)
+        raw_payload = json.loads(path.read_text(encoding="utf-8"))
+        source_path = path.as_posix()
 
-    return TPMArtifact.from_dict(raw_payload)
+    artifact = TPMArtifact.from_dict(raw_payload)
+    if not source_path:
+        return artifact
+    return TPMArtifact(
+        artifact_id=artifact.artifact_id,
+        schema_version=artifact.schema_version,
+        created_at=artifact.created_at,
+        dataset_reference=artifact.dataset_reference,
+        feature_schema=artifact.feature_schema,
+        target_definition=artifact.target_definition,
+        fit_configuration=artifact.fit_configuration,
+        spn_payload=artifact.spn_payload,
+        spn_payload_format=artifact.spn_payload_format,
+        query_configuration=artifact.query_configuration,
+        approximation_metadata=artifact.approximation_metadata,
+        provenance=artifact.provenance,
+        source_path=source_path,
+    )
 
 
 __all__ = [
@@ -277,6 +298,9 @@ def _validate_target_definition(
     target_name = str(target_definition.get("target_name", ""))
     if not target_name:
         raise ValueError("target_definition.target_name must be non-empty")
+    event_target_name = str(target_definition.get("event_target_name", ""))
+    if not event_target_name:
+        raise ValueError("target_definition.event_target_name must be non-empty")
     if not str(target_definition.get("supported_query_mode", "")):
         raise ValueError("target_definition.supported_query_mode must be non-empty")
 
@@ -285,9 +309,19 @@ def _validate_target_definition(
         raise ValueError(
             f"target_definition.target_name {target_name!r} is not present in feature_schema"
         )
-    if feature_by_name[target_name].feature_role != "target":
+    if feature_by_name[target_name].feature_role not in {"metric_target", "target"}:
         raise ValueError(
-            f"feature_schema entry {target_name!r} must have feature_role 'target'"
+            f"feature_schema entry {target_name!r} must have feature_role "
+            "'metric_target' or 'target'"
+        )
+    if event_target_name not in feature_by_name:
+        raise ValueError(
+            "target_definition.event_target_name "
+            f"{event_target_name!r} is not present in feature_schema"
+        )
+    if feature_by_name[event_target_name].feature_role != "target":
+        raise ValueError(
+            f"feature_schema entry {event_target_name!r} must have feature_role 'target'"
         )
 
 

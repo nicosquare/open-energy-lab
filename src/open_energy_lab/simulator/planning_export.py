@@ -24,10 +24,12 @@ FEATURE_NAME = "009-tpm-planning"
 SUPPORTED_PLANNING_TARGETS = ("shortfall",)
 PLANNING_DATASET_SCHEMA_VERSION = "v1"
 _TARGET_DEFAULT_THRESHOLD = 0.05
+_EVENT_TARGET_NAME = "shortfall_exceeds_threshold"
 _ROW_ORDER_POLICY = "scenario_index_ascending"
-# Preserve raw horizon flattening from legacy simulator feature-engineering
-# workflows, but collapse the public export contract to the exact series fields
-# the first planning dataset needs instead of migrating all aggregate columns.
+# Preserve raw horizon flattening used by the historical simulator
+# feature-engineering workflow, but collapse the public export contract to the
+# exact series fields the first planning dataset needs instead of migrating all
+# aggregate columns.
 _FLATTENED_FIELD_PREFIXES = {
     "global_horizontal_irradiance_w_per_m2": "ghi",
     "site_electric_load_kw": "load",
@@ -86,6 +88,7 @@ def export_planning_dataset(
             for step_index in range(horizon_steps)
         ),
         request.target_name,
+        _EVENT_TARGET_NAME,
     )
 
     rows = tuple(
@@ -123,6 +126,7 @@ def export_planning_dataset(
         },
         target_metadata={
             "target_name": request.target_name,
+            "event_target_name": _EVENT_TARGET_NAME,
             "numerator_source_field": "unmet_load_kw",
             "denominator_source_field": "site_electric_load_kw",
             "aggregation_rule": (
@@ -130,6 +134,8 @@ def export_planning_dataset(
                 "sum(site_electric_load_kw * timestep_hours)"
             ),
             "threshold_default": _TARGET_DEFAULT_THRESHOLD,
+            "event_threshold_source": "threshold_default",
+            "event_threshold_comparison": ">",
             "supported_query_mode": "exceedance-probability",
         },
         provenance=(
@@ -294,6 +300,7 @@ def _build_row(
         timestep_hours=timestep_hours,
         numeric_tolerance=numeric_tolerance,
     )
+    row[_EVENT_TARGET_NAME] = int(row["shortfall"] > _TARGET_DEFAULT_THRESHOLD)
     return row
 
 

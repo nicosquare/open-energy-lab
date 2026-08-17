@@ -13,7 +13,6 @@
       "legacy/old_tpm/src_py/tpm/data/features/feature.py",
       "legacy/old_tpm/src_py/tpm/spn/main.py",
       "legacy/old_tpm/src_py/tpm/spn/encoding.py",
-      "legacy/old_tpm/src_py/tpm/spn/utils_tangent.py",
       "legacy/old_tpm/src_py/utils/densities.py"
     ],
     "generation_command": "Replay load_planning_dataset(\"tests/fixtures/tpm/planning_dataset_v1.json\") through fit_tpm_artifact(..., spflow_backend=SimpleNamespace(__name__=\"spflow.testing\", __version__=\"0.test\")) and persist the TPMArtifact JSON payload with a fixed created_at timestamp for review.",
@@ -42,7 +41,8 @@
       "unmet_load_0",
       "unmet_load_1",
       "unmet_load_2",
-      "shortfall"
+      "shortfall",
+      "shortfall_exceeds_threshold"
     ],
     "training_random_seed": 13
   },
@@ -222,7 +222,7 @@
     },
     {
       "feature_name": "shortfall",
-      "feature_role": "target",
+      "feature_role": "metric_target",
       "feature_type": "continuous",
       "modifiable": false,
       "monotonicity": "none",
@@ -231,14 +231,33 @@
         0.0,
         0.0
       ]
+    },
+    {
+      "feature_name": "shortfall_exceeds_threshold",
+      "feature_role": "target",
+      "feature_type": "binary",
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization_rule": "binary_index",
+      "discrete_values": [
+        0.0,
+        1.0
+      ],
+      "ordering": [
+        0.0,
+        1.0
+      ]
     }
   ],
   "target_definition": {
     "target_name": "shortfall",
+    "event_target_name": "shortfall_exceeds_threshold",
     "numerator_source_field": "unmet_load_kw",
     "denominator_source_field": "site_electric_load_kw",
     "aggregation_rule": "sum(unmet_load_kw * timestep_hours) / sum(site_electric_load_kw * timestep_hours)",
     "threshold_default": 0.05,
+    "event_threshold_source": "threshold_default",
+    "event_threshold_comparison": ">",
     "supported_query_mode": "exceedance-probability"
   },
   "fit_configuration": {
@@ -259,7 +278,8 @@
       "unmet_load_0",
       "unmet_load_1",
       "unmet_load_2",
-      "shortfall"
+      "shortfall",
+      "shortfall_exceeds_threshold"
     ],
     "learn_mspn_kwargs": {},
     "notes": [
@@ -270,7 +290,8 @@
     "payload_kind": "spflow-fit-summary",
     "backend_module": "spflow.testing",
     "backend_version": "0.test",
-    "target_name": "shortfall",
+    "canonical_target_name": "shortfall",
+    "event_target_name": "shortfall_exceeds_threshold",
     "training_random_seed": 13,
     "row_count": 2,
     "column_order": [
@@ -287,11 +308,12 @@
       "unmet_load_0",
       "unmet_load_1",
       "unmet_load_2",
-      "shortfall"
+      "shortfall",
+      "shortfall_exceeds_threshold"
     ],
     "normalized_matrix_shape": [
       2,
-      14
+      15
     ],
     "learn_mspn_kwargs": {}
   },
@@ -324,7 +346,6 @@
     "legacy_reference_paths": [
       "legacy/old_tpm/src_py/tpm/spn/main.py",
       "legacy/old_tpm/src_py/tpm/spn/encoding.py",
-      "legacy/old_tpm/src_py/tpm/spn/utils_tangent.py",
       "legacy/old_tpm/src_py/utils/densities.py"
     ]
   }

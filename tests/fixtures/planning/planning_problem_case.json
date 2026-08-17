@@ -8,7 +8,6 @@
     "origin": "Current-library planning assembly contract derived from the committed TPM artifact fixture and deterministic battery-solar cost metadata",
     "legacy_evidence_paths": [
       "legacy/old_tpm/src_py/tpm/spn/encoding.py",
-      "legacy/old_tpm/src_py/tpm/spn/utils_tangent.py",
       "legacy/old_tpm/src_py/utils/densities.py"
     ],
     "generation_command": "Replay tests/integration/planning/test_problem_assembly.py and tests/integration/planning/test_optional_solve.py against the committed TPM artifact fixture and persist the reviewed planning definition plus deterministic expectations.",
@@ -47,6 +46,7 @@
       "battery_capacity_kwh": 1200.0,
       "solar_capacity_kw": 950.0
     },
+    "risk_evaluation_mode": "spn_mip",
     "objective_direction": "minimize",
     "solver_configuration": {
       "backend_name": "pyomo",
@@ -77,6 +77,7 @@
     "artifact_id": "tpm-artifact:planning-dataset-export-integration",
     "dataset_reference": "planning-dataset-export-integration",
     "target_name": "shortfall",
+    "risk_target_name": "shortfall_exceeds_threshold",
     "candidate_designs": [
       {
         "selected_design": {
@@ -99,10 +100,12 @@
     ],
     "chance_constraint_metadata": {
       "target_name": "shortfall",
+      "event_target_name": "shortfall_exceeds_threshold",
       "comparison": ">",
       "threshold": 0.05,
       "chance_limit_epsilon": 0.1,
-      "supported_query_mode": "exceedance-probability"
+      "supported_query_mode": "exceedance-probability",
+      "risk_evaluation_mode": "empirical_dataset"
     },
     "solver_metadata": {
       "canonical_backend": "pyomo",

@@ -158,6 +158,26 @@ def test_planning_export_request_defaults_to_shortfall_target() -> None:
     assert request.numeric_tolerance == pytest.approx(1e-9)
 
 
+def test_export_planning_dataset_derives_binary_event_target_from_shortfall() -> None:
+    dataset = export_planning_dataset(
+        family_result_reference=_aligned_family_result(),
+        weather_family_reference=_aligned_weather_family(),
+        request=_request(
+            flattened_series_fields=(
+                "global_horizontal_irradiance_w_per_m2",
+                "site_electric_load_kw",
+                "unmet_load_kw",
+            )
+        ),
+    )
+
+    assert dataset.column_order[-2:] == ("shortfall", "shortfall_exceeds_threshold")
+    assert dataset.target_metadata["event_target_name"] == "shortfall_exceeds_threshold"
+    assert dataset.target_metadata["event_threshold_source"] == "threshold_default"
+    assert dataset.rows[0]["shortfall_exceeds_threshold"] == 0
+    assert dataset.rows[1]["shortfall_exceeds_threshold"] == 0
+
+
 def test_export_planning_dataset_rejects_missing_design_rows_for_scenarios() -> None:
     request = PlanningExportRequest(
         export_id="planning-export-unit",

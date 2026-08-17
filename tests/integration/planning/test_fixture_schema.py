@@ -95,7 +95,8 @@ def test_planning_dataset_export_fixture_tracks_export_contracts() -> None:
     assert fixture_data["expected_horizon_steps"] == 3
     assert len(fixture_data["design_metadata_rows"]) == fixture_data["expected_row_count"]
     assert fixture_data["expected_column_order"][0] == "scenario_index"
-    assert fixture_data["expected_column_order"][-1] == "shortfall"
+    assert fixture_data["expected_column_order"][-2] == "shortfall"
+    assert fixture_data["expected_column_order"][-1] == "shortfall_exceeds_threshold"
     notes = " ".join(str(note).lower() for note in fixture_data["notes"])
     assert "deterministic" in notes
     assert "offline" in notes
@@ -122,10 +123,12 @@ def test_planning_problem_fixture_tracks_first_release_scope() -> None:
         "battery_capacity_kwh",
         "solar_capacity_kw",
     ]
+    assert problem_definition["risk_evaluation_mode"] == "spn_mip"
     assert problem_definition["solver_configuration"]["backend_name"] == "pyomo"
     assert problem_definition["solver_configuration"]["solver_name"] == "fake-pyomo"
     assert problem_definition["fixture_baseline"]["expected_status"] == "optimal"
     assert expected_assembly["artifact_id"] == "tpm-artifact:planning-dataset-export-integration"
+    assert expected_assembly["risk_target_name"] == "shortfall_exceeds_threshold"
     assert expected_assembly["deterministic_fixture_baseline"]["candidate_count"] == 2
     assert expected_optional_solve["optimal_summary"]["status"] == "optimal"
     assert expected_optional_solve["skip_when_backend_unavailable"]["status"] == "skipped"

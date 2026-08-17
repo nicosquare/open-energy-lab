@@ -146,6 +146,16 @@ def _infer_feature_spec(
         )
 
     if numeric_values:
+        if _is_binary_numeric_domain(feature_name, numeric_values):
+            ordered_values = _binary_numeric_order(numeric_values)
+            return TPMFeatureSpec(
+                feature_name=feature_name,
+                feature_type="binary",
+                feature_role=feature_role,
+                modifiable=modifiable,
+                discrete_values=ordered_values,
+                ordering=ordered_values,
+            )
         return TPMFeatureSpec(
             feature_name=feature_name,
             feature_type="continuous",
@@ -191,3 +201,15 @@ def _is_binary_domain(values: tuple[object, ...]) -> bool:
         frozenset({"no", "yes"}),
         frozenset({"off", "on"}),
     }
+
+
+def _is_binary_numeric_domain(feature_name: str, values: Sequence[float]) -> bool:
+    if feature_name == "scenario_index" or feature_name.endswith("_index"):
+        return False
+    unique_values = {float(value) for value in values}
+    return unique_values == {0.0, 1.0}
+
+
+def _binary_numeric_order(values: Sequence[float]) -> tuple[float, float]:
+    unique_values = sorted({float(value) for value in values})
+    return (unique_values[0], unique_values[1])

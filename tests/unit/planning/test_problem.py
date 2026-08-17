@@ -12,6 +12,7 @@ from open_energy_lab.planning.problem import (
     SUPPORTED_FIRST_RELEASE_DECISION_VARIABLE_TYPES,
     SUPPORTED_OBJECTIVE_DIRECTIONS,
     SUPPORTED_PLANNING_BACKENDS,
+    SUPPORTED_RISK_EVALUATION_MODES,
 )
 
 
@@ -60,6 +61,19 @@ def test_planning_problem_definition_preserves_distinct_threshold_and_chance_lim
     assert problem.shortfall_threshold == pytest.approx(0.05)
     assert problem.chance_limit_epsilon == pytest.approx(0.2)
     assert problem.shortfall_threshold != problem.chance_limit_epsilon
+
+
+def test_planning_problem_definition_defaults_to_spn_mip_risk_mode() -> None:
+    problem = PlanningProblemDefinition(
+        problem_id="planning-problem-unit",
+        decision_features=("battery_capacity_kwh",),
+        decision_feature_types={"battery_capacity_kwh": "continuous"},
+        shortfall_threshold=0.05,
+        chance_limit_epsilon=0.2,
+    )
+
+    assert SUPPORTED_RISK_EVALUATION_MODES == ("empirical_dataset", "spn_mip")
+    assert problem.risk_evaluation_mode == "spn_mip"
 
 
 @pytest.mark.parametrize(
@@ -153,6 +167,7 @@ def test_planning_problem_definition_tracks_documented_problem_fields() -> None:
         "chance_limit_epsilon",
         "cost_terms",
         "tpm_artifact_reference",
+        "risk_evaluation_mode",
         "objective_direction",
         "solver_configuration",
         "approximation_contract",

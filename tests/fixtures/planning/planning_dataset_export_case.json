@@ -30,6 +30,7 @@
   "dataset_artifact_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json",
   "expected_dataset_id": "planning-dataset-export-integration",
   "target_name": "shortfall",
+  "event_target_name": "shortfall_exceeds_threshold",
   "flattened_series_fields": [
     "global_horizontal_irradiance_w_per_m2",
     "site_electric_load_kw",
@@ -65,6 +66,7 @@
     "unmet_load_0",
     "unmet_load_1",
     "unmet_load_2",
-    "shortfall"
+    "shortfall",
+    "shortfall_exceeds_threshold"
   ]
 }

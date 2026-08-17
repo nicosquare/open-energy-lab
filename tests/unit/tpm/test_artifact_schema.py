@@ -50,14 +50,22 @@ def _artifact_payload() -> dict[str, object]:
             },
             {
                 "feature_name": "shortfall",
-                "feature_role": "target",
+                "feature_role": "metric_target",
                 "feature_type": "continuous",
                 "bounds": [0.0, 1.0],
+                "modifiable": False,
+            },
+            {
+                "feature_name": "shortfall_exceeds_threshold",
+                "feature_role": "target",
+                "feature_type": "binary",
+                "discrete_values": [0.0, 1.0],
                 "modifiable": False,
             },
         ],
         "target_definition": {
             "target_name": "shortfall",
+            "event_target_name": "shortfall_exceeds_threshold",
             "threshold_default": 0.05,
             "supported_query_mode": "exceedance-probability",
         },
@@ -124,6 +132,7 @@ def test_load_tpm_artifact_preserves_schema_target_and_query_metadata() -> None:
     assert artifact.artifact_id == "tpm-artifact-unit"
     assert artifact.dataset_reference == "planning-dataset-export-integration"
     assert artifact.target_definition["target_name"] == "shortfall"
+    assert artifact.target_definition["event_target_name"] == "shortfall_exceeds_threshold"
     assert artifact.spn_payload_format == "json-inline"
     assert artifact.query_configuration["supported_output_modes"] == [
         "conditional_probability",

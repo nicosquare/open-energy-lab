@@ -48,7 +48,8 @@
     "unmet_load_0",
     "unmet_load_1",
     "unmet_load_2",
-    "shortfall"
+    "shortfall",
+    "shortfall_exceeds_threshold"
   ],
   "rows": [
     {
@@ -65,7 +66,8 @@
       "unmet_load_0": 0.0,
       "unmet_load_1": 0.0,
       "unmet_load_2": 0.0,
-      "shortfall": 0.0
+      "shortfall": 0.0,
+      "shortfall_exceeds_threshold": 0
     },
     {
       "scenario_index": 1,
@@ -81,7 +83,8 @@
       "unmet_load_0": 0.0,
       "unmet_load_1": 0.0,
       "unmet_load_2": 0.0,
-      "shortfall": 0.0
+      "shortfall": 0.0,
+      "shortfall_exceeds_threshold": 0
     }
   ],
   "design_feature_schema": [
@@ -117,10 +120,13 @@
   },
   "target_metadata": {
     "target_name": "shortfall",
+    "event_target_name": "shortfall_exceeds_threshold",
     "numerator_source_field": "unmet_load_kw",
     "denominator_source_field": "site_electric_load_kw",
     "aggregation_rule": "sum(unmet_load_kw * timestep_hours) / sum(site_electric_load_kw * timestep_hours)",
     "threshold_default": 0.05,
+    "event_threshold_source": "threshold_default",
+    "event_threshold_comparison": ">",
     "supported_query_mode": "exceedance-probability"
   },
   "export_configuration": {

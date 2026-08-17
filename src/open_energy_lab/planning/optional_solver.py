@@ -8,6 +8,8 @@ from importlib import import_module
 from types import SimpleNamespace
 from typing import Any
 
+from open_energy_lab.tpm.mio import build_spn_chance_model, extract_spn_solution
+
 from .problem import PlanningDecisionCandidate, PlanningProblemAssembly
 
 
@@ -106,7 +108,10 @@ def solve_planning_problem(*args: object, **kwargs: object) -> object:
         solve_config=solve_config,
         backend=backend,
     )
-    if not handoff.feasible_candidate_ids:
+    if (
+        assembled_problem.risk_evaluation_mode != "spn_mip"
+        and not handoff.feasible_candidate_ids
+    ):
         return _infeasible_summary(
             assembled_problem,
             solve_config=solve_config,
@@ -235,7 +240,34 @@ def _build_pyomo_model_handoff(
         solve_config=solve_config,
     )
 
-    if hasattr(backend, "build_candidate_model"):
+    if (
+        assembled_problem.risk_evaluation_mode == "spn_mip"
+        and assembled_problem.spn_mip_payload
+    ):
+        if hasattr(backend, "build_spn_model"):
+            model = backend.build_spn_model(
+                problem_id=assembled_problem.problem_id,
+                spn_payload=dict(assembled_problem.spn_mip_payload),
+                candidate_records=_candidate_records(candidate_lookup),
+                chance_limit_epsilon=assembled_problem.chance_limit_epsilon,
+                shortfall_threshold=assembled_problem.shortfall_threshold,
+                numeric_tolerance=solve_config.numeric_tolerance,
+                piecewise_terms=assembled_problem.piecewise_terms,
+                solver_configuration=dict(assembled_problem.solver_configuration),
+            )
+            handoff_strategy = "custom-backend-hook"
+        else:
+            model = _build_native_pyomo_spn_model(
+                backend,
+                problem_id=assembled_problem.problem_id,
+                spn_payload=assembled_problem.spn_mip_payload,
+                cost_terms=assembled_problem.cost_terms,
+                chance_limit_epsilon=assembled_problem.chance_limit_epsilon,
+                numeric_tolerance=solve_config.numeric_tolerance,
+                piecewise_terms=assembled_problem.piecewise_terms,
+            )
+            handoff_strategy = "native-pyomo-spn"
+    elif hasattr(backend, "build_candidate_model"):
         model = backend.build_candidate_model(
             problem_id=assembled_problem.problem_id,
             candidate_records=_candidate_records(candidate_lookup),
@@ -347,6 +379,50 @@ def _build_native_pyomo_candidate_model(
     return model
 
 
+def _build_native_pyomo_spn_model(
+    backend: Any,
+    *,
+    problem_id: str,
+    spn_payload: Mapping[str, object],
+    cost_terms: Mapping[str, float],
+    chance_limit_epsilon: float,
+    numeric_tolerance: float,
+    piecewise_terms: object,
+) -> object:
+    required_attributes = (
+        "Binary",
+        "Block",
+        "ConcreteModel",
+        "Constraint",
+        "Objective",
+        "Piecewise",
+        "Reals",
+        "Set",
+        "Var",
+        "minimize",
+    )
+    missing_attributes = [
+        attribute_name
+        for attribute_name in required_attributes
+        if not hasattr(backend, attribute_name)
+    ]
+    if missing_attributes:
+        raise PlanningSolverUnavailableError(
+            "Injected pyomo backend is missing required SPN model-building attributes: "
+            + ", ".join(missing_attributes)
+        )
+
+    return build_spn_chance_model(
+        backend,
+        problem_id=problem_id,
+        spn_payload=dict(spn_payload),
+        cost_terms={str(key): float(value) for key, value in cost_terms.items()},
+        chance_limit_epsilon=float(chance_limit_epsilon),
+        numeric_tolerance=float(numeric_tolerance),
+        piecewise_terms=piecewise_terms,
+    )
+
+
 def _candidate_records(
     candidate_lookup: Mapping[int, PlanningDecisionCandidate],
 ) -> tuple[dict[str, object], ...]:
@@ -401,6 +477,24 @@ def _summary_from_backend_result(
 
     status = str(raw_result.get("status", ""))
     if status == "optimal":
+        if "selected_design" in raw_result:
+            return _optimal_direct_summary(
+                assembled_problem,
+                solve_config=solve_config,
+                backend=handoff.backend,
+                handoff=handoff,
+                selected_design=_mapping_from_value(raw_result.get("selected_design")),
+                objective_value=_float_or_none(raw_result.get("objective_value")),
+                estimated_shortfall_risk=_float_or_none(
+                    raw_result.get("estimated_shortfall_risk")
+                ),
+                solve_execution_mode="custom-backend-hook",
+                feasibility_diagnostics={
+                    "candidate_count": len(handoff.candidate_ids),
+                    **_mapping_from_value(raw_result.get("feasibility_diagnostics")),
+                },
+                extra_solver_metadata=_mapping_from_value(raw_result.get("solver_metadata")),
+            )
         candidate_id = raw_result.get("candidate_id")
         if not isinstance(candidate_id, int) or candidate_id not in handoff.candidate_lookup:
             raise ValueError("backend solve_candidate_model() returned an invalid candidate_id")
@@ -494,6 +588,40 @@ def _solve_through_pyomo_solver(
         time_limit_seconds=assembled_problem.solver_configuration.get("time_limit_seconds"),
     )
     results = solver.solve(handoff.model, tee=False)
+    if handoff.handoff_strategy == "native-pyomo-spn":
+        if _solver_result_reports_infeasible(results):
+            return _infeasible_summary(
+                assembled_problem,
+                solve_config=solve_config,
+                backend=handoff.backend,
+                handoff=handoff,
+                reason="solver reported the SPN chance-constrained model as infeasible",
+                solve_execution_mode="native-pyomo-solver",
+                extra_diagnostics=_solver_result_diagnostics(results),
+                extra_solver_metadata=_solver_result_metadata(results),
+            )
+        solution = extract_spn_solution(
+            handoff.model,
+            backend=handoff.backend,
+            numeric_tolerance=solve_config.numeric_tolerance,
+        )
+        return _optimal_direct_summary(
+            assembled_problem,
+            solve_config=solve_config,
+            backend=handoff.backend,
+            handoff=handoff,
+            selected_design=_mapping_from_value(solution.get("selected_design")),
+            objective_value=_float_or_none(solution.get("objective_value")),
+            estimated_shortfall_risk=_float_or_none(
+                solution.get("estimated_shortfall_risk")
+            ),
+            solve_execution_mode="native-pyomo-solver",
+            feasibility_diagnostics={
+                "candidate_count": len(handoff.candidate_ids),
+                **_solver_result_diagnostics(results),
+            },
+            extra_solver_metadata=_solver_result_metadata(results),
+        )
     selected_candidate = _selected_candidate_from_pyomo_model(
         handoff,
         numeric_tolerance=solve_config.numeric_tolerance,
@@ -582,6 +710,12 @@ def _solver_result_metadata(results: object) -> dict[str, object]:
     return _solver_result_diagnostics(results)
 
 
+def _solver_result_reports_infeasible(results: object) -> bool:
+    diagnostics = _solver_result_diagnostics(results)
+    termination_condition = str(diagnostics.get("termination_condition", "")).lower()
+    return "infeasible" in termination_condition
+
+
 def _deterministic_handoff_summary(
     assembled_problem: PlanningProblemAssembly,
     *,
@@ -608,6 +742,42 @@ def _deterministic_handoff_summary(
             "candidate_count": len(handoff.candidate_ids),
             "feasible_candidate_count": len(handoff.feasible_candidate_ids),
         },
+    )
+
+
+def _optimal_direct_summary(
+    assembled_problem: PlanningProblemAssembly,
+    *,
+    solve_config: PlanningSolveConfig,
+    backend: Any,
+    handoff: _PlanningPyomoModelHandoff,
+    selected_design: Mapping[str, object],
+    objective_value: float | None,
+    estimated_shortfall_risk: float | None,
+    solve_execution_mode: str,
+    feasibility_diagnostics: Mapping[str, object],
+    extra_solver_metadata: Mapping[str, object] | None = None,
+) -> PlanningSolveSummary:
+    solver_metadata = _solver_metadata(
+        assembled_problem,
+        solve_config=solve_config,
+        backend=backend,
+        status="optimal",
+        handoff=handoff,
+        solve_execution_mode=solve_execution_mode,
+    )
+    if extra_solver_metadata:
+        solver_metadata.update(dict(extra_solver_metadata))
+    return PlanningSolveSummary(
+        problem_id=assembled_problem.problem_id,
+        status="optimal",
+        selected_design=dict(selected_design),
+        objective_value=objective_value,
+        estimated_shortfall_risk=estimated_shortfall_risk,
+        threshold=assembled_problem.shortfall_threshold,
+        chance_limit_epsilon=assembled_problem.chance_limit_epsilon,
+        feasibility_diagnostics=dict(feasibility_diagnostics),
+        solver_metadata=solver_metadata,
     )
 
 
@@ -761,3 +931,9 @@ def _mapping_from_value(value: object) -> dict[str, object]:
     if isinstance(value, Mapping):
         return {str(key): inner_value for key, inner_value in value.items()}
     return {}
+
+
+def _float_or_none(value: object) -> float | None:
+    if value is None:
+        return None
+    return float(value)

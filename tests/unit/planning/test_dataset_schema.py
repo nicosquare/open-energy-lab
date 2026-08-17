@@ -38,6 +38,7 @@ def _dataset_payload() -> dict[str, object]:
             "unmet_load_1",
             "unmet_load_2",
             "shortfall",
+            "shortfall_exceeds_threshold",
         ],
         "rows": [
             {
@@ -54,6 +55,7 @@ def _dataset_payload() -> dict[str, object]:
                 "unmet_load_1": 0.0,
                 "unmet_load_2": 3.0,
                 "shortfall": 0.05,
+                "shortfall_exceeds_threshold": 0,
             },
             {
                 "scenario_index": 1,
@@ -69,6 +71,7 @@ def _dataset_payload() -> dict[str, object]:
                 "unmet_load_1": 1.0,
                 "unmet_load_2": 0.0,
                 "shortfall": 1.0 / 45.0,
+                "shortfall_exceeds_threshold": 0,
             },
         ],
         "design_feature_schema": [
@@ -99,10 +102,13 @@ def _dataset_payload() -> dict[str, object]:
         },
         "target_metadata": {
             "target_name": "shortfall",
+            "event_target_name": "shortfall_exceeds_threshold",
             "numerator_source_field": "unmet_load_kw",
             "denominator_source_field": "site_electric_load_kw",
             "aggregation_rule": "sum(unmet_load_kw * timestep_hours) / sum(site_electric_load_kw * timestep_hours)",
             "threshold_default": 0.05,
+            "event_threshold_source": "threshold_default",
+            "event_threshold_comparison": ">",
             "supported_query_mode": "exceedance-probability",
         },
         "provenance": {
@@ -133,13 +139,18 @@ def test_planning_dataset_artifact_preserves_minimal_identity_fields() -> None:
     artifact = PlanningDatasetArtifact(
         dataset_id="planning-dataset-unit",
         schema_version="v1",
-        column_order=("scenario_index", "ghi_0", "shortfall"),
+        column_order=("scenario_index", "ghi_0", "shortfall", "shortfall_exceeds_threshold"),
         provenance={"family_id": "fixture-family"},
     )
 
     assert artifact.dataset_id == "planning-dataset-unit"
     assert artifact.schema_version == "v1"
-    assert artifact.column_order == ("scenario_index", "ghi_0", "shortfall")
+    assert artifact.column_order == (
+        "scenario_index",
+        "ghi_0",
+        "shortfall",
+        "shortfall_exceeds_threshold",
+    )
     assert artifact.provenance["family_id"] == "fixture-family"
 
 
@@ -229,11 +240,13 @@ def test_load_planning_dataset_preserves_shortfall_energy_ratio_metadata() -> No
     loaded = load_planning_dataset(_dataset_payload())
 
     assert loaded.target_metadata["target_name"] == "shortfall"
+    assert loaded.target_metadata["event_target_name"] == "shortfall_exceeds_threshold"
     assert loaded.target_metadata["numerator_source_field"] == "unmet_load_kw"
     assert loaded.target_metadata["denominator_source_field"] == "site_electric_load_kw"
     assert "timestep_hours" in loaded.target_metadata["aggregation_rule"]
     assert loaded.rows[0]["shortfall"] == pytest.approx(0.05)
     assert loaded.rows[1]["shortfall"] == pytest.approx(1.0 / 45.0)
+    assert loaded.rows[0]["shortfall_exceeds_threshold"] == 0
 
 
 def test_load_planning_dataset_preserves_export_reproducibility_metadata() -> None:

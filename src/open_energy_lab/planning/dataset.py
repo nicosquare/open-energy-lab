@@ -348,10 +348,13 @@ def _validate_series_field_schema(
 def _validate_target_metadata(target_metadata: Mapping[str, object]) -> None:
     required_keys = (
         "target_name",
+        "event_target_name",
         "numerator_source_field",
         "denominator_source_field",
         "aggregation_rule",
         "threshold_default",
+        "event_threshold_source",
+        "event_threshold_comparison",
         "supported_query_mode",
     )
     missing = [key for key in required_keys if key not in target_metadata]
@@ -362,11 +365,24 @@ def _validate_target_metadata(target_metadata: Mapping[str, object]) -> None:
     target_name = str(target_metadata["target_name"])
     if target_name != "shortfall":
         raise ValueError("target_metadata.target_name must be 'shortfall'")
+    event_target_name = str(target_metadata["event_target_name"])
+    if event_target_name != "shortfall_exceeds_threshold":
+        raise ValueError(
+            "target_metadata.event_target_name must be 'shortfall_exceeds_threshold'"
+        )
     if "timestep_hours" not in str(target_metadata["aggregation_rule"]):
         raise ValueError(
             "target_metadata.aggregation_rule must document timestep_hours weighting"
         )
     float(target_metadata["threshold_default"])
+    if str(target_metadata["event_threshold_source"]) != "threshold_default":
+        raise ValueError(
+            "target_metadata.event_threshold_source must be 'threshold_default'"
+        )
+    if str(target_metadata["event_threshold_comparison"]) != ">":
+        raise ValueError(
+            "target_metadata.event_threshold_comparison must be '>'"
+        )
     if not str(target_metadata["supported_query_mode"]):
         raise ValueError("target_metadata.supported_query_mode must be non-empty")
 
@@ -403,7 +419,7 @@ def _design_feature_schema(
             raise ValueError(
                 f"design_feature_schema[{index}].feature_name must appear in column_order"
             )
-        if feature_name in {"scenario_index", "shortfall"}:
+        if feature_name in {"scenario_index", "shortfall", "shortfall_exceeds_threshold"}:
             raise ValueError(
                 "design_feature_schema must describe decision/design columns only"
             )
@@ -479,6 +495,9 @@ def _validate_shortfall_rows(
             "series_field_schema must include prefixes for the shortfall numerator and denominator"
         )
 
+    event_target_name = str(target_metadata["event_target_name"])
+    threshold_default = float(target_metadata["threshold_default"])
+
     for index, row in enumerate(rows):
         load_series = tuple(
             float(row[f"{denominator_prefix}_{step}"]) for step in range(horizon_steps)
@@ -496,6 +515,12 @@ def _validate_shortfall_rows(
         if abs(actual_shortfall - expected_shortfall) > numeric_tolerance:
             raise ValueError(
                 f"rows[{index}].shortfall must match the documented energy-ratio target"
+            )
+        actual_event = int(row[event_target_name])
+        expected_event = int(expected_shortfall > threshold_default)
+        if actual_event != expected_event:
+            raise ValueError(
+                f"rows[{index}].{event_target_name} must match the documented event target"
             )
 
 

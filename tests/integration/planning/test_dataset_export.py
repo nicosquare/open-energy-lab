@@ -265,7 +265,9 @@ def test_export_planning_dataset_records_shortfall_and_reproducibility_metadata(
     )
 
     assert dataset.rows[0]["shortfall"] == pytest.approx(expected_shortfall)
+    assert dataset.rows[0]["shortfall_exceeds_threshold"] == int(expected_shortfall > 0.05)
     assert dataset.rows[1]["shortfall"] == pytest.approx(0.0)
+    assert dataset.rows[1]["shortfall_exceeds_threshold"] == 0
     assert dataset.provenance["weather_family_id"] == weather_family.family_id
     assert dataset.provenance["family_seed"] == weather_family.family_seed
     assert dataset.export_configuration["row_order_policy"] == "scenario_index_ascending"
@@ -274,6 +276,7 @@ def test_export_planning_dataset_records_shortfall_and_reproducibility_metadata(
         "site_electric_load_kw",
         "unmet_load_kw",
     ]
+    assert dataset.target_metadata["event_target_name"] == "shortfall_exceeds_threshold"
 
 
 def test_committed_planning_dataset_fixture_replays_the_export_contract() -> None:

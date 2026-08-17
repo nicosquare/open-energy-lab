@@ -10,6 +10,7 @@ from typing import Any
 DEFAULT_APPROXIMATION_KIND = "piecewise"
 DEFAULT_LEAF_ENCODING_MODE = "histogram"
 DEFAULT_SUM_ENCODING_MODE = "piecewise"
+SUPPORTED_SUM_ENCODING_MODES = ("max", "piecewise")
 DEFAULT_BREAKPOINT_POLICY_NAME = "legacy-logspace-v1"
 DEFAULT_PIECEWISE_BREAKPOINT_COUNT = 5
 DEFAULT_EXP_PROBABILITY_FLOOR = 1e-3
@@ -19,7 +20,6 @@ DEFAULT_EXP_BREAKPOINT_START = 0.3
 CANONICAL_PIECEWISE_LEGACY_REFERENCE_PATHS = (
     "legacy/old_tpm/src_py/tpm/spn/main.py",
     "legacy/old_tpm/src_py/tpm/spn/encoding.py",
-    "legacy/old_tpm/src_py/tpm/spn/utils_tangent.py",
     "legacy/old_tpm/src_py/utils/densities.py",
 )
 
@@ -164,7 +164,12 @@ class PiecewiseApproximationMetadata:
         if not sum_encoding_mode:
             raise ValueError("sum_encoding_mode must be non-empty")
         if sum_encoding_mode == "lower_tangent":
-            raise ValueError("lower_tangent is not the canonical first-release sum encoding")
+            raise ValueError("lower_tangent is not a supported TPM sum encoding")
+        if sum_encoding_mode not in SUPPORTED_SUM_ENCODING_MODES:
+            raise ValueError(
+                "sum_encoding_mode must be one of "
+                f"{SUPPORTED_SUM_ENCODING_MODES!r}"
+            )
         object.__setattr__(self, "sum_encoding_mode", sum_encoding_mode)
 
         breakpoint_policy = self.breakpoint_policy
@@ -446,6 +451,7 @@ __all__ = [
     "load_piecewise_metadata",
     "piecewise_linear_interpolate",
     "resolve_query_numeric_tolerance",
+    "SUPPORTED_SUM_ENCODING_MODES",
 ]
 
 

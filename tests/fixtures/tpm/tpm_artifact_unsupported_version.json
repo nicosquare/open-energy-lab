@@ -13,7 +13,6 @@
       "legacy/old_tpm/src_py/tpm/data/features/feature.py",
       "legacy/old_tpm/src_py/tpm/spn/main.py",
       "legacy/old_tpm/src_py/tpm/spn/encoding.py",
-      "legacy/old_tpm/src_py/tpm/spn/utils_tangent.py",
       "legacy/old_tpm/src_py/utils/densities.py"
     ],
     "generation_command": "Copy tests/fixtures/tpm/tpm_artifact_v1.json, change only schema_version to v999, and preserve the remaining payload for fail-fast load validation.",
@@ -323,7 +322,6 @@
     "legacy_reference_paths": [
       "legacy/old_tpm/src_py/tpm/spn/main.py",
       "legacy/old_tpm/src_py/tpm/spn/encoding.py",
-      "legacy/old_tpm/src_py/tpm/spn/utils_tangent.py",
       "legacy/old_tpm/src_py/utils/densities.py"
     ]
   }

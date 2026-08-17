@@ -40,6 +40,7 @@
     "artifact_id": "tpm-artifact:planning-dataset-export-integration",
     "dataset_reference": "planning-dataset-export-integration",
     "target_name": "shortfall",
+    "resolved_target_name": "shortfall_exceeds_threshold",
     "output_mode": "conditional_probability",
     "target_threshold": 0.05,
     "decision_assignments": {

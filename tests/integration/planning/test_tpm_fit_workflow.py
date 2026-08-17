@@ -22,6 +22,7 @@ def test_planning_dataset_fixture_exposes_tpm_fit_preconditions() -> None:
 
     assert dataset.dataset_id == "planning-dataset-export-integration"
     assert dataset.target_metadata["target_name"] == "shortfall"
+    assert dataset.target_metadata["event_target_name"] == "shortfall_exceeds_threshold"
     assert dataset.export_configuration["flattened_series_fields"] == [
         "global_horizontal_irradiance_w_per_m2",
         "site_electric_load_kw",
@@ -52,6 +53,7 @@ def test_fit_reload_workflow_persists_tpm_artifact_offline(
     assert reloaded_artifact.artifact_id == fitted_artifact.artifact_id
     assert reloaded_artifact.dataset_reference == dataset.dataset_id
     assert reloaded_artifact.fit_configuration["backend_name"] == "spflow"
+    assert reloaded_artifact.spn_payload_format == "pickle-path"
     assert reloaded_artifact.query_configuration["required_decision_features"] == [
         "battery_capacity_kwh",
         "solar_capacity_kw",
@@ -88,6 +90,8 @@ def test_fit_reload_query_workflow_runs_from_exported_planning_dataset(
     assert artifact_path.is_file()
     assert reloaded_artifact.artifact_id == fitted_artifact.artifact_id
     assert result["target_name"] == "shortfall"
+    assert result["resolved_target_name"] == "shortfall_exceeds_threshold"
     assert result["output_mode"] == "conditional_probability"
     assert result["marginalized_features"] == ("solar_capacity_kw",)
+    assert result["source"] == "spflow_sidecar_table"
     assert result["value"] == pytest.approx(0.0)

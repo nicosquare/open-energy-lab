@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import open_energy_lab.planning.optional_solver as optional_solver_module
 from open_energy_lab.planning.optional_solver import (
     PlanningSolveConfig,
     PlanningSolverDependencyUnavailableError,
@@ -109,10 +110,7 @@ def test_optional_solve_can_report_deterministic_skip_when_backend_is_unavailabl
     def _raise_dependency_error():
         raise PlanningSolverDependencyUnavailableError("pyomo missing")
 
-    monkeypatch.setattr(
-        "open_energy_lab.planning.optional_solver.require_pyomo_backend",
-        _raise_dependency_error,
-    )
+    monkeypatch.setattr(optional_solver_module, "require_pyomo_backend", _raise_dependency_error)
 
     summary = solve_planning_problem(
         assembled_problem,

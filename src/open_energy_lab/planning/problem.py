@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import importlib.util
 import math
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from numbers import Real
 from pathlib import Path
@@ -18,9 +19,16 @@ from open_energy_lab.planning.piecewise import (
     validate_first_release_decision_features,
 )
 from open_energy_lab.tpm.artifact import TPMArtifact, load_tpm_artifact
+from open_energy_lab.tpm.mio import infer_max_sum_terms
+from open_energy_lab.tpm.optional_spflow import (
+    build_spn_mip_payload,
+    load_spflow_payload,
+    supports_spn_mip,
+)
 
 SUPPORTED_OBJECTIVE_DIRECTIONS = ("minimize",)
 SUPPORTED_PLANNING_BACKENDS = ("pyomo",)
+SUPPORTED_RISK_EVALUATION_MODES = ("empirical_dataset", "spn_mip")
 DEFAULT_SOLVER_NUMERIC_TOLERANCE = 1e-9
 SUPPORTED_BASELINE_STATUSES = ("optimal", "infeasible")
 
@@ -36,6 +44,7 @@ class PlanningProblemDefinition:
     chance_limit_epsilon: float = 0.0
     cost_terms: Mapping[str, float] = field(default_factory=dict)
     tpm_artifact_reference: str = ""
+    risk_evaluation_mode: str = "spn_mip"
     objective_direction: str = "minimize"
     solver_configuration: Mapping[str, object] = field(default_factory=dict)
     approximation_contract: Mapping[str, object] = field(default_factory=dict)
@@ -72,6 +81,14 @@ class PlanningProblemDefinition:
 
         tpm_artifact_reference = str(self.tpm_artifact_reference)
         object.__setattr__(self, "tpm_artifact_reference", tpm_artifact_reference)
+
+        risk_evaluation_mode = str(self.risk_evaluation_mode)
+        if risk_evaluation_mode not in SUPPORTED_RISK_EVALUATION_MODES:
+            raise ValueError(
+                "risk_evaluation_mode must be one of "
+                f"{SUPPORTED_RISK_EVALUATION_MODES!r}"
+            )
+        object.__setattr__(self, "risk_evaluation_mode", risk_evaluation_mode)
 
         objective_direction = str(self.objective_direction)
         if objective_direction not in SUPPORTED_OBJECTIVE_DIRECTIONS:
@@ -113,8 +130,10 @@ class PlanningProblemAssembly:
     problem_id: str
     artifact_id: str
     dataset_reference: str
+    risk_evaluation_mode: str
     decision_features: tuple[str, ...]
     target_name: str
+    risk_target_name: str
     shortfall_threshold: float
     chance_limit_epsilon: float
     objective_direction: str
@@ -126,6 +145,7 @@ class PlanningProblemAssembly:
     solver_configuration: Mapping[str, object] = field(default_factory=dict)
     approximation_contract: Mapping[str, object] = field(default_factory=dict)
     deterministic_fixture_baseline: Mapping[str, object] = field(default_factory=dict)
+    spn_mip_payload: Mapping[str, object] = field(default_factory=dict)
 
 
 def assemble_planning_problem(
@@ -139,6 +159,9 @@ def assemble_planning_problem(
         artifact_reference=problem_definition.tpm_artifact_reference,
     )
     target_name = str(resolved_artifact.target_definition.get("target_name", ""))
+    risk_target_name = str(
+        resolved_artifact.target_definition.get("event_target_name", target_name)
+    )
     if target_name != "shortfall":
         raise ValueError(
             f"unsupported planning target {target_name!r}; expected 'shortfall'"
@@ -203,16 +226,38 @@ def assemble_planning_problem(
             )
         resolved_decision_feature_types[feature_name] = feature_spec.feature_type
 
+    actual_risk_evaluation_mode = _resolved_risk_evaluation_mode(
+        problem_definition,
+        artifact=resolved_artifact,
+    )
+    spn_payload = None
+    if actual_risk_evaluation_mode == "spn_mip":
+        spn_payload = build_spn_mip_payload(
+            resolved_artifact,
+            decision_features=problem_definition.decision_features,
+            chance_limit_epsilon=problem_definition.chance_limit_epsilon,
+            shortfall_threshold=problem_definition.shortfall_threshold,
+        )
+        if spn_payload is None:
+            actual_risk_evaluation_mode = "empirical_dataset"
     dataset = _load_empirical_dataset(resolved_artifact)
-    if dataset is None:
+    raw_rows = _rows_for_candidate_baseline(
+        resolved_artifact,
+        dataset=dataset,
+    )
+    if raw_rows is None:
         raise ValueError(
-            "planning assembly requires a fixture-backed planning dataset referenced "
-            "by TPM artifact provenance"
+            "planning assembly requires either a fixture-backed planning dataset or "
+            "a persisted SPFlow sidecar with raw training rows"
         )
 
     piecewise_terms = build_piecewise_planning_terms(
         resolved_artifact.approximation_metadata,
-        max_terms=len(problem_definition.decision_features),
+        max_terms=(
+            infer_max_sum_terms(spn_payload)
+            if spn_payload is not None
+            else len(problem_definition.decision_features)
+        ),
         decision_features=problem_definition.decision_features,
         decision_feature_types=resolved_decision_feature_types,
     )
@@ -221,9 +266,10 @@ def assemble_planning_problem(
         piecewise_terms=piecewise_terms,
     )
     candidate_designs = _build_candidate_designs(
-        dataset,
+        raw_rows,
         decision_features=problem_definition.decision_features,
-        target_name=target_name,
+        risk_target_name=risk_target_name,
+        shortfall_target_name=target_name,
         shortfall_threshold=problem_definition.shortfall_threshold,
         cost_terms=problem_definition.cost_terms,
     )
@@ -232,14 +278,16 @@ def assemble_planning_problem(
         chance_limit_epsilon=problem_definition.chance_limit_epsilon,
         solver_configuration=problem_definition.solver_configuration,
         fixture_baseline=problem_definition.fixture_baseline,
-        dataset_fixture_path=resolved_artifact.provenance.get("dataset_fixture_path"),
+        dataset_fixture_path=_resolved_dataset_path_text(resolved_artifact.provenance),
     )
     chance_constraint_metadata = {
         "target_name": target_name,
+        "event_target_name": risk_target_name,
         "comparison": ">",
         "threshold": problem_definition.shortfall_threshold,
         "chance_limit_epsilon": problem_definition.chance_limit_epsilon,
         "supported_query_mode": supported_query_mode,
+        "risk_evaluation_mode": actual_risk_evaluation_mode,
     }
     approximation_contract = {
         **dict(problem_definition.approximation_contract),
@@ -257,7 +305,7 @@ def assemble_planning_problem(
             "solver_execution_optional"
         ],
         "solver_name": problem_definition.solver_configuration["solver_name"],
-        "dataset_fixture_path": resolved_artifact.provenance.get("dataset_fixture_path"),
+        "dataset_fixture_path": _resolved_dataset_path_text(resolved_artifact.provenance),
         "training_random_seed": resolved_artifact.provenance.get("training_random_seed"),
         "fit_numeric_tolerance": piecewise_terms.fit_numeric_tolerance,
         "query_numeric_tolerance": piecewise_terms.query_numeric_tolerance,
@@ -271,14 +319,20 @@ def assemble_planning_problem(
         ],
         "chance_constraint_event": chance_constraint_metadata,
         "fixture_baseline_status": deterministic_fixture_baseline["status"],
+        "risk_evaluation_mode": actual_risk_evaluation_mode,
     }
+    if spn_payload is not None:
+        solver_metadata["spn_payload_source"] = spn_payload["source"]
+        solver_metadata["spn_payload_locator"] = spn_payload["payload_locator"]
 
     return PlanningProblemAssembly(
         problem_id=problem_definition.problem_id,
         artifact_id=resolved_artifact.artifact_id,
         dataset_reference=resolved_artifact.dataset_reference,
+        risk_evaluation_mode=actual_risk_evaluation_mode,
         decision_features=problem_definition.decision_features,
         target_name=target_name,
+        risk_target_name=risk_target_name,
         shortfall_threshold=problem_definition.shortfall_threshold,
         chance_limit_epsilon=problem_definition.chance_limit_epsilon,
         objective_direction=problem_definition.objective_direction,
@@ -290,6 +344,7 @@ def assemble_planning_problem(
         solver_configuration=dict(problem_definition.solver_configuration),
         approximation_contract=approximation_contract,
         deterministic_fixture_baseline=deterministic_fixture_baseline,
+        spn_mip_payload=dict(spn_payload or {}),
     )
 
 
@@ -301,8 +356,10 @@ __all__ = [
     "SUPPORTED_FIRST_RELEASE_DECISION_VARIABLE_TYPES",
     "SUPPORTED_OBJECTIVE_DIRECTIONS",
     "SUPPORTED_PLANNING_BACKENDS",
+    "SUPPORTED_RISK_EVALUATION_MODES",
     "assemble_planning_problem",
 ]
+
 
 def _coerce_probability(value: object, *, field_name: str) -> float:
     if not isinstance(value, Real) or isinstance(value, bool):
@@ -331,28 +388,85 @@ def _load_artifact(
 
 
 def _load_empirical_dataset(artifact: TPMArtifact) -> PlanningDatasetArtifact | None:
-    dataset_fixture_path = artifact.provenance.get("dataset_fixture_path")
-    if not isinstance(dataset_fixture_path, str) or not dataset_fixture_path:
+    dataset_path = _resolved_dataset_path(artifact.provenance)
+    if dataset_path is None:
         return None
 
     try:
-        return load_planning_dataset(Path(dataset_fixture_path))
+        return load_planning_dataset(dataset_path)
     except (FileNotFoundError, TypeError, ValueError):
         return None
 
 
+def _resolved_dataset_path(provenance: Mapping[str, object]) -> Path | None:
+    for key in (
+        "training_dataset_path",
+        "training_dataset_fixture_path",
+        "dataset_fixture_path",
+    ):
+        value = provenance.get(key)
+        if isinstance(value, str) and value:
+            return Path(value)
+    return None
+
+
+def _resolved_dataset_path_text(provenance: Mapping[str, object]) -> str | None:
+    dataset_path = _resolved_dataset_path(provenance)
+    if dataset_path is None:
+        return None
+    return dataset_path.as_posix()
+
+
+def _resolved_risk_evaluation_mode(
+    problem_definition: PlanningProblemDefinition,
+    *,
+    artifact: TPMArtifact,
+) -> str:
+    if problem_definition.risk_evaluation_mode == "empirical_dataset":
+        return "empirical_dataset"
+    if supports_spn_mip(artifact) and _pyomo_is_available():
+        return "spn_mip"
+    return "empirical_dataset"
+
+
+def _pyomo_is_available() -> bool:
+    return importlib.util.find_spec("pyomo.environ") is not None
+
+
+def _rows_for_candidate_baseline(
+    artifact: TPMArtifact,
+    *,
+    dataset: PlanningDatasetArtifact | None,
+) -> tuple[Mapping[str, object], ...] | None:
+    if dataset is not None:
+        return tuple(dataset.rows)
+
+    runtime_payload = load_spflow_payload(artifact)
+    if runtime_payload is None:
+        return None
+    raw_rows = runtime_payload.get("raw_rows")
+    if isinstance(raw_rows, Sequence) and not isinstance(raw_rows, (str, bytes, bytearray)):
+        return tuple(
+            row
+            for row in raw_rows
+            if isinstance(row, Mapping)
+        )
+    return None
+
+
 def _build_candidate_designs(
-    dataset: PlanningDatasetArtifact,
+    rows: Sequence[Mapping[str, object]],
     *,
     decision_features: tuple[str, ...],
-    target_name: str,
+    risk_target_name: str,
+    shortfall_target_name: str,
     shortfall_threshold: float,
     cost_terms: Mapping[str, float],
 ) -> tuple[PlanningDecisionCandidate, ...]:
     candidate_stats: dict[tuple[object, ...], dict[str, object]] = {}
     candidate_order: list[tuple[object, ...]] = []
 
-    for row in dataset.rows:
+    for row in rows:
         selected_design = {
             feature_name: row[feature_name]
             for feature_name in decision_features
@@ -368,7 +482,12 @@ def _build_candidate_designs(
 
         candidate_entry = candidate_stats[candidate_key]
         candidate_entry["matched_row_count"] = int(candidate_entry["matched_row_count"]) + 1
-        if float(row[target_name]) > shortfall_threshold:
+        risk_value = (
+            float(row[risk_target_name])
+            if risk_target_name in row
+            else float(row[shortfall_target_name]) > shortfall_threshold
+        )
+        if risk_value >= 1.0:
             candidate_entry["violation_count"] = int(candidate_entry["violation_count"]) + 1
 
     candidates: list[PlanningDecisionCandidate] = []

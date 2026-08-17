@@ -22,8 +22,34 @@ if TYPE_CHECKING:
         infer_feature_role,
         load_feature_schema,
     )
-    from .fit import TPMFitConfig, fit_tpm_artifact
-    from .optional_spflow import SPFlowDependencyUnavailableError
+    from .fit import (
+        TPMArtifactBuildRequest,
+        TPMFitConfig,
+        fit_tpm_artifact,
+        fit_tpm_artifact_from_rows,
+    )
+    from .mio import (
+        SPNModelingTerms,
+        SPNPiecewiseCurveSpec,
+        SPNSolveConfig,
+        SPNSolveSummary,
+        SPNSolverDependencyUnavailableError,
+        SPNSolverUnavailableError,
+        build_spn_chance_model,
+        build_spn_chance_model_from_artifact,
+        build_spn_modeling_terms,
+        extract_spn_solution,
+        infer_max_sum_terms,
+        require_pyomo_backend,
+        solve_spn_chance_model,
+        solve_spn_chance_model_from_artifact,
+    )
+    from .optional_spflow import (
+        SPFlowDependencyUnavailableError,
+        detect_spflow_backend_capabilities,
+        register_spflow_backend_adapter,
+        unregister_spflow_backend_adapter,
+    )
     from .piecewise import (
         PiecewiseApproximationMetadata,
         PiecewiseBreakpointPolicy,
@@ -46,10 +72,47 @@ _EXPORT_MAP = {
     "infer_feature_role": (".features", "infer_feature_role"),
     "load_feature_schema": (".features", "load_feature_schema"),
     "TPMFitConfig": (".fit", "TPMFitConfig"),
+    "TPMArtifactBuildRequest": (".fit", "TPMArtifactBuildRequest"),
     "fit_tpm_artifact": (".fit", "fit_tpm_artifact"),
+    "fit_tpm_artifact_from_rows": (".fit", "fit_tpm_artifact_from_rows"),
+    "SPNModelingTerms": (".mio", "SPNModelingTerms"),
+    "SPNPiecewiseCurveSpec": (".mio", "SPNPiecewiseCurveSpec"),
+    "SPNSolveConfig": (".mio", "SPNSolveConfig"),
+    "SPNSolveSummary": (".mio", "SPNSolveSummary"),
+    "SPNSolverDependencyUnavailableError": (
+        ".mio",
+        "SPNSolverDependencyUnavailableError",
+    ),
+    "SPNSolverUnavailableError": (".mio", "SPNSolverUnavailableError"),
+    "build_spn_chance_model": (".mio", "build_spn_chance_model"),
+    "build_spn_chance_model_from_artifact": (
+        ".mio",
+        "build_spn_chance_model_from_artifact",
+    ),
+    "build_spn_modeling_terms": (".mio", "build_spn_modeling_terms"),
+    "extract_spn_solution": (".mio", "extract_spn_solution"),
+    "infer_max_sum_terms": (".mio", "infer_max_sum_terms"),
+    "require_pyomo_backend": (".mio", "require_pyomo_backend"),
+    "solve_spn_chance_model": (".mio", "solve_spn_chance_model"),
+    "solve_spn_chance_model_from_artifact": (
+        ".mio",
+        "solve_spn_chance_model_from_artifact",
+    ),
     "SPFlowDependencyUnavailableError": (
         ".optional_spflow",
         "SPFlowDependencyUnavailableError",
+    ),
+    "detect_spflow_backend_capabilities": (
+        ".optional_spflow",
+        "detect_spflow_backend_capabilities",
+    ),
+    "register_spflow_backend_adapter": (
+        ".optional_spflow",
+        "register_spflow_backend_adapter",
+    ),
+    "unregister_spflow_backend_adapter": (
+        ".optional_spflow",
+        "unregister_spflow_backend_adapter",
     ),
     "PiecewiseApproximationMetadata": (
         ".piecewise",
@@ -73,14 +136,33 @@ __all__ = [
     "infer_feature_role",
     "load_feature_schema",
     "TPMFitConfig",
+    "TPMArtifactBuildRequest",
     "fit_tpm_artifact",
+    "fit_tpm_artifact_from_rows",
+    "SPNModelingTerms",
+    "SPNPiecewiseCurveSpec",
+    "SPNSolveConfig",
+    "SPNSolveSummary",
+    "SPNSolverDependencyUnavailableError",
+    "SPNSolverUnavailableError",
+    "build_spn_chance_model",
+    "build_spn_chance_model_from_artifact",
+    "build_spn_modeling_terms",
+    "extract_spn_solution",
+    "infer_max_sum_terms",
+    "require_pyomo_backend",
+    "solve_spn_chance_model",
+    "solve_spn_chance_model_from_artifact",
     "SPFlowDependencyUnavailableError",
+    "detect_spflow_backend_capabilities",
+    "register_spflow_backend_adapter",
     "PiecewiseApproximationMetadata",
     "PiecewiseBreakpointPolicy",
     "build_piecewise_metadata",
     "load_piecewise_metadata",
     "TPMQueryRequest",
     "query_tpm_artifact",
+    "unregister_spflow_backend_adapter",
 ]
 
 

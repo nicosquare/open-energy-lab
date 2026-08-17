@@ -111,6 +111,7 @@ def test_planning_dataset_artifact_fixture_tracks_dataset_contract() -> None:
     assert loaded.row_count == export_fixture["expected_row_count"]
     assert loaded.horizon_steps == export_fixture["expected_horizon_steps"]
     assert list(loaded.column_order) == export_fixture["expected_column_order"]
+    assert loaded.target_metadata["event_target_name"] == "shortfall_exceeds_threshold"
     assert loaded.export_configuration["flattened_series_fields"] == export_fixture[
         "flattened_series_fields"
     ]
@@ -140,6 +141,7 @@ def test_supported_tpm_artifact_fixture_tracks_schema_expectations() -> None:
     assert artifact.dataset_reference == "planning-dataset-export-integration"
     assert artifact.provenance["dataset_fixture_path"] == "tests/fixtures/tpm/planning_dataset_v1.json"
     assert artifact.provenance["training_random_seed"] == 13
+    assert artifact.target_definition["event_target_name"] == "shortfall_exceeds_threshold"
     assert artifact.query_configuration["required_decision_features"] == [
         "battery_capacity_kwh",
         "solar_capacity_kw",

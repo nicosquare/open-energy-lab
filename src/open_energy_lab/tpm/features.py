@@ -19,9 +19,6 @@ SUPPORTED_TPM_MONOTONICITY = (
     "none",
     "increasing",
 )
-TARGET_FEATURE_NAME = "shortfall"
-
-
 def _is_non_boolean_real(value: object) -> bool:
     return isinstance(value, Real) and not isinstance(value, bool)
 
@@ -194,17 +191,19 @@ def dump_feature_schema(schema: Sequence[TPMFeatureSpec]) -> tuple[dict[str, obj
 
 
 def infer_feature_role(feature_name: str) -> str:
-    """Infer the default TPM feature role from one column name."""
+    """Infer the default TPM feature role from one column name.
 
-    if feature_name == TARGET_FEATURE_NAME:
-        return "target"
+    The generic TPM layer does not reserve any dataset column names as targets.
+    Callers that need metric or event targets must declare them explicitly in
+    artifact-building metadata.
+    """
+
     return "input"
 
 
 __all__ = [
     "SUPPORTED_TPM_FEATURE_TYPES",
     "SUPPORTED_TPM_MONOTONICITY",
-    "TARGET_FEATURE_NAME",
     "TPMFeatureSpec",
     "dump_feature_schema",
     "infer_feature_role",
