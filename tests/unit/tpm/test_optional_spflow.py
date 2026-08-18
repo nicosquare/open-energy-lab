@@ -1,4 +1,4 @@
-"""Unit coverage for optional SPFlow capability reporting."""
+"""Unit coverage for required current-SPFlow capability reporting."""
 
 from __future__ import annotations
 
@@ -48,6 +48,14 @@ def test_detect_spflow_backend_capabilities_reports_current_runtime_state() -> N
     assert set(capabilities) >= {
         "installed_backend_module",
         "installed_backend_version",
+        "required_backend_version",
+        "backend_generation",
+        "backend_api_version",
+        "version_compatible",
+        "current_api_available",
+        "current_api_module_prefix",
+        "missing_api_symbols",
+        "backend_compatible",
         "legacy_spn_api_available",
         "legacy_api_module_prefix",
         "supports_real_spn_training",
@@ -56,16 +64,23 @@ def test_detect_spflow_backend_capabilities_reports_current_runtime_state() -> N
         "fallback_query_strategy",
         "reason",
     }
-    assert capabilities["supports_real_spn_training"] == capabilities["legacy_spn_api_available"]
-    assert capabilities["supports_real_spn_query"] == capabilities["legacy_spn_api_available"]
-    assert capabilities["supports_spn_mip_serialization"] == capabilities["legacy_spn_api_available"]
-
-    if capabilities["installed_backend_module"] == "spflow":
-        assert capabilities["legacy_spn_api_available"] is False
-        assert capabilities["legacy_api_module_prefix"] is None
-        assert capabilities["fallback_query_strategy"] == "table"
-        assert "spn.*" in str(capabilities["reason"])
-        assert "spflow.*" in str(capabilities["reason"])
+    assert capabilities["installed_backend_module"] == "spflow"
+    assert capabilities["installed_backend_version"] == "1.1.0"
+    assert capabilities["required_backend_version"] == "1.1.0"
+    assert capabilities["backend_generation"] == "current-spflow"
+    assert capabilities["backend_api_version"] == "1.1.0"
+    assert capabilities["version_compatible"] is True
+    assert capabilities["current_api_available"] is True
+    assert capabilities["current_api_module_prefix"] == "spflow"
+    assert capabilities["missing_api_symbols"] == []
+    assert capabilities["backend_compatible"] is True
+    assert capabilities["legacy_spn_api_available"] is False
+    assert capabilities["legacy_api_module_prefix"] is None
+    assert capabilities["supports_real_spn_training"] is True
+    assert capabilities["supports_real_spn_query"] is True
+    assert capabilities["supports_spn_mip_serialization"] is False
+    assert capabilities["fallback_query_strategy"] is None
+    assert "current" in str(capabilities["reason"])
 
 
 def test_detect_spflow_backend_capabilities_can_use_an_injected_adapter() -> None:
@@ -76,31 +91,22 @@ def test_detect_spflow_backend_capabilities_can_use_an_injected_adapter() -> Non
     assert capabilities["supports_real_spn_training"] is True
 
 
-def test_detect_spflow_backend_capabilities_accepts_legacy_api_under_spflow_prefix(
+def test_detect_spflow_backend_capabilities_reports_missing_current_api_symbols(
     monkeypatch,
 ) -> None:
-    fake_bindings = optional_spflow_module._LegacySpflowApiBindings(
-        module_prefix="spflow",
-        context_class=object,
-        leaf_class=object,
-        product_class=object,
-        sum_class=object,
-        get_topological_order=lambda *_args, **_kwargs: (),
-        meta_type=SimpleNamespace(REAL="REAL", DISCRETE="DISCRETE", BINARY="BINARY"),
-        learn_mspn=lambda *_args, **_kwargs: None,
-        marginalize=lambda *_args, **_kwargs: None,
-        log_likelihood=lambda *_args, **_kwargs: ((0.0,),),
-    )
     monkeypatch.setattr(
         optional_spflow_module,
-        "_load_legacy_spflow_api",
-        lambda: fake_bindings,
+        "_load_current_spflow_capabilities",
+        lambda: (None, ("spflow.learn.learn_spn",)),
     )
 
     capabilities = detect_spflow_backend_capabilities(
-        SimpleNamespace(__name__="spflow", __version__="legacy-test")
+        SimpleNamespace(__name__="spflow", __version__="1.1.0")
     )
 
-    assert capabilities["legacy_spn_api_available"] is True
-    assert capabilities["legacy_api_module_prefix"] == "spflow"
+    assert capabilities["version_compatible"] is True
+    assert capabilities["current_api_available"] is False
+    assert capabilities["backend_compatible"] is False
+    assert capabilities["missing_api_symbols"] == ["spflow.learn.learn_spn"]
+    assert capabilities["supports_real_spn_training"] is False
     assert capabilities["fallback_query_strategy"] is None

@@ -107,7 +107,7 @@ fixed preprocessing and Torch seeds.
 
 ### Corrective Implementation For User Story 2
 
-- [ ] T034 [US2] Implement SPFlow 1.1 capability/version diagnostics and lazy loading without legacy `spn.*` runtime imports in `src/open_energy_lab/tpm/optional_spflow.py`
+- [X] T034 [US2] Implement SPFlow 1.1 capability/version diagnostics and lazy loading without legacy `spn.*` runtime imports in `src/open_energy_lab/tpm/optional_spflow.py`
 - [ ] T035 [US2] Implement typed feature-to-`Scope` mapping for Normal, Bernoulli, and Categorical leaves, treating mixed models as concrete leaves on separate scopes, and translate legacy fit configuration to `learn_spn` in `src/open_energy_lab/tpm/features.py` and `src/open_energy_lab/tpm/fit.py`
 - [ ] T036 [US2] Implement deterministic Torch-backed fitting for canonical seed 13 and robustness seeds 37/101, persist fit-relevant determinism configuration and stable structure/parameter/likelihood summaries for repeatability comparison without relying on serialized-byte equality, and persist schema-v2 model sidecars in `src/open_energy_lab/tpm/fit.py` and `src/open_energy_lab/tpm/artifact.py`
 - [ ] T037 [US2] Implement SPFlow 1.1 likelihood reduction, NaN-evidence marginalization, structural marginalization, conditional query semantics, and pre-backend structured feature errors with reasons `missing`, `out_of_bounds`, `unseen_category`, or `invalid_binary` and an optional supplied value in `src/open_energy_lab/tpm/query.py`
