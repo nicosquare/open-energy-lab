@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
+import textwrap
+
 import pytest
 
 from open_energy_lab.demand import (
@@ -308,3 +312,63 @@ def test_committed_planning_dataset_fixture_replays_the_export_contract() -> Non
     assert committed_dataset.provenance["paired_family_seed"] == dataset.provenance[
         "paired_family_seed"
     ]
+
+
+def test_dataset_export_and_reload_do_not_import_required_backends(tmp_path) -> None:
+    output_path = tmp_path / "planning-dataset.json"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            textwrap.dedent(
+                """
+                import sys
+                from pathlib import Path
+
+                from open_energy_lab.planning.dataset import load_planning_dataset
+                from open_energy_lab.simulator.planning_export import export_planning_dataset
+                from tests.integration.planning.test_dataset_export import (
+                    _evaluated_demand_family,
+                    _request,
+                )
+
+                required_backend_roots = {"highspy", "pyomo", "spflow", "torch"}
+
+                def loaded_required_backends():
+                    return sorted(
+                        module_name
+                        for module_name in sys.modules
+                        if module_name.split(".", maxsplit=1)[0] in required_backend_roots
+                    )
+
+                assert not loaded_required_backends()
+
+                weather_family, family_result = _evaluated_demand_family()
+                exported = export_planning_dataset(
+                    family_result_reference=family_result,
+                    weather_family_reference=weather_family,
+                    request=_request(),
+                )
+                exported.write_json(Path(sys.argv[1]))
+                reloaded = load_planning_dataset(Path(sys.argv[1]))
+
+                assert reloaded.dataset_id == exported.dataset_id
+                assert reloaded.column_order == exported.column_order
+                assert reloaded.rows == exported.rows
+                loaded = loaded_required_backends()
+                assert not loaded, f"dataset export/reload imported required backends: {loaded}"
+                """
+            ),
+            str(output_path),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    assert completed.returncode == 0, (
+        "isolated dataset export/reload failed\n"
+        f"stdout:\n{completed.stdout}\n"
+        f"stderr:\n{completed.stderr}"
+    )

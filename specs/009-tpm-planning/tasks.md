@@ -69,7 +69,7 @@ without importing SPFlow, Pyomo, or HiGHS during export.
 - [X] T017 [US1] Consolidate completed planning export and dataset persistence implementation in `src/open_energy_lab/simulator/planning_export.py` and `src/open_energy_lab/planning/dataset.py`
 - [X] T018 [US1] Consolidate completed export public APIs in `src/open_energy_lab/simulator/__init__.py` and `src/open_energy_lab/planning/__init__.py`
 - [X] T019 [US1] Consolidate completed export fixtures and provenance in `tests/fixtures/planning/planning_dataset_export_case.json`, `tests/fixtures/tpm/planning_dataset_v1.json`, and `tests/fixtures/planning/README.md`
-- [ ] T020 [US1] Add a regression asserting dataset export/reload does not import required TPM or solver backends in `tests/integration/planning/test_dataset_export.py`
+- [X] T020 [US1] Add a regression asserting dataset export/reload does not import required TPM or solver backends in `tests/integration/planning/test_dataset_export.py`
 
 **Checkpoint**: US1 remains independently complete and import-light.
 
@@ -97,13 +97,13 @@ fixed preprocessing and Torch seeds.
 
 ### Corrective Tests For User Story 2
 
-- [ ] T027 [P] [US2] Add real SPFlow 1.1 structure-learning tests for Normal, Bernoulli, and Categorical typed leaf scopes, Torch tensors, canonical seed 13, robustness seeds 37 and 101, fit configuration translation, a 30-second fixture-fit budget, and repeated canonical fits whose stable structure, parameter, and likelihood summaries agree within `1e-9` in `tests/integration/tpm/test_spflow_v1_fit.py`
-- [ ] T028 [P] [US2] Add real SPFlow 1.1 likelihood and marginalization tests covering NaN evidence, structural removal semantics, tensor output reduction, conditional probability, missing decision features, out-of-bound continuous values, unseen categories, invalid binary values, and a 30-second fixture-query budget in `tests/integration/tpm/test_spflow_v1_query.py`
-- [ ] T029 [P] [US2] Add current model sidecar save/load, manifest hash verification, corrupt payload, and pre-1.0 rejection tests in `tests/integration/tpm/test_spflow_v1_persistence.py`
-- [ ] T030 [P] [US2] Add mixed-feature mapping and pre-SPFlow validation tests for continuous bounds, binary domains, categorical membership, required decision features, supported mixed scopes, dtypes, and structured errors containing `feature_name`, `expected_domain`, `reason`, and an optional `supplied_value` in `tests/unit/tpm/test_spflow_v1_features.py`
-- [ ] T031 [P] [US2] Add tests proving production mode fails without a valid current payload while explicit fixture replay remains deterministic in `tests/integration/tpm/test_execution_modes.py`
-- [ ] T032 [P] [US2] Add current-SPFlow-to-piecewise-MIO compiler contract tests for sum/product graphs with one channel/repetition, Normal/Bernoulli/Categorical leaves, the canonical five-breakpoint configuration, invalid breakpoint rejection, and type-and-scope diagnostics for arbitrary modules, custom leaves, extra channels/repetitions, shared subgraphs, and legacy histograms in `tests/unit/tpm/test_spflow_v1_mio.py`
-- [ ] T033 [US2] Add native-likelihood versus current-SPFlow-to-piecewise-MIO probability parity tests using five breakpoints and enforcing `1e-6` maximum absolute error and `1e-9` repeatability in `tests/integration/tpm/test_spflow_v1_mio_parity.py`
+- [X] T027 [P] [US2] Add real SPFlow 1.1 structure-learning tests for Normal, Bernoulli, and Categorical typed leaf scopes, Torch tensors, canonical seed 13, robustness seeds 37 and 101, fit configuration translation, a 30-second fixture-fit budget, and repeated canonical fits whose stable structure, parameter, and likelihood summaries agree within `1e-9` in `tests/integration/tpm/test_spflow_v1_fit.py`
+- [X] T028 [P] [US2] Add real SPFlow 1.1 likelihood and marginalization tests covering NaN evidence, structural removal semantics, tensor output reduction, conditional probability, missing decision features, out-of-bound continuous values, unseen categories, invalid binary values, and a 30-second fixture-query budget in `tests/integration/tpm/test_spflow_v1_query.py`
+- [X] T029 [P] [US2] Add current model sidecar save/load, manifest hash verification, corrupt payload, and pre-1.0 rejection tests in `tests/integration/tpm/test_spflow_v1_persistence.py`
+- [X] T030 [P] [US2] Add mixed-feature mapping and pre-SPFlow validation tests for continuous bounds, binary domains, categorical membership, required decision features, supported mixed scopes, dtypes, and structured errors containing `feature_name`, `expected_domain`, `reason`, and an optional `supplied_value` in `tests/unit/tpm/test_spflow_v1_features.py`
+- [X] T031 [P] [US2] Add tests proving production mode fails without a valid current payload while explicit fixture replay remains deterministic in `tests/integration/tpm/test_execution_modes.py`
+- [X] T032 [P] [US2] Add current-SPFlow-to-piecewise-MIO compiler contract tests for sum/product graphs with one channel/repetition, Normal/Bernoulli/Categorical leaves, the canonical five-breakpoint configuration, invalid breakpoint rejection, and type-and-scope diagnostics for arbitrary modules, custom leaves, extra channels/repetitions, shared subgraphs, and legacy histograms in `tests/unit/tpm/test_spflow_v1_mio.py`
+- [X] T033 [US2] Add native-likelihood versus current-SPFlow-to-piecewise-MIO probability parity tests using five breakpoints and enforcing `1e-6` maximum absolute error and `1e-9` repeatability in `tests/integration/tpm/test_spflow_v1_mio_parity.py`
 
 ### Corrective Implementation For User Story 2
 

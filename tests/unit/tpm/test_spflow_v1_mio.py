@@ -1,0 +1,195 @@
+"""Unit contracts for the supported current-SPFlow-to-piecewise-MIO compiler."""
+
+from __future__ import annotations
+
+import pytest
+
+import open_energy_lab.tpm.mio as mio_module
+from open_energy_lab.tpm.features import TPMFeatureSpec
+
+
+FEATURE_SCHEMA = (
+    TPMFeatureSpec(
+        feature_name="battery_capacity_kwh",
+        feature_type="continuous",
+        feature_role="decision",
+        modifiable=True,
+        bounds=(0.0, 20.0),
+    ),
+    TPMFeatureSpec(
+        feature_name="solar_enabled",
+        feature_type="binary",
+        feature_role="decision",
+        modifiable=True,
+        discrete_values=(0, 1),
+    ),
+    TPMFeatureSpec(
+        feature_name="design_class",
+        feature_type="categorical",
+        feature_role="decision",
+        modifiable=True,
+        discrete_values=("compact", "balanced", "resilient"),
+    ),
+)
+
+
+def _component(*, loc: float, binary_probability: float, category_probabilities):
+    import torch
+    from spflow.modules.leaves import Bernoulli, Categorical, Normal
+    from spflow.modules.products import Product
+
+    return Product(
+        [
+            Normal(
+                0,
+                loc=torch.tensor([[[loc]]], dtype=torch.float64),
+                scale=torch.tensor([[[0.5]]], dtype=torch.float64),
+            ),
+            Bernoulli(
+                1,
+                probs=torch.tensor([[[binary_probability]]], dtype=torch.float64),
+            ),
+            Categorical(
+                2,
+                K=3,
+                probs=torch.tensor(
+                    [[[[*category_probabilities]]]],
+                    dtype=torch.float64,
+                ),
+            ),
+        ]
+    )
+
+
+def _supported_sum_product_graph():
+    import torch
+    from spflow.modules.sums import Sum
+
+    return Sum(
+        [
+            _component(
+                loc=0.25,
+                binary_probability=0.2,
+                category_probabilities=(0.6, 0.3, 0.1),
+            ),
+            _component(
+                loc=0.75,
+                binary_probability=0.8,
+                category_probabilities=(0.1, 0.3, 0.6),
+            ),
+        ],
+        weights=torch.tensor([0.4, 0.6], dtype=torch.float64),
+    )
+
+
+def _compile(model, **kwargs):
+    compile_model = getattr(mio_module, "compile_spflow_model_to_mio")
+    return compile_model(model, feature_schema=FEATURE_SCHEMA, **kwargs)
+
+
+def test_supported_sum_product_graph_compiles_with_canonical_five_breakpoints() -> None:
+    compiled = _compile(_supported_sum_product_graph())
+
+    assert compiled["compiler_version"] == "spflow-v1-mio-v1"
+    assert compiled["backend_generation"] == "current-spflow"
+    assert compiled["breakpoint_policy"]["breakpoint_count"] == 5
+    assert compiled["breakpoint_policy"]["policy_name"] == "canonical-five-breakpoint-v1"
+    assert compiled["output_channels"] == 1
+    assert compiled["num_repetitions"] == 1
+
+    nodes = compiled["nodes"]
+    node_types = {node["type"] for node in nodes}
+    assert node_types == {"sum", "product", "normal", "bernoulli", "categorical"}
+    assert {tuple(node["scope"]) for node in nodes if node["type"] == "normal"} == {(0,)}
+    assert {tuple(node["scope"]) for node in nodes if node["type"] == "bernoulli"} == {(1,)}
+    assert {tuple(node["scope"]) for node in nodes if node["type"] == "categorical"} == {
+        (2,)
+    }
+
+
+@pytest.mark.parametrize("breakpoint_count", (0, 1, 2, -5))
+def test_invalid_breakpoint_counts_are_rejected(breakpoint_count: int) -> None:
+    with pytest.raises(ValueError, match=r"breakpoint.*at least|invalid.*breakpoint"):
+        _compile(_supported_sum_product_graph(), breakpoint_count=breakpoint_count)
+
+
+def _arbitrary_torch_module():
+    import torch
+
+    return torch.nn.ReLU()
+
+
+def _custom_leaf():
+    import torch
+    from spflow.modules.leaves import Normal
+
+    class CustomNormal(Normal):
+        pass
+
+    return CustomNormal(
+        0,
+        loc=torch.tensor([[[0.0]]], dtype=torch.float64),
+        scale=torch.tensor([[[1.0]]], dtype=torch.float64),
+    )
+
+
+def _extra_channels():
+    from spflow.modules.leaves import Normal
+
+    return Normal(0, out_channels=2)
+
+
+def _extra_repetitions():
+    from spflow.modules.leaves import Normal
+
+    return Normal(0, num_repetitions=2)
+
+
+def _shared_subgraph():
+    import torch
+    from spflow.modules.leaves import Normal
+    from spflow.modules.products import Product
+    from spflow.modules.sums import Sum
+
+    shared = Product([Normal(0)])
+    return Sum([shared, shared], weights=torch.tensor([0.5, 0.5]))
+
+
+def _legacy_histogram():
+    import torch
+    from spflow.meta.data import Scope
+    from spflow.modules.leaves import Histogram
+
+    return Histogram(
+        Scope(0),
+        bin_edges=torch.tensor([0.0, 0.5, 1.0]),
+        probs=torch.tensor([[[[0.5, 0.5]]]]),
+    )
+
+
+@pytest.mark.parametrize(
+    ("model_factory", "expected_type", "expected_scope"),
+    (
+        (_arbitrary_torch_module, "ReLU", None),
+        (_custom_leaf, "CustomNormal", (0,)),
+        (_extra_channels, "Normal", (0,)),
+        (_extra_repetitions, "Normal", (0,)),
+        (_shared_subgraph, "Product", (0,)),
+        (_legacy_histogram, "Histogram", (0,)),
+    ),
+)
+def test_unsupported_modules_report_type_and_scope(
+    model_factory,
+    expected_type,
+    expected_scope,
+) -> None:
+    compiler_error = getattr(mio_module, "UnsupportedSPFlowModuleError")
+
+    with pytest.raises(compiler_error) as exc_info:
+        _compile(model_factory())
+
+    error = exc_info.value
+    assert error.module_type == expected_type
+    assert error.scope == expected_scope
+    assert expected_type in str(error)
+    assert "scope" in str(error).lower()
