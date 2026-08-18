@@ -33,5 +33,6 @@ stable, TPM-ready format.
 ## Scope Boundaries
 
 - the artifact is a stable library-owned contract, not a notebook export
-- the contract does not require SPFlow, Pyomo, or solver binaries to inspect
-  or reload
+- inspection and reload do not import or invoke SPFlow, Pyomo, or a solver;
+  this execution boundary does not make the required project dependencies
+  optional at installation time

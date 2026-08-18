@@ -1,4 +1,4 @@
-# Contract: Planning Problem Assembly And Optional Solve
+# Contract: Planning Problem Assembly And Solve
 
 ## Purpose
 
@@ -18,14 +18,14 @@ design decisions.
 ## Assembly Requirements
 
 - model assembly must validate feature types, bounds, and target compatibility
-- model assembly must succeed without solving when solver backends are
-  unavailable
+- model assembly remains independently inspectable without invoking a solver
 - model metadata must record approximation settings and solver assumptions
 
 ## Solve Requirements
 
-- when a supported solver backend is available, the workflow may solve for one
-  minimum-cost feasible design
+- omission of solver configuration selects Pyomo `SolverFactory("highs")`
+  backed by the required `highspy` installation
+- routine validation solves for one minimum-cost feasible design with HiGHS
 - the first-release adequacy rule is
   `P(shortfall > threshold) <= epsilon`
 - outputs include selected design values, objective value, estimated risk, and
@@ -35,5 +35,7 @@ design decisions.
 
 - unsupported decision-variable requests outside first-release scope fail fast
 - incompatible target definitions or missing cost terms fail fast
-- unavailable solver backends surface only when the solve path is invoked
-  explicitly
+- a missing or incompatible Pyomo/HiGHS installation is an explicit project
+  installation error and cannot produce a successful or skipped routine check
+- an unavailable explicitly selected supplemental solver such as Gurobi may
+  produce a documented skip when its binary or license is absent

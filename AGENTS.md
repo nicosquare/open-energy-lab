@@ -66,19 +66,20 @@ target architecture.
 ## Current TPM Planning Feature Guidance
 
 - For `009-tpm-planning`, keep default validation offline and fixture-backed.
-  Do not make SPFlow, Pyomo, solver binaries, notebooks, or legacy runtime
-  checks part of the routine review path.
+  Required current SPFlow, Pyomo, and HiGHS checks are part of the routine
+  review path, but keep imports lazy and do not require notebooks, network
+  services, commercial solver licenses, or legacy runtime checks.
 - Preserve the explicit boundary between simulator-owned dataset export,
   TPM-owned artifact/query metadata, and planning-owned decision validation
-  and optional solve behavior.
+  and solve behavior.
 - Keep `shortfall` semantics library-owned and derived from simulator export
   inputs. Do not move outage, blackout, or broader simulator semantics into
   TPM fitting or planning assembly.
 - Preserve battery-and-solar-only first-release planning scope unless the
   active spec expands it explicitly.
-- If optional SPFlow, Pyomo, or solver-backed follow-up checks are
-  unavailable, document that in the feature quickstart or final response
-  instead of widening the base environment requirements.
+- Treat missing or incompatible required SPFlow, Pyomo, or HiGHS dependencies
+  as validation failures. Gurobi and legacy parity checks remain optional; if
+  unavailable, document them without weakening the required backend suite.
 
 ## Useful Checks
 
@@ -87,8 +88,8 @@ Run only the checks relevant to the files changed:
 ```bash
 uv run pytest tests/unit/demand tests/integration/demand tests/integration/simulator
 uv run pytest tests/unit/weather tests/integration/weather tests/integration/simulator
-uv run pytest tests/unit/planning tests/unit/tpm tests/integration/planning
-uv run pytest tests/unit/test_optional_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py
+uv run pytest tests/unit/planning tests/unit/tpm tests/integration/planning tests/integration/tpm
+uv run pytest tests/unit/test_lazy_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py
 uv run python -c "import open_energy_lab; import open_energy_lab.weather; import open_energy_lab.demand; import open_energy_lab.simulator; import open_energy_lab.tpm; import open_energy_lab.planning"
 rg "from legacy|import legacy" src/open_energy_lab/weather src/open_energy_lab/demand src/open_energy_lab/simulator src/open_energy_lab/tpm src/open_energy_lab/planning tests/unit/weather tests/unit/demand tests/unit/tpm tests/unit/planning tests/integration/weather tests/integration/demand tests/integration/simulator tests/integration/planning docs/migration
 

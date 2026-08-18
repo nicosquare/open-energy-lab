@@ -1,605 +1,232 @@
 # Quickstart: TPM-Backed Planning And Simulator Dataset Export
 
-Use this quickstart to review the implemented User Story 1 simulator-export
-slice, User Story 2 TPM fit/query slice, and User Story 3 planning
-assembly/optional-solve slice. The current repository now includes a stable
-simulator-owned planning-dataset export surface, a stable planning-dataset
-reload and planning-assembly surface, a stable TPM fit/reload/query surface,
-and committed offline fixtures for deterministic export replay, artifact
-review, planning assembly, and optional-solve inspection.
+Use this quickstart to review the completed 009 baseline and the corrective
+work required by the 2026-08-17 dependency clarifications. Dataset export,
+typed features, artifacts, and planning-domain contracts already exist. The
+feature is not ready under the revised specification until the current SPFlow
+port, explicit fixture mode, and required Pyomo/HiGHS validation are complete.
 
-## Preserve / Improve / Reject
+## Corrected Backend Policy
 
-Keep these migration decisions in mind while reviewing or extending the
-feature:
+- SPFlow, Pyomo, and HiGHS (`highspy`) are required project dependencies.
+- Required installation does not imply eager import. Package roots stay lazy.
+- The initial migration pins are `spflow==1.1.0`, `pyomo==6.10.1`, and
+  `highspy==1.15.1`; widen them only after compatibility-matrix evidence.
+- Pyomo `SolverFactory("highs")` is the standard solver path.
+- Gurobi is additionally supported but remains license- and
+  environment-dependent.
+- Production TPM fit/query requires a valid current-SPFlow payload.
+- Empirical replay is allowed only through explicit `fixture_replay` mode and
+  never activates automatically.
+- Routine CI exercises real SPFlow and real Pyomo/HiGHS. Fake backends and
+  committed fixtures remain supplementary deterministic evidence.
 
-- Preserve: simulator-owned family evaluation semantics, offline fixture-backed
-  review, import-light package roots, and the legacy TPM typed feature model
-  where it is already structured.
-- Improve: explicit versioned planning dataset and TPM artifact contracts,
-  library-owned `shortfall` semantics, stable public APIs under
-  `open_energy_lab.simulator`, `open_energy_lab.tpm`, and
-  `open_energy_lab.planning`, and committed active US1, US2, and US3 fixtures
-  for export replay, artifact reload, query review, planning assembly, and
-  optional-solve review.
-- Reject: notebook-only dataset assembly, pickle-only artifact ownership,
-  runtime imports from `legacy/*`, and mandatory SPFlow or solver installs in
-  the routine review path.
+SPFlow 1.1 is a PyTorch-based rewrite. Its maintainers state that pre-1.0
+models are incompatible and must be rebuilt. The migration therefore preserves
+validated behavior and project artifact contracts, not old serialized model
+objects.
 
-## Review The Feature
+## Preserve / Port / Reject
+
+- **Preserve**: simulator-owned export, `shortfall` semantics, typed feature
+  metadata, deterministic artifact provenance, direct battery-and-solar
+  decisions, and piecewise chance-constraint semantics.
+- **Port**: legacy Context/`learn_mspn` behavior to current leaf modules,
+  scopes, `learn_spn`, PyTorch tensors, model likelihood/marginalization, and a
+  versioned current-model sidecar.
+- **Redesign**: current-SPFlow-to-piecewise-MIO traversal for SPFlow 1.1
+  tensorized modules. The
+  compiler must declare supported module/leaf types and demonstrate parity
+  against native `model.log_likelihood(...)` results.
+- **Reject**: automatic table/empirical production fallback, metadata-only
+  success, optional-install semantics for SPFlow/Pyomo/HiGHS, and routine
+  solver skips.
+
+## Review The Feature And Contracts
 
 ```bash
-sed -n '1,360p' specs/009-tpm-planning/spec.md
+sed -n '1,460p' specs/009-tpm-planning/spec.md
 sed -n '1,360p' specs/009-tpm-planning/plan.md
 sed -n '1,360p' specs/009-tpm-planning/research.md
 sed -n '1,360p' specs/009-tpm-planning/data-model.md
-```
-
-Confirm the intended split:
-
-- simulator export is owned by `open_energy_lab.simulator`
-- TPM feature typing, fit, reload, and query are owned by
-  `open_energy_lab.tpm`
-- planning problem assembly and optional solving are owned by
-  `open_energy_lab.planning`
-- `shortfall` is one horizon-level energy-ratio target, not an implicit
-  notebook variable
-- battery and solar are the only first-release planning decision sets
-- the currently implemented stable slices are dataset export/reload, TPM
-  fit/reload/query, and planning assembly/optional solve
-
-## Review The Contracts
-
-```bash
-sed -n '1,240p' specs/009-tpm-planning/contracts/simulator-export-contract.md
-sed -n '1,240p' specs/009-tpm-planning/contracts/planning-dataset-contract.md
 sed -n '1,240p' specs/009-tpm-planning/contracts/tpm-artifact-contract.md
 sed -n '1,240p' specs/009-tpm-planning/contracts/planning-solve-contract.md
 sed -n '1,240p' specs/009-tpm-planning/contracts/validation-contract.md
 ```
 
-Before implementation, make sure the contracts agree on:
+Confirm that:
 
-- stable `<field>_<step>` flattened naming
-- exact `shortfall` derivation from simulator unmet-load signals
-- explicit feature typing and ordering
-- canonical piecewise approximation metadata
-- direct chance-constraint semantics
-- lazy backend and solver boundaries
-
-## Review The Current Library Surfaces
-
-```bash
-sed -n '1,220p' src/open_energy_lab/simulator/__init__.py
-sed -n '1,320p' src/open_energy_lab/simulator/planning_export.py
-sed -n '1,320p' src/open_energy_lab/simulator/stochastic_demand.py
-sed -n '220,620p' src/open_energy_lab/simulator/scenario.py
-sed -n '1,220p' src/open_energy_lab/demand/__init__.py
-sed -n '1,220p' src/open_energy_lab/planning/__init__.py
-sed -n '1,280p' src/open_energy_lab/planning/dataset.py
-sed -n '1,260p' src/open_energy_lab/tpm/__init__.py
-sed -n '1,320p' src/open_energy_lab/tpm/features.py
-sed -n '1,280p' src/open_energy_lab/tpm/fit.py
-sed -n '1,320p' src/open_energy_lab/tpm/query.py
-sed -n '1,220p' src/open_energy_lab/tpm/optional_spflow.py
-sed -n '1,220p' tests/unit/test_optional_dependency_boundaries.py
-sed -n '1,220p' tests/unit/test_import_contract.py
-```
-
-Confirm from these files that:
-
-- current simulator families already expose the signals needed for shortfall
-  derivation and flattened export
-- root packages are lazy and import-light
-- `open_energy_lab.planning` now ships the persisted dataset reload,
-  problem-assembly, and optional-solve root exports while keeping Pyomo lazy
-- `open_energy_lab.tpm` now ships the lazy root exports, typed feature
-  handling, persisted artifact contract, fit configuration capture, and query
-  workflow needed for the current TPM slice
-- dependency-boundary checks already exist and should be extended rather
-  than relaxed
-
-## Review The Legacy Evidence
-
-```bash
-sed -n '1,240p' legacy/old_tpm/src_py/tpm/data/datahandler.py
-sed -n '1,240p' legacy/old_tpm/src_py/tpm/data/encoding.py
-sed -n '1,280p' legacy/old_tpm/src_py/tpm/spn/main.py
-sed -n '1,280p' legacy/old_tpm/src_py/tpm/spn/encoding.py
-sed -n '1,240p' legacy/old_tpm/src_py/tpm/spn/utils_tangent.py
-sed -n '1,220p' legacy/old_tpm/src_py/utils/densities.py
-sed -n '1,260p' legacy/old_tpm/src_py/simulator/feature_engineering.py
-```
-
-Use these files to confirm:
-
-- typed feature classes and data handling are the main close-migration
-  candidates
-- SPN fit and query semantics come from the legacy `main.py` direction
-- solver-facing encodings must be preserved selectively and documented
-  explicitly
-- legacy feature engineering is evidence for dataset-shaping ideas, not a
-  direct runtime dependency
+- simulator export remains independent from TPM fitting and planning solve
+- ordinary library imports do not load required heavy backends
+- production and fixture replay modes are explicit and mutually exclusive
+- current SPFlow payloads carry backend/API/version/integrity metadata
+- legacy SPFlow payloads fail with an artifact compatibility error
+- omission of solver configuration selects `highs`
+- only explicitly selected supplemental Gurobi checks may skip
 
 ## Environment
 
-The feature uses the current base library environment:
+After corrective dependency metadata is implemented:
 
 ```bash
-conda activate open-energy-lab
 uv sync --dev
+uv run python -c "import spflow, pyomo, highspy; print(spflow.__version__, pyomo.__version__, highspy.Highs().version())"
 ```
 
-Default validation must remain offline and fixture-backed. SPFlow and Pyomo
-are canonical TPM and planning backends, but they must be loaded lazily so
-routine package-import review does not require them. Solver binaries remain
-follow-up dependencies rather than routine review requirements.
-
-Before claiming a real SPFlow-backed TPM fit/query/planning run, inspect the
-runtime capability state explicitly:
-
-```bash
-uv run python -c "from open_energy_lab.tpm import detect_spflow_backend_capabilities; import json; print(json.dumps(detect_spflow_backend_capabilities(), indent=2))"
-```
-
-The current library uses the legacy SPFlow `spn.*` API for real SPN training,
-marginalization, log-likelihood queries, and SPN-to-MIO serialization. If that
-API is unavailable, TPM fitting falls back to a reviewable sidecar payload with
-`query_strategy='table'`, query responses report `source='spflow_sidecar_table'`,
-and planning falls back to `risk_evaluation_mode='empirical_dataset'`.
-
-Real-backend replay on this machine used the following optional stack on
-August 17, 2026:
-
-- `spflow==0.0.41`
-- `pyomo==6.10.1`
-- `scikit-learn==1.9.0`
-- `networkx==3.6.1`
-- `scipy==1.17.1`
-- `gurobipy==13.0.2`
-
-## Tracked Real-Backend Examples
-
-The repository now keeps tracked replay scripts under `examples/tpm_planning/`
-instead of only under ignored `tmp/` paths:
-
-- `examples/tpm_planning/run_real_backend_pipeline.py`
-- `examples/tpm_planning/run_generic_rows_pipeline.py`
-- `examples/tpm_planning/README.md`
-
-Run them from the repository root:
-
-```bash
-uv run python examples/tpm_planning/run_real_backend_pipeline.py
-uv run python examples/tpm_planning/run_generic_rows_pipeline.py
-```
-
-Both examples write generated artifacts to
-`tmp/open-energy-lab-pipeline-real-backends/`.
-
-Expected real-backend success signals:
-
-- `pipeline_summary.json` reports `query_result.source = "spflow_backend"`
-- `pipeline_summary.json` reports `risk_evaluation_mode = "spn_mip"`
-- `pipeline_summary.json` reports `solve_status = "optimal"`
-- `generic_rows_pipeline_summary.json` reports `query_result.source = "spflow_backend"`
-- `generic_rows_pipeline_summary.json` reports `solve_status = "optimal"`
-
-## Review The Committed US1, US2, And US3 Fixtures
-
-The repository now includes these active TPM-planning fixtures:
-
-- `tests/fixtures/planning/planning_dataset_export_case.json`
-- `tests/fixtures/planning/planning_problem_case.json`
-- `tests/fixtures/tpm/planning_dataset_v1.json`
-- `tests/fixtures/tpm/tpm_artifact_v1.json`
-- `tests/fixtures/tpm/tpm_artifact_unsupported_version.json`
-- `tests/fixtures/tpm/tpm_query_case.json`
-
-Use them to confirm that:
-
-- the export request fixes deterministic `scenario_index`-ordered design rows
-- the flattened series contract is limited to
-  `global_horizontal_irradiance_w_per_m2`, `site_electric_load_kw`, and
-  `unmet_load_kw`
-- the committed artifact preserves top-level JSON rows plus metadata rather
-  than a wrapped dataframe payload
-- provenance records the shared family seed and the source export fixture path
-- the supported TPM artifact preserves explicit typed feature ordering,
-  required decision features, canonical piecewise metadata, and a documented
-  fake-backend SPN payload summary
-- the query fixture records one deterministic request plus its expected
-  response from the empirical replay path
-- the planning fixture records the exact first-release problem definition,
-  deterministic candidate baseline, and fake-backend optional-solve
-  expectations used by the offline US3 review path
-
-## Implemented US1 Workflow Shape
-
-The stable simulator export and planning reload workflow is:
-
-1. Evaluate one aligned simulator family result and matching weather family.
-2. Build `PlanningExportRequest(...)` with one design row per scenario,
-   deterministic flattened series fields, and `target_name="shortfall"`.
-3. Call `open_energy_lab.simulator.export_planning_dataset(...)`.
-4. Persist the returned `PlanningDatasetArtifact` as JSON or inspect it
-   directly in memory.
-5. Reload the same payload offline through
-   `open_energy_lab.planning.load_planning_dataset(...)`.
-
-The current root-level public entry points are:
-
-- `open_energy_lab.simulator.PlanningExportRequest`
-- `open_energy_lab.simulator.export_planning_dataset`
-- `open_energy_lab.planning.PlanningDatasetArtifact`
-- `open_energy_lab.planning.load_planning_dataset`
-
-## Implemented US2 Workflow Shape
-
-The stable TPM fit/reload/query workflow is:
-
-1. Reload the committed planning-dataset artifact through
-   `open_energy_lab.planning.load_planning_dataset(...)`.
-2. Fit a TPM artifact with `open_energy_lab.tpm.fit_tpm_artifact(...)`.
-3. Persist the returned `TPMArtifact` as JSON or inspect it directly in
-   memory.
-4. Reload the same payload offline through
-   `open_energy_lab.tpm.load_tpm_artifact(...)`.
-5. Evaluate a deterministic query with
-   `open_energy_lab.tpm.query_tpm_artifact(...)`.
-
-The current root-level TPM entry points are:
-
-- `open_energy_lab.tpm.TPMArtifact`
-- `open_energy_lab.tpm.load_tpm_artifact`
-- `open_energy_lab.tpm.TPMFeatureSpec`
-- `open_energy_lab.tpm.normalize_training_data`
-- `open_energy_lab.tpm.TPMFitConfig`
-- `open_energy_lab.tpm.fit_tpm_artifact`
-- `open_energy_lab.tpm.TPMQueryRequest`
-- `open_energy_lab.tpm.query_tpm_artifact`
-- `open_energy_lab.tpm.PiecewiseApproximationMetadata`
-- `open_energy_lab.tpm.build_piecewise_metadata`
-- `open_energy_lab.tpm.SPFlowDependencyUnavailableError`
-
-## Implemented US3 Workflow Shape
-
-The stable planning assembly and optional solve workflow is:
-
-1. Reload the committed TPM artifact through
-   `open_energy_lab.tpm.load_tpm_artifact(...)`.
-2. Build one `PlanningProblemDefinition(...)` with explicit first-release
-   decision features, deterministic `cost_terms`, `shortfall_threshold`,
-   `chance_limit_epsilon`, solver configuration, approximation contract, and
-   fixture baseline expectations.
-3. Assemble the offline planning problem through
-   `open_energy_lab.planning.assemble_planning_problem(...)`.
-4. Optionally solve the assembled problem through
-   `open_energy_lab.planning.solve_planning_problem(...)`.
-5. Inspect the returned `PlanningSolveSummary`, deterministic skip summary, or
-   infeasibility diagnostics.
-
-The current root-level planning entry points are:
-
-- `open_energy_lab.planning.PlanningDatasetArtifact`
-- `open_energy_lab.planning.load_planning_dataset`
-- `open_energy_lab.planning.PlanningProblemDefinition`
-- `open_energy_lab.planning.PlanningProblemAssembly`
-- `open_energy_lab.planning.assemble_planning_problem`
-- `open_energy_lab.planning.PlanningSolveConfig`
-- `open_energy_lab.planning.PlanningSolveSummary`
-- `open_energy_lab.planning.PlanningSolverDependencyUnavailableError`
-- `open_energy_lab.planning.PlanningSolverUnavailableError`
-- `open_energy_lab.planning.solve_planning_problem`
-
-## Implemented Typed-Feature Migration
-
-The current typed-feature slice preserves these first-release feature types:
-
-- `continuous`
-- `binary`
-- `categorical`
-- `mixed`
-
-Keep these constraints in mind:
-
-- feature ordering is persisted and must remain stable across fit and reload
-- decision, context, and target roles stay explicit in artifact metadata
-- categorical domains and numeric bounds are explicit because query validation
-  depends on them
-- the target feature remains `shortfall`
-
-## Implemented `shortfall` Semantics
-
-The first-release target is fixed as the horizon-level electric-energy ratio:
-
-`shortfall = sum(unmet_load_kw * timestep_hours) / sum(site_electric_load_kw * timestep_hours)`
-
-Keep these constraints in mind:
-
-- `shortfall` is not a binary blackout label and is not mixed with cooling
-  adequacy semantics.
-- `threshold_default = 0.05` is recorded in dataset metadata for later TPM and
-  planning workflows.
-- a derived event target such as `shortfall_exceeds_threshold` is persisted for
-  backend fit/query/planning workflows while `shortfall` remains the canonical
-  exported metric.
-- the planning chance-limit `epsilon` is a later planning concern and remains
-  distinct from the `shortfall` threshold itself.
-- if total horizon load energy is effectively zero while unmet energy is
-  non-zero, the dataset contract should fail fast rather than invent a ratio.
-
-## Implemented Lazy SPFlow Boundary
-
-The current TPM fit path treats SPFlow as canonical but lazy:
-
-- importing `open_energy_lab.tpm` does not import SPFlow
-- importing `open_energy_lab.tpm.fit` does not import SPFlow
-- `fit_tpm_artifact(...)` only resolves the real backend when no injected
-  backend is supplied
-- unavailable real-backend behavior surfaces as
-  `SPFlowDependencyUnavailableError`
-
-This keeps routine review import-light while still documenting the real fit
-boundary.
-
-## Implemented Lazy Pyomo Boundary
-
-The current planning solve path treats Pyomo as canonical but lazy:
-
-- importing `open_energy_lab.planning` does not import Pyomo
-- importing `open_energy_lab.planning.problem` or
-  `open_energy_lab.planning.optional_solver` does not import Pyomo
-- `solve_planning_problem(...)` only resolves the real backend when no
-  injected backend is supplied
-- unavailable real-backend behavior surfaces as
-  `PlanningSolverDependencyUnavailableError`
-- unavailable requested solvers surface as
-  `PlanningSolverUnavailableError`, or as deterministic skipped summaries when
-  `skip_if_unavailable=True`
-
-This keeps routine review import-light while still documenting the real solve
-boundary and deterministic skip behavior.
-
-## Implemented Direct Chance-Constraint Semantics
-
-The first-release planning adequacy rule is:
-
-`P(shortfall > threshold) <= epsilon`
-
-Keep these constraints in mind:
-
-- `threshold` is the target-event threshold for the persisted `shortfall`
-  metric and defaults from the target definition to `0.05` in the committed
-  fixtures.
-- `epsilon` is the planning chance-limit bound and stays distinct from the
-  target threshold itself.
-- the committed planning fixture uses `shortfall_threshold = 0.05` and
-  `chance_limit_epsilon = 0.1`
-- the deterministic candidate baseline keeps both committed candidate designs
-  feasible and selects the lower-cost `baseline-a` design with objective value
-  `13400.0` and estimated shortfall risk `0.0`
-
-## Unified Reproducibility Contract
-
-The current export, TPM, and planning fixtures now share one review contract:
-
-- `planning_dataset_export_case.json` records the deterministic design rows,
-  flattened field request, target semantics, and expected dataset artifact
-  path.
-- `tpm_artifact_v1.json` records training dataset provenance, typed feature
-  ordering, query configuration, and canonical piecewise metadata.
-- `planning_problem_case.json` records the exact planning definition, solver
-  configuration, deterministic candidate baseline, and fake-backend
-  optional-solve expectations.
-
-Together these fixtures preserve:
-
-- one shared feature id, `009-tpm-planning`
-- explicit legacy evidence paths per workflow slice
-- generation commands, refresh policies, seeds, and solver assumptions
-- a default offline review path without mandatory SPFlow, Pyomo, or solver
-  installation
-
-## After Implementation: Replay The Implemented US1 Export Workflow
-
-Run the committed fixture-backed export integration path:
-
-```bash
-uv run pytest tests/integration/planning/test_dataset_export.py
-```
-
-Expected result:
-
-- the export workflow replays entirely offline from committed weather and
-  demand artifacts
-- the produced dataset preserves deterministic row ordering and
-  `<field>_<step>` flattened column naming
-- the replayed artifact matches the committed
-  `tests/fixtures/tpm/planning_dataset_v1.json` payload
-
-## After Implementation: Reload The Committed US1 Artifact Offline
-
-Use the committed planning-dataset artifact directly through the stable public
-reload surface:
-
-```bash
-uv run python -c '
-from pathlib import Path
-
-from open_energy_lab.planning import load_planning_dataset
-
-dataset = load_planning_dataset(Path("tests/fixtures/tpm/planning_dataset_v1.json"))
-
-print(dataset.dataset_id)
-print(tuple(dataset.column_order[:4]))
-print(dataset.target_metadata["aggregation_rule"])
-'
-```
-
-Expected result:
-
-- dataset reload succeeds entirely offline from the committed JSON fixture
-- the first columns remain `scenario_index`, `battery_capacity_kwh`,
-  `solar_capacity_kw`, and `design_name`
-- the aggregation rule stays explicit and reviewable without loading SPFlow,
-  Pyomo, or solver binaries
-
-## After Implementation: Reload The Committed US2 TPM Artifact Offline
-
-Use the committed supported TPM artifact directly through the stable public
-reload surface:
-
-```bash
-uv run python -c '
-from pathlib import Path
-
-from open_energy_lab.tpm import load_tpm_artifact
-
-artifact = load_tpm_artifact(Path("tests/fixtures/tpm/tpm_artifact_v1.json"))
-
-print(artifact.artifact_id)
-print(tuple(artifact.query_configuration["required_decision_features"]))
-print(artifact.spn_payload["backend_module"])
-'
-```
-
-Expected result:
-
-- TPM artifact reload succeeds entirely offline from the committed JSON fixture
-- required decision features remain `battery_capacity_kwh`,
-  `solar_capacity_kw`, and `design_name`
-- the persisted SPN payload representation stays reviewable as
-  `spflow.testing` metadata rather than an opaque pickle payload
-
-## After Implementation: Replay The Committed US2 Query Fixture
-
-Use the committed supported artifact and deterministic query fixture together:
-
-```bash
-uv run python -c '
-import json
-from pathlib import Path
-
-from open_energy_lab.tpm import TPMQueryRequest, load_tpm_artifact, query_tpm_artifact
-
-artifact = load_tpm_artifact(Path("tests/fixtures/tpm/tpm_artifact_v1.json"))
-fixture = json.loads(Path("tests/fixtures/tpm/tpm_query_case.json").read_text())
-
-result = query_tpm_artifact(
-    artifact,
-    TPMQueryRequest(
-        decision_assignments=fixture["query_request"]["decision_assignments"],
-        marginalized_features=tuple(fixture["query_request"]["marginalized_features"]),
-        output_mode=fixture["query_request"]["output_mode"],
-        target_name=fixture["query_request"]["target_name"],
-    ),
+The lock file is authoritative for routine validation. CI must cover the
+project's supported Python floor and newest supported interpreter. If a
+required wheel or dependency does not resolve on a claimed platform, that
+platform is unsupported until compatibility is restored; the backend check is
+not skipped.
+
+## Current SPFlow Migration Mapping
+
+The implementation must validate these mappings against SPFlow 1.1:
+
+| Legacy behavior | Current target |
+|---|---|
+| `Context(...)` with meta-types/domains | typed leaf modules with `Scope` |
+| `learn_mspn(numpy_data, context, ...)` | `learn_spn(torch_tensor, leaf_modules=..., ...)` |
+| free `log_likelihood(model, data)` | `model.log_likelihood(torch_tensor)` |
+| `marginalize(model, keep_indices)` | NaN evidence or `model.marginalize(indices_to_remove)` |
+| legacy pickle | versioned SPFlow 1.1 model sidecar plus JSON manifest/hash |
+| scalar node topological traversal | project compiler over supported tensorized modules |
+
+Important semantic checks:
+
+- current structural marginalization names variables to remove, unlike the
+  legacy keep-index convention
+- current likelihood results are tensors and require an explicit scalar
+  root/channel/repetition reduction contract
+- mixed feature types need explicit per-scope leaf modules and dtype/domain
+  validation
+- canonical seed `13` covers Python, NumPy, Torch, SPFlow, and solver settings;
+  robustness coverage uses seeds `37` and `101`
+- repeated fit/query/solve outputs must agree within `1e-9`; compiled
+  probabilities must be within `1e-6` absolute error of native likelihood
+- pre-1.0 model files are rejected and rebuilt from source planning datasets
+
+## Explicit TPM Execution Modes
+
+Production mode is the default:
+
+```python
+request = TPMQueryRequest(
+    decision_assignments={...},
+    marginalized_features=(...),
+    target_name="shortfall",
+    output_mode="conditional_probability",
+    execution_mode="production",
 )
-
-print(result["source"])
-print(result["matched_row_count"])
-print(result["value"])
-'
 ```
 
-Expected result:
+It requires a valid current-SPFlow payload. Missing, corrupt, legacy, or
+unsupported payloads fail explicitly.
 
-- the replay stays entirely offline from committed JSON fixtures
-- the query result source is `empirical_fixture`
-- the deterministic `baseline-a` request matches exactly one row and returns
-  `0.0`
+Fixture replay must be requested deliberately:
 
-## After Implementation: Replay The Committed US3 Planning Assembly Workflow
+```python
+request = TPMQueryRequest(
+    decision_assignments={...},
+    marginalized_features=(...),
+    target_name="shortfall",
+    output_mode="conditional_probability",
+    execution_mode="fixture_replay",
+)
+```
 
-Run the committed fixture-backed planning assembly path:
+Fixture replay is for deterministic contract tests and artifact inspection. A
+fixture result must identify `source="empirical_fixture"` and must never be
+reported as real-backend evidence.
+
+## Required HiGHS Solve
+
+The standard planning workflow is:
+
+1. Load a production current-SPFlow TPM artifact.
+2. Validate direct battery and solar decision variables.
+3. Compile sum/product structure with one output channel and repetition and
+   Normal, Bernoulli, or Categorical typed leaves to the canonical piecewise
+   Pyomo formulation; reject unsupported modules or graph shapes explicitly.
+4. Enforce `P(shortfall > threshold) <= epsilon`.
+5. Solve through `SolverFactory("highs")` with seed `13`, one thread, and a
+   30-second fixture time limit.
+6. Record Pyomo, `highspy`, solver-interface, options, termination, tolerance,
+   and objective/risk metadata.
+
+Assembly-only inspection remains supported, but routine CI must also solve.
+Missing Pyomo or HiGHS is an installation failure. Gurobi may be selected
+explicitly for supplemental validation and may skip only when its environment
+or license is unavailable.
+
+## Required Corrective Validation
+
+The corrective implementation must provide focused tests equivalent to:
 
 ```bash
-uv run pytest tests/integration/planning/test_problem_assembly.py
+uv run pytest tests/integration/tpm/test_spflow_v1_workflow.py
+uv run pytest tests/integration/tpm/test_spflow_v1_mio.py
+uv run pytest tests/integration/planning/test_highs_solver.py
 ```
 
-Expected result:
+Coverage must include:
 
-- the assembly stays entirely offline from committed TPM and planning fixtures
-- the assembled problem preserves the first-release battery-and-solar decision
-  scope and canonical piecewise metadata
-- the deterministic baseline matches the committed
-  `tests/fixtures/planning/planning_problem_case.json` expectations
+- real SPFlow fit, save, load, marginalization, and conditional query
+- mixed supported feature scopes and deterministic seed behavior
+- rejection of legacy/incompatible payloads
+- production failure without a valid payload
+- explicit empirical fixture replay
+- compiler rejection of unsupported SPFlow module types
+- compiled probability parity against native SPFlow likelihood
+- real HiGHS optimal and infeasible termination paths
+- integrality, time-limit/options, solution loading, and repeatability
 
-## After Implementation: Replay The Committed US3 Optional Solve Workflow
-
-Run the committed fake-backend optional solve path:
+Run the complete relevant regression set after those focused checks:
 
 ```bash
-uv run pytest tests/integration/planning/test_optional_solve.py
+uv run pytest tests/unit/demand tests/integration/demand tests/integration/simulator
+uv run pytest tests/unit/planning tests/unit/tpm tests/integration/planning tests/integration/tpm
+uv run pytest tests/unit/test_lazy_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py
+uv run python -c "import open_energy_lab; import open_energy_lab.weather; import open_energy_lab.demand; import open_energy_lab.simulator; import open_energy_lab.tpm; import open_energy_lab.planning"
+rg "from legacy|import legacy" src/open_energy_lab/tpm src/open_energy_lab/planning src/open_energy_lab/simulator tests/unit/planning tests/unit/tpm tests/integration/planning tests/integration/tpm docs/migration
 ```
 
-Expected result:
+Import-boundary tests now assert laziness, not absence from the installation:
 
-- repeated runs return the same selected design and solve summary
-- the fake-backend optimal path selects the committed `baseline-a` design
-- backend-unavailable and solver-unavailable paths return deterministic
-  skipped summaries without requiring a real solver installation
+- importing package roots must not add `spflow`, `torch`, `pyomo`, or
+  `highspy` modules to `sys.modules`
+- invoking the corresponding real workflow must load its required backend
+- dependency incompatibility is reported as a failed installation/workflow,
+  not a successful skip
 
-## Planned Review Checks
+## Supplementary Validation
 
-Run the checks relevant to the files changed:
-
-```bash
-uv run pytest tests/unit/planning tests/unit/tpm tests/integration/planning
-uv run pytest tests/unit/test_optional_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py
-uv run pytest tests/unit/demand tests/unit/simulator tests/integration/demand tests/integration/simulator
-uv run python -c "import open_energy_lab; import open_energy_lab.simulator; import open_energy_lab.tpm; import open_energy_lab.planning"
-rg "from legacy|import legacy" src/open_energy_lab/tpm src/open_energy_lab/planning src/open_energy_lab/simulator tests/unit/planning tests/unit/tpm tests/integration/planning docs/migration
-```
-
-## Validation Outcomes
-
-The documented review commands were run for feature `009-tpm-planning` in the
-default offline environment.
-
-Observed results:
-
-- `uv run pytest tests/unit/planning tests/unit/tpm tests/integration/planning`
-  passed with `106 passed`.
-- `uv run pytest tests/unit/test_optional_dependency_boundaries.py
-  tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py`
-  passed with `56 passed`.
-- `uv run pytest tests/unit/demand tests/unit/simulator
-  tests/integration/demand tests/integration/simulator` passed with `161
-  passed`.
-- `uv run python -c "import open_energy_lab; import open_energy_lab.simulator;
-  import open_energy_lab.tpm; import open_energy_lab.planning"` completed with
-  no import errors.
-- `rg "from legacy|import legacy" ...` returned one expected match in
-  `tests/integration/planning/test_reproducibility_contract.py`, where the
-  test asserts that this exact review command remains documented in this
-  quickstart. No library or migration source files matched after validation.
-
-During validation, the no-legacy-import suite initially flagged a comment in
-`src/open_energy_lab/simulator/planning_export.py` because it contained the
-phrase `from legacy`. The comment wording was tightened so the import-boundary
-guard now passes without relaxing the check.
-
-Optional follow-up checks when dependencies are available:
+These checks may remain optional and must be reported accurately when skipped:
 
 ```bash
 cd legacy/old_tpm && pytest src_py/tpm/spn/test_tangent_lower_bound.py
 ```
 
-Backend-specific follow-up guidance:
+- Gurobi-backed solve parity when its package, binary, and license are present
+- legacy runtime comparisons when the legacy environment is reproducible
 
-- `SPFlow`: rerun the tracked examples in `examples/tpm_planning/` and the
-  integration tests under `tests/integration/tpm/` when the real backend is
-  available.
-- `Pyomo`: rerun the planning solve path with the real backend and a supported
-  solver binary when available.
+They supplement but do not replace the required current-SPFlow and HiGHS
+checks.
 
-If SPFlow, Pyomo, or a supported solver backend is unavailable, document the
-skipped backend-specific follow-up checks instead of widening the base
-environment.
+## Completion Gate
 
-Checks that remain optional in the default offline review path:
+Do not call the corrected implementation complete until all of the following
+are true:
 
-- legacy SPFlow tangent validation in `legacy/old_tpm`
-- real-backend TPM fitting and querying through the optional SPFlow stack
-- real-backend planning solve with Pyomo plus a supported solver binary
+- required dependencies and supported Python policy are declared and locked
+- current SPFlow fit/query artifacts replace legacy model assumptions
+- automatic empirical/metadata fallback is removed
+- the supported SPFlow 1.1 module subset compiles to the planning formulation
+- native likelihood and compiled probability agree within documented tolerance
+- real Pyomo/HiGHS optimal and infeasible tests pass offline
+- the 008 demand/simulator regression suites remain green
+- migration and API-maturity documentation no longer calls required backends
+  optional
+
+The previous fake-backend and Gurobi replay results remain historical evidence;
+they are not validation outcomes for this corrected contract.

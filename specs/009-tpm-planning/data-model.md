@@ -2,8 +2,8 @@
 
 This feature introduces a simulator-owned planning-dataset export surface, a
 native `open_energy_lab.tpm` package for typed feature and SPN artifacts, and
-an expanded `open_energy_lab.planning` package for optional model assembly and
-solve workflows.
+an expanded `open_energy_lab.planning` package for model assembly and required
+default HiGHS solve workflows.
 
 ## Planning Export Request
 
@@ -96,7 +96,8 @@ query, and planning-encoding workflows.
 
 **Fields**: `artifact_id`, `schema_version`, `created_at`,
 `dataset_reference`, `feature_schema`, `target_definition`,
-`fit_configuration`, `spn_payload`, `spn_payload_format`,
+`fit_configuration`, `backend_generation`, `backend_api_version`,
+`execution_mode`, `spn_payload`, `spn_payload_format`, `payload_hash`,
 `query_configuration`, `approximation_metadata`, `provenance`.
 
 **Relationships**: Produced from one planning dataset artifact; consumed by
@@ -105,9 +106,19 @@ query and planning workflows.
 **Validation rules**:
 
 - artifact loading must fail fast for unsupported schema versions
+- current-SPFlow production artifacts use schema version `2`; schema version
+  `1` is accepted only far enough to return an explicit incompatibility/refit
+  error
 - the artifact must preserve all feature typing needed for offline query
-- the artifact schema version must document whether `spn_payload` is embedded
-  directly or interpreted as a locator to an external persisted payload
+- schema-v2 `spn_payload` is a project-relative locator to a separately
+  persisted model sidecar; its SHA-256 digest is verified before loading, and
+  manifest/sidecar replacement uses atomic sibling-file writes
+- production artifacts must identify the current SPFlow backend generation,
+  API version, model-sidecar format, and integrity hash
+- pre-1.0 SPFlow models are incompatible migration inputs and must be refitted;
+  they cannot be loaded as current production payloads
+- `execution_mode` must be `production` for normal fit/query behavior;
+  `fixture_replay` is allowed only for explicitly invoked test evidence
 - approximation metadata must document the canonical piecewise planning path
 - provenance must include enough information to reproduce fit inputs and seed
   expectations
@@ -116,7 +127,7 @@ query and planning workflows.
 
 **Fields**: `artifact_reference`, `decision_assignments`,
 `marginalized_features`, `target_event`, `output_mode`,
-`numeric_tolerance`.
+`numeric_tolerance`, `execution_mode`.
 
 **Relationships**: Submitted by callers to obtain conditional probability or
 log-likelihood outputs from a loaded TPM artifact.
@@ -127,11 +138,16 @@ log-likelihood outputs from a loaded TPM artifact.
 - omitted non-decision variables are marginalized explicitly
 - `target_event` must refer to the single configured target definition
 - output mode must be documented as conditional probability or log-likelihood
+- production mode requires a valid current-SPFlow payload and fails explicitly
+  if it is absent, incompatible, or fails integrity validation
+- empirical evaluation is legal only when `execution_mode` is explicitly
+  `fixture_replay`; it never activates automatically
 
 ## Piecewise Approximation Contract
 
 **Fields**: `approximation_kind`, `leaf_encoding_mode`, `sum_encoding_mode`,
-`breakpoint_policy`, `mio_epsilon`, `tolerance`, `legacy_reference_paths`.
+`breakpoint_policy`, `mio_epsilon`, `tolerance`, `backend_compiler_version`,
+`supported_spflow_module_types`, `legacy_reference_paths`.
 
 **Relationships**: Stored in TPM artifact metadata when planning-compatible
 encodings are prepared; consumed by planning model assembly.
@@ -139,9 +155,21 @@ encodings are prepared; consumed by planning model assembly.
 **Validation rules**:
 
 - `approximation_kind` is piecewise in the canonical first release
-- breakpoint policy must be explicit and reproducible
+- breakpoint policy must be explicit and reproducible; the canonical fixture
+  configuration uses five breakpoints, and any explicit override is persisted
 - lower-tangent-only formulations must not be labeled canonical
 - any tolerance used for fixture validation must be documented
+- a current-SPFlow compiler must declare the exact tensorized module/leaf
+  subset it supports and fail on unsupported graph structures
+- the first-release subset is sum/product structure with one output channel
+  and repetition, Normal continuous leaves, Bernoulli binary leaves, and
+  Categorical categorical leaves on separate typed scopes
+- arbitrary Torch modules, custom leaves, multiple channels/repetitions,
+  uncompileable shared subgraphs, and unconverted legacy histogram leaves are
+  rejected with their module type and scope
+- compiled conditional probabilities must be parity-checked against current
+  SPFlow `model.log_likelihood(...)` results within `1e-6` maximum absolute
+  error; repeated canonical evaluations must agree within `1e-9`
 
 ## Planning Problem Definition
 
@@ -159,7 +187,11 @@ assembled model, a solved design, or deterministic infeasibility diagnostics.
 - `shortfall_threshold` and `chance_limit_epsilon` must both be explicit or
   defaulted through documented fixture values
 - cost terms must be deterministic for the first release
-- solver configuration must remain optional and documented
+- omission of solver configuration selects the required default
+  `solver_name="highs"`; explicitly selected supplemental solvers remain
+  documented
+- the default HiGHS configuration uses seed `13`, one thread, a 30-second
+  fixture time limit, and `1e-9` repeatability tolerance
 
 ## Planning Solution Summary
 
@@ -167,7 +199,7 @@ assembled model, a solved design, or deterministic infeasibility diagnostics.
 `estimated_shortfall_risk`, `threshold`, `chance_limit_epsilon`,
 `feasibility_diagnostics`, `solver_metadata`.
 
-**Relationships**: Produced by the optional planning solve workflow; used by
+**Relationships**: Produced by the planning solve workflow; used by
 review fixtures and user-facing diagnostics.
 
 **Validation rules**:
@@ -177,3 +209,5 @@ review fixtures and user-facing diagnostics.
 - reported risk must align with the configured target event
 - solver metadata must record enough information to explain reproducibility
   expectations
+- routine results record Pyomo, `highspy`, solver-interface, termination,
+  options, and version metadata; Gurobi results are supplemental

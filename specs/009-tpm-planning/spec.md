@@ -3,7 +3,7 @@
 **Feature Branch**: `009-tpm-planning`  
 **Created**: 2026-06-24  
 **Status**: Draft  
-**Input**: User description: "Migrate the legacy TPM code closely enough to reuse its well-structured feature typing, SPN training, and planning-oriented encodings; add simulator output export so planning datasets can include horizon-indexed fields such as ghi_0, ghi_1, load_0, load_1, and shortfall; and formalize a planning exercise as an MILP over multiple simulation instances while keeping the heavy TPM and solver stacks optional."
+**Input**: User description: "Migrate the legacy TPM code closely enough to reuse its well-structured feature typing, SPN training, and planning-oriented encodings; add simulator output export so planning datasets can include horizon-indexed fields such as ghi_0, ghi_1, load_0, load_1, and shortfall; and formalize a planning exercise as an MILP over multiple simulation instances with SPFlow and Pyomo as required, lazily imported project dependencies."
 
 ## Purpose *(mandatory)*
 
@@ -31,7 +31,8 @@ lazy backend loading.
   datasets and then to a planning problem that consumes those artifacts.
 - Q: Should the default review path require live services, notebooks, or solver
   licenses? → A: No. Default validation remains offline and fixture-backed,
-  while SPFlow, Pyomo, and solver-backed follow-up checks remain optional.
+  with required SPFlow and Pyomo installations; checks needing separately
+  managed solver binaries or licenses may remain follow-up validation.
 - Q: Should the first release depend on ad hoc notebook column meanings such as
   `shortfall` or `y_blackout`? → A: No. The new library must define an
   explicit library-owned target contract for the planning adequacy event and
@@ -55,10 +56,30 @@ lazy backend loading.
   → A: Enforce a direct chance constraint `P(shortfall > threshold) <=
   epsilon`, with caller-configurable `epsilon`.
 
+### Session 2026-08-17
+
+- Q: How should SPFlow and Pyomo be installed while preserving lightweight
+  imports? → A: Make SPFlow and Pyomo required project dependencies installed
+  by default, but import them lazily at their workflow boundaries.
+- Q: What solver availability should the standard installation and CI
+  guarantee? → A: Require an open-source solver for routine end-to-end CI and
+  support Gurobi additionally when it is available.
+- Q: Which open-source solver should be required for routine Pyomo execution?
+  → A: Require HiGHS through the `highspy` Python package as the default
+  solver.
+- Q: May TPM queries automatically fall back to empirical or metadata-only
+  behavior when a real SPFlow payload is unavailable? → A: No. Require
+  SPFlow by default and permit empirical replay only through an explicit
+  fixture/test mode.
+- Q: Which SPFlow API compatibility target should the first release require?
+  → A: Preserve the validated TPM behavior from `legacy/old_tpm`, but port
+  it to a current supported SPFlow release rather than constraining Python to
+  the legacy `spn.*` package generation.
+
 ## Scope Classification *(mandatory)*
 
 - **Feature type**: Migration plus new library capability
-- **Target surface**: Public library API, persisted data artifact, and optional
+- **Target surface**: Public library API, persisted data artifact, and TPM-backed
   optimization workflow
 - **Legacy reference paths**:
   - `legacy/old_tpm/src_py/tpm/data/datahandler.py`
@@ -128,10 +149,11 @@ queries without retraining or rebuilding feature encodings every time.
 feature schema, and query semantics are owned by the library rather than by
 legacy scripts or notebooks.
 
-**Independent Test**: A reviewer can fit a TPM artifact from a committed
-planning dataset fixture, reload it offline, and verify deterministic feature
-typing, artifact metadata, marginalization behavior, and conditional
-probability or log-likelihood outputs for fixture-backed queries.
+**Independent Test**: A reviewer can fit a real current-SPFlow model from the
+committed planning dataset, persist and reload its model sidecar, and reproduce
+conditional probability and log-likelihood results within the documented
+tolerances. Explicit fixture replay is supplementary and cannot satisfy this
+test by itself.
 
 **Acceptance Scenarios**:
 
@@ -144,10 +166,12 @@ probability or log-likelihood outputs for fixture-backed queries.
    evaluated for the configured `shortfall` target, **Then** it returns
    reproducible conditional probability or log-likelihood outputs aligned with
    the documented TPM semantics.
-3. **Given** fixture-backed evidence for the canonical piecewise planning
-   approximation, **When** the migrated TPM query or encoding surface is
-   exercised against committed fixtures, **Then** the preserved solver-facing
-   approximation behavior remains within the documented tolerance.
+3. **Given** a real current-SPFlow artifact whose graph belongs to the supported
+   compiler subset, **When** the artifact is compiled by the
+   current-SPFlow-to-piecewise-MIO compiler, **Then** its conditional
+   probabilities differ from native SPFlow likelihood evaluation by at most
+   `1e-6`, and repeated canonical-seed evaluations agree within `1e-9`.
+   Fixture replay remains supplementary evidence only.
 
 ---
 
@@ -161,10 +185,11 @@ longer hidden inside notebooks.
 **Why this priority**: The planning capability is the consumer-facing reason to
 promote simulator export and TPM migration into the unified library.
 
-**Independent Test**: A reviewer can load committed design metadata, a
-persisted TPM artifact, and a fixture-backed planning problem definition, then
-assemble and optionally solve the planning model offline to verify feasibility,
-cost, adequacy diagnostics, and repeated-run reproducibility.
+**Independent Test**: A reviewer can load a real current-SPFlow artifact,
+compile its supported graph into the solver-neutral piecewise-MIO
+representation, assemble the consuming Pyomo MILP, and solve both feasible and
+infeasible cases with HiGHS, reproducing the selected design, objective, risk,
+termination status, and solver metadata.
 
 **Acceptance Scenarios**:
 
@@ -179,10 +204,10 @@ cost, adequacy diagnostics, and repeated-run reproducibility.
    same solver configuration, **When** the solve is repeated, **Then** it
    returns the same selected design and the same risk and cost summary, or the
    same deterministic infeasibility diagnostics when no feasible design exists.
-3. **Given** an environment without optional solver backends, **When** the
-   planning surface is validated in the default review path, **Then** model
-   assembly, input validation, and fixture-backed non-solver checks still run
-   successfully and any skipped solve checks are documented explicitly.
+3. **Given** a standard project installation with HiGHS, **When** the planning
+   surface is validated in the default review path, **Then** model assembly,
+   input validation, fixture-backed checks, and a real Pyomo-backed solve all
+   complete successfully without a commercial solver license.
 
 ### Edge Cases
 
@@ -194,10 +219,20 @@ cost, adequacy diagnostics, and repeated-run reproducibility.
   cooling-service adequacy without an explicit documented aggregation rule.
 - A planning dataset contains feature values outside the fitted TPM feature
   bounds or unseen categorical values not covered by the persisted schema.
-- TPM queries omit required decision features or request multiple incompatible
-  target definitions from one first-release artifact.
-- Optional SPFlow, Pyomo, or solver dependencies are unavailable in the base
-  environment.
+- A TPM query supplies an out-of-bound continuous value, unseen category, or
+  invalid binary value; validation identifies the feature, expected domain,
+  supplied value, and reason before invoking SPFlow.
+- A TPM query omits a required decision feature; validation identifies the
+  missing feature, expected domain, and reason before invoking SPFlow, with no
+  supplied value.
+- A TPM query requests multiple incompatible target definitions from one
+  first-release single-target artifact.
+- A production TPM query lacks a valid SPFlow payload; the workflow fails
+  explicitly rather than silently substituting empirical or metadata-only
+  results.
+- A required SPFlow, Pyomo, or `highspy` dependency is missing or incompatible
+  because the project installation is incomplete, or a separately managed
+  supplemental solver backend is unavailable.
 - The planning model is asked to optimize over unsupported continuous,
   categorical, or mixed decision variables beyond the migrated legacy feature
   support.
@@ -232,9 +267,21 @@ cost, adequacy diagnostics, and repeated-run reproducibility.
 - **FR-006**: The TPM capability MUST preserve typed feature-schema handling
   for continuous, binary, categorical, and mixed features where that behavior
   is supported by the selected legacy TPM sources.
+- **FR-006a**: The first-release current-SPFlow compiler MUST support sum and
+  product composition with one output channel and one repetition; Normal leaves
+  for continuous features; Bernoulli leaves for binary features; Categorical
+  leaves for categorical features; and models that mix these concrete leaf
+  types across separate scopes. It MUST reject arbitrary Torch modules,
+  unsupported custom leaves, multiple channels or repetitions, uncompileable
+  shared subgraphs, and legacy histogram payloads without explicit conversion,
+  reporting the unsupported module type and scope.
 - **FR-007**: The TPM query surface MUST support marginalization of
   non-decision variables and conditional probability or log-likelihood
   evaluation for the configured planning target.
+- **FR-007a**: Production TPM fit-query workflows MUST use the real SPFlow
+  backend and MUST fail explicitly when a valid SPFlow payload is unavailable.
+  Empirical replay MAY be retained only behind an explicit fixture/test mode
+  and MUST NOT activate automatically as a production fallback.
 - **FR-008**: The feature MUST define versioned planning dataset and TPM
   artifact contracts that preserve provenance, training configuration, feature
   schema, target metadata, and reproducibility inputs.
@@ -254,8 +301,10 @@ cost, adequacy diagnostics, and repeated-run reproducibility.
   planning problem, while fixture-backed validation and examples MAY define a
   documented default threshold.
 - **FR-010c**: The first-release canonical solver-facing TPM formulation MUST
-  use a documented piecewise approximation path, and any non-canonical
-  approximations MUST be explicitly marked as deferred or secondary.
+  use the documented current-SPFlow-to-piecewise-MIO compiler. Its
+  solver-neutral MIO representation MUST be consumed by the Pyomo MILP, and
+  any non-canonical approximations MUST be explicitly marked as deferred or
+  secondary.
 - **FR-010d**: The first-release planning surface MUST optimize battery and
   solar decision variables only, and MUST defer inverter or broader equipment
   decision sets unless a later spec expands the planning scope.
@@ -264,21 +313,35 @@ cost, adequacy diagnostics, and repeated-run reproducibility.
   configurable per planning problem and remains distinct from the configurable
   `shortfall` threshold.
 - **FR-011**: The first release MUST treat SPFlow as the canonical TPM
-  fit-query backend and Pyomo as the canonical planning-model backend, while
-  keeping those dependencies outside ordinary package-root imports so they are
-  required when TPM or planning workflows are invoked rather than at import
-  time.
+  fit-query backend and Pyomo as the canonical planning-model backend. Both
+  MUST be declared as required project dependencies installed by default while
+  remaining lazily imported at their TPM and planning workflow boundaries. The
+  supported SPFlow contract MUST target a current supported SPFlow API and
+  MUST port the validated fit, marginalization, query, persistence, and
+  solver-facing behavior from `legacy/old_tpm` without retaining a runtime
+  dependency on the obsolete `spn.*` package generation.
 - **FR-012**: The default validation path MUST remain offline and
   fixture-backed and MUST NOT require notebooks, W&B, live weather fetches,
-  GPU or SLURM tooling, or commercial solver licenses; the feature quickstart
-  and follow-up validation guidance MUST still document SPFlow-backed TPM
-  checks and Pyomo-backed planning checks as part of the intended workflow.
+  GPU or SLURM tooling, or commercial solver licenses. It MUST exercise a real
+  SPFlow fit-query path and a real Pyomo solve with HiGHS through `highspy`;
+  follow-up validation guidance MUST document Gurobi-backed planning checks as
+  an additional supported workflow.
 - **FR-013**: The feature MUST identify exact legacy TPM files whose behavior
   is preserved, improved, or rejected, and MUST avoid runtime imports from
   `legacy/*`.
 - **FR-014**: The feature MUST define numeric tolerances, random-seed behavior,
   solver-configuration reproducibility expectations, and deterministic fixture
   baselines for export, TPM query, and planning workflows.
+- **FR-014a**: Canonical fixtures MUST use seed `13` for Python, NumPy, Torch,
+  SPFlow, and solver randomness; `1e-9` fit, query, repeated-HiGHS-solve,
+  objective, and risk repeatability tolerances; `1e-6` MIO epsilon and maximum absolute
+  native-SPFlow-versus-compiled probability error; `5` piecewise breakpoints;
+  and HiGHS settings of one thread and a 30-second per-fixture time limit. A
+  robustness check MUST additionally exercise fixed seeds `37` and `101`
+  without treating them as canonical fixture baselines.
+  When Gurobi is available, comparison against HiGHS is supplementary evidence
+  and MUST use a tolerance documented for the tested formulation; it is not a
+  completion requirement.
 - **FR-015**: The first release MUST bound scope to one explicit planning
   target and one horizon-flattened planning dataset contract per artifact,
   deferring broader multi-target or notebook-driven experimentation.
@@ -336,6 +399,11 @@ cost, adequacy diagnostics, and repeated-run reproducibility.
   reproducibility metadata together with the documented SPN payload
   representation or payload locator defined by the artifact schema version,
   enabling offline reload and risk evaluation.
+  Current-SPFlow production artifacts use schema v2 with backend name,
+  generation and API version, execution mode, payload format, project-relative
+  payload locator, SHA-256 payload digest, compiler version, supported module
+  types, training seed, and Torch determinism metadata. Schema-v1 legacy model
+  payloads are retained only for incompatibility/refit validation.
 - **Shortfall Target Definition**: A documented planning-target contract that
   names the target field, defines it as the horizon-level unmet electric energy
   ratio, states the threshold semantics, and records the simulator-side source
@@ -348,13 +416,18 @@ cost, adequacy diagnostics, and repeated-run reproducibility.
 
 ### Dependency and Environment Requirements *(include if relevant)*
 
-- **Core dependencies**: Python standard library plus existing
+- **Core dependencies**: Python standard library, SPFlow, Pyomo, plus existing
   `open_energy_lab.simulator`, `open_energy_lab.weather`, and
   `open_energy_lab.demand` surfaces used to build fixture-backed planning
   datasets
-- **Workflow backends**: SPFlow for TPM fit-query, Pyomo for planning-model
-  assembly, and supported MILP solver backends such as Gurobi or other
-  supported MILP solvers for solve execution
+- **Workflow backends**: A tested current SPFlow release for TPM fit-query,
+  Pyomo for planning-model assembly, required HiGHS through `highspy` for
+  routine solve execution, and Gurobi as an additionally supported backend
+  when available
+- **Python compatibility**: Initial CI MUST cover Python 3.11, 3.12, 3.13, and
+  3.14. If the required locked stack cannot resolve on one version, the project
+  MUST narrow `requires-python` using recorded compatibility evidence rather
+  than skipping the failing required-backend job.
 - **External services**: None in the default workflow
 - **Hardware assumptions**: CPU-only local validation by default; no GPU or
   scheduler requirement accepted for the routine review path
@@ -366,16 +439,24 @@ cost, adequacy diagnostics, and repeated-run reproducibility.
 - **SC-001**: A reviewer can export at least one committed fixture-backed
   planning dataset from simulator family results and obtain deterministic row
   counts, column ordering, and target values across repeated runs.
-- **SC-002**: A reloaded TPM artifact reproduces fixture-backed conditional
-  probability or log-likelihood query outputs within the documented tolerance
-  for repeated offline runs.
+- **SC-002**: A reloaded real current-SPFlow artifact reproduces conditional
+  probability and log-likelihood query outputs within `1e-9` across repeated
+  canonical-seed runs, and its compiled probability differs from native SPFlow
+  by at most `1e-6` absolute error.
 - **SC-003**: The planning surface either selects the same feasible
   minimum-cost design across repeated fixture-backed runs with fixed inputs and
   solver configuration, or returns the same deterministic infeasibility
   diagnostics when no feasible design exists.
-- **SC-004**: Ordinary `open_energy_lab` imports remain usable without SPFlow,
-  Pyomo, or solver installations, and optional-dependency failures occur only
-  when TPM or planning capabilities that require them are explicitly invoked.
+  Repeated objectives and reported risk values MUST differ by no more than
+  `1e-9` for the canonical fixture configuration.
+- **SC-003a**: Routine offline CI completes at least one real SPFlow fit-query
+  cycle and one real Pyomo-backed optimization with HiGHS through `highspy`;
+  neither path is replaced solely by fake-backend validation.
+- **SC-004**: Ordinary `open_energy_lab` imports do not eagerly import SPFlow or
+  Pyomo, while a correctly installed project includes both dependencies and
+  exposes installation or compatibility failures when the corresponding TPM or
+  planning workflow is invoked. Ordinary imports remain independent of any
+  separately managed solver binary or license.
 
 ## Assumptions
 
@@ -394,6 +475,5 @@ cost, adequacy diagnostics, and repeated-run reproducibility.
 - The first-release adequacy rule is a direct chance constraint on threshold
   exceedance probability, with the acceptable exceedance probability
   (`epsilon`) configured separately from the `shortfall` threshold itself.
-- Optional solver-backed validation may be skipped in environments without
-  supported solver binaries or licenses, but those skips must be documented in
-  the quickstart or final review notes.
+- Gurobi-backed validation may be skipped in environments without its solver
+  binary or license, but the required HiGHS validation MUST pass.

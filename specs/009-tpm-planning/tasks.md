@@ -1,273 +1,278 @@
 # Tasks: TPM-Backed Planning And Simulator Dataset Export
 
-**Input**: Design documents from `/specs/009-tpm-planning/`  
-**Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
+**Input**: Design documents from `/specs/009-tpm-planning/`
+**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/, quickstart.md
 
-**Tests**: The feature requires focused unit, integration, fixture-validation,
-import-boundary, no-legacy-import, and deterministic assembly checks because
-it promotes a stable simulator export workflow, a new `open_energy_lab.tpm`
-package, and a planning surface with explicit artifact contracts, canonical
-SPFlow and Pyomo workflow backends, and lazy dependency boundaries.
+**Curation policy**: Checked tasks consolidate implementation completed under
+the original 009 plan. Unchecked tasks are the corrective delta introduced by
+the 2026-08-17/18 dependency and backend clarifications. A checked baseline
+task does not imply that its old optional-backend assumptions remain valid;
+the unchecked follow-up tasks supersede those assumptions.
 
-**Organization**: Tasks are grouped by user story to enable independent
-implementation and testing of each story.
+**Tests**: The specification requires test-first corrective work, including
+real current-SPFlow fit/query, current-SPFlow-to-piecewise-MIO parity, real Pyomo/HiGHS
+optimal and infeasible solves, explicit fixture replay, lazy-import checks, and
+008+009 regression validation.
 
 ## Format: `[ID] [P?] [Story] Description`
 
-- **[P]**: Can run in parallel because it touches different files and has no dependency on another task
-- **[Story]**: Which user story this task belongs to, such as US1, US2, US3
-- Include exact file paths in descriptions
+- **[P]**: Can run in parallel because it changes different files and does not
+  depend on another incomplete task.
+- **[Story]**: Maps the task to US1, US2, or US3.
+- Checked entries are curated completed baseline work; unchecked entries are
+  immediately actionable corrective work.
 
-## Path Conventions
+## Phase 1: Setup And Dependency Policy
 
-- **Spec Kit**: `.specify/`, `.agents/`
-- **Legacy references**: `legacy/old_tpm/`, `legacy/fed_trpo/`
-- **Target library**: `src/open_energy_lab/simulator`, `src/open_energy_lab/tpm`, `src/open_energy_lab/planning`
-- **Tests**: `tests/unit/`, `tests/integration/`, `tests/fixtures/`
+**Purpose**: Preserve the completed package/fixture setup and establish the
+required modern backend environment before backend implementation changes.
 
-## Phase 1: Setup
-
-**Purpose**: Establish TPM, planning, fixture, and migration-note scaffolding
-without introducing runtime legacy dependencies.
-
-- [X] T001 Create TPM and planning package scaffolds in `src/open_energy_lab/tpm/__init__.py`, `tests/unit/tpm/__init__.py`, `tests/unit/planning/__init__.py`, and `tests/integration/planning/__init__.py`
-- [X] T002 [P] Create planning and TPM fixture scaffolds in `tests/fixtures/planning/planning_dataset_export_case.json`, `tests/fixtures/planning/planning_problem_case.json`, `tests/fixtures/tpm/planning_dataset_v1.json`, `tests/fixtures/tpm/tpm_artifact_v1.json`, `tests/fixtures/tpm/tpm_artifact_unsupported_version.json`, and `tests/fixtures/tpm/tpm_query_case.json`
-- [X] T003 [P] Add fixture provenance placeholders in `tests/fixtures/planning/README.md` and `tests/fixtures/tpm/README.md`
-- [X] T004 [P] Create the TPM-planning migration note scaffold in `docs/migration/tpm-planning.md`
+- [X] T001 Consolidate the completed TPM and planning package/test scaffolds in `src/open_energy_lab/tpm/`, `src/open_energy_lab/planning/`, `tests/unit/tpm/`, `tests/unit/planning/`, and `tests/integration/planning/`
+- [X] T002 Consolidate the completed planning/TPM fixture and migration-note scaffolds in `tests/fixtures/planning/`, `tests/fixtures/tpm/`, and `docs/migration/tpm-planning.md`
+- [ ] T003 Declare initial required pins for `spflow==1.1.0`, `pyomo==6.10.1`, and `highspy==1.15.1`, attempt locked resolution on Python 3.11, 3.12, 3.13, and 3.14, and either retain all four versions or record dependency-specific incompatibility evidence while updating `requires-python` and regenerating `uv.lock` in `pyproject.toml`, `uv.lock`, and `specs/009-tpm-planning/quickstart.md`
+- [ ] T004 Add required-backend CI jobs matching the supported Python result from T003, initially covering Python 3.11, 3.12, 3.13, and 3.14, enforce a 120-second focused-suite timeout, and forbid allowed-failure or skipped required-backend jobs in `.github/workflows/ci.yml`
+- [ ] T005 [P] Replace optional-install terminology with required-install/lazy-import terminology in `README.md`, `docs/migration/dependency-policy.md`, and `docs/migration/environment-assumptions.md`
 
 ---
 
-## Phase 2: Foundational
+## Phase 2: Foundational Corrective Contracts
 
-**Purpose**: Add shared validation infrastructure, package boundaries, and
-module scaffolding that block all user-story work.
+**Purpose**: Establish artifact modes, compatibility diagnostics, and lazy
+boundaries shared by the modern SPFlow and HiGHS story work.
 
-- [X] T005 [P] Add import-boundary coverage for `open_energy_lab.tpm` and `open_energy_lab.planning` in `tests/unit/tpm/test_import_boundary.py` and `tests/unit/planning/test_import_boundary.py`
-- [X] T006 [P] Add no-legacy-import coverage for TPM and planning modules in `tests/unit/tpm/test_no_legacy_imports.py` and `tests/unit/planning/test_no_legacy_imports.py`
-- [X] T007 [P] Extend root dependency-boundary coverage so `open_energy_lab.tpm`, `open_energy_lab.planning`, and `open_energy_lab.simulator.planning_export` remain import-safe until SPFlow-backed or Pyomo-backed workflows are invoked in `tests/unit/test_optional_dependency_boundaries.py`
-- [X] T008 [P] Extend stable package-surface and import-contract coverage for new TPM and planning exports in `tests/unit/tpm/test_package_surface.py`, `tests/unit/planning/test_package_surface.py`, and `tests/unit/test_import_contract.py`
-- [X] T009 [P] Add shared fixture loading helpers for planning datasets, TPM artifacts, and planning problems in `tests/integration/planning/fixture_utils.py`
-- [X] T010 [P] Add fixture-schema and provenance validation for planning and TPM artifacts in `tests/integration/planning/test_fixture_schema.py` and `tests/integration/planning/test_tpm_fixture_schema.py`
-- [X] T010a [P] Add end-to-end reproducibility contract validation for export, TPM query, and planning assembly or solve behavior in `tests/integration/planning/test_reproducibility_contract.py`
-- [X] T011 Create foundational module scaffolds and lazy export placeholders in `src/open_energy_lab/simulator/planning_export.py`, `src/open_energy_lab/tpm/artifact.py`, `src/open_energy_lab/tpm/data.py`, `src/open_energy_lab/tpm/features.py`, `src/open_energy_lab/tpm/fit.py`, `src/open_energy_lab/tpm/query.py`, `src/open_energy_lab/tpm/piecewise.py`, `src/open_energy_lab/tpm/optional_spflow.py`, `src/open_energy_lab/planning/dataset.py`, `src/open_energy_lab/planning/problem.py`, `src/open_energy_lab/planning/piecewise.py`, and `src/open_energy_lab/planning/optional_solver.py`
-- [X] T012 [P] Add feature-scope and dependency-boundary placeholders in `docs/migration/tpm-planning.md`, `docs/migration/api-maturity.md`, and `docs/migration/dependency-policy.md`
+- [X] T006 Consolidate completed lazy import, package surface, and no-legacy-import coverage in `tests/unit/tpm/test_import_boundary.py`, `tests/unit/planning/test_import_boundary.py`, `tests/unit/test_import_contract.py`, and `tests/unit/test_no_legacy_imports.py`
+- [X] T007 Consolidate completed planning/TPM fixture schema and provenance helpers in `tests/integration/planning/fixture_utils.py`, `tests/integration/planning/test_fixture_schema.py`, and `tests/integration/planning/test_tpm_fixture_schema.py`
+- [X] T008 Consolidate completed typed feature, dataset, artifact, and planning definition models in `src/open_energy_lab/tpm/`, `src/open_energy_lab/planning/`, and `src/open_energy_lab/simulator/planning_export.py`
+- [ ] T009 [P] Replace `tests/unit/test_optional_dependency_boundaries.py` with lazy-import coverage proving required `spflow`, `torch`, `pyomo`, and `highspy` remain absent from `sys.modules` until their workflows run, and update references in `tests/unit/test_lazy_dependency_boundaries.py`, `AGENTS.md`, and `specs/009-tpm-planning/quickstart.md`
+- [ ] T010 [P] Add required-install compatibility diagnostic tests, including incompatible backend versions and missing required installations, in `tests/unit/tpm/test_backend_compatibility.py` and `tests/unit/planning/test_backend_compatibility.py`
+- [ ] T011 [P] Add TPM artifact schema-v2 tests for backend generation, API version, execution mode, project-relative sidecar locator, SHA-256 integrity, atomic replacement, and schema-v1 legacy payload rejection in `tests/unit/tpm/test_artifact_schema.py`
+- [ ] T012 [P] Add query contract tests that distinguish default `production` from explicit `fixture_replay` and forbid automatic empirical/metadata fallback in `tests/unit/tpm/test_query.py`
+- [ ] T013 Implement TPM artifact schema v2, project-relative sidecar locators, SHA-256 verification, atomic sibling-file replacement, production/fixture execution modes, and schema-v1 incompatibility errors in `src/open_energy_lab/tpm/artifact.py`
+- [ ] T014 Create current-SPFlow `tests/fixtures/tpm/tpm_artifact_v2.json`, retain `tests/fixtures/tpm/tpm_artifact_v1.json` for legacy rejection, and update `tests/fixtures/tpm/tpm_artifact_unsupported_version.json`, `tests/fixtures/tpm/tpm_query_case.json`, and `tests/fixtures/tpm/README.md`
 
-**Checkpoint**: Shared scaffolding, boundary checks, and fixture utilities are
-in place.
-
----
-
-## Phase 3: User Story 1 - Export TPM-Ready Planning Datasets From Simulator Families (Priority: P1)
-
-**Goal**: Let a library user export deterministic, persisted planning datasets
-from evaluated simulator families with explicit flattened series fields and a
-canonical `shortfall` target.
-
-**Independent Test**: A reviewer can load committed simulator-family fixtures
-plus design metadata, export a planning dataset offline, and verify row count,
-column ordering, `ghi_<step>` and `load_<step>` fields, `shortfall`
-derivation, and provenance metadata.
-
-### Tests for User Story 1
-
-- [X] T013 [P] [US1] Add unit coverage for export request validation, scenario alignment failures, and unsupported flattened fields in `tests/unit/simulator/test_planning_export.py`
-- [X] T014 [P] [US1] Add unit coverage for planning dataset schema versioning, row ordering, `shortfall` aggregation semantics, and export reproducibility metadata in `tests/unit/planning/test_dataset_schema.py`
-- [X] T015 [P] [US1] Add offline simulator-family-to-dataset integration coverage in `tests/integration/planning/test_dataset_export.py`
-
-### Implementation for User Story 1
-
-- [X] T016 [US1] Implement export request models, flattened column naming, and horizon-level `shortfall` derivation in `src/open_energy_lab/simulator/planning_export.py`
-- [X] T016a [US1] Document and preserve the selected simulator feature-flattening and planning-target derivation behavior from `legacy/old_tpm/src_py/simulator/feature_engineering.py` in `src/open_energy_lab/simulator/planning_export.py` and `docs/migration/tpm-planning.md`
-- [X] T017 [US1] Implement planning dataset artifact models, versioned persistence, reload helpers, seed lineage, numeric tolerances, and export reproducibility metadata in `src/open_energy_lab/planning/dataset.py`
-- [X] T017a [US1] Define and validate the canonical persisted planning-dataset payload shape, including whether JSON stores rows directly or wraps tabular content with metadata, in `src/open_energy_lab/planning/dataset.py` and `tests/unit/planning/test_dataset_schema.py`
-- [X] T018 [US1] Export the planning-dataset workflow from `src/open_energy_lab/simulator/__init__.py` and `src/open_energy_lab/planning/__init__.py`
-- [X] T019 [US1] Populate committed planning-dataset export fixtures and provenance in `tests/fixtures/planning/planning_dataset_export_case.json`, `tests/fixtures/tpm/planning_dataset_v1.json`, `tests/fixtures/planning/README.md`, and `tests/fixtures/tpm/README.md`
-- [X] T020 [US1] Document dataset export usage, target semantics, and preserve/improve/reject notes in `docs/migration/tpm-planning.md` and `specs/009-tpm-planning/quickstart.md`
-
-**Checkpoint**: User Story 1 is functional and independently testable through
-`tests/integration/planning/test_dataset_export.py`.
+**Checkpoint**: Required dependencies are reproducibly installable, imports
+remain lazy, and artifacts cannot silently cross backend generations or modes.
 
 ---
 
-## Phase 4: User Story 2 - Fit, Reload, And Query TPM Artifacts (Priority: P2)
+## Phase 3: User Story 1 - Export TPM-Ready Planning Datasets (Priority: P1)
 
-**Goal**: Let a researcher fit a TPM artifact from exported planning datasets,
-reload it offline, and evaluate conditional risk or likelihood queries with
-typed feature metadata and preserved piecewise approximation metadata.
+**Goal**: Preserve the completed simulator-owned export and prove it remains
+stable after required backend and artifact changes.
 
-**Independent Test**: A reviewer can fit a TPM artifact from a committed
-planning dataset fixture, reload it offline, and verify deterministic feature
-typing, schema metadata, marginalization behavior, conditional-query outputs,
-and fixture-backed piecewise metadata behavior.
+**Independent Test**: Export the committed simulator family twice and verify
+identical row/column ordering, flattened fields, `shortfall`, and provenance
+without importing SPFlow, Pyomo, or HiGHS during export.
 
-### Tests for User Story 2
+- [X] T015 [US1] Consolidate completed export request validation, alignment failure, and flattened field tests in `tests/unit/simulator/test_planning_export.py`
+- [X] T016 [US1] Consolidate completed planning dataset schema, ordering, shortfall, and reproducibility tests in `tests/unit/planning/test_dataset_schema.py` and `tests/integration/planning/test_dataset_export.py`
+- [X] T017 [US1] Consolidate completed planning export and dataset persistence implementation in `src/open_energy_lab/simulator/planning_export.py` and `src/open_energy_lab/planning/dataset.py`
+- [X] T018 [US1] Consolidate completed export public APIs in `src/open_energy_lab/simulator/__init__.py` and `src/open_energy_lab/planning/__init__.py`
+- [X] T019 [US1] Consolidate completed export fixtures and provenance in `tests/fixtures/planning/planning_dataset_export_case.json`, `tests/fixtures/tpm/planning_dataset_v1.json`, and `tests/fixtures/planning/README.md`
+- [ ] T020 [US1] Add a regression asserting dataset export/reload does not import required TPM or solver backends in `tests/integration/planning/test_dataset_export.py`
 
-- [X] T021 [P] [US2] Add typed-feature and data-handler unit coverage for continuous, binary, categorical, and mixed feature schemas in `tests/unit/tpm/test_features.py` and `tests/unit/tpm/test_data_handler.py`
-- [X] T022 [P] [US2] Add TPM artifact schema, unsupported-version, unseen categorical value, and out-of-bounds feature assignment unit coverage in `tests/unit/tpm/test_artifact_schema.py`
-- [X] T023 [P] [US2] Add conditional-query, marginalization, missing required decision-feature, and incompatible target-request unit coverage in `tests/unit/tpm/test_query.py`
-- [X] T024 [P] [US2] Add fit-reload-query integration coverage for exported planning datasets in `tests/integration/planning/test_tpm_fit_workflow.py`
-
-### Implementation for User Story 2
-
-- [X] T025 [US2] Migrate typed feature metadata, normalization, and schema helpers from `legacy/old_tpm/src_py/tpm/data/datahandler.py`, `legacy/old_tpm/src_py/tpm/data/features/feature.py`, `legacy/old_tpm/src_py/tpm/data/features/binary.py`, `legacy/old_tpm/src_py/tpm/data/features/categorical.py`, `legacy/old_tpm/src_py/tpm/data/features/contiguous.py`, `legacy/old_tpm/src_py/tpm/data/features/mixed.py`, and `legacy/old_tpm/src_py/tpm/data/types.py` into `src/open_energy_lab/tpm/features.py` and `src/open_energy_lab/tpm/data.py`
-- [X] T026 [US2] Implement versioned TPM artifact models, JSON metadata persistence, supported-version loading, and documented SPN payload representation handling in `src/open_energy_lab/tpm/artifact.py`
-- [X] T027 [US2] Implement SPFlow-backed fit adapters, lazy backend loading, and training configuration capture in `src/open_energy_lab/tpm/fit.py` and `src/open_energy_lab/tpm/optional_spflow.py`
-- [X] T028 [US2] Implement conditional probability, log-likelihood, and marginalization queries in `src/open_energy_lab/tpm/query.py`
-- [X] T029 [US2] Implement canonical piecewise-approximation metadata, fit/query tolerance capture, and preserved solver-facing encoding helpers in `src/open_energy_lab/tpm/piecewise.py` using `legacy/old_tpm/src_py/tpm/spn/main.py`, `legacy/old_tpm/src_py/tpm/spn/encoding.py`, `legacy/old_tpm/src_py/tpm/spn/utils_tangent.py`, and `legacy/old_tpm/src_py/utils/densities.py` as selective migration evidence
-- [X] T030 [US2] Export TPM public APIs from `src/open_energy_lab/tpm/__init__.py`
-- [X] T031 [US2] Populate TPM artifact, unsupported-version, and query fixtures with provenance in `tests/fixtures/tpm/tpm_artifact_v1.json`, `tests/fixtures/tpm/tpm_artifact_unsupported_version.json`, `tests/fixtures/tpm/tpm_query_case.json`, and `tests/fixtures/tpm/README.md`
-- [X] T032 [US2] Document typed-feature migration, lazy SPFlow backend boundary, and query workflow in `docs/migration/tpm-planning.md` and `specs/009-tpm-planning/quickstart.md`
-
-**Checkpoint**: User Story 2 is functional and independently testable through
-`tests/integration/planning/test_tpm_fit_workflow.py`.
+**Checkpoint**: US1 remains independently complete and import-light.
 
 ---
 
-## Phase 5: User Story 3 - Solve Chance-Constrained Planning Problems From TPM Artifacts (Priority: P3)
+## Phase 4: User Story 2 - Fit, Reload, And Query Current-SPFlow Artifacts (Priority: P2)
 
-**Goal**: Let a planner assemble and optionally solve a first-release
-piecewise MILP that chooses battery and solar decision variables subject to a
-direct `shortfall` chance constraint.
+**Goal**: Port validated TPM behavior to SPFlow 1.1, persist current model
+sidecars, and make real production queries the default while retaining only an
+explicit fixture replay mode.
 
-**Independent Test**: A reviewer can load committed TPM and planning-problem
-fixtures, assemble the planning model offline without a solver, validate
-decision-scope and constraint semantics, and optionally solve the model with a
-supported backend to confirm reproducible cost and risk summaries.
+**Independent Test**: Fit a real SPFlow 1.1 model from the committed planning
+dataset, persist and reload it, evaluate conditional likelihood/probability
+with explicit marginalization, and reproduce the result within tolerance with
+fixed preprocessing and Torch seeds.
 
-### Tests for User Story 3
+### Completed Baseline For User Story 2
 
-- [X] T033 [P] [US3] Add planning-problem validation unit coverage for battery-and-solar scope, threshold semantics, and chance-limit validation in `tests/unit/planning/test_problem.py`
-- [X] T033a [P] [US3] Add unit coverage for the exact first-release decision-variable types supported by battery and solar planning in `tests/unit/planning/test_problem.py`
-- [X] T034 [P] [US3] Add piecewise-assembly, reproducibility-metadata, and optional-solver boundary unit coverage in `tests/unit/planning/test_piecewise.py` and `tests/unit/planning/test_optional_solver.py`
-- [X] T035 [P] [US3] Add offline planning-model assembly integration coverage in `tests/integration/planning/test_problem_assembly.py`
-- [X] T036 [P] [US3] Add repeated-run optional solve coverage that compares selected design, objective value, estimated risk, or infeasibility diagnostics, and deterministic skip coverage in `tests/integration/planning/test_optional_solve.py`
+- [X] T021 [US2] Consolidate completed continuous, binary, categorical, and mixed feature schema behavior in `src/open_energy_lab/tpm/features.py`, `src/open_energy_lab/tpm/data.py`, `tests/unit/tpm/test_features.py`, and `tests/unit/tpm/test_data_handler.py`
+- [X] T022 [US2] Consolidate completed versioned TPM JSON metadata and reload baseline in `src/open_energy_lab/tpm/artifact.py` and `tests/unit/tpm/test_artifact_schema.py`
+- [X] T023 [US2] Consolidate completed legacy-generation fit adapter baseline in `src/open_energy_lab/tpm/fit.py` and `src/open_energy_lab/tpm/optional_spflow.py`
+- [X] T024 [US2] Consolidate completed conditional query and marginalization baseline in `src/open_energy_lab/tpm/query.py` and `tests/unit/tpm/test_query.py`
+- [X] T025 [US2] Consolidate completed piecewise metadata and encoding helper baseline in `src/open_energy_lab/tpm/piecewise.py` and `tests/unit/tpm/test_piecewise.py`
+- [X] T026 [US2] Consolidate completed TPM root API and fixture-backed workflow coverage in `src/open_energy_lab/tpm/__init__.py` and `tests/integration/planning/test_tpm_fit_workflow.py`
 
-### Implementation for User Story 3
+### Corrective Tests For User Story 2
 
-- [X] T037 [US3] Implement planning problem definitions, decision validation, chance-constraint metadata, solver-configuration reproducibility fields, and deterministic fixture baseline handling in `src/open_energy_lab/planning/problem.py`
-- [X] T038 [US3] Implement solver-facing piecewise assembly helpers that consume TPM approximation metadata in `src/open_energy_lab/planning/piecewise.py`
-- [X] T038a [US3] Document and enforce the supported first-release planning decision-variable set in `src/open_energy_lab/planning/problem.py` and `src/open_energy_lab/planning/piecewise.py`
-- [X] T039 [US3] Implement Pyomo-backed solver-model handoff, lazy backend loading, unavailable-backend diagnostics, and solve-summary handling in `src/open_energy_lab/planning/optional_solver.py`
-- [X] T040 [US3] Export planning assembly and optional solve APIs from `src/open_energy_lab/planning/__init__.py`
-- [X] T041 [US3] Populate planning-problem and optional-solve fixtures with provenance, solver-configuration metadata, and deterministic baseline expectations in `tests/fixtures/planning/planning_problem_case.json` and `tests/fixtures/planning/README.md`
-- [X] T042 [US3] Document planning model assembly, Pyomo-backed solve behavior, direct chance-constraint semantics, solver reproducibility expectations, and explicit backend-specific follow-up validation guidance for SPFlow and Pyomo in `docs/migration/tpm-planning.md` and `specs/009-tpm-planning/quickstart.md`
-- [X] T042a [US3] Document the unified reproducibility contract in `specs/009-tpm-planning/quickstart.md` and `docs/migration/tpm-planning.md`
+- [ ] T027 [P] [US2] Add real SPFlow 1.1 structure-learning tests for Normal, Bernoulli, and Categorical typed leaf scopes, Torch tensors, canonical seed 13, robustness seeds 37 and 101, fit configuration translation, a 30-second fixture-fit budget, and repeated canonical fits whose stable structure, parameter, and likelihood summaries agree within `1e-9` in `tests/integration/tpm/test_spflow_v1_fit.py`
+- [ ] T028 [P] [US2] Add real SPFlow 1.1 likelihood and marginalization tests covering NaN evidence, structural removal semantics, tensor output reduction, conditional probability, missing decision features, out-of-bound continuous values, unseen categories, invalid binary values, and a 30-second fixture-query budget in `tests/integration/tpm/test_spflow_v1_query.py`
+- [ ] T029 [P] [US2] Add current model sidecar save/load, manifest hash verification, corrupt payload, and pre-1.0 rejection tests in `tests/integration/tpm/test_spflow_v1_persistence.py`
+- [ ] T030 [P] [US2] Add mixed-feature mapping and pre-SPFlow validation tests for continuous bounds, binary domains, categorical membership, required decision features, supported mixed scopes, dtypes, and structured errors containing `feature_name`, `expected_domain`, `reason`, and an optional `supplied_value` in `tests/unit/tpm/test_spflow_v1_features.py`
+- [ ] T031 [P] [US2] Add tests proving production mode fails without a valid current payload while explicit fixture replay remains deterministic in `tests/integration/tpm/test_execution_modes.py`
+- [ ] T032 [P] [US2] Add current-SPFlow-to-piecewise-MIO compiler contract tests for sum/product graphs with one channel/repetition, Normal/Bernoulli/Categorical leaves, the canonical five-breakpoint configuration, invalid breakpoint rejection, and type-and-scope diagnostics for arbitrary modules, custom leaves, extra channels/repetitions, shared subgraphs, and legacy histograms in `tests/unit/tpm/test_spflow_v1_mio.py`
+- [ ] T033 [US2] Add native-likelihood versus current-SPFlow-to-piecewise-MIO probability parity tests using five breakpoints and enforcing `1e-6` maximum absolute error and `1e-9` repeatability in `tests/integration/tpm/test_spflow_v1_mio_parity.py`
 
-**Checkpoint**: User Story 3 is functional and independently testable through
-`tests/integration/planning/test_problem_assembly.py`, with solve checks
-remaining optional when solver dependencies are unavailable.
+### Corrective Implementation For User Story 2
 
----
+- [ ] T034 [US2] Implement SPFlow 1.1 capability/version diagnostics and lazy loading without legacy `spn.*` runtime imports in `src/open_energy_lab/tpm/optional_spflow.py`
+- [ ] T035 [US2] Implement typed feature-to-`Scope` mapping for Normal, Bernoulli, and Categorical leaves, treating mixed models as concrete leaves on separate scopes, and translate legacy fit configuration to `learn_spn` in `src/open_energy_lab/tpm/features.py` and `src/open_energy_lab/tpm/fit.py`
+- [ ] T036 [US2] Implement deterministic Torch-backed fitting for canonical seed 13 and robustness seeds 37/101, persist fit-relevant determinism configuration and stable structure/parameter/likelihood summaries for repeatability comparison without relying on serialized-byte equality, and persist schema-v2 model sidecars in `src/open_energy_lab/tpm/fit.py` and `src/open_energy_lab/tpm/artifact.py`
+- [ ] T037 [US2] Implement SPFlow 1.1 likelihood reduction, NaN-evidence marginalization, structural marginalization, conditional query semantics, and pre-backend structured feature errors with reasons `missing`, `out_of_bounds`, `unseen_category`, or `invalid_binary` and an optional supplied value in `src/open_energy_lab/tpm/query.py`
+- [ ] T038 [US2] Gate empirical dataset evaluation behind explicit `fixture_replay` and remove automatic table/metadata fallback in `src/open_energy_lab/tpm/query.py` and `src/open_energy_lab/tpm/fit.py`
+- [ ] T039 [US2] Implement the versioned current-SPFlow-to-piecewise-MIO compiler for sum/product, single-channel, single-repetition Normal/Bernoulli/Categorical graphs with five canonical breakpoints, recorded explicit overrides, invalid-configuration rejection, and module-type-and-scope errors in `src/open_energy_lab/tpm/mio.py`
+- [ ] T040 [US2] Export execution modes, backend compatibility errors, artifact-version errors, and current-SPFlow capability metadata from `src/open_energy_lab/tpm/__init__.py` and extend `tests/unit/tpm/test_package_surface.py`
+- [ ] T041 [US2] Replace fake-backend production fixtures/examples with reproducibly generated real current-SPFlow schema-v2 artifacts recording source dataset/configuration, seed, backend/compiler versions, five-breakpoint configuration, MIO epsilon, and sidecar SHA-256; provide a deterministic regeneration/verification command while retaining clearly labeled fixture replay evidence in `tests/fixtures/tpm/`, `examples/tpm_planning/run_generic_rows_pipeline.py`, and `examples/tpm_planning/README.md`
 
-## Phase 6: Polish and Cross-Cutting Concerns
-
-**Purpose**: Finalize migration guidance, repository notes, and validation
-commands that apply across all stories.
-
-- [X] T043 [P] Update public API maturity and dependency classification for `open_energy_lab.tpm`, `open_energy_lab.planning`, and simulator dataset export, including SPFlow and Pyomo as canonical workflow backends with lazy import boundaries, in `docs/migration/api-maturity.md` and `docs/migration/dependency-policy.md`
-- [X] T044 [P] Update fixture provenance, environment assumptions, and parity guidance for TPM-planning validation in `docs/migration/fixture-provenance.md`, `docs/migration/environment-assumptions.md`, and `docs/migration/parity-validation.md`
-- [X] T045 [P] Update migration index and repository guidance for the TPM-planning feature in `docs/migration/README.md` and `AGENTS.md`
-- [X] T046 Run the validation commands documented in `specs/009-tpm-planning/quickstart.md`: `uv run pytest tests/unit/planning tests/unit/tpm tests/integration/planning`, `uv run pytest tests/unit/test_optional_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py`, `uv run pytest tests/unit/demand tests/unit/simulator tests/integration/demand tests/integration/simulator`, `uv run python -c "import open_energy_lab; import open_energy_lab.simulator; import open_energy_lab.tpm; import open_energy_lab.planning"`, and `rg "from legacy|import legacy" src/open_energy_lab/tpm src/open_energy_lab/planning src/open_energy_lab/simulator tests/unit/planning tests/unit/tpm tests/integration/planning docs/migration`
-- [X] T047 Document final validation outcomes and any skipped optional checks in `specs/009-tpm-planning/quickstart.md`
+**Checkpoint**: US2 is complete only when real current-SPFlow fit/reload/query
+and current-SPFlow-to-piecewise-MIO parity pass; fixture replay alone is insufficient.
 
 ---
 
-## Dependencies and Execution Order
+## Phase 5: User Story 3 - Solve Chance-Constrained Planning Problems (Priority: P3)
+
+**Goal**: Consume the supported current-SPFlow-to-piecewise-MIO compiler output
+and solve the battery-and-solar planning problem through required Pyomo/HiGHS,
+with Gurobi remaining supplemental.
+
+**Independent Test**: Starting with a real current-SPFlow artifact, compile the
+supported piecewise model, solve optimal and infeasible cases through
+`SolverFactory("highs")`, and reproduce design, objective, risk, termination,
+and solver metadata across repeated runs.
+
+### Completed Baseline For User Story 3
+
+- [X] T042 [US3] Consolidate completed planning problem validation and direct battery/solar decision scope in `src/open_energy_lab/planning/problem.py` and `tests/unit/planning/test_problem.py`
+- [X] T043 [US3] Consolidate completed piecewise planning assembly baseline in `src/open_energy_lab/planning/piecewise.py` and `tests/unit/planning/test_piecewise.py`
+- [X] T044 [US3] Consolidate completed Pyomo handoff and solve summary baseline in `src/open_energy_lab/planning/optional_solver.py` and `tests/unit/planning/test_optional_solver.py`
+- [X] T045 [US3] Consolidate completed planning assembly and fixture-backed solve coverage in `tests/integration/planning/test_problem_assembly.py` and `tests/integration/planning/test_optional_solve.py`
+- [X] T046 [US3] Consolidate completed planning public API and fixture metadata in `src/open_energy_lab/planning/__init__.py` and `tests/fixtures/planning/planning_problem_case.json`
+
+### Corrective Tests For User Story 3
+
+- [ ] T047 [P] [US3] Add tests that omission of solver configuration selects `highs` and missing/incompatible Pyomo or `highspy` is a required-install failure in `tests/unit/planning/test_highs_solver.py`
+- [ ] T048 [P] [US3] Add real Pyomo/HiGHS optimal, infeasible, integrality, 30-second time limit, one-thread execution, solution-loading, and `1e-9` repeatability tests in `tests/integration/planning/test_highs_solver.py`
+- [ ] T049 [P] [US3] Add environment-independent policy tests for explicit Gurobi selection, missing binary/license diagnostics, permitted optional skip behavior, and parsing fixture-defined comparison tolerances in `tests/unit/planning/test_gurobi_solver.py`
+- [ ] T050 [US3] Add an end-to-end real current-SPFlow artifact to current-SPFlow-to-piecewise-MIO compiler output to Pyomo/HiGHS solve test in `tests/integration/planning/test_spflow_v1_highs_pipeline.py`
+
+### Corrective Implementation For User Story 3
+
+- [ ] T051 [US3] Make `highs` the default solver with seed 13, one thread, 30-second time limit, and `1e-9` tolerance, recording Pyomo, `highspy`, interface, options, termination, and versions in `src/open_energy_lab/planning/problem.py` and `src/open_energy_lab/planning/optional_solver.py`
+- [ ] T052 [US3] Remove successful skip behavior for required Pyomo/HiGHS failures while retaining explicit supplemental-solver skip behavior in `src/open_energy_lab/planning/optional_solver.py`
+- [ ] T053 [US3] Adapt planning piecewise assembly to consume versioned current-SPFlow-to-piecewise-MIO compiler output and reject incompatible compiler metadata in `src/open_energy_lab/planning/piecewise.py` and `src/open_energy_lab/planning/problem.py`
+- [ ] T054 [US3] Update planning fixtures for required HiGHS optimal/infeasible outcomes, `1e-9` repeatability, and supplemental Gurobi comparison metadata defining `reference_solver`, `candidate_solver`, `objective_tolerance`, and `risk_tolerance` in `tests/fixtures/planning/planning_problem_case.json` and `tests/fixtures/planning/README.md`
+- [ ] T055 [US3] Port the real backend pipeline to SPFlow 1.1 and default HiGHS in `examples/tpm_planning/run_real_backend_pipeline.py` and `examples/tpm_planning/README.md`
+- [ ] T056 [US3] Update planning solve and reproducibility guidance for required HiGHS and optional Gurobi in `docs/migration/tpm-planning.md` and `specs/009-tpm-planning/quickstart.md`
+
+**Checkpoint**: US3 requires a real, license-free current-SPFlow-to-HiGHS solve;
+assembly-only and fake-backend results do not complete the story.
+
+---
+
+## Phase 6: Polish And Cross-Cutting Validation
+
+**Purpose**: Reconcile repository-wide maturity claims and prove the corrected
+009 feature integrates with merged 008 behavior.
+
+- [X] T057 Consolidate completed TPM/planning migration, maturity, dependency, fixture provenance, and environment documentation in `docs/migration/`
+- [X] T058 Consolidate completed repository guidance and relevant validation command documentation in `AGENTS.md` and `specs/009-tpm-planning/quickstart.md`
+- [ ] T059 [P] Update current-SPFlow migration provenance, refit policy, compiler scope, and parity limitations in `docs/migration/tpm-planning.md`, `docs/migration/parity-validation.md`, and `docs/migration/fixture-provenance.md`
+- [ ] T060 [P] Update API maturity and dependency classifications so required SPFlow/Pyomo/HiGHS and optional Gurobi are consistent in `docs/migration/api-maturity.md`, `docs/migration/dependency-policy.md`, and `docs/migration/README.md`
+- [ ] T061 Run required US2/US3 focused validation and record exact outcomes plus separate fit, query, compile, and solve durations in `specs/009-tpm-planning/quickstart.md`
+- [ ] T062 Run the complete demand, simulator, TPM, planning, lazy-import, import-contract, and no-legacy-import regression commands from `AGENTS.md` and record outcomes in `specs/009-tpm-planning/quickstart.md`
+- [ ] T063 Add and run optional licensed Gurobi integration coverage that records HiGHS and Gurobi objective/risk values, measured absolute differences, fixture-defined tolerances, and pass/fail or availability-skip results, then run optional legacy parity checks without weakening required validation in `tests/integration/planning/test_gurobi_solver.py` and `specs/009-tpm-planning/quickstart.md`
+
+---
+
+## Dependencies And Execution Order
 
 ### Phase Dependencies
 
-- Phase 1 must complete before Phase 2.
-- Phase 2 must complete before any user story implementation begins.
-- US1 is the MVP and must complete before US2 because TPM fitting depends on
-  the stable planning dataset contract.
-- US2 must complete before US3 because planning assembly depends on the TPM
-  artifact schema, query semantics, and piecewise approximation metadata.
-- Phase 6 depends on the completion of the selected user stories.
+- T003 blocks T004, T005, and all required-backend corrective work. T004 and
+  T005 do not block Phase 2 implementation after T003 completes, but both must
+  finish before T061 and T062 final validation.
+- Phase 2 artifact/mode contracts block US2 and US3 corrective implementation.
+- US1 baseline is complete; T020 can run after Phase 2 and in parallel with
+  early US2 tests.
+- US2 current-SPFlow fit/query work precedes its
+  current-SPFlow-to-piecewise-MIO compiler tasks.
+- US2 compiler parity (T032, T033, T039) blocks US3 integration tasks T050 and
+  T053.
+- US3 HiGHS unit/integration work can begin after Phase 2, but end-to-end
+  completion depends on US2 compiler output.
+- Phase 6 final validation depends on all selected corrective tasks.
 
-### User Story Dependency Graph
+### Corrective Dependency Graph
 
 ```text
-Setup -> Foundational -> US1 -> US2 -> US3 -> Polish
+T003 required stack and supported-Python evidence
+  |-> T004 matching required-backend CI matrix
+  |-> T005 dependency-policy documentation
+  `-> T009-T014 foundational contracts
+        |-> T020 US1 regression
+        |-> T027-T031 current-SPFlow fit/query
+        |     `-> T032-T033, T039 compiler parity
+        |           `-> T050, T053 current-SPFlow-to-HiGHS integration
+        `-> T047-T049, T051-T052 solver policy
+              `-> T050 end-to-end pipeline
+
+T004 + T005 + T050 + remaining corrective work
+  `-> T059-T060 documentation reconciliation
+        `-> T061-T062 required final validation
+              `-> T063 optional Gurobi/legacy follow-up
 ```
 
 ## Parallel Execution Examples
 
-### Setup
-
-```text
-T002 tests/fixtures/planning/planning_dataset_export_case.json
-T003 tests/fixtures/planning/README.md
-T004 docs/migration/tpm-planning.md
-```
-
 ### Foundational
 
 ```text
-T005 tests/unit/tpm/test_import_boundary.py
-T006 tests/unit/tpm/test_no_legacy_imports.py
-T009 tests/integration/planning/fixture_utils.py
-T010 tests/integration/planning/test_fixture_schema.py
-T010a tests/integration/planning/test_reproducibility_contract.py
-T012 docs/migration/tpm-planning.md
-```
-
-### User Story 1
-
-```text
-T013 tests/unit/simulator/test_planning_export.py
-T014 tests/unit/planning/test_dataset_schema.py
-T015 tests/integration/planning/test_dataset_export.py
+T009 tests/unit/test_lazy_dependency_boundaries.py
+T010 tests/unit/tpm/test_backend_compatibility.py
+T011 tests/unit/tpm/test_artifact_schema.py
+T012 tests/unit/tpm/test_query.py
 ```
 
 ### User Story 2
 
 ```text
-T021 tests/unit/tpm/test_features.py
-T022 tests/unit/tpm/test_artifact_schema.py
-T023 tests/unit/tpm/test_query.py
-T024 tests/integration/planning/test_tpm_fit_workflow.py
+T027 tests/integration/tpm/test_spflow_v1_fit.py
+T028 tests/integration/tpm/test_spflow_v1_query.py
+T029 tests/integration/tpm/test_spflow_v1_persistence.py
+T030 tests/unit/tpm/test_spflow_v1_features.py
+T031 tests/integration/tpm/test_execution_modes.py
+T032 tests/unit/tpm/test_spflow_v1_mio.py
 ```
 
 ### User Story 3
 
 ```text
-T033 tests/unit/planning/test_problem.py
-T033a tests/unit/planning/test_problem.py
-T034 tests/unit/planning/test_piecewise.py
-T035 tests/integration/planning/test_problem_assembly.py
-T036 tests/integration/planning/test_optional_solve.py
+T047 tests/unit/planning/test_highs_solver.py
+T048 tests/integration/planning/test_highs_solver.py
+T049 tests/unit/planning/test_gurobi_solver.py
 ```
 
 ## Implementation Strategy
 
-### MVP First
+### Revised MVP
 
-1. Complete Phases 1 and 2.
-2. Deliver US1 to establish the stable simulator-to-dataset workflow.
-3. Validate `tests/integration/planning/test_dataset_export.py` before
-   expanding scope.
+US1 is already delivered. The corrective MVP is:
+
+1. Complete T003 and Phase 2.
+2. Complete US2 real current-SPFlow fit/reload/query through T038.
+3. Validate US2 independently before implementing the new
+   current-SPFlow-to-piecewise-MIO compiler.
 
 ### Incremental Delivery
 
-1. Add US2 to deliver typed-feature TPM fit, reload, and query behavior from
-   persisted planning datasets.
-2. Add US3 to deliver planning model assembly and optional solve behavior from
-   persisted TPM artifacts.
-3. Finish Phase 6 to align migration docs, repository guidance, and
-   validation commands with the shipped surface.
+1. Deliver SPFlow 1.1 fit/query and explicit execution modes.
+2. Deliver the current-SPFlow-to-piecewise-MIO compiler with native likelihood
+   parity.
+3. Deliver required Pyomo/HiGHS solving and end-to-end planning integration.
+4. Reconcile documentation and run full 008+009 regression validation.
 
-### Final Verification
+### Completion Rule
 
-1. Run the validation commands listed in
-   `specs/009-tpm-planning/quickstart.md`.
-2. Update migration, fixture, and repository guidance with final outcomes and
-   any skipped optional checks.
-3. Keep all new product code out of `legacy/*`.
+The corrected feature is not complete until T061 and T062 pass. Fake-backend,
+fixture-only, assembly-only, or skipped required-backend results cannot satisfy
+the revised specification.
 
 ## Notes
 
-- [P] tasks are safe to run in parallel because they touch different files and
-  have no dependency on unfinished work.
-- Every task names exact files or directories to keep execution unambiguous.
-- All checklist entries follow the required `- [ ] T### [P?] [Story?] ...`
-  format.
+- Completed baseline tasks are intentionally consolidated rather than copied
+  one-for-one from the obsolete granular checklist.
+- New tasks use strict sequential IDs and exact file paths.
+- Gurobi and legacy runtime checks are supplementary; current SPFlow,
+  Pyomo, and HiGHS are required.

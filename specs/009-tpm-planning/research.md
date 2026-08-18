@@ -85,24 +85,26 @@ documented input bounds instead of relying on opaque serialized state.
 - Persist raw Python objects only: rejected because the new library needs
   explicit contracts and offline reviewable fixtures.
 
-## Decision 5: Keep SPFlow and Pyomo as canonical workflow backends behind lazy adapters
+## Decision 5: Require SPFlow and Pyomo while retaining lazy imports
 
 **Decision**: Fitting and solver-facing model assembly will use SPFlow and
 Pyomo as the canonical backends inside `open_energy_lab.tpm` and
-`open_energy_lab.planning`, while package roots remain import-light through
-lazy adapters.
+`open_energy_lab.planning`. Both are installed by default, while package roots
+remain import-light through lazy workflow-boundary adapters.
 
 **Rationale**: The constitution and current repo tests already enforce import
-boundaries. SPFlow and Pyomo are not peripheral to this feature; they are the
-intended TPM-learning and planning-model backends. They should still load only
-when callers explicitly fit TPMs, query TPM artifacts through backend-backed
-paths, or assemble solver models that require them.
+boundaries. Required installation and lazy import solve different problems:
+SPFlow and Pyomo are fundamental to the feature, while deferred loading avoids
+cost and side effects for weather, demand, and simulator-only users. Required
+real-backend CI prevents lazy loading from hiding an incompatible installation.
 
 **Alternatives considered**:
 
-- Make SPFlow and Pyomo unconditional import-time dependencies: rejected
-  because it widens ordinary package imports and breaks the import-light
-  boundary expected elsewhere in the library.
+- Import SPFlow and Pyomo unconditionally at package-root import time: rejected
+  because installation policy does not require eager loading and the library
+  retains an import-light boundary.
+- Put the backends in an opt-in extra: rejected because the clarified feature
+  contract requires them in every standard project installation.
 - Skip library-owned fit/query support entirely: rejected because the feature
   explicitly includes fitting, reload, and query workflows.
 
@@ -126,21 +128,24 @@ with the selected first-release contract.
 - Pre-enumerated design catalogs only: rejected because the spec requires
   direct typed decision-variable optimization.
 
-## Decision 7: Define the first planning surface as problem assembly first, solve second
+## Decision 7: Require a real HiGHS solve while preserving assembly-only use
 
 **Decision**: `open_energy_lab.planning` will first guarantee deterministic
-problem-definition validation and model assembly, with actual solver execution
-as an optional follow-up when supported solver backends are available.
+problem-definition validation and model assembly, and the standard workflow and
+routine CI will execute the model with Pyomo's `highs` solver backed by the
+required `highspy` package. Callers may still inspect assembly without solving.
 
-**Rationale**: The feature must remain reviewable in environments without
-commercial solvers or solver binaries. A strong assembly contract gives the
-library a stable planning surface without forcing solver availability into the
-routine review path.
+**Rationale**: HiGHS provides a license-free, pip-installable solver and Pyomo
+supports it directly. This makes end-to-end solve validation routine without
+requiring Gurobi. Assembly-only inspection remains useful, but it is no longer
+a substitute for real solver evidence.
 
 **Alternatives considered**:
 
-- Require a working solver in all environments: rejected because it conflicts
-  with the offline default-validation requirement.
+- Keep every solver optional: rejected because it previously allowed the main
+  planning workflow to pass without being exercised end to end.
+- Require Gurobi in routine CI: rejected because licensing and external
+  configuration would make the default validation path non-portable.
 - Expose planning as solver-specific scripts only: rejected because the
   feature asks for a reusable library API.
 
@@ -180,21 +185,61 @@ cost and feasibility contracts.
 - Narrow further to battery-only or solar-only: rejected because the spec
   explicitly calls for both in the first release.
 
-## Decision 10: Make validation fixture-backed, with optional parity checks documented separately
+## Decision 10: Combine deterministic fixtures with required real-backend CI
 
 **Decision**: Routine validation will use committed dataset-export fixtures,
-TPM metadata fixtures, query fixtures, and assembly fixtures. Legacy tangent
-tests and solver-backed checks remain documented as optional follow-up checks
-when dependencies are available.
+TPM metadata fixtures, query fixtures, and assembly fixtures, and will also run
+a real SPFlow fit/reload/query cycle plus a real Pyomo/HiGHS solve. Gurobi and
+legacy-runtime parity remain optional follow-up checks.
 
-**Rationale**: This matches both the constitution and the repo’s current
-working rules. It provides strong reproducibility evidence without requiring
-commercial solvers or a locally configured SPFlow stack to review ordinary
-changes.
+**Rationale**: Fixtures provide reproducibility but fake or empirical paths do
+not prove the canonical backends work. The required dependencies and HiGHS
+allow both forms of evidence offline and without a commercial license.
 
 **Alternatives considered**:
 
-- Claim full legacy parity by default: rejected because optional dependencies
-  make that unreliable for routine review.
+- Treat fake backends as sufficient integration evidence: rejected because it
+  allowed implementation drift at the actual SPFlow/Pyomo boundary.
 - Use only smoke tests without fixtures: rejected because the feature is a
   migration and needs deterministic evidence.
+
+## Decision 11: Port validated behavior to current SPFlow instead of constraining Python
+
+**Decision**: Target `spflow==1.1.0` as the initial current backend,
+`pyomo==6.10.1`, and `highspy==1.15.1`, retaining the project Python floor of
+3.11 without adopting the legacy SPFlow line's `<3.13` constraint. Use Pyomo
+`SolverFactory("highs")` as the canonical solver interface. Widen initial pins
+only after real-backend CI proves compatible endpoints.
+
+**Rationale**: SPFlow 1.1 is the current supported PyTorch-based rewrite and
+declares Python 3.10+. Its API provides current structure learning,
+`model.log_likelihood(...)`, missing-value marginalization, and structural
+`model.marginalize(...)`. Legacy models are explicitly incompatible and must
+be rebuilt, so the migration preserves validated mathematical behavior and
+artifact contracts rather than serialized legacy objects. This cost is
+preferred to constraining the unified library to an obsolete backend.
+
+**Migration mapping to validate**:
+
+- legacy `learn_mspn(...)` maps to current `spflow.learn.learn_spn(...)` with
+  PyTorch tensors and explicit leaf modules/scopes
+- legacy free-function log likelihood maps to
+  `model.log_likelihood(...)`
+- query marginalization maps either to NaN evidence for likelihood evaluation
+  or `model.marginalize(...)` for a structurally marginalized circuit
+- legacy node classes and traversal cannot be assumed compatible; the
+  current-SPFlow-to-piecewise-MIO compiler requires a deliberate adapter over current modules and
+  weights with parity fixtures for every supported node/leaf type
+- legacy pickle payloads are migration inputs only; new artifacts persist a
+  versioned current-backend payload and must be refitted
+
+**Alternatives considered**:
+
+- Pin pre-1.0 SPFlow and cap Python below 3.13: rejected by the clarified
+  preference to keep modern Python support and bear the porting cost.
+- Support both legacy and current SPFlow in production: rejected because it
+  doubles the backend and artifact compatibility surface; legacy behavior
+  remains parity evidence instead.
+- Use `appsi_highs` canonically: rejected because the workflow builds and
+  solves rather than repeatedly updating one persistent model; it remains a
+  non-canonical compatibility option.

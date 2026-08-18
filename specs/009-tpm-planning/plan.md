@@ -1,98 +1,99 @@
 # Implementation Plan: TPM-Backed Planning And Simulator Dataset Export
 
-**Branch**: `009-tpm-planning` | **Date**: 2026-06-24 | **Spec**: [spec.md](./spec.md)  
+**Branch**: `009-tpm-planning` | **Date**: 2026-08-17 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/009-tpm-planning/spec.md`
 
 ## Summary
 
-Promote a first reusable TPM-backed planning slice into the unified library by
-adding a simulator-owned planning-dataset export workflow, migrating the
-validated typed-feature and SPN-training/query surfaces from
-`legacy/old_tpm/src_py/tpm`, and defining a lazily loaded planning surface
-under `open_energy_lab.planning` that assembles a piecewise MILP for direct
-battery and solar design decisions. The feature keeps default review offline and
-fixture-backed, treats heavy solver and SPFlow dependencies as optional, and
-uses explicit versioned dataset and TPM artifact contracts instead of
-notebook-only or pickle-only workflows.
+Reconcile the technically completed TPM-planning implementation with the
+clarified dependency and validation contract. The existing simulator-owned
+dataset export, typed features, artifacts, current-SPFlow-to-piecewise-MIO encoding, and
+battery-and-solar planning surfaces remain the implementation baseline. The
+corrective pass makes current SPFlow, Pyomo, and HiGHS required
+installed dependencies; retains lazy imports; makes real SPFlow fit/query and
+real Pyomo/HiGHS solve coverage routine; and confines empirical replay to an
+explicit fixture/test mode rather than an automatic production fallback.
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+ in `src/open_energy_lab`  
-**Primary Dependencies**: Python standard library plus existing
-`open_energy_lab.simulator`, `open_energy_lab.weather`, and
-`open_energy_lab.demand` surfaces; `pandas` already ships in the base
-environment; SPFlow is the canonical TPM fit-query backend, Pyomo is the
-canonical planning-model backend, and MILP solver backends remain required only
-for solve execution; all three must stay outside ordinary imports through lazy
-workflow-boundary loading.  
-**Storage/Data**: Markdown planning artifacts, versioned JSON planning-dataset
-artifacts whose schema contains both the flattened tabular payload and its
-provenance and contract metadata, versioned TPM artifacts with JSON metadata
-plus a documented SPN payload representation or payload locator defined by the
-artifact schema, committed fixture datasets under `tests/fixtures/planning` or
-`tests/fixtures/tpm`, and optional solver-assembly fixtures.  
-**Testing**: `pytest` for new `tests/unit/tpm`, `tests/unit/planning`,
-`tests/integration/planning`, import-boundary checks, no-legacy-import
-checks, deterministic dataset-export fixtures, query fixtures, and offline
-model-assembly checks; optional legacy-parity or solver-backed checks remain
-documented but non-routine.  
-**Target Platform**: Local CPU-only research workstation using the existing
-uv-managed environment; no GPU, SLURM, notebook runtime, or external service
-assumptions.  
-**Project Type**: Unified Python research library with stable public APIs
-under `src/open_energy_lab`; legacy repositories remain reference material
-only.  
-**Performance Goals**: Export tens to low hundreds of scenario rows from one
-simulator family deterministically, fit and reload one TPM artifact from a
-fixture-backed planning dataset offline, and assemble a first-release
-piecewise planning model for battery and solar decisions without requiring a
-solver in the routine review path.  
-**Constraints**: Preserve import-light package roots; avoid runtime imports
-from `legacy/*`; keep package roots import-light while making SPFlow-backed TPM
-workflows and Pyomo-backed planning workflows first-class feature paths; define
-`shortfall` canonically as horizon-level unmet electric energy ratio; bound
-first-release planning to battery and solar decisions; document solver
-reproducibility assumptions and tolerances; keep routine validation offline
-and fixture-backed.  
-**Scale/Scope**: One horizon-flattened planning dataset contract per artifact,
-one explicit planning target (`shortfall`), typed feature support for
-continuous/binary/categorical/mixed features where validated by migrated
-legacy behavior, one optional piecewise MILP path, and no inverter or broader
-equipment decisions in the first release.
+**Language/Version**: Python 3.11+ with an initial required CI matrix of 3.11,
+3.12, 3.13, and 3.14. If the locked required backend stack does not resolve on
+one interpreter, narrow `requires-python` using recorded evidence rather than
+skipping that required-backend job.
+**Primary Dependencies**: Existing `pandas`, `pvlib`, and `timezonefinder`;
+required initial pins `spflow==1.1.0`, `pyomo==6.10.1`, and
+`highspy==1.15.1`, including SPFlow's required PyTorch stack; Gurobi remains an
+optional additional solver with external installation and licensing. Bounded
+ranges may replace initial pins only after the real-backend matrix proves the
+endpoints.
+**Storage/Data**: Versioned JSON planning datasets and TPM metadata artifacts;
+SPFlow payload sidecars referenced by the TPM artifact; explicit artifact
+execution mode distinguishing production SPFlow payloads from fixture replay.
+**Testing**: `pytest` unit and integration coverage; required offline real
+SPFlow fit/reload/query and current-SPFlow-to-piecewise-MIO tests; required real Pyomo solve through
+`SolverFactory("highs")` for optimal and infeasible cases; fixture-backed
+determinism tests; import-laziness and no-legacy-import checks; optional Gurobi
+and legacy-runtime parity checks.
+**Target Platform**: CPU-only local workstations and CI across the Python
+versions supported jointly by the project and required backend releases;
+no GPU, SLURM, notebook runtime, network service, or commercial solver license
+in the routine path. Platform support is limited to environments for which the
+required `highspy` wheel and compatible SPFlow stack resolve successfully.
+**Project Type**: Unified Python research library under
+`src/open_energy_lab`; `legacy/*` remains reference material only.
+**Performance Goals**: Preserve deterministic export of tens to low hundreds
+of scenarios; complete each fixture-sized real SPFlow fit/query and HiGHS solve
+within 30 seconds; and keep the combined required focused backend suite within
+120 seconds per supported Python job on the reference CPU CI runner.
+**Constraints**: Preserve lazy package-root imports despite required
+installation; forbid silent empirical or metadata-only production fallback;
+port validated legacy `spn.*` behavior to the current SPFlow API; keep `shortfall` simulator-derived;
+retain battery-and-solar-only planning; make HiGHS the default solver name
+(`highs`), with `appsi_highs` non-canonical and Gurobi supplemental.
+**Scale/Scope**: One horizon-flattened dataset and one `shortfall` target per
+artifact; direct battery and solar decisions; existing typed feature support;
+one canonical piecewise SPN-to-MILP path; corrective changes to dependency
+metadata, backend modes, tests, fixtures, and documentation rather than a
+rewrite of completed export and planning-domain behavior.
+
+**Reproducibility Defaults**: Canonical seed `13` for Python, NumPy, Torch,
+SPFlow, and solver randomness; robustness seeds `37` and `101`; fit/query,
+repeated HiGHS solve, objective, and risk tolerances `1e-9`; MIO epsilon and
+native-versus-compiled maximum absolute probability error `1e-6`; five
+piecewise breakpoints; HiGHS one thread and 30-second per-fixture time limit.
+The **current-SPFlow-to-piecewise-MIO compiler** produces the solver-neutral
+MIO representation; the Pyomo MILP is the planning model that consumes it.
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+*GATE: Must pass before Phase 0 research. Re-checked after Phase 1 design.*
 
 **Pre-design status**: PASS
 
-- **Unified library first**: New reusable code is planned under
-  `src/open_energy_lab/tpm`, `src/open_energy_lab/planning`, and
-  `src/open_energy_lab/simulator`, with tests under `tests`.
-- **Legacy reference boundary**: Exact legacy TPM source paths are cited in the
-  spec, and the plan keeps them as migration evidence only. No runtime
-  `legacy/*` imports are required.
-- **Validation before migration**: The plan defines fixture-backed validation
-  for dataset export, feature typing, TPM artifact reload, conditional query
-  behavior, piecewise approximation assembly, and import boundaries before
-  broad migration claims.
-- **Dependency isolation**: SPFlow and Pyomo are canonical workflow backends,
-  and solver backends are solve-time dependencies, but all remain outside
-  `open_energy_lab`, `open_energy_lab.tpm`, and `open_energy_lab.planning`
-  root imports.
-- **Reproducibility**: Dataset provenance, seeds, solver configuration notes,
-  shortfall derivation, artifact schema versions, and approximation tolerances
-  are all part of the planned contracts.
+- **Unified library first**: All corrective implementation remains under
+  `src/open_energy_lab`, with tests under `tests`; no new reusable behavior is
+  placed in `legacy/*`.
+- **Legacy reference boundary**: The `legacy/old_tpm` `spn.*` sources remain
+  cited behavioral evidence. Runtime legacy imports remain forbidden.
+- **Validation before migration**: Existing deterministic fixtures remain, and
+  the revised design adds required real-backend gates before claiming the new
+  dependency contract is complete.
+- **Dependency isolation**: Constitution Principle IV allows the feature spec
+  to define the boundary. SPFlow, Pyomo, and HiGHS are installed by default but
+  imported only at workflow boundaries; Gurobi remains isolated and optional.
+- **Reproducibility**: Initial pins, Python bounds, solver name, seeds,
+  tolerances, artifact modes, and required CI cases are explicit.
 
 **Post-design status**: PASS
 
-- The design artifacts keep simulator export, TPM training/query, and planning
-  assembly as distinct public contracts with explicit artifact boundaries.
-- Heavy dependencies are isolated behind optional modules and documented
-  follow-up checks rather than becoming base-environment requirements.
-- The planning target and chance-constraint semantics are explicit and library
-  owned, not inherited from notebook conventions.
-- No constitution violations require complexity tracking.
+- Simulator export, TPM artifacts/queries, and planning solve remain separate
+  contracts with explicit producer/consumer ownership.
+- Required installation does not widen ordinary package imports; import tests
+  assert modules are absent from `sys.modules` until workflows invoke them.
+- Production query behavior requires a valid SPFlow payload, while deterministic
+  empirical replay is explicitly labeled and invoked as fixture/test mode.
+- Real HiGHS execution supplies license-free routine solve evidence; Gurobi and
+  legacy parity checks remain documented supplements.
 
 ## Project Structure
 
@@ -104,6 +105,7 @@ specs/009-tpm-planning/
 ├── research.md
 ├── data-model.md
 ├── quickstart.md
+├── tasks.md
 └── contracts/
     ├── simulator-export-contract.md
     ├── planning-dataset-contract.md
@@ -112,145 +114,121 @@ specs/009-tpm-planning/
     └── validation-contract.md
 ```
 
-### Current Reference Sources
+### Current Reference And Implemented Sources
 
 ```text
-legacy/old_tpm/
-├── src_py/tpm/data/
-│   ├── datahandler.py
-│   ├── encoding.py
-│   ├── features/
-│   │   ├── feature.py
-│   │   ├── binary.py
-│   │   ├── categorical.py
-│   │   ├── contiguous.py
-│   │   └── mixed.py
-│   └── types.py
-├── src_py/tpm/spn/
-│   ├── main.py
-│   ├── encoding.py
-│   ├── utils_tangent.py
-│   └── test_tangent_lower_bound.py
-├── src_py/utils/densities.py
-└── src_py/simulator/
-    ├── data_generation.py
-    └── feature_engineering.py
+legacy/old_tpm/src_py/tpm/
+├── data/
+└── spn/
+    ├── main.py
+    ├── encoding.py
+    └── utils_tangent.py
 
 src/open_energy_lab/
-├── demand/
+├── simulator/planning_export.py
+├── tpm/
 │   ├── artifact.py
 │   ├── fit.py
-│   └── sampling.py
-├── planning/
-│   └── __init__.py
-└── simulator/
-    ├── __init__.py
-    ├── scenario.py
-    ├── stochastic_demand.py
-    └── stochastic_weather.py
+│   ├── query.py
+│   ├── mio.py
+│   └── optional_spflow.py
+└── planning/
+    ├── dataset.py
+    ├── problem.py
+    ├── piecewise.py
+    └── optional_solver.py
 ```
 
-### Target Library Structure
+### Corrective Target Structure
 
 ```text
-src/
-└── open_energy_lab/
-    ├── __init__.py
-    ├── planning/
-    │   ├── __init__.py
-    │   ├── dataset.py
-    │   ├── problem.py
-    │   ├── piecewise.py
-    │   └── optional_solver.py
-    ├── simulator/
-    │   ├── __init__.py
-    │   ├── planning_export.py
-    │   ├── scenario.py
-    │   ├── stochastic_demand.py
-    │   └── stochastic_weather.py
-    └── tpm/
-        ├── __init__.py
-        ├── artifact.py
-        ├── data.py
-        ├── features.py
-        ├── fit.py
-        ├── query.py
-        ├── piecewise.py
-        └── optional_spflow.py
-
-tests/
-├── unit/
-│   ├── planning/
-│   └── tpm/
-├── integration/
-│   └── planning/
-└── fixtures/
-    ├── planning/
-    └── tpm/
+pyproject.toml                         # required backend pins and Python bound
+uv.lock                               # fully resolved required stack
+src/open_energy_lab/tpm/              # explicit production vs fixture mode
+src/open_energy_lab/planning/         # HiGHS default; Gurobi supplemental
+tests/unit/                            # lazy-import and failure contracts
+tests/integration/tpm/                 # required real SPFlow workflow
+tests/integration/planning/            # required real Pyomo/HiGHS workflow
+tests/fixtures/{tpm,planning}/         # explicit fixture-mode evidence
+specs/009-tpm-planning/                # reconciled design and review guidance
+docs/migration/tpm-planning.md         # corrected maturity/dependency claims
 ```
 
-**Structure Decision**: Put the simulator-to-dataset export entry point in
-`open_energy_lab.simulator` because it derives directly from simulator family
-results, create a dedicated `open_energy_lab.tpm` package for migrated typed
-feature and SPN artifact/query behavior, and expand `open_energy_lab.planning`
-from scaffold to a stable planning-assembly surface. This preserves the
-existing producer/consumer boundaries already used by the weather and demand
-features while avoiding notebook-owned glue code.
+**Structure Decision**: Preserve the implemented package layout and public
+ownership boundaries. Existing filenames containing `optional_` are migration
+debt rather than an installation-policy statement; renaming them is optional
+and should occur only if public imports and tests can be updated without
+unnecessary churn. Behavior and documentation must no longer describe required
+backends as optional.
 
 ## Phase 0: Research
 
-Research outcomes are captured in [research.md](./research.md). They resolve:
+Research outcomes are captured in [research.md](./research.md). The corrective
+research resolves:
 
-- where simulator export should live and how it should map current
-  `DemandFamilyEvaluationResult` and `WeatherFamilyEvaluationResult` data into
-  a stable planning dataset
-- which legacy TPM behaviors are preserved closely versus replaced with new
-  artifact contracts
-- how SPFlow-backed TPM workflows and Pyomo-backed planning workflows remain
-  isolated from ordinary imports and routine review through lazy loading
-- what the canonical first-release piecewise solver-facing path is and how its
-  validation should be bounded
-- how first-release planning should consume a fitted TPM artifact while keeping
-  battery and solar design variables direct and typed
+- required installation versus lazy import semantics
+- the current SPFlow API mapping for validated legacy `spn.*` behavior
+- initial compatibility pins, the PyTorch-backed SPFlow migration, and the
+  supported Python matrix
+- canonical Pyomo `SolverFactory("highs")` use with `highspy`, retaining
+  `appsi_highs` only as a non-canonical compatibility option
+- explicit production and fixture/test TPM query modes
+- required real-backend CI versus optional Gurobi and legacy parity checks
+
+No `NEEDS CLARIFICATION` items remain. Version pins are initial compatibility
+claims that implementation validation must prove before they can be widened.
 
 ## Phase 1: Design
 
-Design artifacts are captured in [data-model.md](./data-model.md),
-[quickstart.md](./quickstart.md), and the files under
-[contracts/](./contracts/). They define:
+The reconciled [data-model.md](./data-model.md), [quickstart.md](./quickstart.md),
+and [contracts](./contracts/) define:
 
-- the simulator export request/result contract, flattened dataset schema, and
-  shortfall derivation rule
-- the versioned planning dataset and TPM artifact contracts, including
-  provenance and reproducibility fields
-- the planning problem definition, direct chance-constraint contract, and
-  optional solver boundary
-- a single validation contract that defines deterministic row ordering,
-  artifact version expectations, numeric tolerances, seed handling, solver
-  configuration recording, and repeated-run acceptance rules across export,
-  TPM, and planning
-- fixture provenance and the exact review commands for offline validation
+- backend/API/version metadata and execution mode on TPM artifacts and queries
+- production failure when a valid SPFlow payload is absent
+- explicit empirical fixture replay that cannot activate automatically
+- TPM artifact schema v2 with a project-relative sidecar locator, SHA-256
+  integrity digest, atomic sibling-file replacement, backend/compiler metadata,
+  and explicit rejection of schema-v1 legacy model payloads
+- a first-release compiler subset limited to sum/product graphs, one output
+  channel, one repetition, and Normal/Bernoulli/Categorical leaves on separate
+  typed scopes; all other modules fail with type-and-scope diagnostics
+- omission of solver configuration selecting the required `highs` default
+- real Pyomo/HiGHS solve output and reproducibility metadata
+- required real SPFlow and HiGHS validation, with fake-backend fixtures retained
+  only as supplemental deterministic unit/integration evidence
 
-## Phase 2: Implementation Strategy
+## Phase 2: Corrective Implementation Strategy
 
-1. Add simulator export primitives that accept evaluated family results,
-   validate horizon and scenario alignment, flatten configured series fields,
-   derive `shortfall`, and persist versioned planning datasets.
-2. Migrate the typed-feature metadata, normalization, and encoding surface from
-   legacy TPM sources into a native `open_energy_lab.tpm` package with JSON
-   artifact contracts and no runtime legacy imports.
-3. Add SPFlow-backed fit and query adapters that produce deterministic metadata
-   artifacts, support marginalization of non-decision variables, and preserve
-   fixture-backed conditional-query behavior while loading SPFlow only when
-   those workflows are invoked.
-4. Expand `open_energy_lab.planning` with a stable problem-definition and
-   Pyomo-backed model-assembly surface that consumes TPM artifacts, encodes
-   battery and solar decisions directly, and uses the canonical piecewise
-   approximation path for the first release.
-5. Add unit, integration, import-boundary, and optional-dependency tests plus
-   committed planning and TPM fixtures before claiming fixture-backed
-   migration validation.
+The original domain implementation is complete. The remaining work is a
+spec-alignment delta:
+
+1. Declare the researched required backend pins and supported Python bounds in
+   `pyproject.toml`, regenerate `uv.lock`, and document supported platforms.
+2. Port the legacy fit, marginalization, likelihood, persistence, and
+   current-SPFlow-to-piecewise-MIO traversal behavior to SPFlow 1.1 modules and tensors; require
+   refitting because pre-1.0 serialized models are incompatible. Bound the
+   compiler to sum/product composition, one channel/repetition, and
+   Normal/Bernoulli/Categorical leaves for the first release.
+3. Replace automatic SPFlow/table/empirical fallback with an explicit
+   production-versus-fixture execution mode and validate persisted mode/payload
+   compatibility.
+4. Make `highs` the default solver, require real Pyomo/HiGHS execution for the
+   standard solve path, and reserve skip behavior for explicitly requested
+   supplemental solvers such as Gurobi. Cross-solver comparison is
+   supplementary and uses a formulation-specific documented tolerance.
+5. Convert backend capability checks from optional-install probes into
+   compatibility diagnostics for a required installation, while preserving
+   lazy imports.
+6. Add required supported-Python real-backend integration coverage for SPFlow
+   fit/reload/query, current-SPFlow-to-piecewise-MIO assembly, and HiGHS
+   optimal/infeasible solves;
+   retain fixture and fake-backend tests as supplemental deterministic checks.
+7. Reconcile tasks, migration docs, examples, fixtures, and review commands;
+   rerun the full 008+009 regression suites before merge.
 
 ## Complexity Tracking
 
-No constitution exceptions are required for this plan.
+No constitution violation requires an exception. Installing heavyweight
+workflow dependencies by default is explicitly selected by the feature spec;
+lazy workflow-boundary imports satisfy the constitution's import-time
+isolation requirement.
