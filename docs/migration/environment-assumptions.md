@@ -9,8 +9,11 @@ Python dependency resolution to uv.
 - Create the local research environment with conda.
 - Keep the environment minimal: Python 3.11, uv, and pip are the bootstrap
   tools for the foundation.
-- Avoid adding solver stacks, RL frameworks, notebook tooling, W&B, GPU
-  runtime packages, SLURM clients, or Rust toolchains to the base environment.
+- Keep research stacks out of the conda bootstrap; uv owns Python runtime
+  dependencies, including the required SPFlow, Pyomo, and HiGHS packages.
+- Do not manually add commercial solvers, RL frameworks, notebook tooling,
+  W&B, GPU runtime packages, SLURM clients, or Rust toolchains to the base
+  environment.
 
 Example:
 
@@ -25,20 +28,25 @@ uv sync --dev
 uv is the Python package manager for project dependencies, editable installs,
 locking, and command execution.
 
-- Keep runtime dependencies minimal in `pyproject.toml`.
+- Keep runtime dependencies limited to stable, specified project workflows in
+  `pyproject.toml`.
 - The promoted stochastic weather surface now treats `pvlib`,
   `timezonefinder`, and the pandas-backed PVGIS fetch path as part of the
   normal project environment rather than a separate optional install.
+- The TPM-planning surface requires `spflow`, `pyomo`, and `highspy` in the
+  normal project environment. Their imports remain lazy until TPM fit/query or
+  planning solve workflows run.
 - Put test tooling and other development-only packages in dependency groups.
-- Defer optional extras until a future capability spec explicitly requires
-  them.
+- Defer optional extras until a capability spec explicitly requires them;
+  Gurobi remains a separately installed supplemental solver.
 
 ## Capability Boundaries
 
-Treat environment-sensitive capabilities as non-core until a later spec
-promotes them:
+Treat environment-sensitive capabilities as non-core until a spec promotes
+them. The 009 feature promotes CPU-local SPFlow and Pyomo/HiGHS, while keeping
+their imports lazy. The remaining environment-sensitive capabilities include:
 
-- Solver-backed optimization and commercial solver access.
+- Commercial solver access beyond the required HiGHS path.
 - W&B logging and sweep workflows.
 - GPU and CUDA execution.
 - SLURM/HPC orchestration.
@@ -51,19 +59,21 @@ they must not block ordinary library import or the foundation unit tests.
 
 ## TPM-Backed Planning Notes
 
-The `009-tpm-planning` feature keeps the same base environment shape and adds
-explicit assumptions for simulator export, persisted artifact reload, TPM
-query replay, planning assembly, and optional solve follow-up checks.
+The `009-tpm-planning` feature keeps the same minimal conda bootstrap while uv
+installs the required SPFlow, Pyomo, and HiGHS stack. Simulator export,
+persisted artifact reload, TPM fit/query, planning assembly, and the HiGHS
+solve remain offline and CPU-local.
 
 ## Default Validation Environment For TPM Planning
 
 - Run the default TPM-planning checks from the local `open-energy-lab` conda
   environment after `uv sync --dev`.
-- Assume CPU-only execution with no solver licenses, no W&B login, no GPU or
-  SLURM tooling, no notebook runtime, and no runtime imports from `legacy/*`.
-- Treat the committed planning and TPM fixtures as the default evidence so
-  export replay, persisted artifact reload, deterministic query behavior, and
-  planning assembly stay runnable offline.
+- Assume CPU-only execution with required SPFlow, Pyomo, and `highspy`, but no
+  commercial solver license, W&B login, GPU or SLURM tooling, notebook runtime,
+  or runtime imports from `legacy/*`.
+- Use committed planning and TPM fixtures together with routine real-SPFlow
+  and real-HiGHS checks so export/reload behavior stays deterministic and the
+  required production backends are exercised offline.
 - Keep the default validation surface limited to
   `open_energy_lab.simulator` planning export, `open_energy_lab.tpm`,
   `open_energy_lab.planning`, their unit/integration tests, import checks,
@@ -74,22 +84,22 @@ Example TPM-planning validation bootstrap:
 ```bash
 conda activate open-energy-lab
 uv sync --dev
-uv run pytest tests/unit/planning tests/unit/tpm tests/integration/planning
+uv run pytest tests/unit/planning tests/unit/tpm tests/integration/planning tests/integration/tpm
 uv run pytest tests/unit/test_optional_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py
 uv run python -c "import open_energy_lab; import open_energy_lab.simulator; import open_energy_lab.tpm; import open_energy_lab.planning"
 ```
 
-## Optional TPM-Planning Follow-Up Assumptions
+## Required TPM-Planning Backend Assumptions
 
-- The shipped TPM review path does not require SPFlow, Pyomo, or solver
-  binaries for default fixture-backed validation.
-- `fit_tpm_artifact(...)` requires SPFlow when the caller uses the canonical
-  backend path without an injected backend.
-- `solve_planning_problem(...)` requires Pyomo and may require extra solver
-  binaries or licenses depending on the requested solver configuration.
-- If a reviewer exercises optional backend-backed fit or solve checks outside
-  the default subset, record the blocked dependency or solver assumption in
-  the feature quickstart instead of widening runtime requirements.
+- Standard `uv sync --dev` installs SPFlow, Pyomo, and `highspy`; package-root
+  imports remain lazy and must not load them before their workflows run.
+- Production `fit_tpm_artifact(...)` and query workflows require a compatible
+  current-SPFlow installation.
+- `solve_planning_problem(...)` uses the required license-free HiGHS path by
+  default through Pyomo.
+- Missing or incompatible SPFlow, Pyomo, or HiGHS is a failed required-backend
+  check, not a successful skip. Only explicitly selected supplemental Gurobi
+  checks may skip when their binary or license is unavailable.
 
 ## Controller Boundary MVP Notes
 

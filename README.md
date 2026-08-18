@@ -29,17 +29,18 @@ Current library package areas under `src/open_energy_lab`:
 - `demand`: fitted demand artifacts and weather-conditioned demand sampling.
 - `simulator`: scenario components, family evaluation, and planning-dataset
   export.
-- `tpm`: typed-feature TPM artifacts, fit/query flows, optional SPFlow-backed
-  runtime payloads, and SPN-to-MIO helpers.
-- `planning`: planning-dataset reload, planning assembly, and optional
-  Pyomo-backed solve flows.
+- `tpm`: typed-feature TPM artifacts, required SPFlow-backed fit/query flows,
+  runtime payloads, and SPN-to-MIO helpers, with backend imports kept lazy.
+- `planning`: planning-dataset reload, planning assembly, and required
+  Pyomo/HiGHS solve flows, with solver imports kept lazy.
 - `experimental`, `control`, and `visualization`: incubating or still-thin
   areas.
 
 The repository still treats `legacy/*` as reference material rather than
-runtime code. Optional TPM/planning backends now exist, but they remain behind
-lazy workflow boundaries instead of becoming mandatory root-import
-dependencies.
+runtime code. SPFlow, Pyomo, and HiGHS are installed in the standard project
+environment because TPM/planning workflows require them, but they remain
+behind lazy workflow boundaries and are not imported by package roots. Gurobi
+is an optional supplemental solver with separate binary and license needs.
 
 ## Environment
 
@@ -51,9 +52,10 @@ conda activate open-energy-lab
 uv sync --dev
 ```
 
-The foundation import path must not require solver stacks, TorchRL, PyTorch,
-CityLearn, SPFlow, W&B, Jupyter, Rust tooling, GPU support, SLURM tooling, or
-external data APIs.
+`uv sync --dev` installs the required SPFlow, Pyomo, and HiGHS stack. Ordinary
+package imports must not eagerly load those backends or their PyTorch runtime.
+Optional Gurobi, TorchRL, CityLearn, W&B, Jupyter, Rust, GPU/SLURM, and live
+service capabilities remain outside the routine environment and import path.
 
 ## Documentation
 
