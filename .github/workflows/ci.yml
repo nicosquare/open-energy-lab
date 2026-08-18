@@ -1,0 +1,88 @@
+name: Required backend CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  required-backends:
+    name: Required backends (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.5"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-suffix: py${{ matrix.python-version }}
+
+      - name: Install locked project environment
+        run: uv sync --locked --group dev
+
+      - name: Verify required backend installation
+        run: |
+          uv run --locked --no-sync python - <<'PY'
+          from importlib.metadata import version
+
+          import highspy
+          import pyomo.environ as pyo
+          import spflow
+
+          expected = {
+              "spflow": "1.1.0",
+              "pyomo": "6.10.1",
+              "highspy": "1.15.1",
+          }
+          actual = {package: version(package) for package in expected}
+          if actual != expected:
+              raise RuntimeError(f"required backend versions differ: {actual!r}")
+
+          solver = pyo.SolverFactory("highs")
+          if not solver.available(exception_flag=False):
+              raise RuntimeError("required Pyomo HiGHS solver is unavailable")
+
+          print(f"required backend versions: {actual}")
+          print(f"HiGHS runtime version: {highspy.Highs().version()}")
+          PY
+
+      # Required jobs intentionally have no condition or continue-on-error.
+      # Legacy/fake-backend, fixture-contract, and optional Gurobi tests are
+      # excluded; new real SPFlow/HiGHS integration tests are collected.
+      - name: Run focused TPM and planning suite (120-second limit)
+        run: |
+          timeout --signal=TERM --kill-after=10s 120s \
+            uv run --locked --no-sync pytest \
+              tests/unit/tpm \
+              tests/unit/planning \
+              tests/integration/tpm \
+              tests/integration/planning \
+              --ignore=tests/integration/tpm/test_backend_adapter_workflow.py \
+              --ignore=tests/integration/tpm/test_generic_rows_workflow.py \
+              --ignore=tests/integration/tpm/test_mio_solver.py \
+              --ignore=tests/integration/tpm/test_real_spflow_backend.py \
+              --ignore=tests/integration/planning/test_fixture_schema.py \
+              --ignore=tests/integration/planning/test_gurobi_solver.py \
+              --ignore=tests/integration/planning/test_reproducibility_contract.py \
+              --ignore=tests/integration/planning/test_spn_mio_gurobi.py \
+              --ignore=tests/integration/planning/test_tpm_fit_workflow.py \
+              --ignore=tests/integration/planning/test_tpm_fixture_schema.py \
+              --strict-markers \
+              -ra
