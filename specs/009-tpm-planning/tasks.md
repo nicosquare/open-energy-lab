@@ -29,7 +29,7 @@ required modern backend environment before backend implementation changes.
 
 - [X] T001 Consolidate the completed TPM and planning package/test scaffolds in `src/open_energy_lab/tpm/`, `src/open_energy_lab/planning/`, `tests/unit/tpm/`, `tests/unit/planning/`, and `tests/integration/planning/`
 - [X] T002 Consolidate the completed planning/TPM fixture and migration-note scaffolds in `tests/fixtures/planning/`, `tests/fixtures/tpm/`, and `docs/migration/tpm-planning.md`
-- [ ] T003 Declare initial required pins for `spflow==1.1.0`, `pyomo==6.10.1`, and `highspy==1.15.1`, attempt locked resolution on Python 3.11, 3.12, 3.13, and 3.14, and either retain all four versions or record dependency-specific incompatibility evidence while updating `requires-python` and regenerating `uv.lock` in `pyproject.toml`, `uv.lock`, and `specs/009-tpm-planning/quickstart.md`
+- [X] T003 Declare initial required pins for `spflow==1.1.0`, `pyomo==6.10.1`, and `highspy==1.15.1`, attempt locked resolution on Python 3.11, 3.12, 3.13, and 3.14, and either retain all four versions or record dependency-specific incompatibility evidence while updating `requires-python` and regenerating `uv.lock` in `pyproject.toml`, `uv.lock`, and `specs/009-tpm-planning/quickstart.md`
 - [ ] T004 Add required-backend CI jobs matching the supported Python result from T003, initially covering Python 3.11, 3.12, 3.13, and 3.14, enforce a 120-second focused-suite timeout, and forbid allowed-failure or skipped required-backend jobs in `.github/workflows/ci.yml`
 - [ ] T005 [P] Replace optional-install terminology with required-install/lazy-import terminology in `README.md`, `docs/migration/dependency-policy.md`, and `docs/migration/environment-assumptions.md`
 

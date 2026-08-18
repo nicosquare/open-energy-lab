@@ -8,11 +8,13 @@ version = "0.1.0"
 description = "Unified research library foundation for Open Energy Lab."
 readme = "README.md"
 requires-python = ">=3.11"
-# Keep the ordinary runtime surface small, but ship the promoted stochastic
-# weather fit/fetch stack in the base environment.
+# Required workflow backends remain lazily imported by their package adapters.
 dependencies = [
+    "highspy==1.15.1",
     "pandas",
     "pvlib",
+    "pyomo==6.10.1",
+    "spflow==1.1.0",
     "timezonefinder",
 ]
 

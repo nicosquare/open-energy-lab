@@ -79,6 +79,32 @@ required wheel or dependency does not resolve on a claimed platform, that
 platform is unsupported until compatibility is restored; the backend check is
 not skipped.
 
+### Locked-resolution evidence
+
+T003 regenerated `uv.lock` with uv 0.12.5 on 2026-08-18, then selected the
+locked environment without installing it on each initially targeted Python
+version:
+
+```bash
+uv sync --locked --dry-run --python 3.11 --python-platform x86_64-unknown-linux-gnu
+uv sync --locked --dry-run --python 3.12 --python-platform x86_64-unknown-linux-gnu
+uv sync --locked --dry-run --python 3.13 --python-platform x86_64-unknown-linux-gnu
+uv sync --locked --dry-run --python 3.14 --python-platform x86_64-unknown-linux-gnu
+```
+
+| Python | Interpreter tested | Locked selection | Required pins selected |
+|---|---|---|---|
+| 3.11 | CPython 3.11.16 | PASS (63 packages) | SPFlow 1.1.0, Pyomo 6.10.1, highspy 1.15.1 |
+| 3.12 | CPython 3.12.14 | PASS (63 packages) | SPFlow 1.1.0, Pyomo 6.10.1, highspy 1.15.1 |
+| 3.13 | CPython 3.13.15 | PASS (63 packages) | SPFlow 1.1.0, Pyomo 6.10.1, highspy 1.15.1 |
+| 3.14 | CPython 3.14.6 | PASS (63 packages) | SPFlow 1.1.0, Pyomo 6.10.1, highspy 1.15.1 |
+
+No dependency-specific incompatibility was observed for the tested Linux
+x86_64 target, so the project retains `requires-python = ">=3.11"` and all
+four initial Python versions. These dry runs validate locked dependency and
+distribution selection; required backend imports and real fit/solve behavior
+remain separate corrective validation tasks.
+
 ## Current SPFlow Migration Mapping
 
 The implementation must validate these mappings against SPFlow 1.1:
