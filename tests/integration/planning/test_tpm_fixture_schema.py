@@ -21,6 +21,7 @@ from tests.integration.planning.fixture_utils import (
     PLANNING_DATASET_ARTIFACT_FIXTURE_PATH,
     PLANNING_DATASET_EXPORT_FIXTURE_PATH,
     TPM_ARTIFACT_FIXTURE_PATH,
+    TPM_ARTIFACT_V1_FIXTURE_PATH,
     TPM_FIXTURE_PATHS,
     TPM_QUERY_FIXTURE_PATH,
     UNSUPPORTED_TPM_ARTIFACT_FIXTURE_PATH,
@@ -42,7 +43,7 @@ def _fixture_data_for(path: Path) -> dict[str, object]:
 
 
 def test_tpm_fixture_paths_are_present() -> None:
-    assert len(TPM_FIXTURE_PATHS) == 4
+    assert len(TPM_FIXTURE_PATHS) == 5
     for path in TPM_FIXTURE_PATHS:
         assert path.is_file()
 
@@ -135,10 +136,16 @@ def test_supported_tpm_artifact_fixture_tracks_schema_expectations() -> None:
         "specs/009-tpm-planning/contracts/tpm-artifact-contract.md",
         "specs/009-tpm-planning/contracts/validation-contract.md",
     }
-    artifact = load_tpm_artifact(fixture_data)
+    artifact = load_tpm_artifact(TPM_ARTIFACT_FIXTURE_PATH)
 
+    assert artifact.schema_version == "v2"
     assert artifact.artifact_id == "tpm-artifact:planning-dataset-export-integration"
     assert artifact.dataset_reference == "planning-dataset-export-integration"
+    assert artifact.backend_generation == "current-spflow"
+    assert artifact.backend_api_version == "1.1.0"
+    assert artifact.execution_mode == "fixture_replay"
+    assert artifact.payload_locator == "sidecars/tpm_artifact_v2.fixture.json"
+    assert artifact.sidecar_path.is_file()
     assert artifact.provenance["dataset_fixture_path"] == "tests/fixtures/tpm/planning_dataset_v1.json"
     assert artifact.provenance["training_random_seed"] == 13
     assert artifact.target_definition["event_target_name"] == "shortfall_exceeds_threshold"
@@ -148,11 +155,26 @@ def test_supported_tpm_artifact_fixture_tracks_schema_expectations() -> None:
         "design_name",
     ]
     assert artifact.approximation_metadata["approximation_kind"] == "piecewise"
-    assert artifact.spn_payload["backend_module"] == "spflow.testing"
-    assert artifact.spn_payload["backend_version"] == "0.test"
+    assert artifact.spn_payload["serialization"] == "fixture-replay-evidence-json"
+    assert artifact.approximation_metadata["compiler_status"] == "contract-fixture"
     notes = " ".join(str(note).lower() for note in fixture_data["notes"])
-    assert "typed feature metadata" in notes
-    assert "spn payload representation" in notes
+    assert "current-spflow" in notes
+    assert "sha-256" in notes
+
+
+def test_schema_v1_tpm_artifact_fixture_is_retained_for_refit_rejection() -> None:
+    fixture_data = _fixture_data_for(TPM_ARTIFACT_V1_FIXTURE_PATH)
+
+    assert fixture_data["schema_version"] == "v1"
+    notes = " ".join(str(note).lower() for note in fixture_data["notes"])
+    assert "not a supported reload or query fixture" in notes
+    assert "refit" in notes
+
+    with pytest.raises(
+        UnsupportedTPMArtifactVersionError,
+        match=r"(?i)schema.?v?1|legacy|refit",
+    ):
+        load_tpm_artifact(fixture_data)
 
 
 def test_unsupported_tpm_artifact_fixture_reserves_version_failure_case() -> None:
@@ -185,6 +207,7 @@ def test_tpm_query_fixture_tracks_query_reproducibility_expectations() -> None:
 
     query_request = fixture_data["query_request"]
     assert isinstance(query_request, dict)
+    assert query_request["execution_mode"] == "fixture_replay"
 
     artifact = load_tpm_artifact(_fixture_data_for(artifact_fixture_path))
     result = query_tpm_artifact(

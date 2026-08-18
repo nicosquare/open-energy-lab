@@ -47,8 +47,8 @@ boundaries shared by the modern SPFlow and HiGHS story work.
 - [X] T010 [P] Add required-install compatibility diagnostic tests, including incompatible backend versions and missing required installations, in `tests/unit/tpm/test_backend_compatibility.py` and `tests/unit/planning/test_backend_compatibility.py`
 - [X] T011 [P] Add TPM artifact schema-v2 tests for backend generation, API version, execution mode, project-relative sidecar locator, SHA-256 integrity, atomic replacement, and schema-v1 legacy payload rejection in `tests/unit/tpm/test_artifact_schema.py`
 - [X] T012 [P] Add query contract tests that distinguish default `production` from explicit `fixture_replay` and forbid automatic empirical/metadata fallback in `tests/unit/tpm/test_query.py`
-- [ ] T013 Implement TPM artifact schema v2, project-relative sidecar locators, SHA-256 verification, atomic sibling-file replacement, production/fixture execution modes, and schema-v1 incompatibility errors in `src/open_energy_lab/tpm/artifact.py`
-- [ ] T014 Create current-SPFlow `tests/fixtures/tpm/tpm_artifact_v2.json`, retain `tests/fixtures/tpm/tpm_artifact_v1.json` for legacy rejection, and update `tests/fixtures/tpm/tpm_artifact_unsupported_version.json`, `tests/fixtures/tpm/tpm_query_case.json`, and `tests/fixtures/tpm/README.md`
+- [X] T013 Implement TPM artifact schema v2, project-relative sidecar locators, SHA-256 verification, atomic sibling-file replacement, production/fixture execution modes, and schema-v1 incompatibility errors in `src/open_energy_lab/tpm/artifact.py`
+- [X] T014 Create current-SPFlow `tests/fixtures/tpm/tpm_artifact_v2.json`, retain `tests/fixtures/tpm/tpm_artifact_v1.json` for legacy rejection, and update `tests/fixtures/tpm/tpm_artifact_unsupported_version.json`, `tests/fixtures/tpm/tpm_query_case.json`, and `tests/fixtures/tpm/README.md`
 
 **Checkpoint**: Required dependencies are reproducibly installable, imports
 remain lazy, and artifacts cannot silently cross backend generations or modes.

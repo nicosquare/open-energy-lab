@@ -1,40 +1,53 @@
 # TPM Fixtures
 
-This directory now holds the committed User Story 1 and User Story 2 TPM
-fixtures for the `009-tpm-planning` feature. They are trimmed, deterministic,
-and explicit about provenance so dataset reload, TPM artifact reload, and
-query review can stay entirely offline.
+This directory holds deterministic, offline fixtures for the
+`009-tpm-planning` dataset, TPM artifact, and query contracts. Schema-v2
+artifacts separate their JSON manifest from a project-relative sidecar and
+record a SHA-256 digest.
 
 ## Active Fixture Set
 
-- `planning_dataset_v1.json`
-- `tpm_artifact_v1.json`
-- `tpm_artifact_unsupported_version.json`
-- `tpm_query_case.json`
+- `planning_dataset_v1.json`: supported planning-dataset artifact.
+- `tpm_artifact_v2.json`: supported schema-v2 current-SPFlow-generation
+  manifest in explicit `fixture_replay` mode.
+- `sidecars/tpm_artifact_v2.fixture.json`: deterministic replay-only sidecar
+  referenced by the schema-v2 manifest.
+- `tpm_artifact_v1.json`: legacy schema-v1 rejection and refit evidence.
+- `tpm_artifact_unsupported_version.json`: schema-v2-shaped unsupported
+  version fixture.
+- `tpm_query_case.json`: explicit fixture-replay query and expected response.
 
-`planning_dataset_v1.json` is a committed, loadable planning-dataset artifact.
-It preserves the current-library export contract directly at the top level so
-`open_energy_lab.planning.dataset.load_planning_dataset()` can reload it
-without any wrapper transformation.
+`planning_dataset_v1.json` remains loadable without SPFlow, Pyomo, or HiGHS.
+It preserves deterministic row and column ordering plus the simulator-derived
+`shortfall` target.
 
-`tpm_artifact_v1.json` is a committed, loadable TPM artifact fixture derived
-from the planning-dataset artifact fixture and a fake SPFlow backend summary.
-It preserves typed feature metadata, fit configuration, piecewise metadata,
-and query configuration in one reviewable JSON payload.
+`tpm_artifact_v2.json` records `backend_generation=current-spflow`,
+`backend_api_version=1.1.0`, `execution_mode=fixture_replay`, a relative
+sidecar locator, and the sidecar SHA-256 digest. Loading the manifest by path
+verifies that the sidecar exists inside the manifest directory and matches the
+digest.
 
-`tpm_artifact_unsupported_version.json` is the same committed artifact shape
-with only `schema_version` changed to `v999` so offline fail-fast version
-coverage remains explicit.
+The v2 sidecar is contract evidence, not a serialized production model. It
+sets `production_model=false`, and the manifest does not claim real fit/query
+validation. T041 owns replacing production examples with reproducibly fitted
+current-SPFlow sidecars while retaining clearly labeled replay evidence.
 
-`tpm_query_case.json` stores one deterministic query request plus its expected
-response. It replays the committed supported TPM artifact against the
-committed planning-dataset artifact through the current-library empirical
-query path.
+`tpm_artifact_v1.json` is intentionally unsupported. It preserves the prior
+inline fake-backend payload only to prove that schema-v1 artifacts fail with
+explicit current-SPFlow refit guidance.
+
+`tpm_artifact_unsupported_version.json` mirrors the v2 manifest shape but
+uses `schema_version=v999` so unsupported versions fail before sidecar,
+feature, or query validation.
+
+`tpm_query_case.json` references the supported v2 manifest and declares
+`execution_mode=fixture_replay`. Its `source=empirical_fixture` result is
+supplementary deterministic evidence and must never be reported as production
+current-SPFlow evidence.
 
 ## Required Provenance Fields
 
-Every committed TPM fixture in this directory should keep these top-level
-fields:
+Every top-level TPM fixture keeps:
 
 ```text
 fixture_name
@@ -44,7 +57,7 @@ spec_feature
 provenance
 ```
 
-The `provenance` mapping should always record:
+The `provenance` mapping records:
 
 - `author`
 - `origin`
@@ -53,72 +66,72 @@ The `provenance` mapping should always record:
 - `random_seed`
 - `refresh_policy`
 
-Artifact fixtures keep the full persisted payload needed by
-`open_energy_lab.tpm.load_tpm_artifact`, with fixture metadata left in place
-so integration schema checks validate provenance and runtime compatibility at
-the same time. Query fixtures keep the request payload and expected response
-needed by `TPMQueryRequest` and `query_tpm_artifact`.
+Artifact manifests retain the complete persisted payload accepted or rejected
+by `open_energy_lab.tpm.load_tpm_artifact`. Query fixtures retain the
+`TPMQueryRequest` fields and exact expected response.
 
 ## Fixture Records
 
 `planning_dataset_v1.json`
 
-- purpose: supported planning-dataset artifact fixture for offline TPM fit
-  and reload review
-- status: active
-- origin: current-library export replay derived from the committed planning
-  export case
-- expected validation target: deterministic dataset reload, row order, and
-  flattened-column review
-- random seed: paired family seed `13`
-- access, license, or network notes: entirely offline
-- refresh policy: update only when the planning-dataset schema or export
-  provenance contract intentionally changes
+- status: supported
+- validation target: deterministic reload, row order, flattened columns, and
+  simulator-derived `shortfall`
+- seed: paired family seed `13`
+- refresh policy: only when the planning-dataset or export provenance contract
+  intentionally changes
+
+`tpm_artifact_v2.json`
+
+- status: supported schema-v2 replay manifest
+- backend contract: current-SPFlow generation, API `1.1.0`
+- execution mode: `fixture_replay`
+- sidecar serialization: `fixture-replay-evidence-json`
+- validation target: schema, backend/mode metadata, safe locator, SHA-256
+  integrity, typed feature reload, and query metadata
+- seed: training seed `13`
+- refresh policy: update the manifest and digest together whenever its sidecar
+  or schema-v2 contract changes
 
 `tpm_artifact_v1.json`
 
-- purpose: supported TPM artifact fixture for offline reload and query review
-- status: active
-- origin: current-library artifact fixture derived from
-  `tests/fixtures/tpm/planning_dataset_v1.json`
-- expected validation target: supported artifact schema, typed feature reload,
-  and query-metadata coverage
-- SPN payload representation: fake backend summary stored directly as JSON
-- random seed: training seed `13`
-- access, license, or network notes: entirely offline
-- refresh policy: update only when the TPM artifact schema, fit metadata,
-  typed-feature ordering, or canonical piecewise contract intentionally
-  changes
+- status: active negative-case fixture
+- validation target: explicit legacy incompatibility and refit guidance
+- production/query use: forbidden
+- refresh policy: do not migrate in place
 
 `tpm_artifact_unsupported_version.json`
 
-- purpose: unsupported-version TPM artifact fixture
-- status: active
-- origin: copy of the supported artifact with only `schema_version` changed
-- expected validation target: explicit unsupported-version fail-fast coverage
-- random seed: training seed `13`
-- access, license, or network notes: entirely offline
-- refresh policy: update only when the explicit schema compatibility contract
-  intentionally changes
+- status: active negative-case fixture
+- origin: v2 manifest shape with `schema_version=v999`
+- validation target: fail-fast unsupported-version diagnostics
+- refresh policy: keep aligned with the supported v2 manifest shape
 
 `tpm_query_case.json`
 
-- purpose: deterministic query request and expected response fixture
-- status: active
-- origin: current-library query replay against the committed supported TPM
-  artifact
-- expected validation target: conditional-probability replay, explicit
-  marginalization, and decision-feature assignment coverage
-- replay source: committed planning-dataset artifact referenced by TPM
-  artifact provenance
-- random seed: training seed `13`
-- access, license, or network notes: entirely offline
-- refresh policy: update only when the query request shape or expected
-  response semantics intentionally change
+- status: supported explicit replay case
+- execution mode: `fixture_replay`
+- validation target: conditional probability, explicit marginalization,
+  decision assignment, and `empirical_fixture` source labeling
+- seed: training seed `13`
+- refresh policy: only when replay request or response semantics intentionally
+  change
+
+## Integrity Refresh
+
+After intentionally changing the replay sidecar, compute its digest offline:
+
+```bash
+sha256sum tests/fixtures/tpm/sidecars/tpm_artifact_v2.fixture.json
+```
+
+Update `tpm_artifact_v2.json` and the schema-v2-shaped unsupported fixture
+with that exact digest. Never weaken verification or use an absolute,
+parent-traversing, or network sidecar locator.
 
 ## Working Rule
 
-Keep active fixtures loadable without runtime imports from `legacy/*`. For
-loadable artifact fixtures, retain both the common fixture provenance fields
-and the runtime artifact keys in one top-level JSON object so schema checks
-and offline loaders validate the same committed payload.
+Keep fixtures loadable or rejectable without runtime imports from `legacy/*`,
+network access, notebook execution, or commercial solver licenses. Preserve
+the boundary between simulator-owned datasets, TPM-owned artifact/query
+metadata, and planning-owned solve behavior.

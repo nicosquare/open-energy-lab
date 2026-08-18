@@ -1,0 +1,10 @@
+{
+  "payload_kind": "fixture-replay-evidence",
+  "backend_generation": "current-spflow",
+  "backend_api_version": "1.1.0",
+  "execution_mode": "fixture_replay",
+  "production_model": false,
+  "dataset_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json",
+  "training_random_seed": 13,
+  "note": "Deterministic schema-v2 sidecar evidence only; T041 replaces production examples with a reproducibly fitted current-SPFlow model."
+}

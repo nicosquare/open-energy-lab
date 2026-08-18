@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
+import tempfile
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -13,7 +16,8 @@ from .features import TPMFeatureSpec, dump_feature_schema, load_feature_schema
 from .piecewise import load_piecewise_metadata
 
 FEATURE_NAME = "009-tpm-planning"
-SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS = ("v1",)
+SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS = ("v2",)
+SUPPORTED_TPM_EXECUTION_MODES = ("production", "fixture_replay")
 TPM_ARTIFACT_REQUIRED_KEYS = (
     "artifact_id",
     "schema_version",
@@ -22,8 +26,12 @@ TPM_ARTIFACT_REQUIRED_KEYS = (
     "feature_schema",
     "target_definition",
     "fit_configuration",
+    "backend_generation",
+    "backend_api_version",
+    "execution_mode",
     "spn_payload",
     "spn_payload_format",
+    "payload_hash",
     "query_configuration",
     "approximation_metadata",
     "provenance",
@@ -32,6 +40,14 @@ TPM_ARTIFACT_REQUIRED_KEYS = (
 
 class UnsupportedTPMArtifactVersionError(ValueError):
     """Raised when artifact loading sees an unsupported schema version."""
+
+
+class LegacyTPMArtifactVersionError(UnsupportedTPMArtifactVersionError):
+    """Raised when a schema-v1 artifact must be rebuilt with current SPFlow."""
+
+
+class TPMArtifactIntegrityError(ValueError):
+    """Raised when a schema-v2 model sidecar is absent or fails verification."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,18 +61,65 @@ class TPMArtifact:
     feature_schema: tuple[Mapping[str, object], ...] = field(default_factory=tuple)
     target_definition: Mapping[str, object] = field(default_factory=dict)
     fit_configuration: Mapping[str, object] = field(default_factory=dict)
+    backend_generation: str = ""
+    backend_api_version: str = ""
+    execution_mode: str = "production"
     spn_payload: object = None
     spn_payload_format: str = ""
+    payload_hash: str = ""
     query_configuration: Mapping[str, object] = field(default_factory=dict)
     approximation_metadata: Mapping[str, object] = field(default_factory=dict)
     provenance: Mapping[str, object] = field(default_factory=dict)
     source_path: str = ""
 
     def __post_init__(self) -> None:
-        if self.schema_version not in SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS:
-            raise UnsupportedTPMArtifactVersionError(
-                f"unsupported tpm artifact schema_version {self.schema_version!r}"
-            )
+        object.__setattr__(
+            self,
+            "schema_version",
+            _validate_schema_version(self.schema_version),
+        )
+        object.__setattr__(
+            self,
+            "backend_generation",
+            _validate_non_empty_string(
+                self.backend_generation,
+                field_name="backend_generation",
+            ),
+        )
+        object.__setattr__(
+            self,
+            "backend_api_version",
+            _validate_non_empty_string(
+                self.backend_api_version,
+                field_name="backend_api_version",
+            ),
+        )
+        object.__setattr__(
+            self,
+            "execution_mode",
+            _validate_execution_mode(self.execution_mode),
+        )
+        object.__setattr__(
+            self,
+            "payload_hash",
+            _validate_payload_hash(self.payload_hash),
+        )
+        object.__setattr__(
+            self,
+            "spn_payload_format",
+            _validate_non_empty_string(
+                self.spn_payload_format,
+                field_name="spn_payload_format",
+            ),
+        )
+        object.__setattr__(
+            self,
+            "spn_payload",
+            _validate_spn_payload(
+                self.spn_payload,
+                spn_payload_format=self.spn_payload_format,
+            ),
+        )
 
     @property
     def feature_specs(self) -> tuple[TPMFeatureSpec, ...]:
@@ -75,22 +138,49 @@ class TPMArtifact:
             "feature_schema": list(dump_feature_schema(self.feature_specs)),
             "target_definition": dict(self.target_definition),
             "fit_configuration": dict(self.fit_configuration),
+            "backend_generation": self.backend_generation,
+            "backend_api_version": self.backend_api_version,
+            "execution_mode": self.execution_mode,
             "spn_payload": _serialize_spn_payload(self.spn_payload),
             "spn_payload_format": self.spn_payload_format,
+            "payload_hash": self.payload_hash,
             "query_configuration": dict(self.query_configuration),
             "approximation_metadata": dict(self.approximation_metadata),
             "provenance": dict(self.provenance),
         }
 
     def write_json(self, path: str | Path) -> Path:
-        """Persist the artifact as a human-inspectable JSON file."""
+        """Atomically persist the artifact as human-inspectable JSON."""
 
         output_path = Path(path)
-        output_path.write_text(
-            json.dumps(self.to_dict(), indent=2) + "\n",
-            encoding="utf-8",
+        _atomic_write_bytes(
+            output_path,
+            (json.dumps(self.to_dict(), indent=2) + "\n").encode("utf-8"),
         )
         return output_path
+
+    @property
+    def payload_locator(self) -> str:
+        """Return the validated project-relative model-sidecar locator."""
+
+        return _payload_locator(self.spn_payload)
+
+    @property
+    def sidecar_path(self) -> Path:
+        """Resolve the model sidecar against the manifest location when known."""
+
+        locator_path = Path(self.payload_locator)
+        if not self.source_path:
+            return locator_path
+        artifact_directory = Path(self.source_path).resolve().parent
+        resolved_path = (artifact_directory / locator_path).resolve()
+        try:
+            resolved_path.relative_to(artifact_directory)
+        except ValueError as exc:
+            raise TPMArtifactIntegrityError(
+                "TPM artifact sidecar resolves outside the artifact directory"
+            ) from exc
+        return resolved_path
 
     def validate_feature_assignments(self, assignments: Mapping[str, object]) -> None:
         """Validate concrete feature assignments against the artifact schema."""
@@ -108,16 +198,15 @@ class TPMArtifact:
     def from_dict(cls, data: Mapping[str, Any]) -> TPMArtifact:
         """Construct a validated artifact from one decoded JSON payload."""
 
+        if "schema_version" not in data:
+            raise ValueError("TPM artifact is missing required keys: schema_version")
+        schema_version = str(data["schema_version"])
+        _validate_schema_version(schema_version)
+
         missing = [key for key in TPM_ARTIFACT_REQUIRED_KEYS if key not in data]
         if missing:
             raise ValueError(
                 "TPM artifact is missing required keys: " + ", ".join(missing)
-            )
-
-        schema_version = str(data["schema_version"])
-        if schema_version not in SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS:
-            raise UnsupportedTPMArtifactVersionError(
-                f"unsupported tpm artifact schema_version {schema_version!r}"
             )
 
         artifact_id = str(data["artifact_id"])
@@ -146,13 +235,25 @@ class TPMArtifact:
         if not backend_name:
             raise ValueError("fit_configuration.backend_name must be non-empty")
 
-        spn_payload_format = str(data["spn_payload_format"])
-        if not spn_payload_format:
-            raise ValueError("spn_payload_format must be non-empty")
+        backend_generation = _validate_non_empty_string(
+            data["backend_generation"],
+            field_name="backend_generation",
+        )
+        backend_api_version = _validate_non_empty_string(
+            data["backend_api_version"],
+            field_name="backend_api_version",
+        )
+        execution_mode = _validate_execution_mode(data["execution_mode"])
+
+        spn_payload_format = _validate_non_empty_string(
+            data["spn_payload_format"],
+            field_name="spn_payload_format",
+        )
         spn_payload = _validate_spn_payload(
             data["spn_payload"],
             spn_payload_format=spn_payload_format,
         )
+        payload_hash = _validate_payload_hash(data["payload_hash"])
 
         query_configuration = _mapping(
             data["query_configuration"],
@@ -163,11 +264,14 @@ class TPMArtifact:
             feature_schema=feature_schema,
         )
 
-        approximation_metadata = _mapping(
+        raw_approximation_metadata = _mapping(
             data["approximation_metadata"],
             field_name="approximation_metadata",
         )
-        approximation_metadata = load_piecewise_metadata(approximation_metadata).to_dict()
+        approximation_metadata = {
+            **raw_approximation_metadata,
+            **load_piecewise_metadata(raw_approximation_metadata).to_dict(),
+        }
 
         provenance = _mapping(data["provenance"], field_name="provenance")
 
@@ -179,8 +283,12 @@ class TPMArtifact:
             feature_schema=dump_feature_schema(feature_schema),
             target_definition=target_definition,
             fit_configuration=fit_configuration,
+            backend_generation=backend_generation,
+            backend_api_version=backend_api_version,
+            execution_mode=execution_mode,
             spn_payload=spn_payload,
             spn_payload_format=spn_payload_format,
+            payload_hash=payload_hash,
             query_configuration={
                 "supported_output_modes": list(
                     _string_sequence(
@@ -223,31 +331,143 @@ def load_tpm_artifact(source: str | Path | Mapping[str, Any]) -> TPMArtifact:
     artifact = TPMArtifact.from_dict(raw_payload)
     if not source_path:
         return artifact
-    return TPMArtifact(
-        artifact_id=artifact.artifact_id,
-        schema_version=artifact.schema_version,
-        created_at=artifact.created_at,
-        dataset_reference=artifact.dataset_reference,
-        feature_schema=artifact.feature_schema,
-        target_definition=artifact.target_definition,
-        fit_configuration=artifact.fit_configuration,
-        spn_payload=artifact.spn_payload,
-        spn_payload_format=artifact.spn_payload_format,
-        query_configuration=artifact.query_configuration,
-        approximation_metadata=artifact.approximation_metadata,
-        provenance=artifact.provenance,
-        source_path=source_path,
-    )
+    artifact = replace(artifact, source_path=source_path)
+    _verify_sidecar_integrity(artifact)
+    return artifact
+
+
+def write_tpm_sidecar(
+    path: str | Path,
+    payload: bytes | bytearray | memoryview,
+) -> tuple[Path, str]:
+    """Atomically write sidecar bytes and return their persisted SHA-256 digest."""
+
+    if not isinstance(payload, bytes | bytearray | memoryview):
+        raise TypeError("TPM sidecar payload must be bytes-like")
+    normalized_payload = bytes(payload)
+    output_path = Path(path)
+    _atomic_write_bytes(output_path, normalized_payload)
+    return output_path, hashlib.sha256(normalized_payload).hexdigest()
 
 
 __all__ = [
     "FEATURE_NAME",
+    "LegacyTPMArtifactVersionError",
     "SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS",
+    "SUPPORTED_TPM_EXECUTION_MODES",
     "TPM_ARTIFACT_REQUIRED_KEYS",
     "TPMArtifact",
+    "TPMArtifactIntegrityError",
     "UnsupportedTPMArtifactVersionError",
     "load_tpm_artifact",
+    "write_tpm_sidecar",
 ]
+
+
+def _validate_schema_version(schema_version: object) -> str:
+    normalized_version = str(schema_version)
+    if normalized_version == "v1":
+        raise LegacyTPMArtifactVersionError(
+            "legacy TPM artifact schema_version 'v1' is incompatible with the "
+            "current SPFlow backend; refit the source planning dataset to create "
+            "a schema-v2 artifact"
+        )
+    if normalized_version not in SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS:
+        raise UnsupportedTPMArtifactVersionError(
+            f"unsupported tpm artifact schema_version {normalized_version!r}"
+        )
+    return normalized_version
+
+
+def _validate_non_empty_string(value: object, *, field_name: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{field_name} must be a non-empty string")
+    normalized_value = value.strip()
+    return normalized_value
+
+
+def _validate_execution_mode(value: object) -> str:
+    execution_mode = str(value)
+    if execution_mode not in SUPPORTED_TPM_EXECUTION_MODES:
+        raise ValueError(
+            "execution_mode must be one of "
+            f"{SUPPORTED_TPM_EXECUTION_MODES!r}; got {execution_mode!r}"
+        )
+    return execution_mode
+
+
+def _validate_payload_hash(value: object) -> str:
+    payload_hash = str(value).lower()
+    if len(payload_hash) != 64 or any(
+        character not in "0123456789abcdef" for character in payload_hash
+    ):
+        raise ValueError("payload_hash must be a 64-character SHA-256 hex digest")
+    return payload_hash
+
+
+def _payload_locator(payload: object) -> str:
+    if not isinstance(payload, Mapping):
+        raise TypeError("schema-v2 spn_payload must be a sidecar locator mapping")
+    locator = payload.get("locator")
+    if not isinstance(locator, str) or not locator or locator != locator.strip():
+        raise ValueError(
+            "schema-v2 spn_payload locator must be a non-empty project-relative path"
+        )
+    if "\\" in locator or "://" in locator:
+        raise ValueError(
+            "schema-v2 spn_payload locator must be a project-relative POSIX path"
+        )
+    locator_path = Path(locator)
+    if (
+        locator_path.is_absolute()
+        or locator_path == Path(".")
+        or ".." in locator_path.parts
+    ):
+        raise ValueError(
+            "schema-v2 spn_payload locator must be project-relative and remain "
+            "inside the artifact directory"
+        )
+    return locator_path.as_posix()
+
+
+def _verify_sidecar_integrity(artifact: TPMArtifact) -> None:
+    sidecar_path = artifact.sidecar_path
+    if not sidecar_path.is_file():
+        raise TPMArtifactIntegrityError(
+            "TPM artifact sidecar is missing for spn_payload locator "
+            f"{artifact.payload_locator!r}"
+        )
+
+    digest = hashlib.sha256()
+    with sidecar_path.open("rb") as sidecar_file:
+        for chunk in iter(lambda: sidecar_file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    actual_hash = digest.hexdigest()
+    if actual_hash != artifact.payload_hash:
+        raise TPMArtifactIntegrityError(
+            "TPM artifact sidecar SHA-256 integrity check failed for "
+            f"{artifact.payload_locator!r}: expected {artifact.payload_hash}, "
+            f"got {actual_hash}"
+        )
+
+
+def _atomic_write_bytes(path: Path, payload: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        dir=path.parent,
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+    )
+    temporary_path = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as temporary_file:
+            temporary_file.write(payload)
+            temporary_file.flush()
+            os.fsync(temporary_file.fileno())
+        os.replace(temporary_path, path)
+    except BaseException:
+        temporary_path.unlink(missing_ok=True)
+        raise
 
 
 def _mapping(value: object, *, field_name: str) -> dict[str, object]:
@@ -362,27 +582,24 @@ def _validate_spn_payload(
     *,
     spn_payload_format: str,
 ) -> object:
+    if not spn_payload_format:
+        raise ValueError("spn_payload_format must be non-empty")
     if spn_payload_format == "json-inline":
-        if not isinstance(payload, Mapping):
-            raise TypeError("spn_payload must be a mapping for spn_payload_format 'json-inline'")
-        return {str(key): value for key, value in payload.items()}
-
-    if spn_payload_format.endswith("-path") or spn_payload_format.endswith("-locator"):
-        if isinstance(payload, str):
-            if not payload:
-                raise ValueError("spn_payload locator must be non-empty")
-            return payload
-        if isinstance(payload, Mapping):
-            normalized = {str(key): value for key, value in payload.items()}
-            locator = normalized.get("locator", normalized.get("path", ""))
-            if not isinstance(locator, str) or not locator:
-                raise ValueError("spn_payload locator payload must include a non-empty locator")
-            return normalized
-        raise TypeError(
-            "spn_payload locator formats require a string payload or locator mapping"
+        raise ValueError(
+            "schema-v2 spn_payload_format must describe a model sidecar, not json-inline"
         )
+    if not isinstance(payload, Mapping):
+        raise TypeError("schema-v2 spn_payload must be a sidecar locator mapping")
 
-    return payload
+    normalized = {str(key): value for key, value in payload.items()}
+    normalized["locator"] = _payload_locator(normalized)
+    serialization = normalized.get("serialization")
+    if not isinstance(serialization, str) or not serialization.strip():
+        raise ValueError(
+            "schema-v2 spn_payload must include a non-empty serialization"
+        )
+    normalized["serialization"] = serialization.strip()
+    return normalized
 
 
 def _serialize_spn_payload(payload: object) -> object:

@@ -1,11 +1,11 @@
 {
   "fixture_name": "tpm_artifact_v1",
   "fixture_status": "active",
-  "purpose": "Deterministic supported TPM artifact fixture for offline reload and query-contract review.",
+  "purpose": "Legacy schema-v1 TPM artifact retained solely for explicit incompatibility and refit-guidance coverage.",
   "spec_feature": "009-tpm-planning",
   "provenance": {
     "author": "OpenAI Codex",
-    "origin": "Current-library TPM artifact fixture derived from the committed planning-dataset artifact fixture and a fake SPFlow backend summary",
+    "origin": "Pre-correction TPM artifact fixture retained as legacy-generation rejection evidence",
     "legacy_evidence_paths": [
       "legacy/old_tpm/src_py/simulator/data_generation.py",
       "legacy/old_tpm/src_py/simulator/feature_engineering.py",
@@ -15,9 +15,9 @@
       "legacy/old_tpm/src_py/tpm/spn/encoding.py",
       "legacy/old_tpm/src_py/utils/densities.py"
     ],
-    "generation_command": "Replay load_planning_dataset(\"tests/fixtures/tpm/planning_dataset_v1.json\") through fit_tpm_artifact(..., spflow_backend=SimpleNamespace(__name__=\"spflow.testing\", __version__=\"0.test\")) and persist the TPMArtifact JSON payload with a fixed created_at timestamp for review.",
+    "generation_command": "Preserve the historical schema-v1 payload unchanged and verify that load_tpm_artifact reports explicit current-SPFlow refit guidance.",
     "random_seed": 13,
-    "refresh_policy": "Update only when the TPM artifact schema, typed-feature ordering, query metadata, or canonical piecewise provenance intentionally change.",
+    "refresh_policy": "Do not migrate this payload in place; retain it as stable schema-v1 rejection evidence while current artifacts use schema v2.",
     "dataset_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json",
     "training_dataset_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json",
     "created_from_fixture": true,
@@ -51,9 +51,9 @@
     "specs/009-tpm-planning/contracts/validation-contract.md"
   ],
   "notes": [
-    "The committed artifact keeps typed feature metadata explicit, ordered, and versioned for offline reload.",
-    "The payload documents the SPN payload representation and canonical piecewise metadata directly in JSON instead of relying on pickle-only ownership.",
-    "The provenance points at the committed planning-dataset artifact fixture so query replay stays entirely offline."
+    "This historical payload is not a supported reload or query fixture.",
+    "Schema-v1 and its inline fake-backend summary must fail with explicit current-SPFlow refit guidance.",
+    "The payload remains committed only to prevent silent cross-generation compatibility regressions."
   ],
   "artifact_id": "tpm-artifact:planning-dataset-export-integration",
   "schema_version": "v1",
