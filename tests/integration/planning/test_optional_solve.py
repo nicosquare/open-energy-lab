@@ -97,57 +97,41 @@ def test_optional_solve_repeated_runs_return_the_same_selected_design_and_summar
     assert first.feasibility_diagnostics["model_name"] == optimal_summary["model_name"]
 
 
-def test_optional_solve_can_report_deterministic_skip_when_backend_is_unavailable(
+def test_optional_solve_rejects_skip_when_required_backend_is_unavailable(
     monkeypatch,
 ) -> None:
     assembled_problem = _assembled_problem()
-    planning_fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
-    expected_optional_solve = planning_fixture["expected_optional_solve"]
-    assert isinstance(expected_optional_solve, dict)
-    expected_skip = expected_optional_solve["skip_when_backend_unavailable"]
-    assert isinstance(expected_skip, dict)
 
     def _raise_dependency_error():
         raise PlanningSolverDependencyUnavailableError("pyomo missing")
 
     monkeypatch.setattr(optional_solver_module, "require_pyomo_backend", _raise_dependency_error)
 
-    summary = solve_planning_problem(
-        assembled_problem,
-        solve_config=PlanningSolveConfig(skip_if_unavailable=True),
-    )
-
-    assert summary.status == expected_skip["status"]
-    assert summary.objective_value is None
-    assert summary.estimated_shortfall_risk is None
-    assert summary.feasibility_diagnostics["reason"] == expected_skip["reason"]
-    assert summary.solver_metadata["status"] == "skipped"
+    with pytest.raises(PlanningSolverDependencyUnavailableError, match="pyomo missing"):
+        solve_planning_problem(
+            assembled_problem,
+            solve_config=PlanningSolveConfig(skip_if_unavailable=True),
+        )
 
 
-def test_optional_solve_can_skip_when_requested_solver_is_unavailable() -> None:
+def test_optional_solve_rejects_skip_for_non_supplemental_solver() -> None:
     assembled_problem = _assembled_problem()
     planning_fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
     expected_optional_solve = planning_fixture["expected_optional_solve"]
     assert isinstance(expected_optional_solve, dict)
     solve_config = expected_optional_solve["solve_config"]
-    expected_skip = expected_optional_solve["skip_when_requested_solver_unavailable"]
     assert isinstance(solve_config, dict)
-    assert isinstance(expected_skip, dict)
 
-    summary = solve_planning_problem(
-        assembled_problem,
-        solve_config=PlanningSolveConfig(
-            solver_name=str(solve_config["solver_name"]),
-            skip_if_unavailable=True,
-        ),
-        pyomo_backend=_FakePyomoBackend(
-            __name__="pyomo.testing",
-            __version__="0.test",
-            solver_unavailable=True,
-        ),
-    )
-
-    assert summary.status == expected_skip["status"]
-    assert summary.feasibility_diagnostics["reason"] == expected_skip["reason"]
-    assert expected_skip["error_substring"] in summary.feasibility_diagnostics["error"]
-    assert summary.solver_metadata["handoff_strategy"] == expected_skip["handoff_strategy"]
+    with pytest.raises(PlanningSolverUnavailableError, match="fake solver unavailable"):
+        solve_planning_problem(
+            assembled_problem,
+            solve_config=PlanningSolveConfig(
+                solver_name=str(solve_config["solver_name"]),
+                skip_if_unavailable=True,
+            ),
+            pyomo_backend=_FakePyomoBackend(
+                __name__="pyomo.testing",
+                __version__="0.test",
+                solver_unavailable=True,
+            ),
+        )

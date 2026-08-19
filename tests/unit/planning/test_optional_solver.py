@@ -179,17 +179,20 @@ def _assembled_spn_problem() -> PlanningProblemAssembly:
     )
 
 
-def test_require_pyomo_backend_raises_documented_lazy_dependency_error(monkeypatch) -> None:
+def test_require_pyomo_backend_raises_required_lazy_dependency_error(monkeypatch) -> None:
     def _raise_import_error(module_name: str):
         raise ImportError(module_name)
 
     monkeypatch.setattr(optional_solver_module, "import_module", _raise_import_error)
 
-    with pytest.raises(PlanningSolverDependencyUnavailableError, match="optional 'pyomo'"):
+    with pytest.raises(
+        PlanningSolverDependencyUnavailableError,
+        match=r"(?i)required.*Pyomo|Pyomo.*required",
+    ):
         require_pyomo_backend()
 
 
-def test_solve_planning_problem_returns_deterministic_skip_when_backend_is_unavailable(
+def test_solve_planning_problem_rejects_skip_when_required_backend_is_unavailable(
     monkeypatch,
 ) -> None:
     def _raise_dependency_error():
@@ -197,17 +200,11 @@ def test_solve_planning_problem_returns_deterministic_skip_when_backend_is_unava
 
     monkeypatch.setattr(optional_solver_module, "require_pyomo_backend", _raise_dependency_error)
 
-    summary = solve_planning_problem(
-        _assembled_problem(),
-        solve_config=PlanningSolveConfig(skip_if_unavailable=True),
-    )
-
-    assert summary.status == "skipped"
-    assert summary.selected_design == {}
-    assert summary.objective_value is None
-    assert summary.estimated_shortfall_risk is None
-    assert "optional pyomo backend unavailable" in summary.feasibility_diagnostics["reason"]
-    assert summary.solver_metadata["requested_solver_name"] == "pyomo"
+    with pytest.raises(PlanningSolverDependencyUnavailableError, match="pyomo missing"):
+        solve_planning_problem(
+            _assembled_problem(),
+            solve_config=PlanningSolveConfig(skip_if_unavailable=True),
+        )
 
 
 def test_solve_planning_problem_uses_injected_backend_without_importing_pyomo() -> None:
@@ -230,24 +227,20 @@ def test_solve_planning_problem_uses_injected_backend_without_importing_pyomo() 
     assert summary.feasibility_diagnostics["model_name"] == "planning-problem-unit-handoff"
 
 
-def test_solve_planning_problem_can_skip_when_requested_solver_is_unavailable() -> None:
-    summary = solve_planning_problem(
-        _assembled_problem(),
-        solve_config=PlanningSolveConfig(
-            solver_name="fake-pyomo",
-            skip_if_unavailable=True,
-        ),
-        pyomo_backend=_FakePyomoBackend(
-            __name__="pyomo.testing",
-            __version__="0.test",
-            solver_unavailable=True,
-        ),
-    )
-
-    assert summary.status == "skipped"
-    assert summary.feasibility_diagnostics["reason"] == "requested planning solver unavailable"
-    assert "fake solver unavailable" in summary.feasibility_diagnostics["error"]
-    assert summary.solver_metadata["handoff_strategy"] == "custom-backend-hook"
+def test_solve_planning_problem_rejects_skip_for_non_supplemental_solver() -> None:
+    with pytest.raises(PlanningSolverUnavailableError, match="fake solver unavailable"):
+        solve_planning_problem(
+            _assembled_problem(),
+            solve_config=PlanningSolveConfig(
+                solver_name="fake-pyomo",
+                skip_if_unavailable=True,
+            ),
+            pyomo_backend=_FakePyomoBackend(
+                __name__="pyomo.testing",
+                __version__="0.test",
+                solver_unavailable=True,
+            ),
+        )
 
 
 def test_solve_planning_problem_accepts_direct_spn_backend_results() -> None:

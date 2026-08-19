@@ -23,6 +23,7 @@ from .problem import (
 
 REQUIRED_PYOMO_VERSION = "6.10.1"
 REQUIRED_HIGHSPY_VERSION = "1.15.1"
+SUPPLEMENTAL_SOLVER_NAMES = frozenset({"gurobi"})
 
 
 class PlanningSolverDependencyUnavailableError(ImportError):
@@ -152,17 +153,7 @@ def solve_planning_problem(*args: object, **kwargs: object) -> object:
     if not isinstance(solve_config, PlanningSolveConfig):
         raise TypeError("solve_config must be a PlanningSolveConfig")
 
-    try:
-        backend = pyomo_backend if pyomo_backend is not None else require_pyomo_backend()
-    except PlanningSolverDependencyUnavailableError as exc:
-        if not solve_config.skip_if_unavailable:
-            raise
-        return _skipped_summary(
-            assembled_problem,
-            solve_config=solve_config,
-            reason="optional pyomo backend unavailable",
-            error=str(exc),
-        )
+    backend = pyomo_backend if pyomo_backend is not None else require_pyomo_backend()
 
     handoff = _build_pyomo_model_handoff(
         assembled_problem,
@@ -517,15 +508,11 @@ def _solve_through_backend_hook(
     try:
         raw_result = handoff.backend.solve_candidate_model(handoff, solve_config)
     except PlanningSolverUnavailableError as exc:
-        if not solve_config.skip_if_unavailable:
-            raise
-        return _skipped_summary(
+        return _handle_solver_unavailable(
             assembled_problem,
             solve_config=solve_config,
-            reason="requested planning solver unavailable",
-            error=str(exc),
-            backend=handoff.backend,
             handoff=handoff,
+            error=exc,
         )
     return _summary_from_backend_result(
         assembled_problem,
@@ -601,6 +588,20 @@ def _summary_from_backend_result(
             extra_solver_metadata=_mapping_from_value(raw_result.get("solver_metadata")),
         )
     if status == "skipped":
+        if not _supplemental_skip_allowed(
+            solve_config=solve_config,
+            handoff=handoff,
+        ):
+            raise PlanningSolverUnavailableError(
+                str(
+                    raw_result.get("error")
+                    or raw_result.get("reason")
+                    or (
+                        f"required solver {handoff.requested_solver_name!r} "
+                        "cannot skip execution"
+                    )
+                )
+            )
         return _skipped_summary(
             assembled_problem,
             solve_config=solve_config,
@@ -659,7 +660,20 @@ def _solve_through_pyomo_solver(
         solve_config=solve_config,
         solver_name=handoff.requested_solver_name,
     )
-    results = solver.solve(handoff.model, tee=False, load_solutions=False)
+    try:
+        results = solver.solve(handoff.model, tee=False, load_solutions=False)
+    except Exception as exc:
+        error = PlanningSolverUnavailableError(
+            f"solver {handoff.requested_solver_name!r} execution failed: {exc}"
+        )
+        if handoff.requested_solver_name in SUPPLEMENTAL_SOLVER_NAMES:
+            return _handle_solver_unavailable(
+                assembled_problem,
+                solve_config=solve_config,
+                handoff=handoff,
+                error=error,
+            )
+        raise error from exc
     result_metadata = {
         **_solver_result_metadata(results),
         **_solver_stack_metadata(handoff, solver_options=solver_options),
@@ -1066,7 +1080,10 @@ def _handle_solver_unavailable(
     handoff: _PlanningPyomoModelHandoff,
     error: PlanningSolverUnavailableError,
 ) -> PlanningSolveSummary:
-    if not solve_config.skip_if_unavailable:
+    if not _supplemental_skip_allowed(
+        solve_config=solve_config,
+        handoff=handoff,
+    ):
         raise error
     return _skipped_summary(
         assembled_problem,
@@ -1075,6 +1092,17 @@ def _handle_solver_unavailable(
         error=str(error),
         backend=handoff.backend,
         handoff=handoff,
+    )
+
+
+def _supplemental_skip_allowed(
+    *,
+    solve_config: PlanningSolveConfig,
+    handoff: _PlanningPyomoModelHandoff,
+) -> bool:
+    return (
+        solve_config.skip_if_unavailable
+        and handoff.requested_solver_name in SUPPLEMENTAL_SOLVER_NAMES
     )
 
 
