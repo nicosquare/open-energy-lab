@@ -9,9 +9,16 @@ from numbers import Real
 from pathlib import Path
 from typing import Any
 
-from .artifact import TPMArtifact, load_tpm_artifact
-from .features import TPMFeatureSpec
-from .optional_spflow import evaluate_spflow_query
+from .artifact import (
+    SUPPORTED_TPM_EXECUTION_MODES,
+    TPMArtifact,
+    load_tpm_artifact,
+)
+from .features import (
+    TPMFeatureSpec,
+    validate_spflow_feature_assignments,
+)
+from .optional_spflow import evaluate_spflow_query, load_spflow_payload
 from .piecewise import (
     DEFAULT_QUERY_NUMERIC_TOLERANCE,
     resolve_query_numeric_tolerance,
@@ -32,6 +39,7 @@ class TPMQueryRequest:
     target_name: str = ""
     numeric_tolerance: float | None = None
     target_threshold: float | None = None
+    execution_mode: str = "production"
 
     def __post_init__(self) -> None:
         if not isinstance(self.decision_assignments, Mapping):
@@ -68,6 +76,14 @@ class TPMQueryRequest:
         if self.target_threshold is not None:
             object.__setattr__(self, "target_threshold", float(self.target_threshold))
 
+        execution_mode = str(self.execution_mode)
+        if execution_mode not in SUPPORTED_TPM_EXECUTION_MODES:
+            raise ValueError(
+                "execution_mode must be one of "
+                f"{SUPPORTED_TPM_EXECUTION_MODES!r}; got {execution_mode!r}"
+            )
+        object.__setattr__(self, "execution_mode", execution_mode)
+
 
 @dataclass(frozen=True, slots=True)
 class _QueryContext:
@@ -88,16 +104,20 @@ def query_tpm_artifact(
 
     resolved_artifact = _load_artifact(artifact)
     context = _build_query_context(resolved_artifact, request)
-    result = evaluate_spflow_query(
-        resolved_artifact,
-        feature_specs=context.feature_by_name,
-        decision_assignments=request.decision_assignments,
-        marginalized_features=request.marginalized_features,
-        canonical_target_name=context.canonical_target_name,
-        event_target_name=context.event_target_name,
-        output_mode=request.output_mode,
-        numeric_tolerance=context.numeric_tolerance,
-    )
+    result = None
+    if request.execution_mode == "production":
+        result = _evaluate_current_spflow_query(resolved_artifact, request, context)
+    if result is None:
+        result = evaluate_spflow_query(
+            resolved_artifact,
+            feature_specs=context.feature_by_name,
+            decision_assignments=request.decision_assignments,
+            marginalized_features=request.marginalized_features,
+            canonical_target_name=context.canonical_target_name,
+            event_target_name=context.event_target_name,
+            output_mode=request.output_mode,
+            numeric_tolerance=context.numeric_tolerance,
+        )
     if result is None:
         result = _evaluate_empirical_query(resolved_artifact, request, context)
     if result is None:
@@ -125,7 +145,9 @@ def query_tpm_artifact(
 __all__ = [
     "DEFAULT_QUERY_NUMERIC_TOLERANCE",
     "TPMQueryRequest",
+    "marginalize_spflow_model",
     "query_tpm_artifact",
+    "reduce_spflow_log_likelihood",
 ]
 
 
@@ -177,7 +199,22 @@ def _build_query_context(
         if target_name in marginalized_names:
             raise ValueError(f"target feature {target_name!r} cannot be marginalized")
 
-    artifact.validate_feature_assignments(request.decision_assignments)
+    required_decision_features = tuple(
+        str(feature_name)
+        for feature_name in artifact.query_configuration.get(
+            "required_decision_features",
+            (),
+        )
+    )
+    validate_spflow_feature_assignments(
+        artifact.feature_specs,
+        request.decision_assignments,
+        required_decision_features=tuple(
+            feature_name
+            for feature_name in required_decision_features
+            if feature_name not in marginalized_names
+        ),
+    )
     for feature_name in request.decision_assignments:
         spec = feature_by_name[feature_name]
         if not spec.modifiable:
@@ -189,24 +226,6 @@ def _build_query_context(
     for feature_name in request.marginalized_features:
         if feature_name not in feature_by_name:
             raise ValueError(f"unknown marginalized feature {feature_name!r}")
-
-    required_decision_features = tuple(
-        str(feature_name)
-        for feature_name in artifact.query_configuration.get(
-            "required_decision_features",
-            (),
-        )
-    )
-    unresolved_required_features = [
-        feature_name
-        for feature_name in required_decision_features
-        if feature_name not in assignment_names and feature_name not in marginalized_names
-    ]
-    if unresolved_required_features:
-        raise ValueError(
-            "required decision feature assignments are missing: "
-            + ", ".join(unresolved_required_features)
-        )
 
     target_threshold = float(
         request.target_threshold
@@ -231,6 +250,109 @@ def _build_query_context(
         target_threshold=target_threshold,
         numeric_tolerance=numeric_tolerance,
     )
+
+
+def reduce_spflow_log_likelihood(value: object) -> float:
+    """Reduce one scalar-root SPFlow likelihood tensor to a finite float."""
+
+    import torch
+
+    if not isinstance(value, torch.Tensor):
+        raise TypeError("SPFlow log_likelihood output must be a Torch tensor")
+    if value.numel() != 1:
+        raise ValueError(
+            "SPFlow log_likelihood reduction requires one batch, channel, and "
+            f"repetition value; found shape {tuple(value.shape)!r}"
+        )
+    scalar = value.detach().cpu().to(dtype=torch.float64).reshape(-1)[0]
+    if not bool(torch.isfinite(scalar)):
+        raise ValueError("SPFlow log_likelihood output must be finite")
+    return float(scalar.item())
+
+
+def marginalize_spflow_model(
+    model: object,
+    feature_indices: tuple[int, ...] | list[int],
+) -> object:
+    """Structurally remove the named feature indices from a current model."""
+
+    normalized_indices = tuple(int(index) for index in feature_indices)
+    if len(set(normalized_indices)) != len(normalized_indices):
+        raise ValueError("feature_indices must not contain duplicates")
+    if any(index < 0 for index in normalized_indices):
+        raise ValueError("feature_indices must be non-negative")
+    marginalize = getattr(model, "marginalize", None)
+    if not callable(marginalize):
+        raise TypeError("current SPFlow model must provide marginalize()")
+    return marginalize(list(normalized_indices))
+
+
+def _evaluate_current_spflow_query(
+    artifact: TPMArtifact,
+    request: TPMQueryRequest,
+    context: _QueryContext,
+) -> dict[str, object] | None:
+    runtime_payload = load_spflow_payload(artifact)
+    if runtime_payload is None:
+        return None
+    model = runtime_payload.get("model")
+    if model is None:
+        return None
+    if str(runtime_payload.get("backend_generation", "")) != "current-spflow":
+        raise RuntimeError("production query requires a current-SPFlow model payload")
+    if str(runtime_payload.get("backend_api_version", "")) != artifact.backend_api_version:
+        raise RuntimeError(
+            "production query payload API version does not match the TPM artifact"
+        )
+
+    import torch
+
+    feature_specs = artifact.feature_specs
+    feature_indices = {
+        spec.feature_name: index for index, spec in enumerate(feature_specs)
+    }
+    evidence = torch.full(
+        (1, len(feature_specs)),
+        torch.nan,
+        dtype=torch.float64,
+        device="cpu",
+    )
+    for feature_name, supplied_value in request.decision_assignments.items():
+        spec = context.feature_by_name[feature_name]
+        evidence[0, feature_indices[feature_name]] = spec.normalize_value(supplied_value)
+
+    denominator_output = model.log_likelihood(evidence)
+    denominator_log_likelihood = reduce_spflow_log_likelihood(denominator_output)
+    if request.output_mode == "conditional_probability":
+        numerator_evidence = evidence.clone()
+        event_spec = context.feature_by_name[context.event_target_name]
+        event_value = event_spec.ordering[-1]
+        numerator_evidence[0, feature_indices[context.event_target_name]] = (
+            event_spec.normalize_value(event_value)
+        )
+        numerator_output = model.log_likelihood(numerator_evidence)
+        numerator_log_likelihood = reduce_spflow_log_likelihood(numerator_output)
+        probability = math.exp(
+            min(0.0, numerator_log_likelihood - denominator_log_likelihood)
+        )
+        value = min(1.0, max(0.0, probability))
+    else:
+        numerator_log_likelihood = None
+        value = denominator_log_likelihood
+
+    raw_rows = runtime_payload.get("raw_rows")
+    total_row_count = len(raw_rows) if isinstance(raw_rows, tuple | list) else 0
+    result: dict[str, object] = {
+        "matched_row_count": 0,
+        "total_row_count": total_row_count,
+        "source": "spflow_backend",
+        "value": float(value),
+        "resolved_target_name": context.event_target_name,
+        "denominator_log_likelihood": denominator_log_likelihood,
+    }
+    if numerator_log_likelihood is not None:
+        result["numerator_log_likelihood"] = numerator_log_likelihood
+    return result
 
 
 def _evaluate_empirical_query(

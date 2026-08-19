@@ -19,6 +19,13 @@ SUPPORTED_TPM_MONOTONICITY = (
     "none",
     "increasing",
 )
+SUPPORTED_SPFLOW_VALIDATION_REASONS = (
+    "missing",
+    "out_of_bounds",
+    "unseen_category",
+    "invalid_binary",
+)
+_MISSING_SUPPLIED_VALUE = object()
 
 
 def _is_non_boolean_real(value: object) -> bool:
@@ -173,6 +180,47 @@ class TPMFeatureSpec:
         return _normalize_numeric_value(float(value), bounds=self.bounds)
 
 
+class TPMFeatureValidationError(ValueError):
+    """Structured pre-backend validation failure for one typed feature."""
+
+    def __init__(
+        self,
+        *,
+        feature_name: str,
+        expected_domain: Sequence[object],
+        reason: str,
+        supplied_value: object = _MISSING_SUPPLIED_VALUE,
+    ) -> None:
+        if reason not in SUPPORTED_SPFLOW_VALIDATION_REASONS:
+            raise ValueError(
+                f"unsupported feature validation reason {reason!r}; expected one of "
+                f"{SUPPORTED_SPFLOW_VALIDATION_REASONS!r}"
+            )
+        self.feature_name = str(feature_name)
+        self.expected_domain = tuple(expected_domain)
+        self.reason = reason
+        self._has_supplied_value = supplied_value is not _MISSING_SUPPLIED_VALUE
+        if self._has_supplied_value:
+            self.supplied_value = supplied_value
+        message = (
+            f"invalid TPM feature {self.feature_name!r}: reason={reason}; "
+            f"expected_domain={self.expected_domain!r}"
+        )
+        if self._has_supplied_value:
+            message += f"; supplied_value={supplied_value!r}"
+        super().__init__(message)
+
+    def to_dict(self) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "feature_name": self.feature_name,
+            "expected_domain": list(self.expected_domain),
+            "reason": self.reason,
+        }
+        if self._has_supplied_value:
+            payload["supplied_value"] = self.supplied_value
+        return payload
+
+
 def load_feature_schema(items: Sequence[Mapping[str, Any]]) -> tuple[TPMFeatureSpec, ...]:
     """Load a persisted feature schema into validated TPM feature specs."""
 
@@ -294,15 +342,90 @@ def build_spflow_training_tensor(
     return torch.tensor(matrix, dtype=torch.float64, device="cpu")
 
 
+def validate_spflow_feature_assignments(
+    feature_schema: Sequence[TPMFeatureSpec],
+    assignments: Mapping[str, object],
+    *,
+    required_decision_features: Sequence[str] = (),
+) -> None:
+    """Validate typed assignments before a required SPFlow workflow starts."""
+
+    if not isinstance(assignments, Mapping):
+        raise TypeError("feature assignments must be a mapping")
+    schema = _validated_feature_schema(feature_schema)
+    feature_by_name = {spec.feature_name: spec for spec in schema}
+
+    for feature_name in required_decision_features:
+        normalized_name = str(feature_name)
+        spec = feature_by_name.get(normalized_name)
+        if spec is None:
+            raise ValueError(
+                f"required decision feature {normalized_name!r} is not in feature_schema"
+            )
+        if normalized_name not in assignments:
+            raise TPMFeatureValidationError(
+                feature_name=normalized_name,
+                expected_domain=_feature_expected_domain(spec),
+                reason="missing",
+            )
+
+    for feature_name, value in assignments.items():
+        normalized_name = str(feature_name)
+        spec = feature_by_name.get(normalized_name)
+        if spec is None:
+            raise ValueError(f"unknown TPM feature assignment {normalized_name!r}")
+        expected_domain = _feature_expected_domain(spec)
+        if spec.feature_type == "continuous":
+            if not _is_non_boolean_real(value) or not _value_within_bounds(
+                value,
+                spec.bounds,
+            ):
+                raise TPMFeatureValidationError(
+                    feature_name=normalized_name,
+                    expected_domain=expected_domain,
+                    reason="out_of_bounds",
+                    supplied_value=value,
+                )
+        elif spec.feature_type == "binary":
+            if value not in spec.discrete_values:
+                raise TPMFeatureValidationError(
+                    feature_name=normalized_name,
+                    expected_domain=expected_domain,
+                    reason="invalid_binary",
+                    supplied_value=value,
+                )
+        elif spec.feature_type == "categorical":
+            if value not in spec.discrete_values:
+                raise TPMFeatureValidationError(
+                    feature_name=normalized_name,
+                    expected_domain=expected_domain,
+                    reason="unseen_category",
+                    supplied_value=value,
+                )
+        elif value not in spec.discrete_values and (
+            not _is_non_boolean_real(value)
+            or not _value_within_bounds(value, spec.bounds)
+        ):
+            raise TPMFeatureValidationError(
+                feature_name=normalized_name,
+                expected_domain=expected_domain,
+                reason="out_of_bounds",
+                supplied_value=value,
+            )
+
+
 __all__ = [
     "SUPPORTED_TPM_FEATURE_TYPES",
     "SUPPORTED_TPM_MONOTONICITY",
+    "SUPPORTED_SPFLOW_VALIDATION_REASONS",
     "TPMFeatureSpec",
+    "TPMFeatureValidationError",
     "build_spflow_leaf_modules",
     "build_spflow_training_tensor",
     "dump_feature_schema",
     "infer_feature_role",
     "load_feature_schema",
+    "validate_spflow_feature_assignments",
 ]
 
 
@@ -320,6 +443,27 @@ def _validated_feature_schema(
     if len(set(feature_names)) != len(feature_names):
         raise ValueError("feature_schema feature_name values must be unique")
     return schema
+
+
+def _feature_expected_domain(spec: TPMFeatureSpec) -> tuple[object, ...]:
+    if spec.feature_type == "continuous":
+        return tuple(spec.bounds or ("numeric",))
+    if spec.feature_type in {"binary", "categorical"}:
+        return tuple(spec.ordering)
+    domain: list[object] = list(spec.ordering)
+    if spec.bounds is not None:
+        domain.extend(spec.bounds)
+    return tuple(domain)
+
+
+def _value_within_bounds(
+    value: object,
+    bounds: tuple[float, float] | None,
+) -> bool:
+    if bounds is None:
+        return True
+    numeric_value = float(value)
+    return bounds[0] <= numeric_value <= bounds[1]
 
 
 def _spflow_categorical_template_class(
