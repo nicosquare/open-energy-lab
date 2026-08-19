@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 from open_energy_lab.demand import (
@@ -10,7 +11,6 @@ from open_energy_lab.demand import (
 )
 from open_energy_lab.planning import (
     PlanningProblemDefinition,
-    PlanningSolveConfig,
     assemble_planning_problem,
     solve_planning_problem,
 )
@@ -37,12 +37,15 @@ from open_energy_lab.simulator.load import LoadComponent
 from open_energy_lab.simulator.stochastic_demand import DemandFamilyEvaluationRequest
 from open_energy_lab.simulator.weather import weather_component_from_sampled_trace
 from open_energy_lab.tpm import (
+    TPMFitConfig,
     TPMQueryRequest,
+    compile_spflow_model_to_mio,
     detect_spflow_backend_capabilities,
     fit_tpm_artifact,
     load_tpm_artifact,
     query_tpm_artifact,
 )
+from open_energy_lab.tpm.optional_spflow import load_spflow_payload
 from open_energy_lab.weather import (
     WeatherSamplingRequest,
     load_weather_artifact,
@@ -193,7 +196,43 @@ def main() -> None:
     dataset.write_json(dataset_path)
 
     tpm_path = OUTPUT_ROOT / "tpm_artifact.json"
-    fit_tpm_artifact(dataset_path, output_path=tpm_path)
+    fit_tpm_artifact(
+        dataset_path,
+        output_path=tpm_path,
+        fit_config=TPMFitConfig(
+            training_random_seed=13,
+            spn_payload_format="spflow-model-sidecar",
+            execution_mode="production",
+            notes=("real-simulator-to-highs-example",),
+        ),
+    )
+    tpm_artifact = load_tpm_artifact(tpm_path)
+    runtime_payload = load_spflow_payload(tpm_artifact)
+    if runtime_payload is None or runtime_payload.get("model") is None:
+        raise RuntimeError("production fit did not persist a current-SPFlow model")
+    compiled_mio = compile_spflow_model_to_mio(
+        runtime_payload["model"],
+        feature_schema=tpm_artifact.feature_specs,
+    )
+    compiler_policy = dict(compiled_mio["breakpoint_policy"])
+    tpm_artifact = replace(
+        tpm_artifact,
+        approximation_metadata={
+            **dict(tpm_artifact.approximation_metadata),
+            "backend_compiler_version": compiled_mio["backend_compiler_version"],
+            "compiler_schema_version": compiled_mio["schema_version"],
+            "compiler_version": compiled_mio["compiler_version"],
+            "compiler_status": "production-validated",
+            "compiler_sum_encoding_mode": compiled_mio["sum_encoding_mode"],
+            "leaf_encoding_mode": compiled_mio["leaf_encoding_mode"],
+            "breakpoint_policy": {
+                **compiler_policy,
+                "piecewise_breakpoint_count": compiler_policy["breakpoint_count"],
+            },
+            "mio_epsilon": compiled_mio["mio_epsilon"],
+        },
+    )
+    tpm_artifact.write_json(tpm_path)
     tpm_artifact = load_tpm_artifact(tpm_path)
 
     query_result = query_tpm_artifact(
@@ -225,19 +264,10 @@ def main() -> None:
                 "battery_capacity_kwh": 1200.0,
                 "solar_capacity_kw": 950.0,
             },
-            solver_configuration={
-                "backend_name": "pyomo",
-                "solver_name": "gurobi",
-                "numeric_tolerance": 1e-9,
-                "random_seed": 13,
-            },
         ),
         tpm_artifact,
     )
-    solve_summary = solve_planning_problem(
-        assembled_problem,
-        solve_config=PlanningSolveConfig(solver_name="gurobi"),
-    )
+    solve_summary = solve_planning_problem(assembled_problem)
 
     summary = {
         "generated_by": str(Path(__file__).relative_to(REPO_ROOT)),
@@ -245,22 +275,30 @@ def main() -> None:
         "dataset_path": str(dataset_path.relative_to(REPO_ROOT)),
         "tpm_path": str(tpm_path.relative_to(REPO_ROOT)),
         "spflow_capabilities": capability_report,
+        "used_real_spflow_backend": True,
         "spn_payload_format": tpm_artifact.spn_payload_format,
         "spn_payload_locator": tpm_artifact.spn_payload.get("locator"),
         "query_result": query_result,
+        "compiler_version": compiled_mio["compiler_version"],
+        "compiler_breakpoint_count": compiled_mio["breakpoint_policy"][
+            "breakpoint_count"
+        ],
+        "mio_epsilon": compiled_mio["mio_epsilon"],
         "risk_evaluation_mode": assembled_problem.risk_evaluation_mode,
         "solve_status": solve_summary.status,
         "selected_design": dict(solve_summary.selected_design),
         "objective_value": solve_summary.objective_value,
-        "estimated_event_probability": getattr(
-            solve_summary,
-            "estimated_event_probability",
-            None,
-        ),
+        "estimated_event_probability": solve_summary.estimated_shortfall_risk,
         "estimated_shortfall_risk": solve_summary.estimated_shortfall_risk,
         "solver_backend_module": solve_summary.solver_metadata.get("backend_module"),
         "requested_solver_name": solve_summary.solver_metadata.get("requested_solver_name"),
         "solve_execution_mode": solve_summary.solver_metadata.get("solve_execution_mode"),
+        "termination_condition": solve_summary.solver_metadata.get(
+            "termination_condition"
+        ),
+        "solver_options": solve_summary.solver_metadata.get("solver_options"),
+        "pyomo_version": solve_summary.solver_metadata.get("pyomo_version"),
+        "highspy_version": solve_summary.solver_metadata.get("highspy_version"),
     }
     summary_path = OUTPUT_ROOT / "pipeline_summary.json"
     summary_path.write_text(

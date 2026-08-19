@@ -74,10 +74,24 @@ the manifest, and later loads verify that digest before deserialization.
 ## Simulator-To-Planning Pipeline
 
 `run_real_backend_pipeline.py` covers the broader simulator export and planning
-path. T055 owns its final SPFlow 1.1 and default-HiGHS port. Until that task is
-complete, use the generic pipeline above as the required production
-fit/reload/query/compiler example rather than treating older Gurobi-oriented
-results as current validation.
+path. It samples the committed weather and demand artifacts, evaluates the
+simulator family, exports the planning dataset, fits and reloads a production
+SPFlow 1.1 sidecar, runs a native query, compiles the model through
+`spflow-v1-mio-v1`, assembles the direct battery-and-solar problem, and solves
+through the default `SolverFactory("highs")` path.
+
+Run it from the repository root:
+
+```bash
+uv run python examples/tpm_planning/run_real_backend_pipeline.py
+```
+
+Generated data stays under `tmp/open-energy-lab-pipeline-real-backends/`. A
+successful `pipeline_summary.json` records production SPFlow evidence, compiler
+version/five-breakpoint/`1e-6` metadata, `risk_evaluation_mode == "spn_mip"`,
+an optimal HiGHS termination, seed `13`, one thread, a 30-second limit, and the
+installed Pyomo/highspy versions. The example is fully offline and does not
+need Gurobi, notebooks, network services, GPUs, or solver licenses.
 
 ## Required Environment
 
@@ -88,8 +102,8 @@ The locked project environment provides:
 - `highspy==1.15.1`
 
 Imports remain lazy, but these are required installed dependencies. The generic
-pipeline uses SPFlow and Torch only; it does not require a solver. T055 and the
-planning corrective tasks establish the end-to-end default HiGHS solve path.
+pipeline uses SPFlow and Torch only; the broader simulator-to-planning example
+also exercises the required default HiGHS solve.
 
 Inspect current SPFlow capability metadata with:
 
