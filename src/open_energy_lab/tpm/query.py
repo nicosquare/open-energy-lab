@@ -103,25 +103,42 @@ def query_tpm_artifact(
     """Evaluate one conditional TPM query from a persisted artifact contract."""
 
     resolved_artifact = _load_artifact(artifact)
+    if request.execution_mode != resolved_artifact.execution_mode:
+        raise ValueError(
+            "execution_mode mismatch: artifact requires "
+            f"{resolved_artifact.execution_mode!r}, request selected "
+            f"{request.execution_mode!r}"
+        )
     context = _build_query_context(resolved_artifact, request)
-    result = None
     if request.execution_mode == "production":
         result = _evaluate_current_spflow_query(resolved_artifact, request, context)
-    if result is None:
-        result = evaluate_spflow_query(
-            resolved_artifact,
-            feature_specs=context.feature_by_name,
-            decision_assignments=request.decision_assignments,
-            marginalized_features=request.marginalized_features,
-            canonical_target_name=context.canonical_target_name,
-            event_target_name=context.event_target_name,
-            output_mode=request.output_mode,
-            numeric_tolerance=context.numeric_tolerance,
-        )
-    if result is None:
+        if result is None:
+            raise RuntimeError(
+                "production TPM queries require a valid current-SPFlow model payload"
+            )
+    else:
         result = _evaluate_empirical_query(resolved_artifact, request, context)
-    if result is None:
-        result = _evaluate_fallback_query(request, context)
+        if result is None:
+            result = evaluate_spflow_query(
+                resolved_artifact,
+                feature_specs=context.feature_by_name,
+                decision_assignments=request.decision_assignments,
+                marginalized_features=request.marginalized_features,
+                canonical_target_name=context.canonical_target_name,
+                event_target_name=context.event_target_name,
+                output_mode=request.output_mode,
+                numeric_tolerance=context.numeric_tolerance,
+            )
+            if result is not None:
+                result = {
+                    **result,
+                    "fixture_backend_source": result.get("source"),
+                    "source": "empirical_fixture",
+                }
+        if result is None:
+            raise RuntimeError(
+                "fixture_replay TPM queries require explicit empirical fixture data"
+            )
 
     response = {
         "artifact_id": resolved_artifact.artifact_id,
@@ -292,7 +309,14 @@ def _evaluate_current_spflow_query(
     request: TPMQueryRequest,
     context: _QueryContext,
 ) -> dict[str, object] | None:
-    runtime_payload = load_spflow_payload(artifact)
+    import pickle
+
+    try:
+        runtime_payload = load_spflow_payload(artifact)
+    except (OSError, TypeError, ValueError, EOFError, AttributeError, pickle.PickleError) as exc:
+        raise RuntimeError(
+            "production TPM queries require a valid current-SPFlow model payload"
+        ) from exc
     if runtime_payload is None:
         return None
     model = runtime_payload.get("model")
@@ -477,31 +501,3 @@ def _numeric_match(actual_value: object, expected_value: object, numeric_toleran
     if not _is_non_boolean_real(actual_value) or not _is_non_boolean_real(expected_value):
         return False
     return abs(float(actual_value) - float(expected_value)) <= numeric_tolerance
-
-
-def _evaluate_fallback_query(
-    request: TPMQueryRequest,
-    context: _QueryContext,
-) -> dict[str, object]:
-    probability = _fallback_probability(request, context)
-    if request.output_mode == "conditional_probability":
-        value = probability
-    else:
-        value = math.log(max(probability, context.numeric_tolerance))
-
-    return {
-        "matched_row_count": 0,
-        "total_row_count": 0,
-        "source": "artifact_metadata_fallback",
-        "value": float(value),
-        "resolved_target_name": context.event_target_name,
-    }
-
-
-def _fallback_probability(
-    request: TPMQueryRequest,
-    context: _QueryContext,
-) -> float:
-    del request
-    del context
-    return 0.0

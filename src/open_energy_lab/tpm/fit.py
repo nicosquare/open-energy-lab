@@ -74,6 +74,7 @@ class TPMFitConfig:
     supported_output_modes: tuple[str, ...] = CANONICAL_OUTPUT_MODES
     learn_mspn_kwargs: Mapping[str, object] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
+    execution_mode: str = "production"
 
     def __post_init__(self) -> None:
         backend_name = str(self.backend_name)
@@ -112,6 +113,13 @@ class TPMFitConfig:
         if any(not note for note in notes):
             raise ValueError("notes must not contain empty strings")
         object.__setattr__(self, "notes", notes)
+
+        execution_mode = str(self.execution_mode)
+        if execution_mode not in {"production", "fixture_replay"}:
+            raise ValueError(
+                "execution_mode must be 'production' or 'fixture_replay'"
+            )
+        object.__setattr__(self, "execution_mode", execution_mode)
 
 
 @dataclass(frozen=True, slots=True)
@@ -330,7 +338,7 @@ def fit_tpm_artifact(
         ),
         backend_generation=fit_result.backend_generation,
         backend_api_version=fit_result.backend_api_version,
-        execution_mode="production",
+        execution_mode=config.execution_mode,
         spn_payload=fit_result.spn_payload,
         spn_payload_format=fit_result.spn_payload_format,
         payload_hash=fit_result.payload_hash,
@@ -413,7 +421,7 @@ def fit_tpm_artifact_from_rows(
         ),
         backend_generation=fit_result.backend_generation,
         backend_api_version=fit_result.backend_api_version,
-        execution_mode="production",
+        execution_mode=config.execution_mode,
         spn_payload=fit_result.spn_payload,
         spn_payload_format=fit_result.spn_payload_format,
         payload_hash=fit_result.payload_hash,
@@ -772,6 +780,7 @@ def _persisted_fit_configuration(
         "learn_spn_kwargs": dict(result.learn_spn_kwargs),
         "leaf_families": list(result.leaf_families),
         "notes": list(config.notes),
+        "execution_mode": config.execution_mode,
     }
     if result.determinism_configuration:
         payload["determinism_configuration"] = dict(
