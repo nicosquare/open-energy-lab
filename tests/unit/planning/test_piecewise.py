@@ -6,19 +6,66 @@ import pytest
 
 from open_energy_lab.planning.piecewise import (
     DEFAULT_EXP_PIECEWISE_DOMAIN_FLOOR,
+    PlanningMIOCompatibilityError,
     PiecewiseCurveSpec,
     PiecewisePlanningTerms,
     SUPPORTED_FIRST_RELEASE_DECISION_TYPES,
     SUPPORTED_FIRST_RELEASE_DECISION_VARIABLE_TYPES,
+    build_current_spflow_planning_payload,
     build_exponential_piecewise_curve,
     build_logarithm_piecewise_curve,
     build_piecewise_planning_terms,
     validate_first_release_decision_features,
+    validate_current_spflow_mio_payload,
 )
 from tests.integration.planning.fixture_utils import (
     TPM_ARTIFACT_FIXTURE_PATH,
     load_planning_fixture,
 )
+
+
+def _compiled_mio_payload() -> dict[str, object]:
+    return {
+        "schema_version": "v1",
+        "payload_format": "open-energy-lab-spflow-mio",
+        "compiler_version": "spflow-v1-mio-v1",
+        "backend_compiler_version": "spflow-v1-mio-v1",
+        "backend_generation": "current-spflow",
+        "backend_api_version": "1.1.0",
+        "approximation_kind": "piecewise",
+        "leaf_encoding_mode": "piecewise-log-density",
+        "sum_encoding_mode": "weighted-logsumexp",
+        "output_channels": 1,
+        "num_repetitions": 1,
+        "breakpoint_policy": {"breakpoint_count": 5},
+        "mio_epsilon": 1e-6,
+        "feature_schema": [
+            {
+                "feature_name": "battery_capacity_kwh",
+                "feature_type": "continuous",
+                "feature_role": "decision",
+                "modifiable": True,
+                "bounds": [2.0, 12.0],
+            },
+            {
+                "feature_name": "shortfall_event",
+                "feature_type": "binary",
+                "feature_role": "target",
+                "modifiable": False,
+                "discrete_values": [0.0, 1.0],
+                "ordering": [0.0, 1.0],
+            },
+        ],
+        "root_id": 0,
+        "nodes": [
+            {
+                "id": 0,
+                "type": "bernoulli",
+                "feature_names": ["shortfall_event"],
+                "probabilities": [[0.75, 0.25]],
+            }
+        ],
+    }
 
 
 def test_build_piecewise_planning_terms_replays_committed_tpm_metadata() -> None:
@@ -173,3 +220,50 @@ def test_build_exponential_piecewise_curve_rejects_domain_floor_inside_grid() ->
             artifact_fixture["approximation_metadata"],
             domain_floor=-1.0,
         )
+
+
+def test_current_spflow_mio_payload_builds_conditional_planning_models() -> None:
+    compiled = _compiled_mio_payload()
+
+    planning_payload = build_current_spflow_planning_payload(
+        compiled,
+        approximation_metadata={
+            "compiler_version": "spflow-v1-mio-v1",
+            "mio_epsilon": 1e-6,
+        },
+        decision_features=("battery_capacity_kwh",),
+        event_target_name="shortfall_event",
+        chance_limit_epsilon=0.3,
+        shortfall_threshold=0.08,
+        payload_locator="sidecars/model.pkl",
+    )
+
+    assert planning_payload["source"] == "current-spflow-mio-compiler"
+    assert planning_payload["compiled_mio"] == compiled
+    conditional = planning_payload["conditional_models"]
+    assert conditional["numerator_model"]["nodes"][-1]["fixed_value"] == 1
+    assert conditional["denominator_model"]["nodes"][-1]["fixed_value"] == 0
+
+
+@pytest.mark.parametrize(
+    ("field_name", "incompatible_value"),
+    [
+        ("schema_version", "v999"),
+        ("compiler_version", "legacy-compiler"),
+        ("backend_api_version", "0.1"),
+        ("output_channels", 2),
+    ],
+)
+def test_current_spflow_mio_payload_rejects_incompatible_metadata(
+    field_name: str,
+    incompatible_value: object,
+) -> None:
+    compiled = _compiled_mio_payload()
+    compiled[field_name] = incompatible_value
+
+    with pytest.raises(
+        PlanningMIOCompatibilityError,
+        match=field_name,
+    ):
+        validate_current_spflow_mio_payload(compiled)
+    build_current_spflow_planning_payload,

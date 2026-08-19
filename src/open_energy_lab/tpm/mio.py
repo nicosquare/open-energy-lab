@@ -1442,6 +1442,16 @@ def _encode_serialized_spn(
                 piecewise_terms=piecewise_terms,
             )
             continue
+        if node_type == "leaf_piecewise":
+            _encode_piecewise_leaf(
+                backend,
+                block,
+                node_id=node_id,
+                node=node,
+                feature_by_name=feature_by_name,
+                decision_variables=decision_variables,
+            )
+            continue
         if node_type == "leaf_binary":
             _encode_binary_leaf(
                 backend,
@@ -1528,10 +1538,61 @@ def _encode_histogram_leaf(
         in_var,
         pw_pts=list(pw_x),
         pw_constr_type="EQ",
-        pw_repn="SOS2",
+        pw_repn="DCC",
         f_rule=list(pw_y),
     )
     block.add_component(f"hist_leaf_piecewise_{node_id}", pw_constraint)
+
+
+def _encode_piecewise_leaf(
+    backend: Any,
+    block: object,
+    *,
+    node_id: int,
+    node: Mapping[str, object],
+    feature_by_name: Mapping[str, TPMFeatureSpec],
+    decision_variables: Mapping[str, Mapping[str, object]],
+) -> None:
+    feature_name = str(node["feature_name"])
+    breakpoints = _float_sequence(node["breakpoints"])
+    log_values = _float_sequence(node["log_values"])
+    if len(breakpoints) != len(log_values) or len(breakpoints) < 2:
+        raise ValueError(
+            f"piecewise leaf {node_id} breakpoints and log_values must align"
+        )
+    if feature_name not in feature_by_name or feature_name not in decision_variables:
+        if "fixed_value" not in node:
+            raise ValueError(
+                f"piecewise leaf {node_id} requires a decision variable or fixed_value"
+            )
+        fixed_value = float(node["fixed_value"])
+        fixed_log_value = _linear_interpolate(
+            fixed_value,
+            x_values=breakpoints,
+            y_values=log_values,
+        )
+        block.add_component(
+            f"piecewise_leaf_fixed_{node_id}",
+            backend.Constraint(expr=block.node_out[node_id] == fixed_log_value),
+        )
+        return
+
+    decision_payload = decision_variables[feature_name]
+    if str(decision_payload["kind"]) != "continuous":
+        raise ValueError(
+            f"piecewise leaf {node_id} requires a continuous decision variable"
+        )
+    block.add_component(
+        f"piecewise_leaf_{node_id}",
+        backend.Piecewise(
+            block.node_out[node_id],
+            decision_payload["normalized_var"],
+            pw_pts=list(breakpoints),
+            pw_constr_type="EQ",
+            pw_repn="DCC",
+            f_rule=list(log_values),
+        ),
+    )
 
 
 def _encode_binary_leaf(
@@ -1662,7 +1723,7 @@ def _encode_sum_node(
             sub_var[index],
             pw_pts=list(piecewise_terms.exp_curve.x_points),
             pw_constr_type="EQ",
-            pw_repn="SOS2",
+            pw_repn="DCC",
             f_rule=list(piecewise_terms.exp_curve.y_points),
             unbounded_domain_var=True,
         )
@@ -1693,7 +1754,7 @@ def _encode_sum_node(
             sum_var,
             pw_pts=list(piecewise_terms.log_curve.x_points),
             pw_constr_type="EQ",
-            pw_repn="SOS2",
+            pw_repn="DCC",
             f_rule=list(piecewise_terms.log_curve.y_points),
         ),
     )

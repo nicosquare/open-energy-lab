@@ -15,11 +15,12 @@ from open_energy_lab.planning.piecewise import (
     PiecewisePlanningTerms,
     SUPPORTED_FIRST_RELEASE_DECISION_TYPES,
     SUPPORTED_FIRST_RELEASE_DECISION_VARIABLE_TYPES,
+    build_current_spflow_planning_payload,
     build_piecewise_planning_terms,
     validate_first_release_decision_features,
 )
 from open_energy_lab.tpm.artifact import TPMArtifact, load_tpm_artifact
-from open_energy_lab.tpm.mio import infer_max_sum_terms
+from open_energy_lab.tpm.mio import compile_spflow_model_to_mio, infer_max_sum_terms
 from open_energy_lab.tpm.optional_spflow import (
     build_spn_mip_payload,
     load_spflow_payload,
@@ -236,11 +237,9 @@ def assemble_planning_problem(
     )
     spn_payload = None
     if actual_risk_evaluation_mode == "spn_mip":
-        spn_payload = build_spn_mip_payload(
-            resolved_artifact,
-            decision_features=problem_definition.decision_features,
-            chance_limit_epsilon=problem_definition.chance_limit_epsilon,
-            shortfall_threshold=problem_definition.shortfall_threshold,
+        spn_payload = _build_solver_facing_spn_payload(
+            problem_definition,
+            artifact=resolved_artifact,
         )
         if spn_payload is None:
             actual_risk_evaluation_mode = "empirical_dataset"
@@ -429,9 +428,70 @@ def _resolved_risk_evaluation_mode(
 ) -> str:
     if problem_definition.risk_evaluation_mode == "empirical_dataset":
         return "empirical_dataset"
-    if supports_spn_mip(artifact) and _pyomo_is_available():
+    if (
+        supports_spn_mip(artifact) or _has_current_spflow_compiler_payload(artifact)
+    ) and _pyomo_is_available():
         return "spn_mip"
     return "empirical_dataset"
+
+
+def _has_current_spflow_compiler_payload(artifact: TPMArtifact) -> bool:
+    return (
+        artifact.execution_mode == "production"
+        and artifact.backend_generation == "current-spflow"
+        and artifact.spn_payload_format == "spflow-model-sidecar"
+    )
+
+
+def _build_solver_facing_spn_payload(
+    problem_definition: PlanningProblemDefinition,
+    *,
+    artifact: TPMArtifact,
+) -> dict[str, object] | None:
+    legacy_payload = build_spn_mip_payload(
+        artifact,
+        decision_features=problem_definition.decision_features,
+        chance_limit_epsilon=problem_definition.chance_limit_epsilon,
+        shortfall_threshold=problem_definition.shortfall_threshold,
+    )
+    if legacy_payload is not None:
+        return legacy_payload
+    if not _has_current_spflow_compiler_payload(artifact):
+        return None
+
+    artifact_threshold = float(
+        artifact.target_definition.get("threshold_default", 0.0)
+    )
+    if not math.isclose(
+        problem_definition.shortfall_threshold,
+        artifact_threshold,
+        rel_tol=0.0,
+        abs_tol=DEFAULT_SOLVER_NUMERIC_TOLERANCE,
+    ):
+        raise ValueError(
+            "production current-SPFlow planning requires shortfall_threshold "
+            f"{artifact_threshold!r} from the fitted event target; found "
+            f"{problem_definition.shortfall_threshold!r}"
+        )
+
+    runtime_payload = load_spflow_payload(artifact)
+    if runtime_payload is None or runtime_payload.get("model") is None:
+        raise ValueError(
+            "production current-SPFlow planning requires a persisted model sidecar"
+        )
+    compiled = compile_spflow_model_to_mio(
+        runtime_payload["model"],
+        feature_schema=artifact.feature_specs,
+    )
+    return build_current_spflow_planning_payload(
+        compiled,
+        approximation_metadata=artifact.approximation_metadata,
+        decision_features=problem_definition.decision_features,
+        event_target_name=str(artifact.target_definition["event_target_name"]),
+        chance_limit_epsilon=problem_definition.chance_limit_epsilon,
+        shortfall_threshold=problem_definition.shortfall_threshold,
+        payload_locator=artifact.payload_locator,
+    )
 
 
 def _pyomo_is_available() -> bool:
