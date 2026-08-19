@@ -19,6 +19,8 @@ SUPPORTED_TPM_MONOTONICITY = (
     "none",
     "increasing",
 )
+
+
 def _is_non_boolean_real(value: object) -> bool:
     return isinstance(value, Real) and not isinstance(value, bool)
 
@@ -201,14 +203,200 @@ def infer_feature_role(feature_name: str) -> str:
     return "input"
 
 
+def build_spflow_leaf_modules(
+    feature_schema: Sequence[TPMFeatureSpec],
+) -> tuple[object, ...]:
+    """Build disjoint SPFlow 1.1 leaf modules for a typed feature schema.
+
+    Continuous and binary features can share their respective multivariate
+    leaf modules. Categorical features share a leaf only when their cardinality
+    agrees. The imports stay inside this workflow helper so importing the TPM
+    package does not eagerly import SPFlow or Torch.
+    """
+
+    schema = _validated_feature_schema(feature_schema)
+
+    from spflow.modules.leaves import Bernoulli, Categorical, Normal
+    from spflow.modules.module import Scope
+
+    typed_scopes: list[tuple[int, str, tuple[int, ...], int | None]] = []
+    continuous_scope = tuple(
+        index for index, spec in enumerate(schema) if spec.feature_type == "continuous"
+    )
+    if continuous_scope:
+        typed_scopes.append((continuous_scope[0], "continuous", continuous_scope, None))
+
+    binary_scope = tuple(
+        index for index, spec in enumerate(schema) if spec.feature_type == "binary"
+    )
+    if binary_scope:
+        typed_scopes.append((binary_scope[0], "binary", binary_scope, None))
+
+    categorical_scopes: dict[int, list[int]] = {}
+    for index, spec in enumerate(schema):
+        if spec.feature_type == "mixed":
+            raise ValueError(
+                f"{spec.feature_name} uses feature_type 'mixed', which cannot map "
+                "to one SPFlow 1.1 leaf; represent its concrete continuous, "
+                "binary, or categorical components on separate feature scopes"
+            )
+        if spec.feature_type == "categorical":
+            categorical_scopes.setdefault(len(spec.ordering), []).append(index)
+
+    for cardinality, indices in categorical_scopes.items():
+        scope = tuple(indices)
+        typed_scopes.append((scope[0], "categorical", scope, cardinality))
+
+    leaves: list[object] = []
+    for _, feature_type, indices, cardinality in sorted(typed_scopes):
+        scope = Scope(query=indices)
+        if feature_type == "continuous":
+            leaves.append(Normal(scope=scope))
+        elif feature_type == "binary":
+            leaves.append(Bernoulli(scope=scope))
+        else:
+            categorical_class = _spflow_categorical_template_class(
+                categorical_base=Categorical,
+                cardinality=cardinality,
+            )
+            leaves.append(categorical_class(scope=scope))
+    return tuple(leaves)
+
+
+def build_spflow_training_tensor(
+    rows: Sequence[Mapping[str, object]],
+    *,
+    feature_schema: Sequence[TPMFeatureSpec],
+) -> object:
+    """Encode typed rows as a CPU ``torch.float64`` training tensor."""
+
+    if isinstance(rows, Mapping) or isinstance(rows, (str, bytes)):
+        raise TypeError("rows must be a sequence of row mappings")
+    if not rows:
+        raise ValueError("rows must not be empty")
+    schema = _validated_feature_schema(feature_schema)
+
+    matrix: list[list[float]] = []
+    for row_index, row in enumerate(rows):
+        if not isinstance(row, Mapping):
+            raise TypeError(f"rows[{row_index}] must be a mapping")
+        missing = [spec.feature_name for spec in schema if spec.feature_name not in row]
+        if missing:
+            raise ValueError(
+                f"rows[{row_index}] is missing feature values: {', '.join(missing)}"
+            )
+        matrix.append(
+            [spec.normalize_value(row[spec.feature_name]) for spec in schema]
+        )
+
+    import torch
+
+    return torch.tensor(matrix, dtype=torch.float64, device="cpu")
+
+
 __all__ = [
     "SUPPORTED_TPM_FEATURE_TYPES",
     "SUPPORTED_TPM_MONOTONICITY",
     "TPMFeatureSpec",
+    "build_spflow_leaf_modules",
+    "build_spflow_training_tensor",
     "dump_feature_schema",
     "infer_feature_role",
     "load_feature_schema",
 ]
+
+
+def _validated_feature_schema(
+    feature_schema: Sequence[TPMFeatureSpec],
+) -> tuple[TPMFeatureSpec, ...]:
+    if isinstance(feature_schema, (str, bytes)):
+        raise TypeError("feature_schema must be a sequence of TPMFeatureSpec values")
+    schema = tuple(feature_schema)
+    if not schema:
+        raise ValueError("feature_schema must not be empty")
+    if any(not isinstance(spec, TPMFeatureSpec) for spec in schema):
+        raise TypeError("feature_schema must contain only TPMFeatureSpec values")
+    feature_names = tuple(spec.feature_name for spec in schema)
+    if len(set(feature_names)) != len(feature_names):
+        raise ValueError("feature_schema feature_name values must be unique")
+    return schema
+
+
+def _spflow_categorical_template_class(
+    *,
+    categorical_base: type,
+    cardinality: int | None,
+) -> type:
+    """Return a lazy categorical template that retains ``K`` during learning.
+
+    SPFlow 1.1's ``learn_spn`` recreates leaf templates from their class using
+    only ``scope`` and ``out_channels``. Its base ``Categorical`` class also
+    requires ``K``, so a cardinality-specific subclass supplies that omitted
+    constructor default. Registering the generated class in this module keeps
+    it pickle-addressable for the later model-sidecar workflow.
+    """
+
+    if cardinality is None or cardinality < 2:
+        raise ValueError("categorical leaf cardinality must be at least two")
+    class_name = f"_SPFlowCategoricalK{cardinality}"
+    existing = globals().get(class_name)
+    if isinstance(existing, type) and issubclass(existing, categorical_base):
+        return existing
+
+    def __init__(
+        self: object,
+        scope: object,
+        out_channels: int = 1,
+        num_repetitions: int = 1,
+        K: int | None = None,
+        probs: object = None,
+        logits: object = None,
+        parameter_fn: object = None,
+        validate_args: bool | None = True,
+    ) -> None:
+        resolved_cardinality = cardinality if K is None else int(K)
+        if resolved_cardinality != cardinality:
+            raise ValueError(
+                f"{class_name} requires K={cardinality}, found K={resolved_cardinality}"
+            )
+        categorical_base.__init__(
+            self,
+            scope=scope,
+            out_channels=out_channels,
+            num_repetitions=num_repetitions,
+            K=resolved_cardinality,
+            probs=probs,
+            logits=logits,
+            parameter_fn=parameter_fn,
+            validate_args=validate_args,
+        )
+
+    categorical_class = type(
+        class_name,
+        (categorical_base,),
+        {
+            "__doc__": f"SPFlow categorical leaf template with fixed K={cardinality}.",
+            "__init__": __init__,
+            "__module__": __name__,
+            "__qualname__": class_name,
+        },
+    )
+    globals()[class_name] = categorical_class
+    return categorical_class
+
+
+def __getattr__(name: str) -> object:
+    """Recreate persisted lazy categorical templates without eager imports."""
+
+    prefix = "_SPFlowCategoricalK"
+    if name.startswith(prefix) and name.removeprefix(prefix).isdigit():
+        from spflow.modules.leaves import Categorical
+
+        return _spflow_categorical_template_class(
+            categorical_base=Categorical,
+            cardinality=int(name.removeprefix(prefix)),
+        )
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def _default_normalization_rule(feature_type: str) -> str:

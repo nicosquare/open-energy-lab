@@ -11,7 +11,12 @@ from typing import Any
 
 from .artifact import FEATURE_NAME, TPMArtifact
 from .data import TPMTrainingData, normalize_training_data
-from .features import TPMFeatureSpec, dump_feature_schema
+from .features import (
+    TPMFeatureSpec,
+    build_spflow_leaf_modules,
+    build_spflow_training_tensor,
+    dump_feature_schema,
+)
 from .optional_spflow import fit_spflow_model
 from .piecewise import (
     CANONICAL_PIECEWISE_LEGACY_REFERENCE_PATHS,
@@ -29,6 +34,23 @@ FIT_LEGACY_EVIDENCE_PATHS = (
     "legacy/old_tpm/src_py/tpm/spn/main.py",
 )
 PIECEWISE_LEGACY_EVIDENCE_PATHS = CANONICAL_PIECEWISE_LEGACY_REFERENCE_PATHS
+_LEARN_SPN_DIRECT_ARGUMENTS = (
+    "out_channels",
+    "min_features_slice",
+    "min_instances_slice",
+    "scope",
+    "clustering_method",
+    "partitioning_method",
+    "full_data",
+)
+_LEARN_SPN_NESTED_ARGUMENTS = (
+    "clustering_args",
+    "partitioning_args",
+)
+_LEGACY_LEARN_SPN_ARGUMENTS = (
+    "threshold",
+    "n_clusters",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,6 +166,77 @@ class TPMArtifactBuildRequest:
 
         provenance = {str(key): value for key, value in dict(self.provenance).items()}
         object.__setattr__(self, "provenance", provenance)
+
+
+def translate_spflow_fit_configuration(
+    configuration: Mapping[str, object] | None,
+) -> dict[str, object]:
+    """Translate legacy ``learn_mspn`` options to SPFlow 1.1 ``learn_spn``.
+
+    SPFlow 1.1 moved RDC's ``threshold`` and k-means' ``n_clusters`` into
+    dedicated argument dictionaries. Current ``learn_spn`` options are also
+    accepted so callers can migrate incrementally without ambiguous keyword
+    forwarding.
+    """
+
+    normalized = {str(key): value for key, value in dict(configuration or {}).items()}
+    supported = set(
+        _LEARN_SPN_DIRECT_ARGUMENTS
+        + _LEARN_SPN_NESTED_ARGUMENTS
+        + _LEGACY_LEARN_SPN_ARGUMENTS
+    )
+    unsupported = sorted(set(normalized) - supported)
+    if unsupported:
+        raise ValueError(
+            "unsupported SPFlow fit configuration keys: " + ", ".join(unsupported)
+        )
+
+    translated = {
+        key: normalized[key]
+        for key in _LEARN_SPN_DIRECT_ARGUMENTS
+        if key in normalized
+    }
+    clustering_args = _fit_argument_mapping(
+        normalized.get("clustering_args"),
+        argument_name="clustering_args",
+    )
+    partitioning_args = _fit_argument_mapping(
+        normalized.get("partitioning_args"),
+        argument_name="partitioning_args",
+    )
+
+    _merge_legacy_fit_argument(
+        source=normalized,
+        source_name="threshold",
+        destination=partitioning_args,
+    )
+    _merge_legacy_fit_argument(
+        source=normalized,
+        source_name="n_clusters",
+        destination=clustering_args,
+    )
+
+    if partitioning_args:
+        translated["partitioning_args"] = partitioning_args
+    if clustering_args:
+        translated["clustering_args"] = clustering_args
+    return translated
+
+
+def learn_current_spflow_structure(
+    rows: Sequence[Mapping[str, object]],
+    *,
+    feature_schema: Sequence[TPMFeatureSpec],
+    fit_configuration: Mapping[str, object] | None = None,
+) -> object:
+    """Learn one SPFlow 1.1 structure from typed rows at a lazy boundary."""
+
+    from spflow.learn import learn_spn
+
+    tensor = build_spflow_training_tensor(rows, feature_schema=feature_schema)
+    leaves = build_spflow_leaf_modules(feature_schema)
+    translated = translate_spflow_fit_configuration(fit_configuration)
+    return learn_spn(tensor, leaf_modules=list(leaves), **translated)
 
 
 def fit_tpm_artifact(
@@ -320,7 +413,36 @@ __all__ = [
     "TPMFitConfig",
     "fit_tpm_artifact",
     "fit_tpm_artifact_from_rows",
+    "learn_current_spflow_structure",
+    "translate_spflow_fit_configuration",
 ]
+
+
+def _fit_argument_mapping(
+    value: object,
+    *,
+    argument_name: str,
+) -> dict[str, object]:
+    if value is None:
+        return {}
+    if not isinstance(value, Mapping):
+        raise TypeError(f"{argument_name} must be a mapping")
+    return {str(key): item for key, item in value.items()}
+
+
+def _merge_legacy_fit_argument(
+    *,
+    source: Mapping[str, object],
+    source_name: str,
+    destination: dict[str, object],
+) -> None:
+    if source_name not in source:
+        return
+    if source_name in destination and destination[source_name] != source[source_name]:
+        raise ValueError(
+            f"conflicting {source_name!r} values in legacy and nested fit configuration"
+        )
+    destination[source_name] = source[source_name]
 
 
 def _load_planning_dataset_artifact(
