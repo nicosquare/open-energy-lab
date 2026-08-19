@@ -292,7 +292,11 @@ Import-boundary tests now assert laziness, not absence from the installation:
 These checks may remain optional and must be reported accurately when skipped:
 
 ```bash
+uv run pytest tests/integration/planning/test_gurobi_solver.py -ra
+cd legacy/old_tpm && cargo test
+cd legacy/old_tpm && python scripts/test_battery_consistency.py
 cd legacy/old_tpm && pytest src_py/tpm/spn/test_tangent_lower_bound.py
+cd legacy/old_tpm && ./scripts/test_data_validation.sh --test-type automatic
 ```
 
 - Gurobi-backed solve parity when its package, binary, and license are present
@@ -300,6 +304,46 @@ cd legacy/old_tpm && pytest src_py/tpm/spn/test_tangent_lower_bound.py
 
 They supplement but do not replace the required current-SPFlow and HiGHS
 checks.
+
+### Recorded supplemental validation — 2026-08-19
+
+The licensed-solver integration always runs the required HiGHS reference solve
+before attempting Gurobi. It records the following fixture-defined comparison
+payload through the pytest result:
+
+| Field | Recorded value |
+|---|---:|
+| comparison status | `availability-skip` |
+| HiGHS status | `optimal` |
+| HiGHS objective | 13400.0 |
+| HiGHS estimated risk | 0.0 |
+| Gurobi status | `availability-skip` |
+| Gurobi objective | unavailable (`null`) |
+| Gurobi estimated risk | unavailable (`null`) |
+| measured objective difference | unavailable (`null`) |
+| measured risk difference | unavailable (`null`) |
+| fixture objective tolerance | `1e-9` |
+| fixture risk tolerance | `1e-9` |
+| availability reason | `solver 'gurobi' is unavailable` |
+
+The exact pytest outcome was `1 skipped in 0.62s`. Because Gurobi did not
+execute, no objective/risk difference is presented as measured and the result
+is not mislabeled as a comparison pass. Required HiGHS remained optimal; the
+availability skip does not weaken the required results recorded above.
+
+The four optional legacy commands were also attempted. Both legacy submodules
+were unpopulated in this checkout, so the results are availability skips:
+
+| Legacy check | Exit | Exact availability result |
+|---|---:|---|
+| `cargo test` | 101 | no `Cargo.toml` in `legacy/old_tpm` or a parent |
+| battery consistency script | 2 | `scripts/test_battery_consistency.py` missing |
+| tangent lower-bound pytest | 4 | requested test file missing; 0 tests collected |
+| automatic data validation | 127 | `scripts/test_data_validation.sh` missing |
+
+These are missing-reference-checkout results, not behavioral parity failures.
+No package dependency, required test, or solver policy was relaxed to make
+the optional checks appear successful.
 
 ## Review Gate
 

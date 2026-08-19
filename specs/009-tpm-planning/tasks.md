@@ -172,7 +172,7 @@ assembly-only and fake-backend results do not complete the story.
 - [X] T060 [P] Update API maturity and dependency classifications so required SPFlow/Pyomo/HiGHS and optional Gurobi are consistent in `docs/migration/api-maturity.md`, `docs/migration/dependency-policy.md`, and `docs/migration/README.md`
 - [X] T061 Run required US2/US3 focused validation and record exact outcomes plus separate fit, query, compile, and solve durations in `specs/009-tpm-planning/quickstart.md`
 - [X] T062 Run the complete demand, simulator, TPM, planning, lazy-import, import-contract, and no-legacy-import regression commands from `AGENTS.md` and record outcomes in `specs/009-tpm-planning/quickstart.md`
-- [ ] T063 Add and run optional licensed Gurobi integration coverage that records HiGHS and Gurobi objective/risk values, measured absolute differences, fixture-defined tolerances, and pass/fail or availability-skip results, then run optional legacy parity checks without weakening required validation in `tests/integration/planning/test_gurobi_solver.py` and `specs/009-tpm-planning/quickstart.md`
+- [X] T063 Add and run optional licensed Gurobi integration coverage that records HiGHS and Gurobi objective/risk values, measured absolute differences, fixture-defined tolerances, and pass/fail or availability-skip results, then run optional legacy parity checks without weakening required validation in `tests/integration/planning/test_gurobi_solver.py` and `specs/009-tpm-planning/quickstart.md`
 
 ---
 
