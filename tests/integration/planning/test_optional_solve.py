@@ -1,7 +1,8 @@
-"""Offline integration contracts for optional planning solve workflows."""
+"""Offline integration contracts for required planning solve workflows."""
 
 from __future__ import annotations
 
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
@@ -59,42 +60,96 @@ def _assembled_problem():
     )
 
 
-def test_optional_solve_repeated_runs_return_the_same_selected_design_and_summary() -> None:
+def test_required_highs_repeated_runs_match_the_committed_optimal_summary() -> None:
     assembled_problem = _assembled_problem()
     planning_fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
-    expected_optional_solve = planning_fixture["expected_optional_solve"]
-    assert isinstance(expected_optional_solve, dict)
-    solve_config = expected_optional_solve["solve_config"]
-    optimal_summary = expected_optional_solve["optimal_summary"]
+    expected_highs_solve = planning_fixture["expected_required_highs_solve"]
+    assert isinstance(expected_highs_solve, dict)
+    solve_config = expected_highs_solve["solve_config"]
+    optimal_summary = expected_highs_solve["optimal_summary"]
     assert isinstance(solve_config, dict)
     assert isinstance(optimal_summary, dict)
-    backend = _FakePyomoBackend(__name__="pyomo.testing", __version__="0.test")
 
     first = solve_planning_problem(
         assembled_problem,
         solve_config=PlanningSolveConfig(**solve_config),
-        pyomo_backend=backend,
     )
     second = solve_planning_problem(
         assembled_problem,
         solve_config=PlanningSolveConfig(**solve_config),
-        pyomo_backend=backend,
     )
 
     assert first == second
     assert first.status == optimal_summary["status"]
     assert first.selected_design == optimal_summary["selected_design"]
-    assert first.objective_value == pytest.approx(optimal_summary["objective_value"])
+    repeatability_tolerance = float(expected_highs_solve["repeatability_tolerance"])
+    assert first.objective_value == pytest.approx(
+        optimal_summary["objective_value"],
+        rel=0.0,
+        abs=repeatability_tolerance,
+    )
     assert first.estimated_shortfall_risk == pytest.approx(
-        optimal_summary["estimated_shortfall_risk"]
+        optimal_summary["estimated_shortfall_risk"],
+        rel=0.0,
+        abs=repeatability_tolerance,
     )
-    assert first.solver_metadata["backend_module"] == optimal_summary["backend_module"]
-    assert first.solver_metadata["handoff_strategy"] == optimal_summary["handoff_strategy"]
+    for key in (
+        "backend_module",
+        "handoff_strategy",
+        "solve_execution_mode",
+        "termination_condition",
+        "solutions_loaded",
+        "solver_interface",
+        "solver_options",
+        "pyomo_version",
+        "highspy_version",
+    ):
+        assert first.solver_metadata[key] == optimal_summary[key]
+
+
+def test_required_highs_matches_the_committed_infeasible_summary() -> None:
+    assembled_problem = _assembled_problem()
+    planning_fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
+    expected_highs_solve = planning_fixture["expected_required_highs_solve"]
+    assert isinstance(expected_highs_solve, dict)
+    infeasible_case = expected_highs_solve["infeasible_case"]
+    expected_summary = expected_highs_solve["infeasible_summary"]
+    solve_config = expected_highs_solve["solve_config"]
+    assert isinstance(infeasible_case, dict)
+    assert isinstance(expected_summary, dict)
+    assert isinstance(solve_config, dict)
+    infeasible_problem = replace(
+        assembled_problem,
+        risk_evaluation_mode="spn_mip",
+        spn_mip_payload={},
+        chance_limit_epsilon=float(infeasible_case["chance_limit_epsilon"]),
+        candidate_designs=tuple(
+            replace(
+                candidate,
+                estimated_shortfall_risk=float(
+                    infeasible_case["candidate_risk_override"]
+                ),
+            )
+            for candidate in assembled_problem.candidate_designs
+        ),
+    )
+
+    summary = solve_planning_problem(
+        infeasible_problem,
+        solve_config=PlanningSolveConfig(**solve_config),
+    )
+
+    assert summary.status == expected_summary["status"]
+    assert summary.selected_design == expected_summary["selected_design"]
+    assert summary.objective_value is expected_summary["objective_value"]
+    assert summary.estimated_shortfall_risk == pytest.approx(
+        expected_summary["estimated_shortfall_risk"]
+    )
     assert (
-        first.solver_metadata["solve_execution_mode"]
-        == optimal_summary["solve_execution_mode"]
+        summary.solver_metadata["termination_condition"]
+        == expected_summary["termination_condition"]
     )
-    assert first.feasibility_diagnostics["model_name"] == optimal_summary["model_name"]
+    assert summary.solver_metadata["solutions_loaded"] is False
 
 
 def test_optional_solve_rejects_skip_when_required_backend_is_unavailable(
@@ -116,17 +171,12 @@ def test_optional_solve_rejects_skip_when_required_backend_is_unavailable(
 
 def test_optional_solve_rejects_skip_for_non_supplemental_solver() -> None:
     assembled_problem = _assembled_problem()
-    planning_fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
-    expected_optional_solve = planning_fixture["expected_optional_solve"]
-    assert isinstance(expected_optional_solve, dict)
-    solve_config = expected_optional_solve["solve_config"]
-    assert isinstance(solve_config, dict)
 
     with pytest.raises(PlanningSolverUnavailableError, match="fake solver unavailable"):
         solve_planning_problem(
             assembled_problem,
             solve_config=PlanningSolveConfig(
-                solver_name=str(solve_config["solver_name"]),
+                solver_name="fake-pyomo",
                 skip_if_unavailable=True,
             ),
             pyomo_backend=_FakePyomoBackend(

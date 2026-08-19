@@ -4,7 +4,7 @@ This directory holds planning-domain fixtures for the
 `009-tpm-planning` feature. The simulator export case is now active and points
 to the committed planning-dataset artifact under `tests/fixtures/tpm/`. The
 planning-problem fixture is now also active and records the first-release
-planning definition, deterministic assembly baseline, and optional-solve
+planning definition, deterministic assembly baseline, and required HiGHS
 expectations used by the offline US3 review path.
 
 ## Reserved Fixture Set
@@ -25,8 +25,16 @@ It records:
   battery-and-solar scope
 - solver-configuration and approximation-contract provenance
 - the deterministic candidate baseline used to validate offline assembly
-- the expected optimal and skipped summaries for fake-backend optional solve
-  checks
+- required Pyomo/HiGHS versions and canonical seed, one-thread, 30-second,
+  and `1e-9` tolerance settings
+- real HiGHS optimal and infeasible summaries, explicit solution-loading
+  outcomes, and `1e-9` repeatability tolerance
+- supplemental comparison metadata using HiGHS as `reference_solver`, Gurobi
+  as `candidate_solver`, and fixture-defined objective/risk tolerances
+
+The required HiGHS outcome may not skip. Missing or incompatible Pyomo or
+`highspy` indicates an incomplete project installation. Gurobi comparison is
+supplemental and may skip only when its binary or license is unavailable.
 
 ## Required Provenance Fields
 
@@ -52,7 +60,7 @@ The `provenance` mapping should always record:
 
 Active planning-problem fixtures should additionally record any artifact or
 dataset fixture paths, solver backend names, and generation commands needed to
-replay the deterministic assembly or optional-solve workflow offline.
+replay the deterministic assembly or required solve workflow offline.
 
 ## Working Rule
 

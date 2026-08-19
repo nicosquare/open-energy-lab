@@ -111,13 +111,15 @@ def test_planning_problem_fixture_tracks_first_release_scope() -> None:
         "specs/009-tpm-planning/contracts/planning-solve-contract.md",
         "specs/009-tpm-planning/contracts/validation-contract.md",
     }
-    assert fixture_data["tpm_artifact_fixture_path"] == "tests/fixtures/tpm/tpm_artifact_v1.json"
+    assert fixture_data["tpm_artifact_fixture_path"] == "tests/fixtures/tpm/tpm_artifact_v2.json"
     problem_definition = fixture_data["problem_definition"]
     expected_assembly = fixture_data["expected_assembly"]
-    expected_optional_solve = fixture_data["expected_optional_solve"]
+    expected_highs_solve = fixture_data["expected_required_highs_solve"]
+    supplemental_comparison = fixture_data["supplemental_solver_comparison"]
     assert isinstance(problem_definition, dict)
     assert isinstance(expected_assembly, dict)
-    assert isinstance(expected_optional_solve, dict)
+    assert isinstance(expected_highs_solve, dict)
+    assert isinstance(supplemental_comparison, dict)
     assert problem_definition["problem_id"] == "planning-problem-assembly-integration"
     assert problem_definition["decision_features"] == [
         "battery_capacity_kwh",
@@ -125,17 +127,23 @@ def test_planning_problem_fixture_tracks_first_release_scope() -> None:
     ]
     assert problem_definition["risk_evaluation_mode"] == "spn_mip"
     assert problem_definition["solver_configuration"]["backend_name"] == "pyomo"
-    assert problem_definition["solver_configuration"]["solver_name"] == "fake-pyomo"
+    assert problem_definition["solver_configuration"]["solver_name"] == "highs"
+    assert problem_definition["solver_configuration"]["threads"] == 1
+    assert problem_definition["solver_configuration"]["time_limit_seconds"] == 30.0
+    assert problem_definition["solver_configuration"]["solver_execution_optional"] is False
     assert problem_definition["fixture_baseline"]["expected_status"] == "optimal"
     assert expected_assembly["artifact_id"] == "tpm-artifact:planning-dataset-export-integration"
     assert expected_assembly["risk_target_name"] == "shortfall_exceeds_threshold"
     assert expected_assembly["deterministic_fixture_baseline"]["candidate_count"] == 2
-    assert expected_optional_solve["optimal_summary"]["status"] == "optimal"
-    assert expected_optional_solve["skip_when_backend_unavailable"]["status"] == "skipped"
-    assert (
-        expected_optional_solve["skip_when_requested_solver_unavailable"]["handoff_strategy"]
-        == "custom-backend-hook"
-    )
+    assert expected_highs_solve["repeatability_tolerance"] == 1e-9
+    assert expected_highs_solve["optimal_summary"]["status"] == "optimal"
+    assert expected_highs_solve["infeasible_summary"]["status"] == "infeasible"
+    assert supplemental_comparison == {
+        "reference_solver": "highs",
+        "candidate_solver": "gurobi",
+        "objective_tolerance": 1e-9,
+        "risk_tolerance": 1e-9,
+    }
     notes = " ".join(str(note).lower() for note in fixture_data["notes"])
     assert "battery and solar" in notes
-    assert "solver-optional" in notes
+    assert "required pyomo/highs" in notes
