@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import pickle
 import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
@@ -350,6 +351,18 @@ def write_tpm_sidecar(
     return output_path, hashlib.sha256(normalized_payload).hexdigest()
 
 
+def write_tpm_model_sidecar(
+    path: str | Path,
+    payload: Mapping[str, object],
+) -> tuple[Path, str]:
+    """Atomically serialize a model payload and return its SHA-256 digest."""
+
+    if not isinstance(payload, Mapping):
+        raise TypeError("TPM model sidecar payload must be a mapping")
+    serialized = pickle.dumps(dict(payload), protocol=pickle.HIGHEST_PROTOCOL)
+    return write_tpm_sidecar(path, serialized)
+
+
 __all__ = [
     "FEATURE_NAME",
     "LegacyTPMArtifactVersionError",
@@ -360,6 +373,7 @@ __all__ = [
     "TPMArtifactIntegrityError",
     "UnsupportedTPMArtifactVersionError",
     "load_tpm_artifact",
+    "write_tpm_model_sidecar",
     "write_tpm_sidecar",
 ]
 
