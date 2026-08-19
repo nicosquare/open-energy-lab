@@ -10,7 +10,19 @@ from typing import Any
 
 from open_energy_lab.tpm.mio import build_spn_chance_model, extract_spn_solution
 
-from .problem import PlanningDecisionCandidate, PlanningProblemAssembly
+from .problem import (
+    DEFAULT_SOLVER_NAME,
+    DEFAULT_SOLVER_NUMERIC_TOLERANCE,
+    DEFAULT_SOLVER_RANDOM_SEED,
+    DEFAULT_SOLVER_THREADS,
+    DEFAULT_SOLVER_TIME_LIMIT_SECONDS,
+    PlanningDecisionCandidate,
+    PlanningProblemAssembly,
+)
+
+
+REQUIRED_PYOMO_VERSION = "6.10.1"
+REQUIRED_HIGHSPY_VERSION = "1.15.1"
 
 
 class PlanningSolverDependencyUnavailableError(ImportError):
@@ -23,11 +35,14 @@ class PlanningSolverUnavailableError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class PlanningSolveConfig:
-    """Minimal solver-configuration surface for optional planning solves."""
+    """Deterministic configuration for planning solves."""
 
-    solver_name: str = "pyomo"
+    solver_name: str = DEFAULT_SOLVER_NAME
     skip_if_unavailable: bool = False
-    numeric_tolerance: float = 1e-9
+    numeric_tolerance: float = DEFAULT_SOLVER_NUMERIC_TOLERANCE
+    random_seed: int = DEFAULT_SOLVER_RANDOM_SEED
+    threads: int = DEFAULT_SOLVER_THREADS
+    time_limit_seconds: float = DEFAULT_SOLVER_TIME_LIMIT_SECONDS
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,16 +76,62 @@ class _PlanningPyomoModelHandoff:
 
 
 def require_pyomo_backend() -> Any:
-    """Import Pyomo only when the planning solve path is invoked."""
+    """Load and validate the required Pyomo/HiGHS solver stack lazily."""
 
     try:
-        return import_module("pyomo.environ")
-    except ImportError as exc:  # pragma: no cover - depends on optional install state
+        pyomo_package = import_module("pyomo")
+        pyomo_backend = import_module("pyomo.environ")
+    except ImportError as exc:  # pragma: no cover - depends on install state
         raise PlanningSolverDependencyUnavailableError(
-            "Pyomo-backed planning workflows require the optional 'pyomo' "
-            "dependency. This import boundary is intentionally lazy so "
-            "open_energy_lab.planning stays import-light until solving is used."
+            "Required planning dependency Pyomo "
+            f"{REQUIRED_PYOMO_VERSION} is unavailable. Install the project "
+            "dependencies before invoking the planning solve boundary."
         ) from exc
+
+    pyomo_version = _module_version(pyomo_package)
+    if pyomo_version != REQUIRED_PYOMO_VERSION:
+        raise PlanningSolverDependencyUnavailableError(
+            "Incompatible required Pyomo installation: expected "
+            f"{REQUIRED_PYOMO_VERSION}, found {pyomo_version}."
+        )
+
+    try:
+        highspy_backend = import_module("highspy")
+    except ImportError as exc:  # pragma: no cover - depends on install state
+        raise PlanningSolverDependencyUnavailableError(
+            "Required planning dependency highspy "
+            f"{REQUIRED_HIGHSPY_VERSION} is unavailable. Install the project "
+            "dependencies before invoking the planning solve boundary."
+        ) from exc
+
+    highspy_version = _highspy_version(highspy_backend)
+    if highspy_version != REQUIRED_HIGHSPY_VERSION:
+        raise PlanningSolverDependencyUnavailableError(
+            "Incompatible required highspy installation: expected "
+            f"{REQUIRED_HIGHSPY_VERSION}, found {highspy_version}."
+        )
+
+    setattr(pyomo_backend, "_open_energy_lab_pyomo_version", pyomo_version)
+    setattr(pyomo_backend, "_open_energy_lab_highspy_version", highspy_version)
+    return pyomo_backend
+
+
+def _module_version(module: object) -> str:
+    version = getattr(module, "__version__", None)
+    return "unknown" if version is None else str(version)
+
+
+def _highspy_version(module: object) -> str:
+    version = getattr(module, "__version__", None)
+    if version is not None:
+        return str(version)
+    highs_factory = getattr(module, "Highs", None)
+    if callable(highs_factory):
+        highs = highs_factory()
+        version_method = getattr(highs, "version", None)
+        if callable(version_method):
+            return str(version_method())
+    return "unknown"
 
 
 def solve_planning_problem(*args: object, **kwargs: object) -> object:
@@ -175,14 +236,20 @@ def _solver_metadata(
     solve_execution_mode: str | None = None,
 ) -> dict[str, object]:
     backend_name = getattr(backend, "__name__", backend.__class__.__name__)
-    backend_version = getattr(backend, "__version__", "unknown")
+    backend_version = getattr(
+        backend,
+        "_open_energy_lab_pyomo_version",
+        getattr(backend, "__version__", "unknown"),
+    )
     if isinstance(backend, SimpleNamespace):
         backend_name = str(getattr(backend, "__name__", backend_name))
         backend_version = str(getattr(backend, "__version__", backend_version))
 
     metadata = {
         **dict(assembled_problem.solver_metadata),
-        "requested_solver_name": solve_config.solver_name,
+        "requested_solver_name": (
+            handoff.requested_solver_name if handoff is not None else solve_config.solver_name
+        ),
         "backend_module": backend_name,
         "backend_version": backend_version,
         "status": status,
@@ -203,9 +270,12 @@ def _resolve_solver_name(
     solve_config: PlanningSolveConfig,
 ) -> str:
     configured_solver_name = str(assembled_problem.solver_configuration.get("solver_name", ""))
-    if solve_config.solver_name and solve_config.solver_name != "pyomo":
+    if (
+        solve_config.solver_name != DEFAULT_SOLVER_NAME
+        or configured_solver_name in {"", DEFAULT_SOLVER_NAME}
+    ):
         return solve_config.solver_name
-    return configured_solver_name or solve_config.solver_name
+    return configured_solver_name
 
 
 def _feasible_candidates(
@@ -583,23 +653,33 @@ def _solve_through_pyomo_solver(
             ),
         )
 
-    _apply_time_limit_if_supported(
+    solver_options = _apply_solver_options(
         solver,
-        time_limit_seconds=assembled_problem.solver_configuration.get("time_limit_seconds"),
+        assembled_problem=assembled_problem,
+        solve_config=solve_config,
+        solver_name=handoff.requested_solver_name,
     )
-    results = solver.solve(handoff.model, tee=False)
+    results = solver.solve(handoff.model, tee=False, load_solutions=False)
+    result_metadata = {
+        **_solver_result_metadata(results),
+        **_solver_stack_metadata(handoff, solver_options=solver_options),
+        "solutions_loaded": False,
+    }
+    if _solver_result_reports_infeasible(results):
+        return _infeasible_summary(
+            assembled_problem,
+            solve_config=solve_config,
+            backend=handoff.backend,
+            handoff=handoff,
+            reason="solver reported the planning model as infeasible",
+            solve_execution_mode="native-pyomo-solver",
+            extra_diagnostics=_solver_result_diagnostics(results),
+            extra_solver_metadata=result_metadata,
+        )
+
+    _load_pyomo_solution(handoff.model, results=results)
+    result_metadata["solutions_loaded"] = True
     if handoff.handoff_strategy == "native-pyomo-spn":
-        if _solver_result_reports_infeasible(results):
-            return _infeasible_summary(
-                assembled_problem,
-                solve_config=solve_config,
-                backend=handoff.backend,
-                handoff=handoff,
-                reason="solver reported the SPN chance-constrained model as infeasible",
-                solve_execution_mode="native-pyomo-solver",
-                extra_diagnostics=_solver_result_diagnostics(results),
-                extra_solver_metadata=_solver_result_metadata(results),
-            )
         solution = extract_spn_solution(
             handoff.model,
             backend=handoff.backend,
@@ -620,7 +700,7 @@ def _solve_through_pyomo_solver(
                 "candidate_count": len(handoff.candidate_ids),
                 **_solver_result_diagnostics(results),
             },
-            extra_solver_metadata=_solver_result_metadata(results),
+            extra_solver_metadata=result_metadata,
         )
     selected_candidate = _selected_candidate_from_pyomo_model(
         handoff,
@@ -635,6 +715,7 @@ def _solve_through_pyomo_solver(
             reason="solver finished without selecting a feasible planning candidate",
             solve_execution_mode="native-pyomo-solver",
             extra_diagnostics=_solver_result_diagnostics(results),
+            extra_solver_metadata=result_metadata,
         )
 
     _, candidate = selected_candidate
@@ -651,7 +732,7 @@ def _solve_through_pyomo_solver(
             "selected_candidate_id": selected_candidate[0],
             **_solver_result_diagnostics(results),
         },
-        extra_solver_metadata=_solver_result_metadata(results),
+        extra_solver_metadata=result_metadata,
     )
 
 
@@ -665,13 +746,83 @@ def _solver_is_available(solver: object) -> bool:
         return bool(available())
 
 
-def _apply_time_limit_if_supported(solver: object, *, time_limit_seconds: object) -> None:
-    if time_limit_seconds is None or not hasattr(solver, "options"):
-        return
+def _apply_solver_options(
+    solver: object,
+    *,
+    assembled_problem: PlanningProblemAssembly,
+    solve_config: PlanningSolveConfig,
+    solver_name: str,
+) -> dict[str, object]:
+    if not hasattr(solver, "options"):
+        return {}
     options = getattr(solver, "options")
-    if not isinstance(options, dict):
-        return
-    options.setdefault("timelimit", float(time_limit_seconds))
+    update_options = getattr(options, "update", None)
+    if not callable(update_options):
+        return {}
+
+    configured = assembled_problem.solver_configuration
+    random_seed = configured.get("random_seed")
+    if random_seed is None:
+        random_seed = solve_config.random_seed
+    threads = configured.get("threads", solve_config.threads)
+    time_limit_seconds = configured.get("time_limit_seconds")
+    if time_limit_seconds is None:
+        time_limit_seconds = solve_config.time_limit_seconds
+    if solver_name == DEFAULT_SOLVER_NAME:
+        resolved = {
+            "random_seed": int(random_seed),
+            "threads": int(threads),
+            "time_limit": float(time_limit_seconds),
+        }
+    else:
+        resolved = (
+            {}
+            if time_limit_seconds is None
+            else {"timelimit": float(time_limit_seconds)}
+        )
+    update_options(resolved)
+    return resolved
+
+
+def _load_pyomo_solution(model: object, *, results: object) -> None:
+    solution_set = getattr(model, "solutions", None)
+    load_from = getattr(solution_set, "load_from", None)
+    if not callable(load_from):
+        raise PlanningSolverUnavailableError(
+            "Pyomo model does not expose solutions.load_from() for explicit loading"
+        )
+    load_from(results)
+
+
+def _solver_stack_metadata(
+    handoff: _PlanningPyomoModelHandoff,
+    *,
+    solver_options: Mapping[str, object],
+) -> dict[str, object]:
+    metadata: dict[str, object] = {
+        "solver_interface": "pyomo.SolverFactory",
+        "solver_options": dict(solver_options),
+    }
+    if handoff.requested_solver_name != DEFAULT_SOLVER_NAME:
+        return metadata
+
+    pyomo_version = getattr(
+        handoff.backend,
+        "_open_energy_lab_pyomo_version",
+        None,
+    )
+    highspy_version = getattr(
+        handoff.backend,
+        "_open_energy_lab_highspy_version",
+        None,
+    )
+    if pyomo_version is None:
+        pyomo_version = _module_version(import_module("pyomo"))
+    if highspy_version is None:
+        highspy_version = _highspy_version(import_module("highspy"))
+    metadata["pyomo_version"] = str(pyomo_version)
+    metadata["highspy_version"] = str(highspy_version)
+    return metadata
 
 
 def _selected_candidate_from_pyomo_model(

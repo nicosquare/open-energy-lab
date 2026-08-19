@@ -149,7 +149,7 @@ and solver metadata across repeated runs.
 
 ### Corrective Implementation For User Story 3
 
-- [ ] T051 [US3] Make `highs` the default solver with seed 13, one thread, 30-second time limit, and `1e-9` tolerance, recording Pyomo, `highspy`, interface, options, termination, and versions in `src/open_energy_lab/planning/problem.py` and `src/open_energy_lab/planning/optional_solver.py`
+- [X] T051 [US3] Make `highs` the default solver with seed 13, one thread, 30-second time limit, and `1e-9` tolerance, recording Pyomo, `highspy`, interface, options, termination, and versions in `src/open_energy_lab/planning/problem.py` and `src/open_energy_lab/planning/optional_solver.py`
 - [ ] T052 [US3] Remove successful skip behavior for required Pyomo/HiGHS failures while retaining explicit supplemental-solver skip behavior in `src/open_energy_lab/planning/optional_solver.py`
 - [ ] T053 [US3] Adapt planning piecewise assembly to consume versioned current-SPFlow-to-piecewise-MIO compiler output and reject incompatible compiler metadata in `src/open_energy_lab/planning/piecewise.py` and `src/open_energy_lab/planning/problem.py`
 - [ ] T054 [US3] Update planning fixtures for required HiGHS optimal/infeasible outcomes, `1e-9` repeatability, and supplemental Gurobi comparison metadata defining `reference_solver`, `candidate_solver`, `objective_tolerance`, and `risk_tolerance` in `tests/fixtures/planning/planning_problem_case.json` and `tests/fixtures/planning/README.md`

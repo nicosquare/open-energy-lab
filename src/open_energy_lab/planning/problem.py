@@ -30,6 +30,10 @@ SUPPORTED_OBJECTIVE_DIRECTIONS = ("minimize",)
 SUPPORTED_PLANNING_BACKENDS = ("pyomo",)
 SUPPORTED_RISK_EVALUATION_MODES = ("empirical_dataset", "spn_mip")
 DEFAULT_SOLVER_NUMERIC_TOLERANCE = 1e-9
+DEFAULT_SOLVER_NAME = "highs"
+DEFAULT_SOLVER_RANDOM_SEED = 13
+DEFAULT_SOLVER_THREADS = 1
+DEFAULT_SOLVER_TIME_LIMIT_SECONDS = 30.0
 SUPPORTED_BASELINE_STATUSES = ("optimal", "infeasible")
 
 
@@ -314,6 +318,7 @@ def assemble_planning_problem(
             "numeric_tolerance"
         ],
         "solver_random_seed": problem_definition.solver_configuration["random_seed"],
+        "solver_threads": problem_definition.solver_configuration["threads"],
         "time_limit_seconds": problem_definition.solver_configuration[
             "time_limit_seconds"
         ],
@@ -540,19 +545,27 @@ def _normalize_solver_configuration(value: Mapping[str, object]) -> dict[str, ob
             f"{SUPPORTED_PLANNING_BACKENDS!r}"
         )
 
-    solver_name = str(value.get("solver_name", ""))
+    solver_name = str(value.get("solver_name", DEFAULT_SOLVER_NAME))
     numeric_tolerance = _positive_float(
         value.get("numeric_tolerance", DEFAULT_SOLVER_NUMERIC_TOLERANCE),
         field_name="solver_configuration.numeric_tolerance",
     )
 
-    random_seed = value.get("random_seed")
+    random_seed = value.get("random_seed", DEFAULT_SOLVER_RANDOM_SEED)
     if random_seed is not None:
         if isinstance(random_seed, bool) or not isinstance(random_seed, int):
             raise ValueError("solver_configuration.random_seed must be an int or null")
         random_seed = int(random_seed)
 
-    time_limit_seconds = value.get("time_limit_seconds")
+    threads = value.get("threads", DEFAULT_SOLVER_THREADS)
+    if isinstance(threads, bool) or not isinstance(threads, int) or threads < 1:
+        raise ValueError("solver_configuration.threads must be a positive integer")
+    threads = int(threads)
+
+    time_limit_seconds = value.get(
+        "time_limit_seconds",
+        DEFAULT_SOLVER_TIME_LIMIT_SECONDS,
+    )
     if time_limit_seconds is not None:
         time_limit_seconds = _positive_float(
             time_limit_seconds,
@@ -563,7 +576,10 @@ def _normalize_solver_configuration(value: Mapping[str, object]) -> dict[str, ob
     if not isinstance(solver_backend_required, bool):
         raise TypeError("solver_configuration.solver_backend_required must be a bool")
 
-    solver_execution_optional = value.get("solver_execution_optional", True)
+    solver_execution_optional = value.get(
+        "solver_execution_optional",
+        solver_name != DEFAULT_SOLVER_NAME,
+    )
     if not isinstance(solver_execution_optional, bool):
         raise TypeError("solver_configuration.solver_execution_optional must be a bool")
 
@@ -574,6 +590,7 @@ def _normalize_solver_configuration(value: Mapping[str, object]) -> dict[str, ob
         "solver_execution_optional": solver_execution_optional,
         "numeric_tolerance": numeric_tolerance,
         "random_seed": random_seed,
+        "threads": threads,
         "time_limit_seconds": time_limit_seconds,
     }
     for key, inner_value in value.items():
