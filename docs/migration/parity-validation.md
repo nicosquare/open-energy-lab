@@ -72,66 +72,64 @@ capture the intended clean behavior.
 
 ## TPM-Backed Planning Validation Governance
 
-The `009-tpm-planning` migration adds a TPM/planning-specific validation shape
-that later work should preserve when it extends the shipped workflow:
+The `009-tpm-planning` migration validates current library behavior rather
+than attempting broad equality with the pre-1.0 runtime:
 
-- Keep `src/open_energy_lab/simulator` as the owner of simulator-family export
-  semantics, flattened-series selection, and `shortfall` derivation inputs.
-- Keep `src/open_energy_lab/tpm` import-light at the package root, with typed
-  feature handling, persisted artifact reload, and empirical query replay
-  clear of runtime `legacy/*` imports.
-- Keep `src/open_energy_lab/planning` import-light at the package root, with
-  persisted dataset reload and offline planning assembly clear of runtime
-  solver requirements.
-- Treat the committed planning fixtures under `tests/fixtures/planning` as
-  active workflow evidence for deterministic export replay, planning-problem
-  scope, solver metadata, and fake-backend optional-solve expectations.
-- Treat the committed TPM fixtures under `tests/fixtures/tpm` as active
-  contract evidence for persisted dataset reload, supported and unsupported
-  TPM artifact behavior, typed feature ordering, piecewise metadata, and
-  deterministic query replay.
-- Preserve the simulator-versus-artifact-versus-planning boundary: simulator
-  export owns flattened dataset construction, TPM artifacts own feature and
-  query metadata, and planning owns decision-scope validation and optional
-  solve behavior.
-- Keep parity selective: use the cited legacy feature-engineering, typed
-  feature, SPN, and piecewise files as reference evidence, but validate the
-  shipped feature primarily through deterministic fixtures, reload contracts,
-  query semantics, and assembly invariants rather than broad legacy runtime
-  parity.
+- Simulator export owns flattened planning rows and derives `shortfall` from
+  simulator outputs. TPM owns typed metadata, current-SPFlow fitting,
+  persistence, query, and solver-neutral compilation. Planning owns
+  battery/solar decision validation and the Pyomo/HiGHS solve.
+- The migrated behavior cites exact legacy paths in
+  `docs/migration/tpm-planning.md`; no production module imports or
+  deserializes `legacy/*`.
+- Schema-v1 and pre-1.0 SPFlow artifacts are rejection/refit evidence only.
+  They must be refitted from source rows through current SPFlow 1.1 and cannot
+  serve production queries or planning.
+- The canonical production evidence is
+  `tests/fixtures/tpm/tpm_artifact_spflow_v1.json` plus its SHA-256-verified
+  model sidecar. `tpm_artifact_v2.json` is explicit empirical
+  `fixture_replay` evidence and never a production fallback.
+- Required validation includes real SPFlow 1.1 fit/reload/query, native versus
+  compiled probability checks, and real Pyomo 6.10.1/HiGHS 1.15.1 optimal and
+  infeasible solves. Missing required backends fail validation; only explicitly
+  selected, unavailable Gurobi may skip.
 
-Minimum TPM-planning validation now includes:
+The `spflow-v1-mio-v1` compiler accepts exact native Sum, Product, Normal,
+Bernoulli, and Categorical modules with one output channel and repetition.
+SPFlow `Cat` adapters are unwrapped. Normal leaves use recorded normalized
+breakpoints; discrete leaves and graph composition retain their probability
+semantics. Custom/unsupported leaves, legacy histogram payloads, shared
+subgraphs, custom subclasses, and extra dimensions fail with type/scope
+diagnostics.
 
-- `tests/unit/simulator/test_planning_export.py`
-- `tests/unit/tpm/test_import_boundary.py`
-- `tests/unit/tpm/test_no_legacy_imports.py`
-- `tests/unit/tpm/test_package_surface.py`
-- `tests/unit/tpm/test_features.py`
-- `tests/unit/tpm/test_data_handler.py`
-- `tests/unit/tpm/test_artifact_schema.py`
-- `tests/unit/tpm/test_query.py`
-- `tests/unit/planning/test_import_boundary.py`
-- `tests/unit/planning/test_no_legacy_imports.py`
-- `tests/unit/planning/test_package_surface.py`
-- `tests/unit/planning/test_dataset_schema.py`
-- `tests/unit/planning/test_problem.py`
-- `tests/unit/planning/test_piecewise.py`
-- `tests/unit/planning/test_optional_solver.py`
-- `tests/unit/test_optional_dependency_boundaries.py`
-- `tests/unit/test_import_contract.py`
-- `tests/unit/test_no_legacy_imports.py`
-- `tests/integration/planning/test_fixture_schema.py`
-- `tests/integration/planning/test_tpm_fixture_schema.py`
-- `tests/integration/planning/test_reproducibility_contract.py`
-- `tests/integration/planning/test_dataset_export.py`
-- `tests/integration/planning/test_tpm_fit_workflow.py`
-- `tests/integration/planning/test_problem_assembly.py`
-- `tests/integration/planning/test_optional_solve.py`
+Compiler parity is deliberately bounded. The native and solver-neutral
+evaluators are compared at five canonical evidence rows with maximum absolute
+error `1e-6`; repeat compilation/evaluation tolerance is `1e-9`.
+`tests/integration/tpm/test_spflow_v1_mio_parity.py` covers a native
+Sum-of-Products graph, while the committed learned fixture covers Product plus
+Normal/Bernoulli/Categorical leaves. These checks do not claim:
 
-If future TPM-planning work cannot run one of these checks locally, the skip
-reason must be recorded in the relevant spec plan or quickstart, including
-whether the blocked check depended on optional SPFlow, Pyomo, or solver
-availability outside the default offline validation subset.
+- accuracy across the whole continuous evidence domain
+- support for rejected modules or graph shapes
+- pickle-byte, pre-1.0 runtime, or broad legacy result equality
+- cross-solver equality or production-scale performance
+- a general inference compiler beyond planning's explicit event conditioning,
+  decision-scope retention, and other-scope marginalization
+
+Minimum focused evidence includes:
+
+- `tests/integration/tpm/test_spflow_v1_fit.py`
+- `tests/integration/tpm/test_spflow_v1_persistence.py`
+- `tests/integration/tpm/test_spflow_v1_query.py`
+- `tests/integration/tpm/test_spflow_v1_mio_parity.py`
+- `tests/integration/planning/test_highs_solver.py`
+- `tests/integration/planning/test_spflow_v1_highs_pipeline.py`
+- the TPM/planning unit, lazy-import, import-contract, and no-legacy-import
+  suites listed in `AGENTS.md`
+
+If required SPFlow, Pyomo, or HiGHS validation cannot run, record it as a
+failure rather than a successful skip. Record unavailable supplemental Gurobi
+or legacy-runtime checks separately in the feature quickstart.
 
 ## Controller Boundary Governance
 
@@ -314,6 +312,7 @@ offline validation subset.
 
 The foundation feature does not migrate TPM, RL, optimization, or planning
 behavior beyond the explicitly shipped features. A later
-migration spec must handle any further algorithm or dependency expansion with
+migration spec must handle any further out-of-scope algorithm migration or
+dependency expansion with
 its own validation path. That keeps out-of-scope migration work explicit and
 reviewable.

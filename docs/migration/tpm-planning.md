@@ -43,7 +43,21 @@ Verify the installed versions with:
 uv run python -c "import spflow, pyomo, highspy; print(spflow.__version__, pyomo.__version__, highspy.Highs().version())"
 ```
 
-## Artifact And Execution-Mode Migration
+## Migration Provenance And Refit Policy
+
+The migration translates behavior from these reference-only paths:
+
+| Preserved concern | Legacy evidence | Current implementation |
+| --- | --- | --- |
+| row and feature preparation | `legacy/old_tpm/src_py/tpm/data/datahandler.py`, `legacy/old_tpm/src_py/tpm/data/features/feature.py` | `src/open_energy_lab/tpm/fit.py`, `src/open_energy_lab/tpm/features.py` |
+| SPN fit, persistence, and query | `legacy/old_tpm/src_py/tpm/spn/main.py` | `src/open_energy_lab/tpm/optional_spflow.py`, `src/open_energy_lab/tpm/artifact.py`, `src/open_energy_lab/tpm/query.py` |
+| SPN-to-MIO equations and density handling | `legacy/old_tpm/src_py/tpm/spn/encoding.py`, `legacy/old_tpm/src_py/tpm/spn/utils_tangent.py`, `legacy/old_tpm/src_py/utils/densities.py` | `src/open_energy_lab/tpm/mio.py`, `src/open_energy_lab/planning/piecewise.py`, `src/open_energy_lab/planning/problem.py` |
+
+The current code does not import or deserialize the legacy package. The
+canonical source rows and reproducible production-fixture workflow live in
+`examples/tpm_planning/run_generic_rows_pipeline.py`; the fixture can be
+regenerated with `--regenerate-fixture` and independently refitted and checked
+with `--verify-fixture`.
 
 Production artifacts use schema v2 JSON manifests plus hashed
 `spflow-model-sidecar` payloads. The manifest records current backend/API
@@ -56,28 +70,63 @@ Production queries require a valid current-SPFlow payload and report
 and artifact explicitly select `fixture_replay`; production never silently
 downgrades to table, empirical, or metadata-only results.
 
-Pre-1.0 SPFlow objects are incompatible with SPFlow 1.1 and must be refitted
-from source rows. The migration preserves validated equations, typed domains,
-fit/query behavior, and provenance rather than serialized legacy objects.
+Pre-1.0 SPFlow objects and schema-v1 artifacts are incompatible with SPFlow
+1.1. They are accepted only far enough to produce explicit refit guidance and
+must be rebuilt from their source planning rows. The retained
+`tests/fixtures/tpm/tpm_artifact_v1.json` is negative-case evidence, never a
+production or query input.
+
+Refit verification compares stable structure, parameters, likelihoods,
+queries, compiler output, and canonical-point probabilities. Pickle bytes and
+sidecar digests may change across a legitimate refit, so byte equality is not
+a repeatability promise; the newly persisted SHA-256 digest is authoritative
+for subsequent reload integrity. Regenerate the canonical fixture only when
+its source rows, fit configuration, required SPFlow API, compiler contract, or
+schema-v2 artifact contract intentionally changes.
 
 ## Current-SPFlow Compiler
 
 `compile_spflow_model_to_mio(...)` accepts the declared first-release subset:
 
-- exact native Sum and Product modules
-- Normal, Bernoulli, and Categorical typed leaves
+- exact native Sum and Product modules; internal SPFlow `Cat` adapters are
+  unwrapped as edges rather than emitted as nodes
+- exact native Normal, Bernoulli, and Categorical typed leaves on separate
+  scopes
 - one output channel and one repetition
-- five canonical normalized breakpoints
+- five canonical normalized breakpoints `(0, 0.25, 0.5, 0.75, 1)` by default,
+  with any global or continuous-feature override recorded explicitly
 - MIO epsilon `1e-6`
 
 It emits versioned `spflow-v1-mio-v1` solver-neutral data. Planning validates
 the schema, compiler/backend versions, graph shape, breakpoint count, epsilon,
 feature scopes, and binary shortfall-event ordering before consuming it.
-Unsupported modules, custom subclasses, shared graphs, extra channels or
+Normal log densities use the piecewise approximation; Bernoulli and
+Categorical probabilities and Sum/Product composition retain their declared
+probability semantics. Unsupported or custom leaves, legacy histogram
+payloads, custom subclasses, shared subgraphs, extra dimensions, channels or
 repetitions, and incompatible compiler metadata fail explicitly.
 
 Canonical native-likelihood versus compiled probability error is at most
 `1e-6`; repeated compiler/query results use `1e-9` tolerance.
+
+## Parity Scope And Limitations
+
+Current-backend parity means comparing native SPFlow likelihood with the
+solver-neutral compiler evaluator at the five canonical normalized evidence
+rows. `tests/integration/tpm/test_spflow_v1_mio_parity.py` exercises a native
+Sum-of-Products graph containing Normal, Bernoulli, and Categorical leaves;
+the committed production fixture independently covers its learned Product and
+typed-leaf graph. The allowed maximum absolute probability error is `1e-6`,
+and repeated compilation/evaluation must agree within `1e-9`.
+
+This evidence does not prove accuracy over every point in the continuous
+evidence domain, support for rejected graph/module shapes, serialized-pickle
+or legacy-runtime equality, HiGHS/Gurobi equality, or production-scale
+performance. Planning additionally conditions the compiled graph by fixing
+the binary shortfall event, retaining battery/solar decision scopes, and
+marginalizing other scopes; that adapter is validated by planning tests and is
+not a general SPFlow inference compiler. Robustness seeds `37` and `101` are
+supplemental checks and do not replace seed `13` canonical baselines.
 
 ## Required Planning Solve
 
