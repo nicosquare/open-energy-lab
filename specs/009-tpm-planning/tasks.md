@@ -142,7 +142,7 @@ and solver metadata across repeated runs.
 
 ### Corrective Tests For User Story 3
 
-- [ ] T047 [P] [US3] Add tests that omission of solver configuration selects `highs` and missing/incompatible Pyomo or `highspy` is a required-install failure in `tests/unit/planning/test_highs_solver.py`
+- [X] T047 [P] [US3] Add tests that omission of solver configuration selects `highs` and missing/incompatible Pyomo or `highspy` is a required-install failure in `tests/unit/planning/test_highs_solver.py`
 - [ ] T048 [P] [US3] Add real Pyomo/HiGHS optimal, infeasible, integrality, 30-second time limit, one-thread execution, solution-loading, and `1e-9` repeatability tests in `tests/integration/planning/test_highs_solver.py`
 - [ ] T049 [P] [US3] Add environment-independent policy tests for explicit Gurobi selection, missing binary/license diagnostics, permitted optional skip behavior, and parsing fixture-defined comparison tolerances in `tests/unit/planning/test_gurobi_solver.py`
 - [ ] T050 [US3] Add an end-to-end real current-SPFlow artifact to current-SPFlow-to-piecewise-MIO compiler output to Pyomo/HiGHS solve test in `tests/integration/planning/test_spflow_v1_highs_pipeline.py`
