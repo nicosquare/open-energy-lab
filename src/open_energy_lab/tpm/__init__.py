@@ -11,7 +11,11 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .artifact import (
+        LegacyTPMArtifactVersionError,
+        SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS,
+        SUPPORTED_TPM_EXECUTION_MODES,
         TPMArtifact,
+        TPMArtifactIntegrityError,
         UnsupportedTPMArtifactVersionError,
         load_tpm_artifact,
     )
@@ -35,9 +39,12 @@ if TYPE_CHECKING:
         SPNSolveSummary,
         SPNSolverDependencyUnavailableError,
         SPNSolverUnavailableError,
+        UnsupportedSPFlowModuleError,
         build_spn_chance_model,
         build_spn_chance_model_from_artifact,
         build_spn_modeling_terms,
+        compile_spflow_model_to_mio,
+        evaluate_compiled_spflow_probability,
         extract_spn_solution,
         infer_max_sum_terms,
         require_pyomo_backend,
@@ -45,9 +52,15 @@ if TYPE_CHECKING:
         solve_spn_chance_model_from_artifact,
     )
     from .optional_spflow import (
+        CURRENT_SPFLOW_ADAPTER_NAME,
+        CURRENT_SPFLOW_BACKEND_GENERATION,
+        REQUIRED_SPFLOW_VERSION,
+        CurrentSPFlowCapabilities,
+        SPFlowBackendCompatibilityError,
         SPFlowDependencyUnavailableError,
         detect_spflow_backend_capabilities,
         register_spflow_backend_adapter,
+        require_spflow_backend,
         unregister_spflow_backend_adapter,
     )
     from .piecewise import (
@@ -59,7 +72,20 @@ if TYPE_CHECKING:
     from .query import TPMQueryRequest, query_tpm_artifact
 
 _EXPORT_MAP = {
+    "LegacyTPMArtifactVersionError": (
+        ".artifact",
+        "LegacyTPMArtifactVersionError",
+    ),
+    "SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS": (
+        ".artifact",
+        "SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS",
+    ),
+    "SUPPORTED_TPM_EXECUTION_MODES": (
+        ".artifact",
+        "SUPPORTED_TPM_EXECUTION_MODES",
+    ),
     "TPMArtifact": (".artifact", "TPMArtifact"),
+    "TPMArtifactIntegrityError": (".artifact", "TPMArtifactIntegrityError"),
     "UnsupportedTPMArtifactVersionError": (
         ".artifact",
         "UnsupportedTPMArtifactVersionError",
@@ -84,12 +110,21 @@ _EXPORT_MAP = {
         "SPNSolverDependencyUnavailableError",
     ),
     "SPNSolverUnavailableError": (".mio", "SPNSolverUnavailableError"),
+    "UnsupportedSPFlowModuleError": (
+        ".mio",
+        "UnsupportedSPFlowModuleError",
+    ),
     "build_spn_chance_model": (".mio", "build_spn_chance_model"),
     "build_spn_chance_model_from_artifact": (
         ".mio",
         "build_spn_chance_model_from_artifact",
     ),
     "build_spn_modeling_terms": (".mio", "build_spn_modeling_terms"),
+    "compile_spflow_model_to_mio": (".mio", "compile_spflow_model_to_mio"),
+    "evaluate_compiled_spflow_probability": (
+        ".mio",
+        "evaluate_compiled_spflow_probability",
+    ),
     "extract_spn_solution": (".mio", "extract_spn_solution"),
     "infer_max_sum_terms": (".mio", "infer_max_sum_terms"),
     "require_pyomo_backend": (".mio", "require_pyomo_backend"),
@@ -97,6 +132,26 @@ _EXPORT_MAP = {
     "solve_spn_chance_model_from_artifact": (
         ".mio",
         "solve_spn_chance_model_from_artifact",
+    ),
+    "CURRENT_SPFLOW_ADAPTER_NAME": (
+        ".optional_spflow",
+        "CURRENT_SPFLOW_ADAPTER_NAME",
+    ),
+    "CURRENT_SPFLOW_BACKEND_GENERATION": (
+        ".optional_spflow",
+        "CURRENT_SPFLOW_BACKEND_GENERATION",
+    ),
+    "CurrentSPFlowCapabilities": (
+        ".optional_spflow",
+        "CurrentSPFlowCapabilities",
+    ),
+    "REQUIRED_SPFLOW_VERSION": (
+        ".optional_spflow",
+        "REQUIRED_SPFLOW_VERSION",
+    ),
+    "SPFlowBackendCompatibilityError": (
+        ".optional_spflow",
+        "SPFlowBackendCompatibilityError",
     ),
     "SPFlowDependencyUnavailableError": (
         ".optional_spflow",
@@ -110,6 +165,7 @@ _EXPORT_MAP = {
         ".optional_spflow",
         "register_spflow_backend_adapter",
     ),
+    "require_spflow_backend": (".optional_spflow", "require_spflow_backend"),
     "unregister_spflow_backend_adapter": (
         ".optional_spflow",
         "unregister_spflow_backend_adapter",
@@ -126,7 +182,11 @@ _EXPORT_MAP = {
 }
 
 __all__ = [
+    "LegacyTPMArtifactVersionError",
+    "SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS",
+    "SUPPORTED_TPM_EXECUTION_MODES",
     "TPMArtifact",
+    "TPMArtifactIntegrityError",
     "UnsupportedTPMArtifactVersionError",
     "load_tpm_artifact",
     "TPMTrainingData",
@@ -145,17 +205,26 @@ __all__ = [
     "SPNSolveSummary",
     "SPNSolverDependencyUnavailableError",
     "SPNSolverUnavailableError",
+    "UnsupportedSPFlowModuleError",
     "build_spn_chance_model",
     "build_spn_chance_model_from_artifact",
     "build_spn_modeling_terms",
+    "compile_spflow_model_to_mio",
+    "evaluate_compiled_spflow_probability",
     "extract_spn_solution",
     "infer_max_sum_terms",
     "require_pyomo_backend",
     "solve_spn_chance_model",
     "solve_spn_chance_model_from_artifact",
+    "CURRENT_SPFLOW_ADAPTER_NAME",
+    "CURRENT_SPFLOW_BACKEND_GENERATION",
+    "CurrentSPFlowCapabilities",
+    "REQUIRED_SPFLOW_VERSION",
+    "SPFlowBackendCompatibilityError",
     "SPFlowDependencyUnavailableError",
     "detect_spflow_backend_capabilities",
     "register_spflow_backend_adapter",
+    "require_spflow_backend",
     "PiecewiseApproximationMetadata",
     "PiecewiseBreakpointPolicy",
     "build_piecewise_metadata",
