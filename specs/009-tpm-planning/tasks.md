@@ -154,7 +154,7 @@ and solver metadata across repeated runs.
 - [X] T053 [US3] Adapt planning piecewise assembly to consume versioned current-SPFlow-to-piecewise-MIO compiler output and reject incompatible compiler metadata in `src/open_energy_lab/planning/piecewise.py` and `src/open_energy_lab/planning/problem.py`
 - [X] T054 [US3] Update planning fixtures for required HiGHS optimal/infeasible outcomes, `1e-9` repeatability, and supplemental Gurobi comparison metadata defining `reference_solver`, `candidate_solver`, `objective_tolerance`, and `risk_tolerance` in `tests/fixtures/planning/planning_problem_case.json` and `tests/fixtures/planning/README.md`
 - [X] T055 [US3] Port the real backend pipeline to SPFlow 1.1 and default HiGHS in `examples/tpm_planning/run_real_backend_pipeline.py` and `examples/tpm_planning/README.md`
-- [ ] T056 [US3] Update planning solve and reproducibility guidance for required HiGHS and optional Gurobi in `docs/migration/tpm-planning.md` and `specs/009-tpm-planning/quickstart.md`
+- [X] T056 [US3] Update planning solve and reproducibility guidance for required HiGHS and optional Gurobi in `docs/migration/tpm-planning.md` and `specs/009-tpm-planning/quickstart.md`
 
 **Checkpoint**: US3 requires a real, license-free current-SPFlow-to-HiGHS solve;
 assembly-only and fake-backend results do not complete the story.

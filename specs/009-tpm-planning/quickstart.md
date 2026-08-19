@@ -1,10 +1,9 @@
 # Quickstart: TPM-Backed Planning And Simulator Dataset Export
 
-Use this quickstart to review the completed 009 baseline and the corrective
-work required by the 2026-08-17 dependency clarifications. Dataset export,
-typed features, artifacts, and planning-domain contracts already exist. The
-feature is not ready under the revised specification until the current SPFlow
-port, explicit fixture mode, and required Pyomo/HiGHS validation are complete.
+Use this quickstart to review the completed 009 implementation after the
+2026-08-17 dependency clarifications. Dataset export, typed features,
+production artifacts, explicit fixture replay, the current-SPFlow compiler,
+and required Pyomo/HiGHS planning validation are implemented.
 
 ## Corrected Backend Policy
 
@@ -66,7 +65,7 @@ Confirm that:
 
 ## Environment
 
-After corrective dependency metadata is implemented:
+Synchronize and inspect the required backend versions:
 
 ```bash
 uv sync --dev
@@ -102,12 +101,12 @@ uv sync --locked --dry-run --python 3.14 --python-platform x86_64-unknown-linux-
 No dependency-specific incompatibility was observed for the tested Linux
 x86_64 target, so the project retains `requires-python = ">=3.11"` and all
 four initial Python versions. These dry runs validate locked dependency and
-distribution selection; required backend imports and real fit/solve behavior
-remain separate corrective validation tasks.
+distribution selection; the real fit/query/compiler/solve commands below
+provide runtime evidence.
 
 ## Current SPFlow Migration Mapping
 
-The implementation must validate these mappings against SPFlow 1.1:
+The implementation validates these mappings against SPFlow 1.1:
 
 | Legacy behavior | Current target |
 |---|---|
@@ -185,14 +184,21 @@ Missing Pyomo or HiGHS is an installation failure. Gurobi may be selected
 explicitly for supplemental validation and may skip only when its environment
 or license is unavailable.
 
-## Required Corrective Validation
-
-The corrective implementation must provide focused tests equivalent to:
+Run the complete offline simulator-to-production-SPFlow-to-default-HiGHS
+example:
 
 ```bash
-uv run pytest tests/integration/tpm/test_spflow_v1_workflow.py
-uv run pytest tests/integration/tpm/test_spflow_v1_mio.py
+uv run python examples/tpm_planning/run_real_backend_pipeline.py
+```
+
+## Required Validation
+
+Run the focused real-backend tests:
+
+```bash
+uv run pytest tests/integration/tpm/test_spflow_v1_fit.py tests/integration/tpm/test_spflow_v1_persistence.py tests/integration/tpm/test_spflow_v1_query.py tests/integration/tpm/test_spflow_v1_mio_parity.py
 uv run pytest tests/integration/planning/test_highs_solver.py
+uv run pytest tests/integration/planning/test_spflow_v1_highs_pipeline.py
 ```
 
 Coverage must include:
@@ -213,6 +219,7 @@ Run the complete relevant regression set after those focused checks:
 uv run pytest tests/unit/demand tests/integration/demand tests/integration/simulator
 uv run pytest tests/unit/planning tests/unit/tpm tests/integration/planning tests/integration/tpm
 uv run pytest tests/unit/test_lazy_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py
+uv run python -c "import open_energy_lab; import open_energy_lab.simulator; import open_energy_lab.tpm; import open_energy_lab.planning"
 uv run python -c "import open_energy_lab; import open_energy_lab.weather; import open_energy_lab.demand; import open_energy_lab.simulator; import open_energy_lab.tpm; import open_energy_lab.planning"
 rg "from legacy|import legacy" src/open_energy_lab/tpm src/open_energy_lab/planning src/open_energy_lab/simulator tests/unit/planning tests/unit/tpm tests/integration/planning tests/integration/tpm docs/migration
 ```
@@ -239,10 +246,9 @@ cd legacy/old_tpm && pytest src_py/tpm/spn/test_tangent_lower_bound.py
 They supplement but do not replace the required current-SPFlow and HiGHS
 checks.
 
-## Completion Gate
+## Review Gate
 
-Do not call the corrected implementation complete until all of the following
-are true:
+Confirm all of the following before accepting the implementation:
 
 - required dependencies and supported Python policy are declared and locked
 - current SPFlow fit/query artifacts replace legacy model assumptions
