@@ -201,6 +201,28 @@ uv run pytest tests/integration/planning/test_highs_solver.py
 uv run pytest tests/integration/planning/test_spflow_v1_highs_pipeline.py
 ```
 
+### Recorded focused validation — 2026-08-19
+
+The required focused suite passed on Linux x86_64 with uv 0.12.5, CPython
+3.14.6, SPFlow 1.1.0, Pyomo 6.10.1, and highspy 1.15.1. Each phase was run in
+a separate warmed process and measured with `/usr/bin/time -f '%e'`; the
+pytest duration and full command wall time are both retained so interpreter
+and uv startup overhead remains visible.
+
+| Phase | Focused files | Exact outcome | Pytest duration | Wall duration |
+|---|---|---:|---:|---:|
+| fit/persistence | `test_spflow_v1_fit.py`, `test_spflow_v1_persistence.py` | 6 passed, 0 skipped | 5.26 s | 8.13 s |
+| production query | `test_spflow_v1_query.py` | 6 passed, 0 skipped | 4.10 s | 5.97 s |
+| compiler parity | `test_spflow_v1_mio_parity.py` | 2 passed, 0 skipped | 2.76 s | 4.42 s |
+| required solve | `test_highs_solver.py`, `test_spflow_v1_highs_pipeline.py` | 3 passed, 0 skipped | 3.45 s | 5.00 s |
+| total | 6 focused files | 17 passed, 0 skipped | 15.57 s | 23.52 s |
+
+Pytest 9.0.3's console entrypoint on the active Python 3.14 environment did
+not initially expose the repository root to imports from shared
+`tests.integration` support modules. T061 adds `.` beside `src` in the
+configured pytest `pythonpath`; the table records successful warmed runs after
+that collection-path fix and excludes the one-time editable-package rebuild.
+
 Coverage must include:
 
 - real SPFlow fit, save, load, marginalization, and conditional query
