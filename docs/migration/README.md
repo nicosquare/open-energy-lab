@@ -7,7 +7,7 @@ parity validation, and environment assumptions.
 ## Current Native Package References
 
 - `tpm-planning.md`: shipped simulator planning export, persisted dataset and
-  TPM artifact workflows, planning assembly/optional solve behavior, and exact
+  TPM artifact workflows, current-SPFlow compiler, required HiGHS solve, and exact
   legacy evidence for `open_energy_lab.simulator`, `open_energy_lab.tpm`, and
   `open_energy_lab.planning`
 - `controller-pack.md`: preserve/improve/reject decisions, shipped controller
@@ -49,18 +49,19 @@ parity validation, and environment assumptions.
 For the `009-tpm-planning` feature, read the migration docs in this order:
 
 1. `tpm-planning.md` for the shipped simulator export, persisted dataset and
-   TPM artifact workflows, planning assembly/optional solve behavior,
+   TPM artifact workflows, current-SPFlow compiler, and required HiGHS solve,
    preserve/improve/reject decisions, and exact legacy evidence.
 2. `api-maturity.md` for the stable package-root simulator export, planning,
    and TPM imports versus narrower focused-module helpers.
 3. `dependency-policy.md` for the import-light TPM/planning dependency
-   boundary and the canonical SPFlow/Pyomo optional-backend stance.
+   boundary: SPFlow 1.1.0, Pyomo 6.10.1, and highspy 1.15.1 are required
+   installations, while Gurobi is supplemental and optional.
 4. `fixture-provenance.md` together with `tests/fixtures/planning/README.md`
    and `tests/fixtures/tpm/README.md` for export replay, persisted artifact,
    deterministic query, and planning-problem provenance rules.
 5. `environment-assumptions.md` and
    `specs/009-tpm-planning/quickstart.md` for the default offline validation
-   subset and any optional backend-backed follow-up checks.
+   suite and any optional licensed-Gurobi or legacy-runtime follow-up checks.
 
 This review path keeps the TPM-planning feature anchored to the shipped
 library workflow and offline contract rather than the earlier scaffolding

@@ -101,7 +101,7 @@ Requested by: 009-tpm-planning production TPM fit and query workflows
 Target module: src/open_energy_lab/tpm/fit.py and src/open_energy_lab/tpm/optional_spflow.py
 Classification: required-install
 Import boundary: lazy; excluded from open_energy_lab and open_energy_lab.tpm package-root imports until a production TPM workflow invokes it
-Install mechanism: standard uv-managed project environment, initially pinned to spflow==1.1.0
+Install mechanism: standard uv-managed project environment, locked to spflow==1.1.0 for the first release
 Fallback or skip behavior: package-root imports and dataset/artifact metadata inspection do not invoke SPFlow; a missing or incompatible installation fails production TPM workflows and required validation rather than producing a successful skip
 External service, license, hardware, or scheduler assumptions: CPU-local execution with no service, license, GPU, or scheduler requirement
 Rationale: SPFlow is the required canonical TPM backend, while lazy loading preserves import-light unrelated workflows
@@ -109,16 +109,29 @@ Alternatives considered: an opt-in SPFlow extra was rejected because it weakens 
 ```
 
 ```text
-Dependency: Pyomo and HiGHS (highspy), with Gurobi as a supplemental solver
-Requested by: 009-tpm-planning planning solve workflows
+Dependency: Pyomo and HiGHS (highspy)
+Requested by: 009-tpm-planning required planning solve workflow
 Target module: src/open_energy_lab/planning/optional_solver.py
-Classification: required-install for Pyomo and highspy; optional and external-service-backed for Gurobi depending on its binary and license
+Classification: required-install
 Import boundary: lazy; excluded from open_energy_lab and open_energy_lab.planning imports until a caller invokes solve_planning_problem
-Install mechanism: standard uv-managed project environment, initially pinned to pyomo==6.10.1 and highspy==1.15.1; Gurobi is installed separately when supplemental checks are requested
-Fallback or skip behavior: planning dataset reload and assembly do not invoke the solver stack; missing or incompatible Pyomo/HiGHS fails required solve validation, while only an explicitly selected unavailable Gurobi workflow may report a documented skip
-External service, license, hardware, or scheduler assumptions: none for CPU-local HiGHS; Gurobi requires a separately available binary and license
-Rationale: Pyomo with HiGHS provides the required license-free planning path while lazy imports keep unrelated workflows light; Gurobi remains supplemental
-Alternatives considered: keeping every solver optional was rejected because it permits untested solve paths; requiring Gurobi was rejected because routine validation must not depend on a commercial license
+Install mechanism: standard uv-managed project environment, locked to pyomo==6.10.1 and highspy==1.15.1 for the first release
+Fallback or skip behavior: planning dataset reload and assembly do not invoke the solver stack; missing or incompatible Pyomo/HiGHS fails the workflow and required solve validation and may not be converted into a successful skip
+External service, license, hardware, or scheduler assumptions: CPU-local execution with no service, commercial license, GPU, or scheduler requirement
+Rationale: Pyomo with default SolverFactory("highs") provides the required license-free planning path while lazy imports keep unrelated workflows light
+Alternatives considered: assembly-only review and treating every solver as optional were rejected because they permit an untested stable solve surface
+```
+
+```text
+Dependency: Gurobi
+Requested by: 009-tpm-planning supplemental cross-solver validation only
+Target module: src/open_energy_lab/planning/optional_solver.py and tests/integration/planning/test_gurobi_solver.py
+Classification: optional
+Import boundary: selected only when solver_name="gurobi"; never imported or license-checked by package roots or the default HiGHS workflow
+Install mechanism: separate user-managed Gurobi package, binary, and license; absent from the standard project dependency set
+Fallback or skip behavior: an explicitly selected Gurobi check may report a documented availability skip only when its package, binary, or license is unavailable; it never replaces or weakens required HiGHS validation
+External service, license, hardware, or scheduler assumptions: a working Gurobi binary and commercial or otherwise valid Gurobi license
+Rationale: cross-solver objective/risk comparison is useful supplemental evidence but cannot be a routine license-free project requirement
+Alternatives considered: requiring Gurobi was rejected because routine validation must not depend on a commercial license; silently falling back from Gurobi to HiGHS was rejected because it would mislabel comparison evidence
 ```
 
 ```text
