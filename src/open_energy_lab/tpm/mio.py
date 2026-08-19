@@ -1823,9 +1823,9 @@ def require_pyomo_backend() -> Any:
 
     try:
         return import_module("pyomo.environ")
-    except ImportError as exc:  # pragma: no cover - depends on optional install state
+    except ImportError as exc:  # pragma: no cover - depends on installation state
         raise SPNSolverDependencyUnavailableError(
-            "Pyomo-backed SPN chance solving requires the optional 'pyomo' dependency."
+            "Pyomo-backed SPN chance solving requires the project 'pyomo' dependency."
         ) from exc
 
 

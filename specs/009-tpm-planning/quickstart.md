@@ -246,6 +246,39 @@ uv run python -c "import open_energy_lab; import open_energy_lab.weather; import
 rg "from legacy|import legacy" src/open_energy_lab/tpm src/open_energy_lab/planning src/open_energy_lab/simulator tests/unit/planning tests/unit/tpm tests/integration/planning tests/integration/tpm docs/migration
 ```
 
+### Recorded complete regression — 2026-08-19
+
+The required regression commands passed on the same Linux x86_64, uv 0.12.5,
+CPython 3.14.6 environment used for the focused evidence. Pytest and wall
+durations are retained separately.
+
+| Command group | Exact outcome | Pytest duration | Wall duration |
+|---|---:|---:|---:|
+| demand plus integration simulator | 91 passed, 0 skipped | 0.52 s | 0.99 s |
+| TPM plus planning | 202 passed, 5 skipped | 6.77 s | 9.46 s |
+| lazy dependency, import contract, and no-legacy unit checks | 59 passed, 0 skipped | 4.43 s | 4.81 s |
+| all-package import smoke | PASS | n/a | 0.08 s |
+| total pytest results | 352 passed, 5 skipped | 11.72 s | 15.26 s |
+
+All five skips reported `gurobi solver unavailable` and came from the older
+supplemental Gurobi integration files
+`test_spn_mio_gurobi.py`, `test_backend_adapter_workflow.py`,
+`test_generic_rows_workflow.py`, `test_mio_solver.py`, and
+`test_real_spflow_backend.py`. No required SPFlow, Pyomo, or HiGHS check
+skipped.
+
+The broad documented legacy-import scan returned two self-referential strings:
+the command in `docs/migration/tpm-planning.md` and the reproducibility test
+that asserts the command remains documented. A stricter scan anchored to
+Python import statements returned 0 matches. The shared fixture-schema helper
+also passed 26 focused weather/visualization tests and requires cited legacy
+files only when the corresponding reference submodule is populated.
+
+The regression pass additionally repaired in-memory planning-dataset handoff
+across deliberate module reloads, updated the replay fixture expectation to
+the canonical five-breakpoint policy, and made test-only sidecar mutations
+update their manifest SHA-256 digest before reload.
+
 Import-boundary tests now assert laziness, not absence from the installation:
 
 - importing package roots must not add `spflow`, `torch`, `pyomo`, or

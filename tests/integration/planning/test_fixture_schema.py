@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from tests.integration.legacy_reference_utils import assert_legacy_reference_path
 from tests.integration.planning.fixture_utils import (
     COMMON_LIST_KEYS,
     COMMON_PROVENANCE_KEYS,
@@ -48,7 +49,7 @@ def test_planning_fixture_common_schema() -> None:
         for legacy_path in legacy_evidence_paths:
             assert isinstance(legacy_path, str)
             assert legacy_path.startswith("legacy/")
-            assert Path(legacy_path).is_file()
+            assert_legacy_reference_path(legacy_path)
 
         generation_command = provenance["generation_command"]
         assert generation_command is None or (

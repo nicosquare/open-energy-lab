@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import pickle
 from pathlib import Path
-import pickle
 from types import SimpleNamespace
 
 import pytest
@@ -29,6 +30,27 @@ def _planning_problem_definition(
     problem_definition = planning_fixture["problem_definition"]
     assert isinstance(problem_definition, dict)
     return PlanningProblemDefinition(**problem_definition)
+
+
+def _write_test_sidecar_payload(
+    *,
+    artifact_path: Path,
+    payload_path: Path,
+    payload: dict[str, object],
+) -> None:
+    serialized = pickle.dumps(payload)
+    payload_path.write_bytes(serialized)
+
+    manifest = json.loads(artifact_path.read_text(encoding="utf-8"))
+    payload_hash = hashlib.sha256(serialized).hexdigest()
+    manifest["payload_hash"] = payload_hash
+    provenance = manifest.get("provenance")
+    if isinstance(provenance, dict) and "sidecar_sha256" in provenance:
+        provenance["sidecar_sha256"] = payload_hash
+    artifact_path.write_text(
+        json.dumps(manifest, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 def test_assemble_planning_problem_replays_committed_tpm_artifact_offline() -> None:
@@ -204,7 +226,11 @@ def test_assemble_planning_problem_falls_back_to_empirical_mode_when_sidecar_lac
     payload["query_strategy"] = "table"
     payload.pop("conditional_models", None)
     payload.pop("spn_model", None)
-    payload_path.write_bytes(pickle.dumps(payload))
+    _write_test_sidecar_payload(
+        artifact_path=artifact_path,
+        payload_path=payload_path,
+        payload=payload,
+    )
     artifact = load_tpm_artifact(artifact_path)
     monkeypatch.setattr("open_energy_lab.planning.problem._pyomo_is_available", lambda: True)
 
@@ -278,7 +304,11 @@ def test_assemble_planning_problem_uses_spn_mip_when_serialized_conditional_mode
             ],
         },
     }
-    payload_path.write_bytes(pickle.dumps(payload))
+    _write_test_sidecar_payload(
+        artifact_path=artifact_path,
+        payload_path=payload_path,
+        payload=payload,
+    )
     artifact = load_tpm_artifact(artifact_path)
     monkeypatch.setattr("open_energy_lab.planning.problem._pyomo_is_available", lambda: True)
 

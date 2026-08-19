@@ -7,6 +7,8 @@ import sys
 
 import pytest
 
+from tests.integration.legacy_reference_utils import assert_legacy_reference_path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from fixture_utils import (
@@ -65,7 +67,7 @@ def test_visualization_fixture_common_schema(
         for legacy_path in legacy_references:
             assert isinstance(legacy_path, str)
             assert legacy_path.startswith("legacy/")
-            assert Path(legacy_path).is_file()
+            assert_legacy_reference_path(legacy_path)
 
 
 @pytest.mark.parametrize(

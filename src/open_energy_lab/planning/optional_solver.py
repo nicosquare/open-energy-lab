@@ -136,7 +136,7 @@ def _highspy_version(module: object) -> str:
 
 
 def solve_planning_problem(*args: object, **kwargs: object) -> object:
-    """Solve one assembled planning problem through the optional Pyomo boundary."""
+    """Solve one assembled planning problem through the lazy Pyomo boundary."""
 
     if args:
         assembled_problem = args[0]

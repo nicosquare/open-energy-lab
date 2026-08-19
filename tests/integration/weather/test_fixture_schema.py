@@ -13,6 +13,7 @@ from open_energy_lab.weather.artifact import (
     UnsupportedWeatherArtifactVersionError,
     load_weather_artifact,
 )
+from tests.integration.legacy_reference_utils import assert_legacy_reference_path
 from tests.integration.weather.fixture_utils import (
     COMMON_TOP_LEVEL_KEYS,
     FITTED_WEATHER_ARTIFACT_FIXTURE_PATH,
@@ -71,7 +72,7 @@ def test_weather_fixture_common_schema(
     for legacy_path in legacy_reference_paths:
         assert isinstance(legacy_path, str)
         assert legacy_path.startswith("legacy/")
-        assert Path(legacy_path).is_file()
+        assert_legacy_reference_path(legacy_path)
 
     notes = fixture_data["notes"]
     assert isinstance(notes, list)

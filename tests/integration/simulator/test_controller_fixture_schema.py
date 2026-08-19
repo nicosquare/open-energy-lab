@@ -16,6 +16,7 @@ from tests.integration.control.controller_fixture_utils import (
     LOAD_PV_SCENARIO_KEYS,
     load_all_controller_pack_fixtures,
 )
+from tests.integration.legacy_reference_utils import assert_legacy_reference_path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -102,7 +103,7 @@ def test_controller_fixture_common_schema(
     for legacy_path in legacy_references:
         assert isinstance(legacy_path, str)
         assert legacy_path.startswith("legacy/")
-        assert Path(legacy_path).is_file()
+        assert_legacy_reference_path(legacy_path)
 
     provenance_notes = fixture_data["provenance_notes"]
     assert isinstance(provenance_notes, list)
@@ -274,7 +275,7 @@ def test_controller_pack_fixture_common_schema(
     for legacy_path in legacy_references:
         assert isinstance(legacy_path, str)
         assert legacy_path.startswith("legacy/")
-        assert Path(legacy_path).is_file()
+        assert_legacy_reference_path(legacy_path)
 
     provenance_notes = fixture_data["provenance_notes"]
     assert isinstance(provenance_notes, list)

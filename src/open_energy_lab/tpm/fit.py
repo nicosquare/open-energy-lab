@@ -808,6 +808,12 @@ def _load_planning_dataset_artifact(
 
     if isinstance(source, PlanningDatasetArtifact):
         return source
+    to_dict = getattr(source, "to_dict", None)
+    if callable(to_dict) and not isinstance(source, str | Path | Mapping):
+        # Import-boundary tests deliberately reload the planning module. Rebuild
+        # an artifact created by the previous module instance so public in-memory
+        # handoff does not depend on dataclass identity surviving that reload.
+        return PlanningDatasetArtifact.from_dict(to_dict())
     return load_planning_dataset(source)
 
 

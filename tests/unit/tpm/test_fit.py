@@ -116,7 +116,7 @@ def test_fit_tpm_artifact_fails_lazily_when_spflow_is_unavailable(
     artifact_path = tmp_path / "should-not-exist.json"
 
     def _raise_dependency_error(_backend=None):
-        raise SPFlowDependencyUnavailableError("optional 'spflow' dependency missing")
+        raise SPFlowDependencyUnavailableError("required 'spflow' dependency missing")
 
     monkeypatch.setattr(
         optional_spflow_module,
@@ -124,7 +124,7 @@ def test_fit_tpm_artifact_fails_lazily_when_spflow_is_unavailable(
         _raise_dependency_error,
     )
 
-    with pytest.raises(SPFlowDependencyUnavailableError, match="optional 'spflow' dependency"):
+    with pytest.raises(SPFlowDependencyUnavailableError, match="required 'spflow' dependency"):
         fit_tpm_artifact(_planning_dataset(), output_path=artifact_path)
 
     assert not artifact_path.exists()

@@ -93,7 +93,9 @@ def test_build_piecewise_planning_terms_replays_committed_tpm_metadata() -> None
     assert planning_terms.approximation_kind == "piecewise"
     assert planning_terms.leaf_encoding_mode == "histogram"
     assert planning_terms.sum_encoding_mode == "piecewise"
-    assert planning_terms.breakpoint_policy["policy_name"] == "legacy-logspace-v1"
+    assert planning_terms.breakpoint_policy["policy_name"] == (
+        "canonical-five-breakpoint-v1"
+    )
     assert planning_terms.mio_epsilon == pytest.approx(1e-6)
     assert planning_terms.fit_numeric_tolerance == pytest.approx(1e-9)
     assert planning_terms.query_numeric_tolerance == pytest.approx(1e-9)
