@@ -6,5 +6,5 @@
   "production_model": false,
   "dataset_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json",
   "training_random_seed": 13,
-  "note": "Deterministic schema-v2 sidecar evidence only; T041 replaces production examples with a reproducibly fitted current-SPFlow model."
+  "note": "Deterministic schema-v2 fixture-replay evidence only; required production evidence lives in tpm_artifact_spflow_v1.json and its real current-SPFlow sidecar."
 }

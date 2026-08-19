@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pickle
 from pathlib import Path
 
 import pyomo.environ as pyo
@@ -15,7 +14,7 @@ from open_energy_lab.tpm.mio import (
     build_spn_modeling_terms,
     infer_max_sum_terms,
 )
-from open_energy_lab.tpm.artifact import load_tpm_artifact
+from open_energy_lab.tpm.artifact import LegacyTPMArtifactVersionError
 
 
 def _feature_schema() -> list[dict[str, object]]:
@@ -246,46 +245,25 @@ def test_build_spn_modeling_terms_builds_generic_piecewise_terms() -> None:
     assert terms.log_curve.domain_upper_bound == pytest.approx(3.0)
 
 
-def test_build_spn_chance_model_from_artifact_uses_public_generic_tpm_surface(
+def test_legacy_fake_backend_artifact_cannot_enter_public_generic_tpm_surface(
     tmp_path: Path,
 ) -> None:
-    payload_path = tmp_path / "spn_payload.pkl"
-    payload_path.write_bytes(
-        pickle.dumps(
-            {
-                "backend_module": "spn",
-                "backend_version": "0.test",
-                "backend_adapter_name": "legacy-spn-api",
-                "canonical_target_name": "shortfall",
-                "event_target_name": "shortfall_exceeds_threshold",
-                "feature_schema": _feature_schema(),
-                "query_strategy": "spflow",
-                "raw_rows": [
-                    {
-                        "battery_capacity_kwh": 1.0,
-                        "shortfall_exceeds_threshold": 0.0,
-                    }
-                ],
-                "conditional_models": _serialized_conditional_models(),
-            }
-        )
-    )
     artifact_path = tmp_path / "artifact.json"
     artifact_path.write_text(
-        __import__("json").dumps(_artifact_payload(payload_path.name), indent=2) + "\n",
+        __import__("json").dumps(
+            _artifact_payload("legacy-fake-spn-payload.pkl"),
+            indent=2,
+        )
+        + "\n",
         encoding="utf-8",
     )
 
-    model = build_spn_chance_model_from_artifact(
-        pyo,
-        artifact=artifact_path,
-        problem_id="artifact-spn-mio-unit",
-        decision_features=("battery_capacity_kwh",),
-        cost_terms={"battery_capacity_kwh": 100.0},
-        chance_limit_epsilon=0.1,
-    )
-
-    reloaded = load_tpm_artifact(artifact_path)
-    assert reloaded.spn_payload_format == "pickle-path"
-    assert model._open_energy_lab_sum_encoding_mode == "piecewise"
-    assert model.chance_constraint is not None
+    with pytest.raises(LegacyTPMArtifactVersionError, match=r"(?i)legacy|refit"):
+        build_spn_chance_model_from_artifact(
+            pyo,
+            artifact=artifact_path,
+            problem_id="artifact-spn-mio-unit",
+            decision_features=("battery_capacity_kwh",),
+            cost_terms={"battery_capacity_kwh": 100.0},
+            chance_limit_epsilon=0.1,
+        )

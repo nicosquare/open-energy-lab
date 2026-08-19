@@ -8,6 +8,10 @@ record a SHA-256 digest.
 ## Active Fixture Set
 
 - `planning_dataset_v1.json`: supported planning-dataset artifact.
+- `tpm_artifact_spflow_v1.json`: reproducibly fitted schema-v2 production
+  manifest for required current SPFlow 1.1 validation.
+- `sidecars/tpm_artifact_spflow_v1.spn_payload.pkl`: real current-SPFlow
+  model sidecar referenced by the production manifest.
 - `tpm_artifact_v2.json`: supported schema-v2 current-SPFlow-generation
   manifest in explicit `fixture_replay` mode.
 - `sidecars/tpm_artifact_v2.fixture.json`: deterministic replay-only sidecar
@@ -21,16 +25,31 @@ record a SHA-256 digest.
 It preserves deterministic row and column ordering plus the simulator-derived
 `shortfall` target.
 
-`tpm_artifact_v2.json` records `backend_generation=current-spflow`,
+`tpm_artifact_spflow_v1.json` records `schema_version=v2`,
+`backend_generation=current-spflow`, `backend_api_version=1.1.0`, and
+`execution_mode=production`. Its model sidecar was fitted from the 36
+deterministic generic rows defined by
+`examples/tpm_planning/run_generic_rows_pipeline.py::_training_rows` with seed
+`13`. The manifest records the complete source-row configuration, translated
+fit configuration, Torch determinism settings, stable fit summary, compiler
+version, supported module types, five canonical breakpoints, MIO epsilon
+`1e-6`, and the sidecar SHA-256 digest.
+
+Regeneration verifies stable structure, parameters, likelihoods, native query
+results, compiler output, and canonical-point probability parity within the
+documented tolerances. It deliberately does not require pickle-byte equality;
+the newly written sidecar digest is persisted and subsequently verified by the
+artifact loader.
+
+`tpm_artifact_v2.json` separately records `backend_generation=current-spflow`,
 `backend_api_version=1.1.0`, `execution_mode=fixture_replay`, a relative
 sidecar locator, and the sidecar SHA-256 digest. Loading the manifest by path
 verifies that the sidecar exists inside the manifest directory and matches the
 digest.
 
-The v2 sidecar is contract evidence, not a serialized production model. It
-sets `production_model=false`, and the manifest does not claim real fit/query
-validation. T041 owns replacing production examples with reproducibly fitted
-current-SPFlow sidecars while retaining clearly labeled replay evidence.
+The replay v2 sidecar is contract evidence, not a serialized production model.
+It sets `production_model=false`; it remains only to validate explicit
+empirical replay without weakening the separate required production fixture.
 
 `tpm_artifact_v1.json` is intentionally unsupported. It preserves the prior
 inline fake-backend payload only to prove that schema-v1 artifacts fail with
@@ -93,6 +112,22 @@ by `open_energy_lab.tpm.load_tpm_artifact`. Query fixtures retain the
 - refresh policy: update the manifest and digest together whenever its sidecar
   or schema-v2 contract changes
 
+`tpm_artifact_spflow_v1.json`
+
+- status: supported schema-v2 production manifest
+- backend contract: required current SPFlow `1.1.0`
+- execution mode: `production`
+- sidecar serialization: `spflow-model-sidecar`
+- compiler contract: `spflow-v1-mio-v1`, Normal/Bernoulli/Categorical leaves,
+  sum/product composition, one channel/repetition, five breakpoints, and MIO
+  epsilon `1e-6`
+- validation target: real fit, reload, sidecar hash verification, native query,
+  compiler parity, and `1e-9` semantic repeatability
+- seed: training seed `13`
+- refresh policy: run the checked-in regeneration command only when the source
+  rows, fit configuration, required backend, compiler, or artifact contract
+  intentionally changes
+
 `tpm_artifact_v1.json`
 
 - status: active negative-case fixture
@@ -117,7 +152,26 @@ by `open_energy_lab.tpm.load_tpm_artifact`. Query fixtures retain the
 - refresh policy: only when replay request or response semantics intentionally
   change
 
-## Integrity Refresh
+## Production Regeneration And Verification
+
+Regenerate the real production manifest and sidecar offline from the repository
+root:
+
+```bash
+uv run python examples/tpm_planning/run_generic_rows_pipeline.py --regenerate-fixture
+```
+
+Verify sidecar integrity and refit the same model in a temporary directory to
+compare stable semantic evidence:
+
+```bash
+uv run python examples/tpm_planning/run_generic_rows_pipeline.py --verify-fixture
+```
+
+Both commands require the locked SPFlow 1.1 installation. They do not use the
+network, notebooks, legacy runtimes, Pyomo, HiGHS, Gurobi, or external data.
+
+## Replay Integrity Refresh
 
 After intentionally changing the replay sidecar, compute its digest offline:
 
@@ -125,8 +179,8 @@ After intentionally changing the replay sidecar, compute its digest offline:
 sha256sum tests/fixtures/tpm/sidecars/tpm_artifact_v2.fixture.json
 ```
 
-Update `tpm_artifact_v2.json` and the schema-v2-shaped unsupported fixture
-with that exact digest. Never weaken verification or use an absolute,
+Update the replay `tpm_artifact_v2.json` and the schema-v2-shaped unsupported
+fixture with that exact digest. Never weaken verification or use an absolute,
 parent-traversing, or network sidecar locator.
 
 ## Working Rule

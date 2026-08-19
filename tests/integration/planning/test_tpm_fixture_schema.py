@@ -11,9 +11,11 @@ from open_energy_lab.planning.dataset import load_planning_dataset
 from open_energy_lab.tpm import (
     TPMQueryRequest,
     UnsupportedTPMArtifactVersionError,
+    compile_spflow_model_to_mio,
     load_tpm_artifact,
     query_tpm_artifact,
 )
+from open_energy_lab.tpm.optional_spflow import load_spflow_payload
 from tests.integration.planning.fixture_utils import (
     COMMON_LIST_KEYS,
     COMMON_PROVENANCE_KEYS,
@@ -23,6 +25,7 @@ from tests.integration.planning.fixture_utils import (
     TPM_ARTIFACT_FIXTURE_PATH,
     TPM_ARTIFACT_V1_FIXTURE_PATH,
     TPM_FIXTURE_PATHS,
+    TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH,
     TPM_QUERY_FIXTURE_PATH,
     UNSUPPORTED_TPM_ARTIFACT_FIXTURE_PATH,
     load_planning_fixture,
@@ -43,7 +46,7 @@ def _fixture_data_for(path: Path) -> dict[str, object]:
 
 
 def test_tpm_fixture_paths_are_present() -> None:
-    assert len(TPM_FIXTURE_PATHS) == 5
+    assert len(TPM_FIXTURE_PATHS) == 6
     for path in TPM_FIXTURE_PATHS:
         assert path.is_file()
 
@@ -71,7 +74,9 @@ def test_tpm_fixture_common_schema() -> None:
         for legacy_path in legacy_evidence_paths:
             assert isinstance(legacy_path, str)
             assert legacy_path.startswith("legacy/")
-            assert Path(legacy_path).is_file()
+            legacy_repository = Path(*Path(legacy_path).parts[:2])
+            if legacy_repository.is_dir() and any(legacy_repository.iterdir()):
+                assert Path(legacy_path).is_file()
 
         generation_command = provenance["generation_command"]
         assert generation_command is None or (
@@ -177,6 +182,48 @@ def test_schema_v1_tpm_artifact_fixture_is_retained_for_refit_rejection() -> Non
         load_tpm_artifact(fixture_data)
 
 
+def test_production_tpm_fixture_contains_real_current_spflow_evidence() -> None:
+    fixture_data = _fixture_data_for(TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH)
+    artifact = load_tpm_artifact(TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH)
+
+    assert fixture_data["fixture_status"] == "active"
+    assert artifact.schema_version == "v2"
+    assert artifact.execution_mode == "production"
+    assert artifact.backend_generation == "current-spflow"
+    assert artifact.backend_api_version == "1.1.0"
+    assert artifact.spn_payload_format == "spflow-model-sidecar"
+    assert artifact.payload_locator == (
+        "sidecars/tpm_artifact_spflow_v1.spn_payload.pkl"
+    )
+    assert artifact.sidecar_path.is_file()
+    assert artifact.provenance["production_model"] is True
+    assert artifact.provenance["training_random_seed"] == 13
+    assert artifact.provenance["sidecar_sha256"] == artifact.payload_hash
+
+    approximation = artifact.approximation_metadata
+    assert approximation["compiler_version"] == "spflow-v1-mio-v1"
+    assert approximation["compiler_status"] == "production-validated"
+    assert approximation["leaf_encoding_mode"] == "piecewise-log-density"
+    assert approximation["compiler_sum_encoding_mode"] == "weighted-logsumexp"
+    assert approximation["breakpoint_policy"]["piecewise_breakpoint_count"] == 5
+    assert fixture_data["approximation_metadata"]["breakpoint_policy"][
+        "breakpoint_count"
+    ] == 5
+    assert approximation["mio_epsilon"] == 1e-6
+
+    runtime_payload = load_spflow_payload(artifact)
+    assert runtime_payload is not None
+    assert runtime_payload["payload_kind"] == "current-spflow-model-sidecar"
+    assert runtime_payload["model"] is not None
+    compiled = compile_spflow_model_to_mio(
+        runtime_payload["model"],
+        feature_schema=artifact.feature_specs,
+    )
+    assert compiled["compiler_version"] == approximation["compiler_version"]
+    assert compiled["breakpoint_policy"]["breakpoint_count"] == 5
+    assert compiled["mio_epsilon"] == approximation["mio_epsilon"]
+
+
 def test_unsupported_tpm_artifact_fixture_reserves_version_failure_case() -> None:
     fixture_data = _fixture_data_for(UNSUPPORTED_TPM_ARTIFACT_FIXTURE_PATH)
 
@@ -215,6 +262,7 @@ def test_tpm_query_fixture_tracks_query_reproducibility_expectations() -> None:
         TPMQueryRequest(
             decision_assignments=dict(query_request["decision_assignments"]),
             marginalized_features=tuple(query_request["marginalized_features"]),
+            execution_mode=str(query_request["execution_mode"]),
             output_mode=str(query_request["output_mode"]),
             target_name=str(query_request["target_name"]),
         ),

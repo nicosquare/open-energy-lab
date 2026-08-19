@@ -1,0 +1,490 @@
+{
+  "approximation_metadata": {
+    "approximation_kind": "piecewise",
+    "backend_compiler_version": "spflow-v1-mio-v1",
+    "breakpoint_policy": {
+      "breakpoint_count": 5,
+      "breakpoints": [
+        0.0,
+        0.25,
+        0.5,
+        0.75,
+        1.0
+      ],
+      "canonical_breakpoint_count": 5,
+      "exp_breakpoint_start": 0.3,
+      "exp_probability_floor": 0.001,
+      "explicit_override": false,
+      "explicit_overrides": {},
+      "normalized_domain": [
+        0.0,
+        1.0
+      ],
+      "piecewise_breakpoint_count": 5,
+      "policy_name": "canonical-five-breakpoint-v1"
+    },
+    "compiled_graph_summary": {
+      "maximum_absolute_probability_error": 5.551115123125783e-17,
+      "node_count": 4,
+      "node_types": [
+        "normal",
+        "bernoulli",
+        "categorical",
+        "product"
+      ],
+      "root_id": 3
+    },
+    "compiler_schema_version": "v1",
+    "compiler_status": "production-validated",
+    "compiler_sum_encoding_mode": "weighted-logsumexp",
+    "compiler_version": "spflow-v1-mio-v1",
+    "fit_numeric_tolerance": 1e-09,
+    "leaf_encoding_mode": "piecewise-log-density",
+    "legacy_reference_paths": [
+      "legacy/old_tpm/src_py/tpm/spn/main.py",
+      "legacy/old_tpm/src_py/tpm/spn/encoding.py",
+      "legacy/old_tpm/src_py/utils/densities.py"
+    ],
+    "mio_epsilon": 1e-06,
+    "native_probability_tolerance": 1e-06,
+    "query_numeric_tolerance": 1e-09,
+    "repeatability_tolerance": 1e-09,
+    "sum_encoding_mode": "piecewise",
+    "supported_spflow_module_types": [
+      "Sum",
+      "Product",
+      "Normal",
+      "Bernoulli",
+      "Categorical"
+    ],
+    "tolerance": 1e-09
+  },
+  "artifact_id": "tpm-artifact:generic-rows-current-spflow-v1",
+  "backend_api_version": "1.1.0",
+  "backend_generation": "current-spflow",
+  "created_at": "2026-08-19T00:00:00Z",
+  "dataset_reference": "generic-rows-current-spflow-v1",
+  "execution_mode": "production",
+  "feature_schema": [
+    {
+      "bounds": [
+        2.0,
+        12.0
+      ],
+      "feature_name": "battery_capacity_kwh",
+      "feature_role": "decision",
+      "feature_type": "continuous",
+      "modifiable": true,
+      "monotonicity": "none",
+      "normalization_rule": "minmax"
+    },
+    {
+      "discrete_values": [
+        0.0,
+        1.0
+      ],
+      "feature_name": "solar_enabled",
+      "feature_role": "decision",
+      "feature_type": "binary",
+      "modifiable": true,
+      "monotonicity": "none",
+      "normalization_rule": "binary_index",
+      "ordering": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "discrete_values": [
+        "balanced",
+        "compact",
+        "resilient"
+      ],
+      "feature_name": "design_class",
+      "feature_role": "decision",
+      "feature_type": "categorical",
+      "modifiable": true,
+      "monotonicity": "none",
+      "normalization_rule": "categorical_index",
+      "ordering": [
+        "balanced",
+        "compact",
+        "resilient"
+      ]
+    },
+    {
+      "bounds": [
+        20.0,
+        26.0
+      ],
+      "feature_name": "ambient_temperature_c",
+      "feature_role": "context",
+      "feature_type": "continuous",
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization_rule": "minmax"
+    },
+    {
+      "bounds": [
+        0.04799999999999999,
+        0.19699999999999998
+      ],
+      "feature_name": "shortfall",
+      "feature_role": "metric_target",
+      "feature_type": "continuous",
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization_rule": "minmax"
+    },
+    {
+      "discrete_values": [
+        0.0,
+        1.0
+      ],
+      "feature_name": "shortfall_event",
+      "feature_role": "target",
+      "feature_type": "binary",
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization_rule": "binary_index",
+      "ordering": [
+        0.0,
+        1.0
+      ]
+    }
+  ],
+  "fit_configuration": {
+    "backend_api_version": "1.1.0",
+    "backend_generation": "current-spflow",
+    "backend_name": "spflow",
+    "determinism_configuration": {
+      "canonical_random_seed": 13,
+      "cudnn_benchmark": false,
+      "cudnn_deterministic": true,
+      "numpy_random_seed": 13,
+      "python_random_seed": 13,
+      "robustness_random_seeds": [
+        37,
+        101
+      ],
+      "selected_random_seed": 13,
+      "torch_deterministic_algorithms": true,
+      "torch_device": "cpu",
+      "torch_dtype": "float64",
+      "torch_num_threads": 1,
+      "torch_random_seed": 13,
+      "torch_version": "2.13.0+cu130"
+    },
+    "execution_mode": "production",
+    "fit_summary": {
+      "likelihood": {
+        "maximum": -1.7151791852870777,
+        "mean": -3.1816960573723865,
+        "minimum": -5.955377852278899,
+        "shape": [
+          36,
+          1,
+          1,
+          1
+        ],
+        "value_count": 36,
+        "values": [
+          -4.631289771326512,
+          -1.9940214468203266,
+          -1.790271246203318,
+          -2.4100653834312955,
+          -2.8035624945463704,
+          -5.495293801182491,
+          -4.205533519506098,
+          -2.717742996356381,
+          -2.450829645071541,
+          -1.7151791852870777,
+          -2.011185346458324,
+          -5.955377852278899,
+          -4.631289771326512,
+          -1.9940214468203266,
+          -1.790271246203318,
+          -2.4100653834312955,
+          -2.8035624945463704,
+          -5.495293801182491,
+          -4.205533519506098,
+          -2.717742996356381,
+          -2.450829645071541,
+          -1.7151791852870777,
+          -2.011185346458324,
+          -5.955377852278899,
+          -4.631289771326512,
+          -1.9940214468203266,
+          -1.790271246203318,
+          -2.4100653834312955,
+          -2.8035624945463704,
+          -5.495293801182491,
+          -4.205533519506098,
+          -2.717742996356381,
+          -2.450829645071541,
+          -1.7151791852870777,
+          -2.011185346458324,
+          -5.955377852278899
+        ]
+      },
+      "parameters": {
+        "parameter_count": 11,
+        "tensors": [
+          {
+            "name": "inputs.inputs.0.loc",
+            "shape": [
+              3,
+              1,
+              1
+            ],
+            "values": [
+              0.5,
+              0.5000000000000001,
+              0.4720357941834452
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.log_scale",
+            "shape": [
+              3,
+              1,
+              1
+            ],
+            "values": [
+              -1.0307115180885789,
+              -0.9435348245161901,
+              -1.218193877731223
+            ]
+          },
+          {
+            "name": "inputs.inputs.1._logits",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.0,
+              1.6094379124341007
+            ]
+          },
+          {
+            "name": "inputs.inputs.2._logits",
+            "shape": [
+              1,
+              1,
+              1,
+              3
+            ],
+            "values": [
+              -1.0986122886681098,
+              -1.0986122886681098,
+              -1.0986122886681098
+            ]
+          }
+        ]
+      },
+      "structure": {
+        "module_count": 6,
+        "modules": [
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.products.product.Product",
+            "path": "<root>",
+            "query_scope": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs",
+            "query_scope": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0",
+            "query_scope": [
+              0,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.1",
+            "query_scope": [
+              1,
+              5
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.categorical.Categorical",
+            "path": "inputs.inputs.2",
+            "query_scope": [
+              2
+            ]
+          }
+        ]
+      }
+    },
+    "input_column_order": [
+      "battery_capacity_kwh",
+      "solar_enabled",
+      "design_class",
+      "ambient_temperature_c",
+      "shortfall",
+      "shortfall_event"
+    ],
+    "input_row_count": 36,
+    "leaf_families": [
+      "Normal",
+      "Bernoulli",
+      "Categorical"
+    ],
+    "learn_mspn_kwargs": {
+      "min_features_slice": 2,
+      "min_instances_slice": 100,
+      "n_clusters": 2,
+      "threshold": 0.3
+    },
+    "learn_spn_kwargs": {
+      "clustering_args": {
+        "n_clusters": 2
+      },
+      "min_features_slice": 2,
+      "min_instances_slice": 100,
+      "partitioning_args": {
+        "threshold": 0.3
+      }
+    },
+    "notes": [
+      "required-current-spflow-production-fixture",
+      "canonical-seed-13",
+      "deterministic-semantic-verification-not-pickle-byte-equality"
+    ],
+    "training_random_seed": 13
+  },
+  "fixture_name": "tpm_artifact_spflow_v1",
+  "fixture_status": "active",
+  "notes": [
+    "This fixture contains a real SPFlow 1.1 model and uses production mode.",
+    "Regeneration compares deterministic structure, parameters, likelihood, query, and compiler semantics rather than requiring pickle-byte equality.",
+    "The separate tpm_artifact_v2.json fixture remains explicit empirical fixture_replay evidence."
+  ],
+  "payload_hash": "3d3095bdc7e7b11e6982dac286c5ed7b9dc1f5215d1bbc474820c241a6933077",
+  "planned_contracts": [
+    "specs/009-tpm-planning/contracts/tpm-artifact-contract.md",
+    "specs/009-tpm-planning/contracts/validation-contract.md"
+  ],
+  "provenance": {
+    "author": "OpenAI Codex",
+    "backend_api_version": "1.1.0",
+    "backend_generation": "current-spflow",
+    "compiler_version": "spflow-v1-mio-v1",
+    "fixture_manifest_path": "tests/fixtures/tpm/tpm_artifact_spflow_v1.json",
+    "fixture_sidecar_path": "tests/fixtures/tpm/sidecars/tpm_artifact_spflow_v1.spn_payload.pkl",
+    "generation_command": "uv run python examples/tpm_planning/run_generic_rows_pipeline.py --regenerate-fixture",
+    "legacy_evidence_paths": [
+      "legacy/old_tpm/src_py/tpm/data/datahandler.py",
+      "legacy/old_tpm/src_py/tpm/data/features/feature.py",
+      "legacy/old_tpm/src_py/tpm/spn/main.py",
+      "legacy/old_tpm/src_py/tpm/spn/encoding.py",
+      "legacy/old_tpm/src_py/utils/densities.py"
+    ],
+    "origin": "Deterministic generic-row fixture fitted through the required current SPFlow 1.1 backend",
+    "production_model": true,
+    "random_seed": 13,
+    "refresh_policy": "Regenerate only when the source rows, fit configuration, SPFlow API, compiler contract, or schema-v2 artifact contract changes.",
+    "sidecar_sha256": "3d3095bdc7e7b11e6982dac286c5ed7b9dc1f5215d1bbc474820c241a6933077",
+    "source_dataset": "examples/tpm_planning/run_generic_rows_pipeline.py::_training_rows",
+    "source_dataset_configuration": {
+      "ambient_temperature_cycle_c": [
+        20.0,
+        22.0,
+        24.0,
+        26.0
+      ],
+      "battery_cycle": [
+        2.0,
+        4.0,
+        6.0,
+        8.0,
+        10.0,
+        12.0
+      ],
+      "design_class_cycle": [
+        "compact",
+        "balanced",
+        "resilient"
+      ],
+      "row_count": 36,
+      "solar_cycle": [
+        0,
+        1
+      ],
+      "target_formula_version": "generic-shortfall-v1"
+    },
+    "training_column_order": [
+      "battery_capacity_kwh",
+      "solar_enabled",
+      "design_class",
+      "ambient_temperature_c",
+      "shortfall",
+      "shortfall_event"
+    ],
+    "training_dataset_id": "generic-rows-current-spflow-v1",
+    "training_random_seed": 13,
+    "training_row_count": 36,
+    "verification_command": "uv run python examples/tpm_planning/run_generic_rows_pipeline.py --verify-fixture"
+  },
+  "purpose": "Reproducibly fitted schema-v2 production artifact for required current-SPFlow fit, reload, query, compiler, and sidecar-integrity review.",
+  "query_configuration": {
+    "required_decision_features": [
+      "battery_capacity_kwh",
+      "solar_enabled",
+      "design_class"
+    ],
+    "supported_output_modes": [
+      "conditional_probability",
+      "log_likelihood"
+    ]
+  },
+  "schema_version": "v2",
+  "spec_feature": "009-tpm-planning",
+  "spn_payload": {
+    "backend": "spflow",
+    "locator": "sidecars/tpm_artifact_spflow_v1.spn_payload.pkl",
+    "serialization": "spflow-model-sidecar"
+  },
+  "spn_payload_format": "spflow-model-sidecar",
+  "target_definition": {
+    "event_target_name": "shortfall_event",
+    "event_threshold_comparison": ">",
+    "event_threshold_source": "threshold_default",
+    "supported_query_mode": "exceedance-probability",
+    "target_name": "shortfall",
+    "threshold_default": 0.08
+  }
+}
