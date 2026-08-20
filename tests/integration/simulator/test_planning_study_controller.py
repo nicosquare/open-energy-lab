@@ -31,16 +31,21 @@ def test_existing_controller_runs_every_stochastic_trace_deterministically() -> 
         ),
     )
     demand_family = _sample_demand_family_fixture(weather_family)
+    base_scenario = _base_scenario(weather_family)
+    base_scenario = replace(
+        base_scenario,
+        battery=replace(base_scenario.battery, min_soc=0.1),
+    )
     controller = PVSelfConsumptionController(
         PVSelfConsumptionConfig(
-            reserve_min_soc=0.0,
+            reserve_min_soc=0.1,
             reserve_max_soc=1.0,
             charge_request_kw=3.0,
             discharge_request_kw=3.0,
         )
     )
     request = DemandFamilyEvaluationRequest(
-        base_scenario_reference=_base_scenario(weather_family),
+        base_scenario_reference=base_scenario,
         weather_family=weather_family,
         demand_family=demand_family,
         cooling_service_configuration=_local_cooling_service_configuration(),
@@ -58,7 +63,7 @@ def test_existing_controller_runs_every_stochastic_trace_deterministically() -> 
         assert len(scenario_result.requested_battery_power_kw) == weather_family.num_steps
         assert len(scenario_result.realized_battery_power_kw) == weather_family.num_steps
         assert len(scenario_result.battery_soc) == weather_family.num_steps
-        assert all(0.0 <= value <= 1.0 for value in scenario_result.battery_soc)
+        assert all(0.1 <= value <= 1.0 for value in scenario_result.battery_soc)
         assert scenario_result.requested_battery_power_kw != pytest.approx(
             [0.0] * weather_family.num_steps
         )

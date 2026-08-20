@@ -4,6 +4,8 @@ import ast
 import json
 from pathlib import Path
 
+from open_energy_lab.simulator import PriceSignal, TimeGrid
+
 
 NOTEBOOK_PATH = Path("examples/tpm_planning/discrete_study_walkthrough.ipynb")
 
@@ -81,6 +83,40 @@ def test_notebook_includes_all_dynamic_visualization_topics_and_compiles() -> No
     for cell in _notebook()["cells"]:
         if cell["cell_type"] == "code":
             ast.parse("".join(cell["source"]))
+
+
+def test_notebook_placeholder_tariff_satisfies_simulator_contract() -> None:
+    notebook = _notebook()
+    price_signal_calls: list[ast.Call] = []
+
+    for cell in notebook["cells"]:
+        if cell["cell_type"] != "code":
+            continue
+        tree = ast.parse("".join(cell["source"]))
+        price_signal_calls.extend(
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "PriceSignal"
+        )
+        assert not any(output.get("output_type") == "error" for output in cell["outputs"])
+
+    assert len(price_signal_calls) == 1
+    keywords = {keyword.arg: keyword.value for keyword in price_signal_calls[0].keywords}
+    export_ratio = ast.literal_eval(keywords["export_price_ratio"])
+    interpretation = ast.literal_eval(keywords["interpretation"])
+    assert 0.0 < export_ratio < 1.0
+    assert "discount" in interpretation.lower()
+    PriceSignal(
+        currency="AED",
+        unit_rate_name="planning-placeholder",
+        import_prices=[0.0],
+        export_price_ratio=export_ratio,
+        interpretation=interpretation,
+        time_alignment="step-start",
+        time_grid=TimeGrid(num_steps=1, time_step_hours=1.0),
+    )
 
 
 def test_notebook_states_conditional_scope_and_tmy_demand_limitations() -> None:

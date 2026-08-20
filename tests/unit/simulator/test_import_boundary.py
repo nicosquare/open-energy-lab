@@ -48,6 +48,7 @@ def test_simulator_import_stays_lightweight() -> None:
         "DispatchRequestSeries",
         "evaluate_demand_family",
         "export_planning_dataset",
+        "generate_planning_study_dataset",
         "evaluate_with_controller",
         "evaluate_weather_family",
         "LoadComponent",
