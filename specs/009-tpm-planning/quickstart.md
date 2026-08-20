@@ -11,6 +11,9 @@ and required Pyomo/HiGHS planning validation are implemented.
 - Required installation does not imply eager import. Package roots stay lazy.
 - The initial migration pins are `spflow==1.1.0`, `pyomo==6.10.1`, and
   `highspy==1.15.1`; widen them only after compatibility-matrix evidence.
+- Scalable study datasets additionally require `pyarrow==25.0.0`; Parquet is
+  the default shard format and JSONL is the reviewable alternative. PyArrow is
+  imported only when a Parquet read/write boundary is invoked.
 - Pyomo `SolverFactory("highs")` is the standard solver path.
 - Gurobi is additionally supported but remains license- and
   environment-dependent.
@@ -24,6 +27,100 @@ SPFlow 1.1 is a PyTorch-based rewrite. Its maintainers state that pre-1.0
 models are incompatible and must be rebuilt. The migration therefore preserves
 validated behavior and project artifact contracts, not old serialized model
 objects.
+
+## Discrete Solar-Storage Study
+
+The public staged workflow is:
+
+1. `generate_planning_study_dataset(...)` sweeps the explicit battery/solar
+   grid and reuses each absolute weather/demand/grid sample across all designs.
+2. `fit_planning_study_tpm(...)` materializes only selected SPN columns after
+   a tensor-memory preflight.
+3. `compile_planning_study_tpm(...)` compiles the supported current-SPFlow
+   graph.
+4. `solve_planning_study(...)` minimizes per-option installed costs in the
+   direct categorical MIO and verifies the selected design with native SPFlow.
+
+`run_planning_study(...)` executes the same stages and resumes compatible
+dataset shards. The default controller is PV self-consumption; supplied,
+islanded, and two-state Markov grid traces are supported. Active adequacy events
+may use shortfall ratio, unmet energy, or unmet-timestep fraction thresholds.
+
+### Configurable Abu Dhabi autonomy notebook
+
+`examples/tpm_planning/discrete_study_walkthrough.ipynb` is the full manual
+acceptance workflow. Defaults are Abu Dhabi city centre (`24.4539, 54.3773`,
+`Asia/Dubai`), a 24-hour local-midnight islanded horizon, explicitly reset
+100% initial SOC, a 10% SOC floor, 95% efficiencies, 0.5C storage, and the
+chance rule `P(unmet_energy_kwh > 0.1) <= 0.05`.
+
+The notebook uses the versioned PVGIS 5.3 TMY endpoint. It caches a canonical
+8,760-row table separately from the fitted weather artifact and fits from that
+already fetched dataset, so a fresh run makes one request. It fails if neither
+a compatible cache nor the configured network fetch is available; no fixture
+fallback is allowed. Live PVGIS remains outside routine CI.
+
+Demand is either explicitly labeled synthetic small-commercial demand or a
+measured CSV containing at least 90 complete hourly days and separate
+non-cooling electric demand plus cooling RT. Both modes use
+`fit_demand_model`; total electricity without separate cooling remains invalid.
+
+Default study evidence is split into independent manifests:
+
+- training: 1,000 episodes/configuration, seed 13, 9,000 rows;
+- validation: 250/configuration, seed 37, 2,250 rows;
+- final test: 250/configuration, seed 101, 2,250 rows.
+
+Real default/finer/coarser SPFlow candidates must compile before selection.
+Validation Brier score selects the candidate, with smaller node count breaking
+ties. HiGHS always executes. Recommendation requires mean final-test
+configuration error at most 5 points, maximum error at most 10 points, both
+labels, selected native probability within its held-out confidence interval,
+native/MIO error at most `1e-6`, and a one-sided held-out 95% risk upper bound
+at most 5%. A failure produces an exploratory result rather than a reliability
+recommendation.
+
+### Recorded notebook-extension validation — 2026-08-20
+
+- Focused weather cache/offset, demand-input, planning-validation, and notebook
+  structure checks: `37 passed in 8.22s`.
+- Reduced fixture-backed autonomy study using separate train, validation, and
+  test manifests, two real SPFlow candidates, MIO compilation, HiGHS solving,
+  and deliberate recommendation blocking: `1 passed in 5.94s`.
+- Notebook/public-package checks: `20 passed in 0.27s`.
+- Complete relevant weather, demand, simulator, TPM, planning, backend, and
+  import-boundary regression: `457 passed, 6 skipped in 25.92s`. All six skips
+  were supplemental unavailable-Gurobi checks; required SPFlow, Pyomo, and
+  HiGHS validation passed.
+- Python compilation, all-package lazy-import smoke testing, strict Python
+  legacy-import scanning, and `git diff --check` passed.
+
+The live PVGIS request and full 8,760-hour/13,500-episode notebook acceptance
+run remain manual by repository policy. They were not run as part of this
+offline validation and are not replaced by fixtures or synthetic provenance.
+
+Run the offline example:
+
+```bash
+uv run python examples/tpm_planning/run_discrete_study.py
+```
+
+### Recorded extension validation — 2026-08-19
+
+- Focused compact-fit, MIO, staged workflow, real 2x2 SPFlow/HiGHS, and package
+  surface checks: `61 passed in 6.66s`.
+- Full required 008+009 demand, weather, simulator, TPM, planning, and import
+  boundary regression: `429 passed, 6 skipped in 21.09s`. All six skips were
+  supplemental unavailable-Gurobi checks; required HiGHS checks passed.
+- Spawn-based process parity after deliberate import-boundary module reloads:
+  `54 passed in 10.63s`, with no sequential fallback or process warning.
+- Offline discrete example: `32` rows, selected `battery-5` + `solar-3`, total
+  installed cost `8000.0`, encoded/native risk `0.96875`, discrepancy `0.0`.
+- Root import smoke test passed. The legacy-import scan found only the checked
+  command text in documentation/reproducibility assertions, and no source or
+  test import of `legacy`.
+- Ruff was not installed in the locked environment, so the attempted Ruff
+  command could not execute; `git diff --check` and Python compilation passed.
 
 ## Preserve / Port / Reject
 

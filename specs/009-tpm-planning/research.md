@@ -243,3 +243,46 @@ preferred to constraining the unified library to an obsolete backend.
 - Use `appsi_highs` canonically: rejected because the workflow builds and
   solves rather than repeatedly updating one persistent model; it remains a
   non-canonical compatibility option.
+
+## Decision 12: Add a resumable discrete study runner with common random samples
+
+**Decision**: Treat battery and solar products as categorical equipment
+options, simulate their Cartesian product with identical absolute-indexed
+weather/demand/outage samples, and persist results in deterministic shards.
+
+**Rationale**: Direct caller metadata can diverge from the physical scenario,
+and one embedded JSON payload does not support large or resumable studies.
+Simulator-derived option metadata plus common random numbers provides fair,
+reproducible design comparisons.
+
+## Decision 13: Keep optimization solver-driven and validate the selected point
+
+**Decision**: Encode equipment choices and their installed costs directly in
+the SPN MIO, solve with HiGHS, and compare the selected design's probability
+with native SPFlow.
+
+**Rationale**: Exhaustive evaluation is useful for generating training data
+but must not replace the encoded optimization. Selected-point validation is an
+independent approximation check with bounded cost.
+
+## Decision 14: Cache canonical PVGIS data separately and fit without refetching
+
+**Decision**: The configurable autonomy notebook uses the explicit PVGIS 5.3
+endpoint, persists request/cache provenance with the canonical hourly table,
+and calls a canonical-dataset weather fit entry point.
+
+**Rationale**: A separate cache makes the external-data boundary reviewable and
+lets the producer fit exactly the records that were fetched. Failure is
+explicit when neither cache nor network is available; a fixture cannot be
+mistaken for Abu Dhabi evidence.
+
+## Decision 15: Select on validation and gate recommendations on final test
+
+**Decision**: Fit real SPFlow candidates on training data, rank only compilable
+candidates by validation Brier score and node-count tie-break, then use an
+independent final test for calibration and a conservative selected-design risk
+bound.
+
+**Rationale**: Compiler parity establishes encoding fidelity, not statistical
+calibration. Separating candidate selection from final evidence prevents the
+same samples from selecting and approving the model.

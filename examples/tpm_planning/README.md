@@ -93,6 +93,59 @@ an optimal HiGHS termination, seed `13`, one thread, a 30-second limit, and the
 installed Pyomo/highspy versions. The example is fully offline and does not
 need Gurobi, notebooks, network services, GPUs, or solver licenses.
 
+## Discrete Solar-Storage Study
+
+`run_discrete_study.py` executes the complete requested sequence: a 2x2
+equipment sweep with shared stochastic samples, sharded Parquet persistence,
+compact SPFlow fit, direct categorical MIO assembly, HiGHS optimization, and
+native-SPFlow verification of the selected option IDs.
+
+```bash
+uv run python examples/tpm_planning/run_discrete_study.py
+```
+
+The resumable outputs and `summary.json` are written below
+`tmp/open-energy-lab-discrete-study/`. Set `worker_count` above one for
+deterministic process parallelism; batching and worker count do not change the
+semantic dataset.
+
+### Jupyter walkthrough
+
+[`discrete_study_walkthrough.ipynb`](discrete_study_walkthrough.ipynb) presents
+the configurable research-scale workflow. Its default studies a 24-hour
+islanded period at Abu Dhabi city centre and enforces
+`P(unmet_energy_kwh > 0.1) <= 0.05` over 80/120/160 kW solar and
+100/200/300 kWh battery options. Each episode explicitly starts at 100% SOC
+with a 10% floor; no simulator burn-in is used.
+
+The notebook requests PVGIS through the versioned 5.3 endpoint and caches both
+the canonical 8,760-row TMY table and fitted weather artifact. A missing cache
+plus an unavailable or disabled network fails explicitly; committed fixtures
+are never substituted. The default synthetic demand is labeled illustrative
+small-commercial demand. A `measured_csv` mode requires at least 90 complete
+hourly days with separate non-cooling electricity and cooling RT.
+
+Independent manifests use 1,000/250/250 episodes per configuration and seeds
+13/37/101 for training, candidate validation, and final testing. Default,
+finer, and coarser real SPFlow candidates are compiled and ranked by validation
+Brier score, with node count breaking ties. HiGHS always runs. A planning
+recommendation is released only if the selected candidate passes held-out
+calibration, native/MIO error is at most `1e-6`, and the selected design's
+one-sided held-out 95% risk bound is at most 5%; otherwise the result is
+explicitly exploratory.
+
+Dynamic dependency-free SVGs cover representative TMY days and hourly
+distributions, fitted/input demand, sample power/controller/SOC/unmet traces,
+train/validation/test risk heatmaps, native SPN versus held-out probability
+with confidence intervals, and the cost-risk frontier.
+
+`ipykernel` is a development dependency, not a core library dependency. Run
+`uv sync`, then select the repository's `.venv/bin/python` as the kernel in VS
+Code or another Jupyter frontend. The frontend itself is not installed by the
+project. Live PVGIS access and full 13,500-row notebook execution are manual
+acceptance activities, not routine CI. The library contracts and reduced
+fixture-backed split/candidate/HiGHS path remain fully offline-tested.
+
 ## Required Environment
 
 The locked project environment provides:

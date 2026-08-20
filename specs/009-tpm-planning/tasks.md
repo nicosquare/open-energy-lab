@@ -176,6 +176,49 @@ assembly-only and fake-backend results do not complete the story.
 
 ---
 
+## Phase 7: Scalable Discrete Solar-Storage Planning Studies
+
+**Purpose**: Extend the completed 009 workflow into a staged, resumable study
+surface that simulates a discrete equipment grid, fits a compact SPN, solves
+the encoded MIO directly, and verifies the selected solution against native
+SPFlow.
+
+- [X] T064 Add required `pyarrow==25.0.0`, regenerate the lock, preserve lazy imports, and document JSONL/Parquet policy in `pyproject.toml`, `uv.lock`, and `specs/009-tpm-planning/quickstart.md`
+- [X] T065 [P] Add test-first contracts for equipment options, Cartesian configuration ordering, shared absolute sample IDs, controller resolution, islanded/supplied/Markov grid availability, and adequacy-event metrics in `tests/unit/planning/test_study.py` and `tests/unit/simulator/test_planning_study.py`
+- [X] T066 [P] Add test-first schema-v2 manifest coverage for deterministic JSONL/Parquet shards, semantic digests, atomic writes, resume validation, corruption rejection, and schema-v1 compatibility in `tests/unit/planning/test_study_dataset.py`
+- [X] T067 [P] Add controller-backed stochastic family evaluation tests proving existing native controllers operate each sampled trace without changing the legacy direct-trace path in `tests/integration/simulator/test_planning_study_controller.py`
+- [X] T068 Implement study equipment, event, outage, controller, request, and result types plus deterministic grid/outage helpers in `src/open_energy_lab/planning/study.py`
+- [X] T069 Implement controller-aware demand-family evaluation and absolute sample-index batching in `src/open_energy_lab/weather/sampling.py`, `src/open_energy_lab/demand/sampling.py`, and `src/open_energy_lab/simulator/stochastic_demand.py`
+- [X] T070 Implement planning-dataset schema v2 with JSONL/Parquet shards, canonical semantic hashes, atomic manifests, streaming readers, and resumable request fingerprints in `src/open_energy_lab/planning/study_dataset.py`
+- [X] T071 Implement deterministic sequential/process study simulation with shared samples, simulator-derived design metadata, bounded batches, and resumable shard generation in `src/open_energy_lab/simulator/planning_study.py`
+- [X] T072 Add compact sharded-dataset TPM fitting with explicit categorical equipment features, selected fit columns, tensor-memory preflight, and manifest provenance in `src/open_energy_lab/tpm/fit.py` and `src/open_energy_lab/planning/study.py`
+- [X] T073 [P] Add tests for categorical equipment option costs, raw-row-independent SPN-MIO assembly, production no-fallback behavior, and native post-solve risk verification in `tests/unit/tpm/test_spflow_v1_mio.py`, `tests/unit/planning/test_problem.py`, and `tests/unit/planning/test_study.py`
+- [X] T074 Implement categorical one-hot option costs, direct SPN-MIO assembly without empirical candidates, and backward-compatible legacy scalar costs in `src/open_energy_lab/tpm/mio.py`, `src/open_energy_lab/planning/problem.py`, and `src/open_energy_lab/planning/optional_solver.py`
+- [X] T075 Implement staged fit/compile/solve/verify APIs and the resumable `run_planning_study` convenience workflow in `src/open_energy_lab/planning/study.py` and package exports
+- [X] T076 Add a real 2x2 current-SPFlow-to-HiGHS end-to-end study covering staged/convenience parity, shared samples, discrete costs, chance feasibility, and native-SPN verification in `tests/integration/planning/test_discrete_study_pipeline.py`
+- [X] T077 Update the offline TPM-planning example, migration guidance, schema contracts, and quickstart with the complete step-by-step study workflow in `examples/tpm_planning/`, `docs/migration/tpm-planning.md`, and `specs/009-tpm-planning/`
+- [X] T078 Run the focused simulator/controller/TPM/planning suites, import-boundary checks, JSONL/Parquet parity checks, and full 008+009 regressions; record exact outcomes in `specs/009-tpm-planning/quickstart.md`
+
+---
+
+## Phase 8: Configurable Abu Dhabi Autonomy Notebook
+
+**Purpose**: Turn the discrete-study tutorial into a configurable 24-hour
+Abu Dhabi autonomy study with explicit live/cache provenance, realistic demand
+inputs, independent train/validation/test evidence, SPN candidate selection,
+and a conservative recommendation gate.
+
+- [X] T079 Add test-first contracts for the versioned PVGIS 5.3 request configuration, canonical TMY cache behavior, cache/network failure diagnostics, and fitting an already fetched canonical dataset in `tests/unit/weather/`
+- [X] T080 Add test-first hourly `local_start_step` alignment contracts across weather sampling, demand sampling, planning requests, and simulator-owned study generation in `tests/unit/weather/`, `tests/unit/demand/`, `tests/unit/planning/`, and `tests/integration/planning/`
+- [X] T081 Add test-first synthetic small-commercial and measured-CSV demand input contracts, including complete-day validation and total-electricity double-counting rejection, in `tests/unit/demand/`
+- [X] T082 Add test-first held-out Brier scoring, compilable-candidate selection, confidence intervals, calibration assessment, and final recommendation gating in `tests/unit/planning/`
+- [X] T083 Implement PVGIS configuration/cache support, canonical-dataset fitting, hourly sampling offsets, realistic demand input builders, and planning validation helpers under `src/open_energy_lab/`
+- [X] T084 Expand `examples/tpm_planning/discrete_study_walkthrough.ipynb` into the configurable Abu Dhabi train/validation/test workflow with all required dynamic visualizations and explicit conditional-result language
+- [X] T085 Add notebook structural/provenance checks and a reduced offline fixture-backed integration study covering split manifests, real SPFlow candidate selection/compilation, HiGHS solve, and recommendation blocking in `tests/unit/planning/` and `tests/integration/planning/`
+- [X] T086 Update the example README and 009 quickstart, then run the focused weather/demand/planning/simulator/backend and import-boundary validation relevant to the notebook extension
+
+---
+
 ## Dependencies And Execution Order
 
 ### Phase Dependencies

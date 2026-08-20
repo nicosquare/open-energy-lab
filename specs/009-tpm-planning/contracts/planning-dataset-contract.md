@@ -20,7 +20,9 @@ stable, TPM-ready format.
 - horizon-indexed columns use `<field>_<step>`
 - `shortfall` is reserved for the documented horizon-level unmet-electric-load
   energy ratio
-- aliases such as `ghi_<step>` and `load_<step>` are stable and reviewable
+- aliases such as `ghi_<step>`, `pv_generation_<step>`, `load_<step>`,
+  `controller_request_<step>`, `battery_power_<step>`, `battery_soc_<step>`,
+  `grid_available_<step>`, and `unmet_load_<step>` are stable and reviewable
 - first-release artifacts contain one explicit planning target only
 
 ## Reload Expectations

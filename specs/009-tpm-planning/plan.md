@@ -226,6 +226,36 @@ spec-alignment delta:
 7. Reconcile tasks, migration docs, examples, fixtures, and review commands;
    rerun the full 008+009 regression suites before merge.
 
+## Phase 3: Discrete Planning Study Extension
+
+The follow-on 009 extension adds a staged study runner without weakening the
+completed backend contracts. Explicit battery and solar option catalogs form a
+Cartesian configuration grid. Absolute sample identifiers generate common
+weather, demand, and grid-availability realizations for every configuration,
+independent of batching or worker count. Existing controllers execute each
+trace through the simulator boundary.
+
+Rows are persisted incrementally through a schema-v2 JSON manifest referencing
+checksummed JSONL or Parquet shards. All simulation columns remain available,
+while the default SPN fit selects categorical equipment choices, adequacy
+summaries, and one active event. Pyomo optimizes categorical one-hot choices
+using explicit installed option costs. The selected MIO solution is queried
+against native SPFlow and fails validation above the documented tolerance.
+
+## Phase 4: Configurable Abu Dhabi Autonomy Notebook
+
+The notebook extension adds a versioned PVGIS 5.3 configuration and canonical
+TMY cache, an already-fetched dataset fit entry point, and local-hour sampling
+offsets without changing simulator initial-state semantics. Synthetic and
+measured demand adapters produce the existing demand-fit payload contract.
+
+Three independent study manifests provide training, validation, and final-test
+evidence. Multiple real SPFlow structure settings must compile before Brier
+score selection. Final recommendation is a separate gate over held-out
+calibration, native/MIO parity, and a one-sided held-out risk bound. Live PVGIS
+and full notebook execution remain manual; unit and reduced real-backend
+integration validation remain offline.
+
 ## Complexity Tracking
 
 No constitution violation requires an exception. Installing heavyweight

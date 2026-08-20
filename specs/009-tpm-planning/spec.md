@@ -76,6 +76,24 @@ lazy backend loading.
   it to a current supported SPFlow release rather than constraining Python to
   the legacy `spn.*` package generation.
 
+### Session 2026-08-19
+
+- Q: How should multiple solar/storage designs be simulated? → A: Sweep a
+  Cartesian grid of explicit equipment options and evaluate every design with
+  the same absolute-indexed uncertainty samples.
+- Q: How should large studies persist rows? → A: Use resumable,
+  checksummed schema-v2 shards with required JSONL and Parquet support and no
+  artificial row-count ceiling.
+- Q: How should storage dispatch work? → A: Reuse the shipped named
+  controllers through the controller runner, defaulting solar/storage studies
+  to PV self-consumption and resolving requests from equipment power limits.
+- Q: Which adequacy targets are supported? → A: One active binary event per
+  artifact derived from a shortfall-ratio, absolute unmet-energy, or
+  unmet-timestep-fraction threshold.
+- Q: How is the encoded optimum trusted? → A: Solve the MIO directly, then
+  validate only the selected design against native SPFlow; a material mismatch
+  is a failed workflow result, not a warning or brute-force replacement.
+
 ## Scope Classification *(mandatory)*
 
 - **Feature type**: Migration plus new library capability
@@ -428,7 +446,9 @@ termination status, and solver metadata.
   3.14. If the required locked stack cannot resolve on one version, the project
   MUST narrow `requires-python` using recorded compatibility evidence rather
   than skipping the failing required-backend job.
-- **External services**: None in the default workflow
+- **External services**: None in the default review workflow; the configurable
+  notebook may explicitly fetch PVGIS 5.3 when no compatible canonical cache is
+  present
 - **Hardware assumptions**: CPU-only local validation by default; no GPU or
   scheduler requirement accepted for the routine review path
 
@@ -457,11 +477,17 @@ termination status, and solver metadata.
   exposes installation or compatibility failures when the corresponding TPM or
   planning workflow is invoked. Ordinary imports remain independent of any
   separately managed solver binary or license.
+- **SC-005**: The configurable autonomy notebook exposes the 24-hour Abu Dhabi
+  defaults, produces independent 9,000/2,250/2,250-row manifests in a full
+  acceptance run, compiles real SPFlow candidates, executes HiGHS, and blocks
+  recommendation whenever calibration, parity, or the one-sided 95% held-out
+  risk bound fails.
 
 ## Assumptions
 
-- Researchers will use the first release from Python as a library workflow
-  rather than through notebooks or experiment-service wrappers.
+- Researchers will use the first release through library-owned workflows. A
+  notebook may configure and present those workflows but does not own event,
+  simulation, TPM, calibration, or solve semantics.
 - The first release planning dataset is built from current deterministic or
   family-evaluation simulator surfaces and caller-provided design metadata
   rather than from a new full design-sweep simulator subsystem.

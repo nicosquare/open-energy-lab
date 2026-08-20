@@ -185,6 +185,55 @@ uv run python examples/tpm_planning/run_real_backend_pipeline.py
 Generated example artifacts remain under
 `tmp/open-energy-lab-pipeline-real-backends/`.
 
+## Discrete Study Workflow
+
+The scalable study API now covers the full solar-storage design loop without
+brute-force selection. `PlanningStudyRequest` defines explicit equipment
+options, repeated horizons, an existing named battery controller, and the grid
+availability policy. The simulator reuses each absolute stochastic sample
+across the full Cartesian equipment grid and writes bounded, resumable Parquet
+or JSONL shards.
+
+Those shards retain the simulator traces needed to inspect policy behavior: PV
+generation, site load, controller-requested and physically realized battery
+power, post-step state of charge, grid availability, and unmet load. Battery
+power follows the simulator convention: positive is charging and negative is
+discharging.
+
+`fit_planning_study_tpm` selects the compact SPN columns after checking the
+dense tensor memory requirement. `compile_planning_study_tpm` validates the
+supported SPFlow graph. `solve_planning_study` then places categorical option
+IDs and their installed costs directly in the MIO; the optimizer is not
+choosing from enumerated simulation rows. Finally, the selected option IDs are
+queried against native SPFlow. Encoded/native error above `1e-6` or native risk
+above the chance limit is a validation failure.
+
+Use `run_planning_study` for the same stages as one resumable convenience call,
+or run `examples/tpm_planning/run_discrete_study.py` for an offline 2x2 case.
+
+## Abu Dhabi Autonomy Notebook
+
+The expanded `examples/tpm_planning/discrete_study_walkthrough.ipynb` is a
+configuration and presentation layer over the library-owned workflow. It does
+not redefine simulator unmet-energy semantics, TPM metadata, or planning solve
+behavior. `local_start_step` is propagated through weather, demand, and study
+requests so a local-hour window stays aligned while every episode still resets
+to its explicitly configured initial SOC.
+
+The live-input boundary is explicit: PVGIS 5.3 configuration and cache
+provenance belong to the weather producer, the canonical hourly cache remains
+separate from the fitted artifact, and `fit_weather_dataset` avoids a second
+request. Synthetic and measured demand inputs both terminate at the existing
+`fit_demand_model` boundary. Simulator-owned manifests remain separate for
+training, validation, and final test.
+
+SPN selection uses only validation Brier score among candidates that genuinely
+compile. Final-test calibration, native/MIO parity, and the selected design's
+one-sided confidence bound gate the user-facing recommendation. HiGHS output is
+still retained when a gate fails, but is labeled exploratory. Full live PVGIS
+and 13,500-row notebook execution are manual checks; routine validation stays
+offline and fixture-backed.
+
 ## Required Review Commands
 
 ```bash

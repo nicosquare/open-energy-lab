@@ -44,8 +44,10 @@ fit and reload workflows; referenced by planning fixtures and review flows.
 ## Planning Dataset Row
 
 **Fields**: `scenario_index`, design columns such as `battery_*` and
-`solar_*`, flattened horizon-indexed columns such as `ghi_0`, `load_0`,
-`unmet_load_0`, optional summary columns, `shortfall`, and `row_provenance`.
+`solar_*`, `controller_name`, flattened horizon-indexed columns such as
+`ghi_0`, `pv_generation_0`, `load_0`, `controller_request_0`,
+`battery_power_0`, `battery_soc_0`, `grid_available_0`, and `unmet_load_0`,
+optional summary columns, `shortfall`, and `row_provenance`.
 
 **Relationships**: Belongs to one planning dataset artifact; supplies one
 training observation for the TPM workflow.
@@ -211,3 +213,34 @@ review fixtures and user-facing diagnostics.
   expectations
 - routine results record Pyomo, `highspy`, solver-interface, termination,
   options, and version metadata; Gurobi results are supplemental
+
+## Canonical TMY Cache Request
+
+**Fields**: `latitude`, `longitude`, `timezone_name`, `endpoint_url`,
+`use_horizon`, optional `start_year`, optional `end_year`, `timeout_seconds`,
+`cache_path`, `cache_status`, `payload_sha256`.
+
+**Validation rules**:
+
+- the default endpoint is explicitly versioned PVGIS 5.3
+- source years are supplied as a pair
+- a compatible cache is keyed by the complete location and API request
+- missing cache plus disabled or failed network fetch is an explicit failure
+- the canonical hourly dataset is fitted directly without a second fetch
+
+## Held-Out Study Assessment
+
+**Fields**: candidate name, validation Brier score, compilability, SPN node
+count, per-configuration native probability, empirical final-test probability,
+confidence interval, mean error, maximum error, label coverage, selected-design
+one-sided upper risk bound, native/MIO discrepancy, blocking reasons.
+
+**Validation rules**:
+
+- only compilable candidates may be selected
+- validation Brier score is primary and smaller node count breaks ties
+- final-test evidence is independent of training and validation manifests
+- calibration requires mean error at most 0.05, maximum error at most 0.10,
+  both labels, and selected native probability inside its confidence interval
+- recommendation additionally requires native/MIO discrepancy at most `1e-6`
+  and a one-sided held-out 95% risk bound no greater than epsilon
