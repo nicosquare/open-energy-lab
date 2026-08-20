@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from open_energy_lab.planning import load_planning_dataset
+import open_energy_lab.tpm.fit as fit_module
 import open_energy_lab.tpm.optional_spflow as optional_spflow_module
 from open_energy_lab.tpm.artifact import load_tpm_artifact
 from open_energy_lab.tpm.fit import (
@@ -264,3 +266,78 @@ def test_fit_tpm_artifact_from_rows_keeps_constant_event_targets_binary(
     assert feature_schema["loss_event"]["feature_type"] == "binary"
     assert feature_schema["loss_event"]["discrete_values"] == [0.0, 1.0]
     assert feature_schema["loss_event"]["ordering"] == [0.0, 1.0]
+
+
+def test_rdc_partition_guard_treats_an_empty_spectrum_as_independent_features(
+    monkeypatch,
+) -> None:
+    import torch
+
+    learn_module = importlib.import_module("spflow.learn.learn_spn")
+
+    def _empty_spectrum_failure(_data, **_kwargs):
+        raise RuntimeError(
+            "max(): Expected reduction dim to be specified for input.numel() == 0"
+        )
+
+    monkeypatch.setattr(learn_module, "partition_by_rdc", _empty_spectrum_failure)
+    partition_ids = fit_module._partition_by_rdc_with_degenerate_fallback(
+        torch.ones((20, 4), dtype=torch.float64)
+    )
+
+    assert partition_ids.tolist() == [0, 1, 2, 3]
+
+
+def test_rdc_partition_guard_does_not_hide_unrelated_runtime_errors(monkeypatch) -> None:
+    import torch
+
+    learn_module = importlib.import_module("spflow.learn.learn_spn")
+
+    def _unrelated_failure(_data, **_kwargs):
+        raise RuntimeError("unexpected partition failure")
+
+    monkeypatch.setattr(learn_module, "partition_by_rdc", _unrelated_failure)
+
+    with pytest.raises(RuntimeError, match="unexpected partition failure"):
+        fit_module._partition_by_rdc_with_degenerate_fallback(
+            torch.ones((20, 4), dtype=torch.float64)
+        )
+
+
+def test_kmeans_guard_forces_progress_when_backend_returns_one_cluster(monkeypatch) -> None:
+    import torch
+
+    learn_module = importlib.import_module("spflow.learn.learn_spn")
+    monkeypatch.setattr(
+        learn_module,
+        "cluster_by_kmeans",
+        lambda data, **_kwargs: torch.zeros(data.shape[0], dtype=torch.int),
+    )
+
+    labels = fit_module._cluster_by_kmeans_with_degenerate_fallback(
+        torch.ones((10, 3), dtype=torch.float64),
+        n_clusters=2,
+    )
+
+    assert labels.tolist() == [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
+
+
+def test_leaf_parameter_stabilization_keeps_constant_binary_slices_finite() -> None:
+    import torch
+    from spflow.meta.data import Scope
+    from spflow.modules.leaves import Bernoulli, Normal
+
+    leaf = Bernoulli(scope=Scope(0), probs=torch.zeros((1, 1, 1)))
+    normal = Normal(
+        scope=Scope(1),
+        loc=torch.zeros((1, 1, 1)),
+        scale=torch.ones((1, 1, 1)),
+    )
+    normal.scale = torch.full((1, 1, 1), float("nan"))
+    root = torch.nn.ModuleList((leaf, normal))
+    fit_module._stabilize_leaf_parameters(root)
+
+    assert bool(torch.isfinite(leaf.logits).all())
+    assert 0.0 < float(leaf.probs.detach().reshape(-1)[0]) < 1.0
+    assert bool(torch.isfinite(normal.scale).all())
+    assert bool((normal.scale > 0.0).all())

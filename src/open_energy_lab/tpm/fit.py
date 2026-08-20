@@ -774,9 +774,98 @@ def _learn_current_spflow_structure(
     tensor = build_spflow_training_tensor(rows, feature_schema=schema)
     leaves = build_spflow_leaf_modules(schema)
     translated = translate_spflow_fit_configuration(effective_configuration)
-    model = learn_spn(tensor, leaf_modules=list(leaves), **translated)
+    runtime_configuration = dict(translated)
+    partitioning_method = runtime_configuration.get("partitioning_method", "rdc")
+    if partitioning_method == "rdc":
+        # SPFlow 1.1's RDC binary search can reach a zero-dimensional
+        # eigenspectrum on degenerate recursive slices. Treat that one known
+        # numerical edge case as an independent feature split. This terminates
+        # the recursive slice without discarding mixture structure already
+        # learned above it.
+        runtime_configuration["partitioning_method"] = (
+            _partition_by_rdc_with_degenerate_fallback
+        )
+    clustering_method = runtime_configuration.get("clustering_method", "kmeans")
+    if clustering_method == "kmeans":
+        # A one-cluster k-means result would recurse on the unchanged slice in
+        # SPFlow 1.1. Force a deterministic balanced split only in that
+        # degenerate case so every recursive call makes progress.
+        runtime_configuration["clustering_method"] = (
+            _cluster_by_kmeans_with_degenerate_fallback
+        )
+    model = learn_spn(tensor, leaf_modules=list(leaves), **runtime_configuration)
     model = _materialize_native_categorical_leaves(model)
+    _stabilize_leaf_parameters(model)
     return model, tensor, leaves, translated
+
+
+def _partition_by_rdc_with_degenerate_fallback(data: object, **kwargs: object) -> object:
+    """Run SPFlow RDC, falling back only for its empty-spectrum edge case."""
+
+    from spflow.learn.learn_spn import partition_by_rdc
+
+    try:
+        return partition_by_rdc(data, **kwargs)
+    except RuntimeError as exc:
+        if "input.numel() == 0" not in str(exc):
+            raise
+        import torch
+
+        return torch.arange(
+            int(data.shape[1]),
+            dtype=torch.int,
+            device=data.device,
+        )
+
+
+def _cluster_by_kmeans_with_degenerate_fallback(data: object, **kwargs: object) -> object:
+    """Run SPFlow k-means and force progress if it returns one cluster."""
+
+    from spflow.learn.learn_spn import cluster_by_kmeans
+
+    labels = cluster_by_kmeans(data, **kwargs)
+    if int(labels.unique().numel()) > 1 or int(data.shape[0]) < 2:
+        return labels
+
+    import torch
+
+    cluster_count = min(int(kwargs.get("n_clusters", 2)), int(data.shape[0]))
+    return torch.div(
+        torch.arange(int(data.shape[0]), device=data.device) * cluster_count,
+        int(data.shape[0]),
+        rounding_mode="floor",
+    ).to(dtype=torch.int)
+
+
+def _stabilize_leaf_parameters(module: object, *, minimum_value: float = 1e-9) -> None:
+    """Keep constant learned slices finite without changing non-degenerate leaves."""
+
+    import torch
+    from spflow.modules.leaves import Bernoulli, Normal
+
+    with torch.no_grad():
+        for child in module.modules():
+            if isinstance(child, Normal):
+                child.scale = torch.clamp(
+                    torch.nan_to_num(
+                        child.scale,
+                        nan=float(minimum_value),
+                        posinf=float(minimum_value),
+                        neginf=float(minimum_value),
+                    ),
+                    min=float(minimum_value),
+                )
+            elif isinstance(child, Bernoulli):
+                child.probs = torch.clamp(
+                    torch.nan_to_num(
+                        child.probs,
+                        nan=0.5,
+                        posinf=1.0 - float(minimum_value),
+                        neginf=float(minimum_value),
+                    ),
+                    min=float(minimum_value),
+                    max=1.0 - float(minimum_value),
+                )
 
 
 def _materialize_native_categorical_leaves(module: object) -> object:

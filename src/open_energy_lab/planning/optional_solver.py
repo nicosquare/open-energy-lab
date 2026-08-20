@@ -696,6 +696,23 @@ def _solve_through_pyomo_solver(
             extra_diagnostics=_solver_result_diagnostics(results),
             extra_solver_metadata=result_metadata,
         )
+    if not _solver_result_reports_optimal(results):
+        termination_status = _solver_termination_status(results)
+        return _terminated_summary(
+            assembled_problem,
+            solve_config=solve_config,
+            backend=handoff.backend,
+            handoff=handoff,
+            status=termination_status,
+            reason=(
+                "solver reached its configured time limit before proving optimality"
+                if termination_status == "time_limit"
+                else "solver terminated without proving optimality"
+            ),
+            solve_execution_mode="native-pyomo-solver",
+            extra_diagnostics=_solver_result_diagnostics(results),
+            extra_solver_metadata=result_metadata,
+        )
 
     _load_pyomo_solution(handoff.model, results=results)
     result_metadata["solutions_loaded"] = True
@@ -823,6 +840,13 @@ def _solver_stack_metadata(
         "solver_interface": "pyomo.SolverFactory",
         "solver_options": dict(solver_options),
     }
+    risk_encoding_strategy = getattr(
+        handoff.model,
+        "_open_energy_lab_risk_encoding_strategy",
+        None,
+    )
+    if risk_encoding_strategy is not None:
+        metadata["risk_encoding_strategy"] = str(risk_encoding_strategy)
     if handoff.requested_solver_name != DEFAULT_SOLVER_NAME:
         return metadata
 
@@ -885,6 +909,24 @@ def _solver_result_reports_infeasible(results: object) -> bool:
     diagnostics = _solver_result_diagnostics(results)
     termination_condition = str(diagnostics.get("termination_condition", "")).lower()
     return "infeasible" in termination_condition
+
+
+def _solver_result_reports_optimal(results: object) -> bool:
+    diagnostics = _solver_result_diagnostics(results)
+    termination_condition = str(diagnostics.get("termination_condition", "")).lower()
+    return termination_condition == "optimal"
+
+
+def _solver_termination_status(results: object) -> str:
+    diagnostics = _solver_result_diagnostics(results)
+    termination_condition = "".join(
+        character
+        for character in str(diagnostics.get("termination_condition", "")).lower()
+        if character.isalnum()
+    )
+    if "timelimit" in termination_condition:
+        return "time_limit"
+    return "solver_terminated"
 
 
 def _deterministic_handoff_summary(
@@ -1028,6 +1070,48 @@ def _infeasible_summary(
         selected_design={},
         objective_value=None,
         estimated_shortfall_risk=minimum_risk,
+        threshold=assembled_problem.shortfall_threshold,
+        chance_limit_epsilon=assembled_problem.chance_limit_epsilon,
+        feasibility_diagnostics=feasibility_diagnostics,
+        solver_metadata=solver_metadata,
+    )
+
+
+def _terminated_summary(
+    assembled_problem: PlanningProblemAssembly,
+    *,
+    solve_config: PlanningSolveConfig,
+    backend: Any,
+    handoff: _PlanningPyomoModelHandoff,
+    status: str,
+    reason: str,
+    solve_execution_mode: str,
+    extra_diagnostics: Mapping[str, object] | None = None,
+    extra_solver_metadata: Mapping[str, object] | None = None,
+) -> PlanningSolveSummary:
+    feasibility_diagnostics = {
+        "reason": reason,
+        "candidate_count": len(handoff.candidate_ids),
+        "feasible_candidate_count": len(handoff.feasible_candidate_ids),
+    }
+    if extra_diagnostics:
+        feasibility_diagnostics.update(dict(extra_diagnostics))
+    solver_metadata = _solver_metadata(
+        assembled_problem,
+        solve_config=solve_config,
+        backend=backend,
+        status=status,
+        handoff=handoff,
+        solve_execution_mode=solve_execution_mode,
+    )
+    if extra_solver_metadata:
+        solver_metadata.update(dict(extra_solver_metadata))
+    return PlanningSolveSummary(
+        problem_id=assembled_problem.problem_id,
+        status=status,
+        selected_design={},
+        objective_value=None,
+        estimated_shortfall_risk=None,
         threshold=assembled_problem.shortfall_threshold,
         chance_limit_epsilon=assembled_problem.chance_limit_epsilon,
         feasibility_diagnostics=feasibility_diagnostics,

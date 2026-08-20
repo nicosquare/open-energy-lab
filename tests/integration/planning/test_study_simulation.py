@@ -17,6 +17,9 @@ from open_energy_lab.planning.workflow import (
     solve_planning_study,
 )
 from open_energy_lab.simulator.planning_study import generate_planning_study_dataset
+from open_energy_lab.simulator.planning_study import (
+    PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION,
+)
 from open_energy_lab.weather import load_weather_artifact
 from tests.integration.demand.fixture_utils import FITTED_DEMAND_ARTIFACT_FIXTURE_PATH
 from tests.integration.weather.fixture_utils import FITTED_WEATHER_ARTIFACT_FIXTURE_PATH
@@ -84,6 +87,9 @@ def test_study_sweep_derives_physical_metadata_and_reuses_samples(tmp_path) -> N
     rows = tuple(iter_study_rows(manifest))
 
     assert manifest.row_count == 8
+    assert manifest.metadata["simulation_semantics_version"] == (
+        PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION
+    )
     assert [row["configuration_id"] for row in rows] == [
         "battery-5__solar-3",
         "battery-5__solar-3",
@@ -109,6 +115,24 @@ def test_study_sweep_derives_physical_metadata_and_reuses_samples(tmp_path) -> N
         assert 0.0 <= row["battery_soc_0"] <= 1.0
         assert "controller_request_0" in row
         assert "battery_power_0" in row
+        assert 0.0 <= row["shortfall_ratio"] <= 1.0
+
+
+def test_larger_battery_does_not_increase_unmet_energy_for_shared_samples(tmp_path) -> None:
+    manifest = _run(tmp_path / "study", worker_count=1, shard_format="jsonl")
+    rows = tuple(iter_study_rows(manifest))
+    by_case = {
+        (str(row["battery_option_id"]), str(row["solar_option_id"]), int(row["sample_id"])): row
+        for row in rows
+    }
+
+    for solar_option_id in ("solar-3", "solar-6"):
+        for sample_id in (0, 1):
+            small = by_case[("battery-5", solar_option_id, sample_id)]
+            large = by_case[("battery-10", solar_option_id, sample_id)]
+            assert float(large["unmet_energy_kwh"]) <= float(
+                small["unmet_energy_kwh"]
+            ) + 1e-9
 
 
 def test_worker_count_and_storage_format_preserve_semantic_rows(tmp_path) -> None:
@@ -139,6 +163,10 @@ def test_real_discrete_study_fits_compiles_solves_and_verifies(tmp_path) -> None
     }
     assert result.solve_summary.objective_value == 8000.0
     assert result.probability_discrepancy <= 1e-6
+    assert (
+        result.solve_summary.solver_metadata["risk_encoding_strategy"]
+        == "exact-categorical-lookup"
+    )
 
 
 def test_study_manifest_preserves_local_start_step(tmp_path) -> None:

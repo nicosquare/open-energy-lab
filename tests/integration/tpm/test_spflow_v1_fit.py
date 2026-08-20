@@ -71,6 +71,8 @@ def test_real_fit_uses_torch_and_typed_leaf_scopes(monkeypatch, tmp_path) -> Non
     assert tensor.dtype == torch.float64
     assert tensor.device.type == "cpu"
     assert tensor.shape == (36, 6)
+    assert callable(captured["kwargs"]["partitioning_method"])
+    assert callable(captured["kwargs"]["clustering_method"])
 
     leaf_modules = captured["leaf_modules"]
     normal_scopes = {

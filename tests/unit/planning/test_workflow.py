@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from open_energy_lab.planning.optional_solver import PlanningSolveSummary
+from open_energy_lab.planning.optional_solver import PlanningSolveConfig, PlanningSolveSummary
 from open_energy_lab.planning.study_dataset import PlanningStudyDatasetWriter
 from open_energy_lab.planning.workflow import solve_planning_study
 from open_energy_lab.tpm.fit import (
@@ -87,7 +87,14 @@ def test_postsolve_verification_rejects_encoded_native_probability_mismatch(
         solver_metadata={},
     )
     workflow = import_module("open_energy_lab.planning.workflow")
-    monkeypatch.setattr(workflow, "assemble_planning_problem", lambda *args, **kwargs: object())
+    captured_definition = None
+
+    def _capture_definition(definition, artifact):
+        nonlocal captured_definition
+        captured_definition = definition
+        return object()
+
+    monkeypatch.setattr(workflow, "assemble_planning_problem", _capture_definition)
     monkeypatch.setattr(workflow, "solve_planning_problem", lambda *args, **kwargs: summary)
     monkeypatch.setattr(
         workflow,
@@ -101,8 +108,10 @@ def test_postsolve_verification_rejects_encoded_native_probability_mismatch(
         ),
         manifest,
         chance_limit_epsilon=0.2,
+        solve_config=PlanningSolveConfig(time_limit_seconds=120.0),
     )
 
+    assert captured_definition.solver_configuration["time_limit_seconds"] == 120.0
     assert result.status == "validation_failed"
     assert result.probability_discrepancy == pytest.approx(0.2)
     assert result.diagnostics["encoded_native_mismatch"] is True

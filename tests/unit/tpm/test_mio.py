@@ -195,6 +195,113 @@ def test_build_spn_chance_model_supports_only_valid_sum_encodings(
         assert hasattr(model.denominator_spn, "sum_log_piecewise_13")
 
 
+def test_categorical_spn_uses_exact_compiled_risk_lookup() -> None:
+    feature_schema = [
+        {
+            "feature_name": "battery_option_id",
+            "feature_role": "decision",
+            "feature_type": "categorical",
+            "discrete_values": ["battery-small", "battery-large"],
+            "ordering": ["battery-small", "battery-large"],
+            "modifiable": True,
+        },
+        {
+            "feature_name": "solar_option_id",
+            "feature_role": "decision",
+            "feature_type": "categorical",
+            "discrete_values": ["solar-a", "solar-b"],
+            "ordering": ["solar-a", "solar-b"],
+            "modifiable": True,
+        },
+        {
+            "feature_name": "shortfall_exceeds_threshold",
+            "feature_role": "target",
+            "feature_type": "binary",
+            "discrete_values": [0.0, 1.0],
+            "ordering": [0.0, 1.0],
+            "modifiable": False,
+        },
+    ]
+    conditional_models = {
+        "numerator_model": {
+            "root_id": 3,
+            "nodes": [
+                {
+                    "id": 1,
+                    "type": "leaf_categorical",
+                    "feature_name": "battery_option_id",
+                    "densities": [0.1, 0.01],
+                },
+                {
+                    "id": 2,
+                    "type": "leaf_categorical",
+                    "feature_name": "solar_option_id",
+                    "densities": [0.5, 0.5],
+                },
+                {"id": 3, "type": "product", "children": [1, 2]},
+            ],
+        },
+        "denominator_model": {
+            "root_id": 13,
+            "nodes": [
+                {
+                    "id": 11,
+                    "type": "leaf_categorical",
+                    "feature_name": "battery_option_id",
+                    "densities": [0.5, 0.5],
+                },
+                {
+                    "id": 12,
+                    "type": "leaf_categorical",
+                    "feature_name": "solar_option_id",
+                    "densities": [0.5, 0.5],
+                },
+                {"id": 13, "type": "product", "children": [11, 12]},
+            ],
+        },
+    }
+    piecewise_terms = build_piecewise_planning_terms(
+        {"approximation_kind": "piecewise", "sum_encoding_mode": "piecewise"},
+        max_terms=2,
+        decision_features=("battery_option_id", "solar_option_id"),
+        decision_feature_types={
+            "battery_option_id": "categorical",
+            "solar_option_id": "categorical",
+        },
+    )
+
+    model = build_spn_chance_model(
+        pyo,
+        problem_id="categorical-lookup-unit",
+        spn_payload={
+            "feature_schema": feature_schema,
+            "decision_features": ["battery_option_id", "solar_option_id"],
+            "sum_encoding_mode": "piecewise",
+            "conditional_models": conditional_models,
+        },
+        cost_terms={},
+        option_costs={
+            "battery_option_id": {"battery-small": 5.0, "battery-large": 10.0},
+            "solar_option_id": {"solar-a": 1.0, "solar-b": 2.0},
+        },
+        chance_limit_epsilon=0.05,
+        numeric_tolerance=1e-9,
+        piecewise_terms=piecewise_terms,
+    )
+
+    assert model._open_energy_lab_risk_encoding_strategy == "exact-categorical-lookup"
+    assert model._open_energy_lab_categorical_combinations == (
+        ("battery-small", "solar-a"),
+        ("battery-small", "solar-b"),
+        ("battery-large", "solar-a"),
+        ("battery-large", "solar-b"),
+    )
+    assert model._open_energy_lab_risk_by_combination == pytest.approx(
+        (0.2, 0.2, 0.02, 0.02)
+    )
+    assert not hasattr(model, "numerator_spn")
+
+
 def test_infer_max_sum_terms_uses_the_largest_sum_node_arity() -> None:
     payload = {
         "conditional_models": {

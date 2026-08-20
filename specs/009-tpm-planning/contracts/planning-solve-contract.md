@@ -13,7 +13,9 @@ design decisions.
 - the first release supports battery and solar decision variables only
 - deterministic cost metadata, `shortfall` threshold, and chance limit
   `epsilon` are explicit inputs
-- the canonical solver-facing approximation path is piecewise
+- the canonical compiler path is piecewise; when every planning decision is a
+  finite categorical option, the MIO uses exact conditional probabilities
+  evaluated from that compiled graph and linked joint-option indicators
 
 ## Assembly Requirements
 
@@ -30,6 +32,8 @@ design decisions.
   `P(shortfall > threshold) <= epsilon`
 - outputs include selected design values, objective value, estimated risk, and
   deterministic feasibility diagnostics
+- exact categorical lookup coefficients come from the compiled SPN, never from
+  empirical candidate rows, and the solver metadata records that strategy
 
 ## Failure Behavior
 

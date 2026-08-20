@@ -260,3 +260,69 @@ def test_solve_planning_problem_accepts_direct_spn_backend_results() -> None:
     assert summary.solver_metadata["handoff_strategy"] == "custom-backend-hook"
     assert summary.solver_metadata["solve_execution_mode"] == "custom-backend-hook"
     assert summary.feasibility_diagnostics["model_name"] == "planning-problem-unit-spn-handoff"
+
+
+def test_native_solver_time_limit_returns_diagnostic_summary_without_loading_solution() -> None:
+    class _TimeLimitedSolver:
+        def __init__(self) -> None:
+            self.options: dict[str, object] = {}
+
+        def available(self, *, exception_flag: bool = False) -> bool:
+            return True
+
+        def solve(self, model, *, tee: bool, load_solutions: bool):
+            assert tee is False
+            assert load_solutions is False
+            return SimpleNamespace(
+                solver=SimpleNamespace(
+                    status="aborted",
+                    termination_condition="maxTimeLimit",
+                )
+            )
+
+    def _fail_if_loaded(results) -> None:
+        raise AssertionError("a time-limited result must not be loaded")
+
+    solver = _TimeLimitedSolver()
+    backend = SimpleNamespace(
+        __name__="pyomo.testing",
+        __version__="0.test",
+        _open_energy_lab_pyomo_version="6.10.1",
+        _open_energy_lab_highspy_version="1.15.1",
+        SolverFactory=lambda solver_name: solver,
+    )
+    problem = _assembled_problem()
+    candidate = problem.candidate_designs[0]
+    handoff = optional_solver_module._PlanningPyomoModelHandoff(
+        model=SimpleNamespace(
+            solutions=SimpleNamespace(load_from=_fail_if_loaded),
+        ),
+        backend=backend,
+        backend_name="pyomo.testing",
+        backend_version="0.test",
+        handoff_strategy="native-pyomo",
+        requested_solver_name="highs",
+        candidate_ids=(0,),
+        candidate_lookup={0: candidate},
+        feasible_candidate_ids=(0,),
+    )
+
+    summary = optional_solver_module._solve_through_pyomo_solver(
+        problem,
+        solve_config=PlanningSolveConfig(time_limit_seconds=12.0),
+        handoff=handoff,
+    )
+
+    assert summary.status == "time_limit"
+    assert summary.selected_design == {}
+    assert summary.objective_value is None
+    assert summary.estimated_shortfall_risk is None
+    assert summary.feasibility_diagnostics == {
+        "reason": "solver reached its configured time limit before proving optimality",
+        "candidate_count": 1,
+        "feasible_candidate_count": 1,
+        "solver_status": "aborted",
+        "termination_condition": "maxTimeLimit",
+    }
+    assert summary.solver_metadata["solutions_loaded"] is False
+    assert summary.solver_metadata["solver_options"]["time_limit"] == 12.0

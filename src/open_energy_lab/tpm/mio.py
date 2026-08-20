@@ -6,6 +6,7 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from importlib import import_module
+from itertools import product as cartesian_product
 from pathlib import Path
 from typing import Any
 
@@ -1031,6 +1032,25 @@ def build_spn_chance_model(
         model._open_energy_lab_decision_decoders[feature_name] = _decision_decoder(feature_spec)
         total_cost += coefficient * decision_payload["cost_expression"]
 
+    if _supports_exact_categorical_lookup(
+        decision_features=decision_features,
+        feature_by_name=feature_by_name,
+        numerator_model=numerator_model,
+        denominator_model=denominator_model,
+    ):
+        return _build_exact_categorical_lookup_model(
+            backend,
+            model,
+            decision_features=decision_features,
+            feature_by_name=feature_by_name,
+            decision_variables=model._open_energy_lab_decision_variables,
+            numerator_model=numerator_model,
+            denominator_model=denominator_model,
+            total_cost=total_cost,
+            chance_limit_epsilon=float(chance_limit_epsilon),
+            sum_encoding_mode=sum_encoding_mode,
+        )
+
     numerator_block = backend.Block()
     denominator_block = backend.Block()
     model.add_component("numerator_spn", numerator_block)
@@ -1067,6 +1087,202 @@ def build_spn_chance_model(
     model._open_energy_lab_chance_limit_epsilon = float(chance_limit_epsilon)
     model._open_energy_lab_sum_encoding_mode = sum_encoding_mode
     return model
+
+
+def _supports_exact_categorical_lookup(
+    *,
+    decision_features: Sequence[str],
+    feature_by_name: Mapping[str, TPMFeatureSpec],
+    numerator_model: Mapping[str, object],
+    denominator_model: Mapping[str, object],
+) -> bool:
+    if not decision_features or any(
+        feature_by_name[feature_name].feature_type != "categorical"
+        for feature_name in decision_features
+    ):
+        return False
+    decision_names = set(decision_features)
+    for spn_model in (numerator_model, denominator_model):
+        for node in _sequence_of_mappings(
+            spn_model.get("nodes"),
+            field_name="spn_model.nodes",
+        ):
+            node_type = str(node.get("type", ""))
+            if node_type not in {
+                "leaf_binary",
+                "leaf_categorical",
+                "product",
+                "sum",
+            }:
+                return False
+            if node_type.startswith("leaf_") and "fixed_value" not in node:
+                if str(node.get("feature_name", "")) not in decision_names:
+                    return False
+    return True
+
+
+def _build_exact_categorical_lookup_model(
+    backend: Any,
+    model: object,
+    *,
+    decision_features: Sequence[str],
+    feature_by_name: Mapping[str, TPMFeatureSpec],
+    decision_variables: Mapping[str, Mapping[str, object]],
+    numerator_model: Mapping[str, object],
+    denominator_model: Mapping[str, object],
+    total_cost: object,
+    chance_limit_epsilon: float,
+    sum_encoding_mode: str,
+) -> object:
+    """Encode exact compiled-SPN risks over a finite categorical design grid."""
+
+    category_domains = tuple(
+        tuple(decision_variables[feature_name]["category_values"])
+        for feature_name in decision_features
+    )
+    combinations = tuple(cartesian_product(*category_domains))
+    risks: list[float] = []
+    for combination in combinations:
+        assignments = dict(zip(decision_features, combination, strict=True))
+        numerator_log = _evaluate_serialized_categorical_spn(
+            numerator_model,
+            assignments=assignments,
+            feature_by_name=feature_by_name,
+        )
+        denominator_log = _evaluate_serialized_categorical_spn(
+            denominator_model,
+            assignments=assignments,
+            feature_by_name=feature_by_name,
+        )
+        risks.append(math.exp(min(0.0, numerator_log - denominator_log)))
+
+    combination_ids = tuple(range(len(combinations)))
+    model.categorical_combination_ids = backend.Set(
+        initialize=combination_ids,
+        ordered=True,
+    )
+    model.categorical_combination_selected = backend.Var(
+        model.categorical_combination_ids,
+        domain=backend.Binary,
+    )
+    model.categorical_combination_one_hot = backend.Constraint(
+        expr=sum(
+            model.categorical_combination_selected[combination_id]
+            for combination_id in combination_ids
+        )
+        == 1
+    )
+
+    for feature_index, feature_name in enumerate(decision_features):
+        decision_var = decision_variables[feature_name]["normalized_var"]
+        for category_index in range(len(category_domains[feature_index])):
+            matching_combinations = tuple(
+                combination_id
+                for combination_id, combination in enumerate(combinations)
+                if combination[feature_index]
+                == category_domains[feature_index][category_index]
+            )
+            model.add_component(
+                f"categorical_combination_link_{feature_name}_{category_index}",
+                backend.Constraint(
+                    expr=decision_var[category_index]
+                    == sum(
+                        model.categorical_combination_selected[combination_id]
+                        for combination_id in matching_combinations
+                    )
+                ),
+            )
+
+    risk_expression = sum(
+        risks[combination_id]
+        * model.categorical_combination_selected[combination_id]
+        for combination_id in combination_ids
+    )
+    model.chance_constraint = backend.Constraint(
+        expr=risk_expression <= chance_limit_epsilon
+    )
+    model.total_cost = backend.Objective(expr=total_cost, sense=backend.minimize)
+    model._open_energy_lab_risk_probability = risk_expression
+    model._open_energy_lab_risk_by_combination = tuple(risks)
+    model._open_energy_lab_categorical_combinations = combinations
+    model._open_energy_lab_chance_limit_epsilon = chance_limit_epsilon
+    model._open_energy_lab_sum_encoding_mode = sum_encoding_mode
+    model._open_energy_lab_risk_encoding_strategy = "exact-categorical-lookup"
+    return model
+
+
+def _evaluate_serialized_categorical_spn(
+    spn_model: Mapping[str, object],
+    *,
+    assignments: Mapping[str, object],
+    feature_by_name: Mapping[str, TPMFeatureSpec],
+) -> float:
+    """Evaluate one conditioned compiled graph at categorical assignments."""
+
+    nodes = _sequence_of_mappings(
+        spn_model.get("nodes"),
+        field_name="spn_model.nodes",
+    )
+    node_by_id = {int(node["id"]): node for node in nodes}
+    if len(node_by_id) != len(nodes):
+        raise ValueError("serialized categorical SPN nodes must use unique ids")
+    cache: dict[int, float] = {}
+    active: set[int] = set()
+
+    def evaluate(node_id: int) -> float:
+        if node_id in cache:
+            return cache[node_id]
+        if node_id in active:
+            raise ValueError("serialized categorical SPN nodes must be acyclic")
+        if node_id not in node_by_id:
+            raise ValueError(f"serialized categorical SPN node {node_id} does not exist")
+        active.add(node_id)
+        node = node_by_id[node_id]
+        node_type = str(node.get("type", ""))
+        if node_type in {"leaf_binary", "leaf_categorical"}:
+            densities = _float_sequence(node.get("densities"))
+            if "fixed_value" in node:
+                value_index = int(float(node["fixed_value"]))
+            else:
+                feature_name = str(node.get("feature_name", ""))
+                if feature_name not in assignments or feature_name not in feature_by_name:
+                    raise ValueError(
+                        f"categorical SPN leaf requires assignment for {feature_name!r}"
+                    )
+                feature_spec = feature_by_name[feature_name]
+                category_values = tuple(
+                    feature_spec.ordering or feature_spec.discrete_values
+                )
+                value_index = category_values.index(assignments[feature_name])
+            if not 0 <= value_index < len(densities):
+                raise ValueError("categorical SPN leaf value index is outside densities")
+            value = math.log(max(densities[value_index], 1e-12))
+        elif node_type == "product":
+            value = math.fsum(
+                evaluate(int(child_id)) for child_id in node.get("children", ())
+            )
+        elif node_type == "sum":
+            child_ids = tuple(int(child_id) for child_id in node.get("children", ()))
+            weights = _float_sequence(node.get("weights"))
+            if not child_ids or len(child_ids) != len(weights):
+                raise ValueError("categorical SPN sum children and weights must align")
+            weighted_terms = tuple(
+                evaluate(child_id) + math.log(max(weight, 1e-12))
+                for child_id, weight in zip(child_ids, weights, strict=True)
+            )
+            maximum = max(weighted_terms)
+            value = maximum + math.log(
+                math.fsum(math.exp(term - maximum) for term in weighted_terms)
+            )
+        else:
+            raise ValueError(
+                f"unsupported exact categorical SPN node type {node_type!r}"
+            )
+        active.remove(node_id)
+        cache[node_id] = value
+        return value
+
+    return evaluate(int(spn_model["root_id"]))
 
 
 def build_spn_chance_model_from_artifact(
@@ -1155,6 +1371,9 @@ def solve_spn_chance_model(
     )
     results = solver.solve(model, tee=False)
     diagnostics = _solver_result_metadata(results)
+    risk_encoding_strategy = str(
+        getattr(model, "_open_energy_lab_risk_encoding_strategy", "piecewise-spn")
+    )
     if _solver_result_reports_infeasible(results):
         return SPNSolveSummary(
             problem_id=str(getattr(model, "name", "spn-mio-problem")),
@@ -1170,6 +1389,7 @@ def solve_spn_chance_model(
                 "backend_version": getattr(resolved_backend, "__version__", "unknown"),
                 "status": "infeasible",
                 "solve_execution_mode": "native-pyomo-solver",
+                "risk_encoding_strategy": risk_encoding_strategy,
                 **diagnostics,
             },
         )
@@ -1193,6 +1413,7 @@ def solve_spn_chance_model(
             "backend_version": getattr(resolved_backend, "__version__", "unknown"),
             "status": "optimal",
             "solve_execution_mode": "native-pyomo-solver",
+            "risk_encoding_strategy": risk_encoding_strategy,
             **diagnostics,
         },
     )
@@ -1259,17 +1480,35 @@ def extract_spn_solution(
         )
 
     objective_value = float(value_function(model.total_cost))
+    risk_probability = getattr(model, "_open_energy_lab_risk_probability", None)
+    result = {
+        "selected_design": selected_design,
+        "objective_value": objective_value,
+    }
+    if risk_probability is not None:
+        estimated_risk = float(value_function(risk_probability))
+        result.update(
+            {
+                "estimated_event_probability": estimated_risk,
+                "estimated_shortfall_risk": estimated_risk,
+                "risk_encoding_strategy": "exact-categorical-lookup",
+            }
+        )
+        return result
+
     numerator_log = float(value_function(model._open_energy_lab_risk_log_numerator))
     denominator_log = float(value_function(model._open_energy_lab_risk_log_denominator))
     estimated_risk = math.exp(min(0.0, numerator_log - denominator_log))
-    return {
-        "selected_design": selected_design,
-        "objective_value": objective_value,
-        "estimated_event_probability": estimated_risk,
-        "estimated_shortfall_risk": estimated_risk,
-        "numerator_log_likelihood": numerator_log,
-        "denominator_log_likelihood": denominator_log,
-    }
+    result.update(
+        {
+            "estimated_event_probability": estimated_risk,
+            "estimated_shortfall_risk": estimated_risk,
+            "numerator_log_likelihood": numerator_log,
+            "denominator_log_likelihood": denominator_log,
+            "risk_encoding_strategy": "piecewise-spn",
+        }
+    )
+    return result
 
 
 def infer_max_sum_terms(spn_payload: Mapping[str, object]) -> int:
@@ -1715,7 +1954,8 @@ def _encode_sum_node(
         f"sum_max_ub_{node_id}",
         backend.Constraint(
             slack_index,
-            rule=lambda _b, index: max_value <= weighted_terms[index] + _SUM_BIG_M * (1 - active[index]),
+            rule=lambda _b, index: max_value
+            <= weighted_terms[index] + _SUM_BIG_M * (1 - active[index]),
         ),
     )
 
@@ -1784,8 +2024,6 @@ def _encode_sum_node(
         f"sum_output_{node_id}",
         backend.Constraint(expr=block.node_out[node_id] == max_value + log_var),
     )
-
-
 def _histogram_log_density(*, breaks: Sequence[float], densities: Sequence[float], value: float) -> float:
     for density, upper_bound in zip(
         [densities[0], *densities, densities[-1]],

@@ -110,6 +110,7 @@ def solve_planning_study(
 ) -> VerifiedPlanningStudySolution:
     """Optimize the encoded SPN directly and verify the selected design natively."""
 
+    resolved_solve_config = solve_config or PlanningSolveConfig()
     resolved_manifest = (
         manifest
         if isinstance(manifest, PlanningStudyDatasetManifest)
@@ -130,11 +131,18 @@ def solve_planning_study(
         chance_limit_epsilon=chance_limit_epsilon,
         option_costs=option_costs,
         risk_evaluation_mode="spn_mip",
+        solver_configuration={
+            "solver_name": resolved_solve_config.solver_name,
+            "numeric_tolerance": resolved_solve_config.numeric_tolerance,
+            "random_seed": resolved_solve_config.random_seed,
+            "threads": resolved_solve_config.threads,
+            "time_limit_seconds": resolved_solve_config.time_limit_seconds,
+        },
     )
     assembled = assemble_planning_problem(definition, artifact)
     solve_summary = solve_planning_problem(
         assembled,
-        solve_config=solve_config or PlanningSolveConfig(),
+        solve_config=resolved_solve_config,
     )
     if solve_summary.status != "optimal":
         return VerifiedPlanningStudySolution(
