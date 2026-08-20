@@ -13,6 +13,7 @@ tests under `tests`.
 ```text
 environment.yml
 pyproject.toml
+examples/
 src/open_energy_lab/
 tests/unit/
 tests/integration/
@@ -22,18 +23,24 @@ docs/architecture/
 docs/migration/
 ```
 
-Roadmap package areas are scaffolded under `src/open_energy_lab`:
+Current library package areas under `src/open_energy_lab`:
 
-- `experimental`: immature migrations and incubating APIs.
-- `simulator`: first likely migration area for simulator components.
-- `core`: future reusable methods such as TPM, RL, MPC, optimization, and rules.
-- `planning`: future interfaces or contracts only.
-- `control`: future interfaces or contracts only.
-- `visualization`: future inspection tools.
+- `weather`: fitted weather artifacts and offline sampling flows.
+- `demand`: fitted demand artifacts and weather-conditioned demand sampling.
+- `simulator`: scenario components, family evaluation, and planning-dataset
+  export.
+- `tpm`: typed-feature TPM artifacts, required SPFlow-backed fit/query flows,
+  runtime payloads, and SPN-to-MIO helpers, with backend imports kept lazy.
+- `planning`: planning-dataset reload, planning assembly, and required
+  Pyomo/HiGHS solve flows, with solver imports kept lazy.
+- `experimental`, `control`, and `visualization`: incubating or still-thin
+  areas.
 
-This foundation does not migrate algorithms, training loops, optimization
-models, simulator internals, notebooks, W&B workflows, GPU/SLURM workflows, Rust
-bindings, or legacy behavior.
+The repository still treats `legacy/*` as reference material rather than
+runtime code. SPFlow, Pyomo, and HiGHS are installed in the standard project
+environment because TPM/planning workflows require them, but they remain
+behind lazy workflow boundaries and are not imported by package roots. Gurobi
+is an optional supplemental solver with separate binary and license needs.
 
 ## Environment
 
@@ -45,9 +52,10 @@ conda activate open-energy-lab
 uv sync --dev
 ```
 
-The foundation import path must not require solver stacks, TorchRL, PyTorch,
-CityLearn, SPFlow, W&B, Jupyter, Rust tooling, GPU support, SLURM tooling, or
-external data APIs.
+`uv sync --dev` installs the required SPFlow, Pyomo, and HiGHS stack. Ordinary
+package imports must not eagerly load those backends or their PyTorch runtime.
+Optional Gurobi, TorchRL, CityLearn, W&B, Jupyter, Rust, GPU/SLURM, and live
+service capabilities remain outside the routine environment and import path.
 
 ## Documentation
 
@@ -55,6 +63,8 @@ external data APIs.
 - [API maturity policy](docs/migration/api-maturity.md)
 - [Dependency policy](docs/migration/dependency-policy.md)
 - [Environment assumptions](docs/migration/environment-assumptions.md)
+- [TPM planning migration note](docs/migration/tpm-planning.md)
+- [Tracked TPM planning examples](examples/tpm_planning/README.md)
 - [Fixture provenance rules](tests/fixtures/README.md)
 - [Active Spec Kit plan](specs/001-library-foundation/plan.md)
 

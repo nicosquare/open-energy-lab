@@ -1,0 +1,143 @@
+{
+  "fixture_name": "planning_dataset_v1",
+  "fixture_status": "active",
+  "purpose": "Deterministic supported planning-dataset artifact fixture for offline TPM reload and planning review.",
+  "spec_feature": "009-tpm-planning",
+  "provenance": {
+    "author": "OpenAI Codex",
+    "origin": "Fixture-backed current-library planning dataset artifact replay derived from the committed planning export case",
+    "legacy_evidence_paths": [
+      "legacy/old_tpm/src_py/simulator/data_generation.py",
+      "legacy/old_tpm/src_py/simulator/feature_engineering.py"
+    ],
+    "generation_command": "Replay the committed planning export integration helpers in tests/integration/planning/test_dataset_export.py and persist the PlanningDatasetArtifact JSON payload from export_planning_dataset().",
+    "random_seed": 13,
+    "refresh_policy": "Update only when the persisted planning-dataset schema, row-order contract, flattened column contract, or export provenance semantics intentionally change.",
+    "dataset_fixture_path": "tests/fixtures/planning/planning_dataset_export_case.json",
+    "created_from_fixture": true,
+    "family_id": "weather-family:f7dbcc3a131d|demand-family:91a2f195442c|local-electric",
+    "weather_family_id": "weather-family:f7dbcc3a131d",
+    "family_seed": 13,
+    "paired_family_seed": 13
+  },
+  "planned_contracts": [
+    "specs/009-tpm-planning/contracts/planning-dataset-contract.md",
+    "specs/009-tpm-planning/contracts/validation-contract.md"
+  ],
+  "notes": [
+    "The committed artifact preserves deterministic column order and row order for offline TPM fitting and inspection.",
+    "The payload remains loadable without SPFlow, Pyomo, or solver backends because it stores the planning dataset directly as reviewable JSON."
+  ],
+  "dataset_id": "planning-dataset-export-integration",
+  "schema_version": "v1",
+  "created_at": "2026-07-12T00:00:00Z",
+  "row_count": 2,
+  "horizon_steps": 3,
+  "timestep_hours": 24.0,
+  "column_order": [
+    "scenario_index",
+    "battery_capacity_kwh",
+    "solar_capacity_kw",
+    "design_name",
+    "ghi_0",
+    "ghi_1",
+    "ghi_2",
+    "load_0",
+    "load_1",
+    "load_2",
+    "unmet_load_0",
+    "unmet_load_1",
+    "unmet_load_2",
+    "shortfall",
+    "shortfall_exceeds_threshold"
+  ],
+  "rows": [
+    {
+      "scenario_index": 0,
+      "battery_capacity_kwh": 8.0,
+      "solar_capacity_kw": 4.0,
+      "design_name": "baseline-a",
+      "ghi_0": 539.3375007453556,
+      "ghi_1": 397.6607418265808,
+      "ghi_2": 663.9073429055862,
+      "load_0": 30.191457513664403,
+      "load_1": 35.67498738526516,
+      "load_2": 29.50412645357472,
+      "unmet_load_0": 0.0,
+      "unmet_load_1": 0.0,
+      "unmet_load_2": 0.0,
+      "shortfall": 0.0,
+      "shortfall_exceeds_threshold": 0
+    },
+    {
+      "scenario_index": 1,
+      "battery_capacity_kwh": 10.0,
+      "solar_capacity_kw": 5.0,
+      "design_name": "baseline-b",
+      "ghi_0": 546.8231758693493,
+      "ghi_1": 538.254086611189,
+      "ghi_2": 294.8168087760353,
+      "load_0": 27.56589437882371,
+      "load_1": 25.419684306339906,
+      "load_2": 43.159585855269626,
+      "unmet_load_0": 0.0,
+      "unmet_load_1": 0.0,
+      "unmet_load_2": 0.0,
+      "shortfall": 0.0,
+      "shortfall_exceeds_threshold": 0
+    }
+  ],
+  "design_feature_schema": [
+    {
+      "feature_name": "battery_capacity_kwh",
+      "feature_role": "decision",
+      "feature_type": "continuous"
+    },
+    {
+      "feature_name": "solar_capacity_kw",
+      "feature_role": "decision",
+      "feature_type": "continuous"
+    },
+    {
+      "feature_name": "design_name",
+      "feature_role": "decision",
+      "feature_type": "categorical"
+    }
+  ],
+  "series_field_schema": {
+    "ghi": {
+      "source_field": "global_horizontal_irradiance_w_per_m2",
+      "column_prefix": "ghi"
+    },
+    "load": {
+      "source_field": "site_electric_load_kw",
+      "column_prefix": "load"
+    },
+    "unmet_load": {
+      "source_field": "unmet_load_kw",
+      "column_prefix": "unmet_load"
+    }
+  },
+  "target_metadata": {
+    "target_name": "shortfall",
+    "event_target_name": "shortfall_exceeds_threshold",
+    "numerator_source_field": "unmet_load_kw",
+    "denominator_source_field": "site_electric_load_kw",
+    "aggregation_rule": "sum(unmet_load_kw * timestep_hours) / sum(site_electric_load_kw * timestep_hours)",
+    "threshold_default": 0.05,
+    "event_threshold_source": "threshold_default",
+    "event_threshold_comparison": ">",
+    "supported_query_mode": "exceedance-probability"
+  },
+  "export_configuration": {
+    "row_order_policy": "scenario_index_ascending",
+    "flattened_series_fields": [
+      "global_horizontal_irradiance_w_per_m2",
+      "site_electric_load_kw",
+      "unmet_load_kw"
+    ],
+    "include_provenance": true,
+    "numeric_tolerance": 1e-09,
+    "target_name": "shortfall"
+  }
+}

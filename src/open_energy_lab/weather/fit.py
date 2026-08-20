@@ -52,6 +52,31 @@ def fit_weather_model(
         source_name=source_name,
         timestep_hours=config.timestep_hours,
     )
+    return fit_weather_dataset(
+        dataset,
+        fit_config=config,
+        output_path=output_path,
+    )
+
+
+def fit_weather_dataset(
+    dataset: CanonicalWeatherDataset,
+    *,
+    fit_config: WeatherFitConfig | None = None,
+    output_path: str | Path | None = None,
+) -> WeatherArtifact:
+    """Fit from an already normalized dataset without a second provider request."""
+
+    config = fit_config or WeatherFitConfig(timestep_hours=dataset.timestep_hours)
+    if not isclose(
+        config.timestep_hours,
+        dataset.timestep_hours,
+        rel_tol=0.0,
+        abs_tol=1e-9,
+    ):
+        raise ValueError(
+            "fit_config timestep_hours must match the canonical dataset timestep"
+        )
     created_at = datetime.now(tz=ZoneInfo("UTC")).strftime("%Y-%m-%dT%H:%M:%SZ")
     record_count = len(dataset.timestamp_utc)
     intervals_per_day = _intervals_per_day(dataset.timestep_hours)
@@ -88,6 +113,10 @@ def fit_weather_model(
         base_model_kind="joint-daily-block-summary",
         base_model_parameters={
             "intervals_per_day": intervals_per_day,
+            "sampling_anchor_timestamp_utc": _sampling_anchor_timestamp_utc(
+                dataset,
+                intervals_per_day=intervals_per_day,
+            ),
             "field_order": list(numeric_field_order),
             "mean_vector": mean_vector,
             "covariance_matrix": covariance_matrix,
@@ -110,7 +139,7 @@ def fit_weather_model(
     return artifact
 
 
-__all__ = ["WeatherFitConfig", "fit_weather_model"]
+__all__ = ["WeatherFitConfig", "fit_weather_dataset", "fit_weather_model"]
 
 
 def _intervals_per_day(timestep_hours: float) -> int:
@@ -159,6 +188,27 @@ def _build_joint_training_matrix(
 
     padded_vector = _build_padded_day_vector(dataset, intervals_per_day=intervals_per_day)
     return [padded_vector], 1, "padded_single_day_from_available_record"
+
+
+def _sampling_anchor_timestamp_utc(
+    dataset: CanonicalWeatherDataset,
+    *,
+    intervals_per_day: int,
+) -> str:
+    day_rows: dict[str, list[int]] = {}
+    for index, local_label in enumerate(dataset.local_civil_step_labels):
+        local_day = local_label.split("T", maxsplit=1)[0]
+        day_rows.setdefault(local_day, []).append(index)
+    for indices in day_rows.values():
+        if len(indices) != intervals_per_day:
+            continue
+        first_index = indices[0]
+        local_timestamp = datetime.fromisoformat(
+            dataset.local_civil_step_labels[first_index]
+        )
+        if local_timestamp.hour == 0 and local_timestamp.minute == 0:
+            return dataset.timestamp_utc[first_index]
+    return dataset.timestamp_utc[0]
 
 
 def _build_padded_day_vector(

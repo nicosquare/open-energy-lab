@@ -7,7 +7,11 @@ from dataclasses import replace
 import pytest
 
 import open_energy_lab.demand.sampling as demand_sampling_module
+from open_energy_lab.demand.fit import fit_demand_model
+from open_energy_lab.demand.study_inputs import build_synthetic_demand_training_payload
 from open_energy_lab.demand.artifact import load_demand_artifact
+from open_energy_lab.weather.fit import WeatherFitConfig, fit_weather_model
+from open_energy_lab.weather.tmy import fetch_tmy_dataset
 from open_energy_lab.weather import (
     WeatherSamplingRequest,
     load_weather_artifact,
@@ -19,6 +23,7 @@ from tests.integration.demand.fixture_utils import (
 )
 from tests.integration.weather.fixture_utils import (
     FITTED_WEATHER_ARTIFACT_FIXTURE_PATH,
+    RECORDED_PVGIS_TMY_RESPONSE_FIXTURE_PATH,
     load_weather_fixture,
 )
 
@@ -106,3 +111,67 @@ def test_sample_demand_family_rejects_weather_family_timestep_mismatch() -> None
                 paired_family_seed=13,
             ),
         )
+
+
+def test_hourly_demand_baseline_and_residuals_align_to_local_start_step() -> None:
+    response = load_weather_fixture(RECORDED_PVGIS_TMY_RESPONSE_FIXTURE_PATH)
+    dataset = fetch_tmy_dataset(
+        24.4539,
+        54.3773,
+        recorded_response=response,
+        timezone_name="Asia/Dubai",
+    )
+    weather_artifact = fit_weather_model(
+        24.4539,
+        54.3773,
+        recorded_response=response,
+        timezone_name="Asia/Dubai",
+        fit_config=WeatherFitConfig(timestep_hours=1.0),
+    )
+    demand_artifact = fit_demand_model(
+        build_synthetic_demand_training_payload(dataset)
+    )
+    midnight_weather = sample_weather_family(
+        weather_artifact,
+        request=WeatherSamplingRequest(
+            num_steps=8,
+            scenario_count=1,
+            family_seed=13,
+        ),
+    )
+    shifted_weather = sample_weather_family(
+        weather_artifact,
+        request=WeatherSamplingRequest(
+            num_steps=3,
+            scenario_count=1,
+            family_seed=13,
+            local_start_step=5,
+        ),
+    )
+    midnight = _sample_demand_family(
+        artifact=demand_artifact,
+        request=demand_sampling_module.DemandSamplingRequest(
+            weather_family_reference=midnight_weather,
+            num_steps=8,
+            scenario_count=1,
+            paired_family_seed=13,
+        ),
+    )
+    shifted = _sample_demand_family(
+        artifact=demand_artifact,
+        request=demand_sampling_module.DemandSamplingRequest(
+            weather_family_reference=shifted_weather,
+            num_steps=3,
+            scenario_count=1,
+            paired_family_seed=13,
+            local_start_step=5,
+        ),
+    )
+
+    assert shifted.sampled_traces[0].non_thermal_electric_demand_kw == (
+        midnight.sampled_traces[0].non_thermal_electric_demand_kw[5:8]
+    )
+    assert shifted.sampled_traces[0].cooling_demand_rt == (
+        midnight.sampled_traces[0].cooling_demand_rt[5:8]
+    )
+    assert shifted.local_start_step == 5

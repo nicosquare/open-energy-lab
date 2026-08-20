@@ -1,0 +1,236 @@
+"""Import boundaries for required lazy backends and optional research stacks."""
+
+from __future__ import annotations
+
+import importlib
+import importlib.util
+import subprocess
+import sys
+import textwrap
+
+import pytest
+
+
+REQUIRED_LAZY_BACKEND_MODULES = {
+    "highspy",
+    "pyomo",
+    "spflow",
+    "torch",
+}
+OPTIONAL_RESEARCH_MODULES = {
+    "citylearn",
+    "docplex",
+    "gurobipy",
+    "jupyter",
+    "torchrl",
+    "wandb",
+}
+LAZY_RESEARCH_MODULES = REQUIRED_LAZY_BACKEND_MODULES | OPTIONAL_RESEARCH_MODULES
+WEATHER_WORKFLOW_MODULES = {
+    "pandas",
+    "pvlib",
+    "timezonefinder",
+}
+
+VISUALIZATION_MODULES = (
+    "open_energy_lab.visualization",
+    "open_energy_lab.visualization.inspection",
+    "open_energy_lab.visualization.comparison",
+    "open_energy_lab.visualization._persistence",
+    "open_energy_lab.visualization.plotting",
+)
+
+
+def _lazy_modules_loaded_after(before_import: set[str]) -> set[str]:
+    return LAZY_RESEARCH_MODULES & (set(sys.modules) - before_import)
+
+
+def _forbidden_modules_loaded_after(
+    before_import: set[str],
+    forbidden_modules: set[str],
+) -> set[str]:
+    return forbidden_modules & (set(sys.modules) - before_import)
+
+
+def _assert_import_stays_clear_of_lazy_research_stacks(module_name: str) -> None:
+    module_spec = importlib.util.find_spec(module_name)
+    if module_spec is None:
+        assert module_name not in sys.modules
+        return
+
+    loaded_before_import = set(sys.modules)
+
+    importlib.import_module(module_name)
+
+    assert _lazy_modules_loaded_after(loaded_before_import) == set()
+
+
+def _assert_import_stays_clear_of_forbidden_modules(
+    module_name: str,
+    forbidden_modules: set[str],
+) -> None:
+    module_spec = importlib.util.find_spec(module_name)
+    if module_spec is None:
+        assert module_name not in sys.modules
+        return
+
+    loaded_before_import = set(sys.modules)
+
+    importlib.import_module(module_name)
+
+    assert _forbidden_modules_loaded_after(loaded_before_import, forbidden_modules) == set()
+
+
+def _run_isolated_python(source: str) -> None:
+    completed = subprocess.run(
+        [sys.executable, "-c", textwrap.dedent(source)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert completed.returncode == 0, (
+        f"isolated import check failed\nstdout:\n{completed.stdout}\nstderr:\n{completed.stderr}"
+    )
+
+
+def test_package_roots_do_not_load_required_backends() -> None:
+    """Required installation must not make ordinary package imports eager."""
+
+    _run_isolated_python(
+        """
+        import sys
+
+        import open_energy_lab
+        import open_energy_lab.control
+        import open_energy_lab.core
+        import open_energy_lab.demand
+        import open_energy_lab.planning
+        import open_energy_lab.simulator
+        import open_energy_lab.tpm
+        import open_energy_lab.visualization
+        import open_energy_lab.weather
+
+        required = {"spflow", "torch", "pyomo", "highspy"}
+        loaded = required & set(sys.modules)
+        assert not loaded, f"package roots eagerly loaded required backends: {sorted(loaded)}"
+        """
+    )
+
+
+def test_tpm_workflow_loads_spflow_and_torch_only_at_its_boundary() -> None:
+    _run_isolated_python(
+        """
+        import importlib
+        import sys
+
+        import open_energy_lab.tpm
+        from open_energy_lab.tpm.optional_spflow import require_spflow_backend
+
+        assert "spflow" not in sys.modules
+        assert "torch" not in sys.modules
+
+        require_spflow_backend()
+        importlib.import_module("spflow.learn")
+
+        assert "spflow" in sys.modules
+        assert "torch" in sys.modules
+        """
+    )
+
+
+def test_planning_workflow_loads_pyomo_and_highspy_only_at_its_boundary() -> None:
+    _run_isolated_python(
+        """
+        import sys
+
+        import open_energy_lab.planning
+        from open_energy_lab.planning.optional_solver import require_pyomo_backend
+
+        assert "pyomo" not in sys.modules
+        assert "highspy" not in sys.modules
+
+        pyomo = require_pyomo_backend()
+        solver = pyomo.SolverFactory("highs")
+        assert solver.available(exception_flag=False)
+
+        assert "pyomo" in sys.modules
+        assert "highspy" in sys.modules
+        """
+    )
+
+
+@pytest.mark.parametrize(
+    "module_name",
+    (
+        "open_energy_lab",
+        "open_energy_lab.simulator",
+        "open_energy_lab.core",
+        "open_energy_lab.control",
+        "open_energy_lab.weather",
+        "open_energy_lab.demand",
+        "open_energy_lab.tpm",
+        "open_energy_lab.planning",
+        "open_energy_lab.visualization",
+    ),
+)
+def test_package_imports_stay_clear_of_lazy_research_stacks(module_name: str) -> None:
+    _assert_import_stays_clear_of_lazy_research_stacks(module_name)
+
+
+@pytest.mark.parametrize(
+    "module_name",
+    (
+        "open_energy_lab.core",
+        "open_energy_lab.core.controller",
+        "open_energy_lab.simulator",
+        "open_energy_lab.simulator.controller_runner",
+        "open_energy_lab.simulator.weather",
+        "open_energy_lab.simulator.pv",
+        "open_energy_lab.simulator.stochastic_weather",
+        "open_energy_lab.control._config",
+        "open_energy_lab.control.price_threshold",
+        "open_energy_lab.control.soc_guardrail",
+        "open_energy_lab.control.pv_self_consumption",
+        "open_energy_lab.weather",
+        "open_energy_lab.demand",
+        "open_energy_lab.simulator.stochastic_demand",
+        "open_energy_lab.simulator.planning_export",
+        "open_energy_lab.tpm",
+        "open_energy_lab.tpm.artifact",
+        "open_energy_lab.tpm.data",
+        "open_energy_lab.tpm.features",
+        "open_energy_lab.tpm.fit",
+        "open_energy_lab.tpm.query",
+        "open_energy_lab.tpm.piecewise",
+        "open_energy_lab.tpm.optional_spflow",
+        "open_energy_lab.planning",
+        "open_energy_lab.planning.dataset",
+        "open_energy_lab.planning.problem",
+        "open_energy_lab.planning.piecewise",
+        "open_energy_lab.planning.optional_solver",
+        *VISUALIZATION_MODULES,
+    ),
+)
+def test_submodule_imports_stay_clear_of_lazy_research_stacks(
+    module_name: str,
+) -> None:
+    _assert_import_stays_clear_of_lazy_research_stacks(module_name)
+
+
+@pytest.mark.parametrize(
+    "module_name",
+    (
+        "open_energy_lab.weather",
+        "open_energy_lab.simulator.stochastic_weather",
+        "open_energy_lab.demand",
+        "open_energy_lab.simulator.stochastic_demand",
+    ),
+)
+def test_weather_related_imports_do_not_load_isolated_fetch_dependencies(
+    module_name: str,
+) -> None:
+    _assert_import_stays_clear_of_forbidden_modules(
+        module_name,
+        WEATHER_WORKFLOW_MODULES,
+    )

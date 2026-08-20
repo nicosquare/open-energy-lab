@@ -19,6 +19,7 @@ from tests.integration.demand.fixture_utils import (
     UNSUPPORTED_DEMAND_ARTIFACT_FIXTURE_PATH,
     load_all_demand_fixtures,
 )
+from tests.integration.legacy_reference_utils import assert_legacy_reference_path
 
 
 @pytest.mark.parametrize(
@@ -54,7 +55,7 @@ def test_demand_fixture_common_schema(
     for legacy_path in legacy_evidence_paths:
         assert isinstance(legacy_path, str)
         assert legacy_path.startswith("legacy/")
-        assert Path(legacy_path).is_file()
+        assert_legacy_reference_path(legacy_path)
 
     generation_command = provenance["generation_command"]
     assert generation_command is None or (

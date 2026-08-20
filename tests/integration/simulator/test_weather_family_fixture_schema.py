@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.integration.legacy_reference_utils import assert_legacy_reference_path
 from tests.integration.simulator.weather_family_fixture_utils import (
     BLACKOUT_WEATHER_FAMILY_FIXTURE_PATH,
     COMMON_TOP_LEVEL_KEYS,
@@ -47,7 +48,7 @@ def test_weather_family_fixture_common_schema(
     for legacy_path in legacy_reference_paths:
         assert isinstance(legacy_path, str)
         assert legacy_path.startswith("legacy/")
-        assert Path(legacy_path).is_file()
+        assert_legacy_reference_path(legacy_path)
 
     notes = fixture_data["notes"]
     assert isinstance(notes, list)

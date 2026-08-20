@@ -6,6 +6,10 @@ parity validation, and environment assumptions.
 
 ## Current Native Package References
 
+- `tpm-planning.md`: shipped simulator planning export, persisted dataset and
+  TPM artifact workflows, current-SPFlow compiler, required HiGHS solve, and exact
+  legacy evidence for `open_energy_lab.simulator`, `open_energy_lab.tpm`, and
+  `open_energy_lab.planning`
 - `controller-pack.md`: preserve/improve/reject decisions, shipped controller
   behavior, fixture evidence, and exact legacy references for
   `open_energy_lab.control`
@@ -20,22 +24,48 @@ parity validation, and environment assumptions.
   same-family comparison scope, experimental plotting split, and validation
   outcomes for `open_energy_lab.visualization`
 - `api-maturity.md`: stable public API promotion for
+  `open_energy_lab.tpm`, `open_energy_lab.planning`, simulator planning export,
   `open_energy_lab.control`, `open_energy_lab.weather`,
   `open_energy_lab.demand`, and `open_energy_lab.simulator` stochastic and
   cooling-aware package-root exports plus the visualization
   stable-versus-experimental boundary
 - `dependency-policy.md`: import-light dependency classification and rejected
-  runtime stacks for the controller pack, visualization feature,
-  stochastic-weather workflow, and weather-conditioned demand workflow
-- `parity-validation.md`: controller-pack validation minimums,
-  stochastic-weather validation minimums, weather-conditioned demand validation
-  minimums, and preserved-path regression rules
-- `environment-assumptions.md`: default local validation environment, weather
-  and demand offline-validation assumptions, and skip rules for non-core
-  capabilities
-- `fixture-provenance.md`: fixture record requirements, including weather,
-  demand, and simulator-family provenance rules for recorded responses and
-  deterministic baselines
+  runtime stacks for TPM/planning, the controller pack, the visualization
+  feature, the stochastic-weather workflow, and the weather-conditioned demand
+  workflow
+- `parity-validation.md`: TPM/planning validation minimums, controller-pack
+  validation minimums, stochastic-weather validation minimums,
+  weather-conditioned demand validation minimums, and preserved-path
+  regression rules
+- `environment-assumptions.md`: default local validation environment,
+  TPM-planning, weather, and demand offline-validation assumptions, and skip
+  rules for non-core capabilities
+- `fixture-provenance.md`: fixture record requirements, including planning,
+  TPM, weather, demand, and simulator-family provenance rules for recorded
+  responses and deterministic baselines
+
+## TPM-Planning Review Path
+
+For the `009-tpm-planning` feature, read the migration docs in this order:
+
+1. `tpm-planning.md` for the shipped simulator export, persisted dataset and
+   TPM artifact workflows, current-SPFlow compiler, and required HiGHS solve,
+   preserve/improve/reject decisions, and exact legacy evidence.
+2. `api-maturity.md` for the stable package-root simulator export, planning,
+   and TPM imports versus narrower focused-module helpers.
+3. `dependency-policy.md` for the import-light TPM/planning dependency
+   boundary: SPFlow 1.1.0, Pyomo 6.10.1, and highspy 1.15.1 are required
+   installations, while Gurobi is supplemental and optional.
+4. `fixture-provenance.md` together with `tests/fixtures/planning/README.md`
+   and `tests/fixtures/tpm/README.md` for export replay, persisted artifact,
+   deterministic query, and planning-problem provenance rules.
+5. `environment-assumptions.md` and
+   `specs/009-tpm-planning/quickstart.md` for the default offline validation
+   suite and any optional licensed-Gurobi or legacy-runtime follow-up checks.
+
+This review path keeps the TPM-planning feature anchored to the shipped
+library workflow and offline contract rather than the earlier scaffolding
+milestone.
 
 ## Visualization Review Path
 

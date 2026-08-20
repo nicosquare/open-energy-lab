@@ -9,7 +9,12 @@ from open_energy_lab.simulator.battery import BatteryState, apply_power_request,
 from open_energy_lab.simulator.scenario import BatteryComponent
 
 
-def _battery(*, initial_soc: float = 0.5) -> BatteryComponent:
+def _battery(
+    *,
+    initial_soc: float = 0.5,
+    min_soc: float = 0.0,
+    max_soc: float = 1.0,
+) -> BatteryComponent:
     return BatteryComponent(
         name="battery",
         capacity_kwh=10.0,
@@ -18,6 +23,8 @@ def _battery(*, initial_soc: float = 0.5) -> BatteryComponent:
         charge_efficiency=0.95,
         discharge_efficiency=0.95,
         initial_soc=initial_soc,
+        min_soc=min_soc,
+        max_soc=max_soc,
     )
 
 
@@ -69,6 +76,55 @@ def test_apply_power_request_clamps_discharge_to_available_energy() -> None:
     assert result.energy_delta_kwh == pytest.approx(-1.0, abs=DEFAULT_ABSOLUTE_TOLERANCE)
     assert result.state.soc == pytest.approx(0.0, abs=DEFAULT_ABSOLUTE_TOLERANCE)
     assert result.state.stored_energy_kwh == pytest.approx(0.0, abs=DEFAULT_ABSOLUTE_TOLERANCE)
+
+
+def test_apply_power_request_enforces_nonzero_minimum_soc() -> None:
+    component = _battery(initial_soc=0.15, min_soc=0.1)
+    initial_state = build_initial_state(component)
+
+    result = apply_power_request(
+        component=component,
+        state=initial_state,
+        requested_power_kw=-5.0,
+        time_step_hours=1.0,
+        step_index=0,
+    )
+
+    assert initial_state.available_discharge_kwh == pytest.approx(
+        0.5, abs=DEFAULT_ABSOLUTE_TOLERANCE
+    )
+    assert result.realized_power_kw == pytest.approx(-0.475, abs=DEFAULT_ABSOLUTE_TOLERANCE)
+    assert result.energy_delta_kwh == pytest.approx(-0.5, abs=DEFAULT_ABSOLUTE_TOLERANCE)
+    assert result.state.soc == pytest.approx(0.1, abs=DEFAULT_ABSOLUTE_TOLERANCE)
+    assert result.state.available_discharge_kwh == pytest.approx(
+        0.0, abs=DEFAULT_ABSOLUTE_TOLERANCE
+    )
+
+
+def test_apply_power_request_enforces_reduced_maximum_soc() -> None:
+    component = _battery(initial_soc=0.75, min_soc=0.1, max_soc=0.8)
+    initial_state = build_initial_state(component)
+
+    result = apply_power_request(
+        component=component,
+        state=initial_state,
+        requested_power_kw=5.0,
+        time_step_hours=1.0,
+        step_index=0,
+    )
+
+    assert initial_state.available_charge_kwh == pytest.approx(
+        0.5, abs=DEFAULT_ABSOLUTE_TOLERANCE
+    )
+    assert result.realized_power_kw == pytest.approx(
+        0.5 / component.charge_efficiency,
+        abs=DEFAULT_ABSOLUTE_TOLERANCE,
+    )
+    assert result.energy_delta_kwh == pytest.approx(0.5, abs=DEFAULT_ABSOLUTE_TOLERANCE)
+    assert result.state.soc == pytest.approx(0.8, abs=DEFAULT_ABSOLUTE_TOLERANCE)
+    assert result.state.available_charge_kwh == pytest.approx(
+        0.0, abs=DEFAULT_ABSOLUTE_TOLERANCE
+    )
 
 
 def test_apply_power_request_treats_near_full_state_with_default_tolerance() -> None:

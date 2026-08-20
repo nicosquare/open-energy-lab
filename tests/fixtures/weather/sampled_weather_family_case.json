@@ -144,5 +144,6 @@
     }
   ],
   "scenario_count": 2,
-  "timestep_hours": 24.0
+  "timestep_hours": 24.0,
+  "scenario_index_start": 0
 }

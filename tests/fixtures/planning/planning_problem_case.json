@@ -1,0 +1,187 @@
+{
+  "fixture_name": "planning_problem_case",
+  "fixture_status": "active",
+  "purpose": "Deterministic first-release planning-problem and required HiGHS solve fixture for offline assembly and solver-boundary review.",
+  "spec_feature": "009-tpm-planning",
+  "provenance": {
+    "author": "OpenAI Codex",
+    "origin": "Current-library planning assembly contract derived from the committed TPM artifact fixture and deterministic battery-solar cost metadata",
+    "legacy_evidence_paths": [
+      "legacy/old_tpm/src_py/tpm/spn/encoding.py",
+      "legacy/old_tpm/src_py/utils/densities.py"
+    ],
+    "generation_command": "uv run pytest tests/integration/planning/test_problem_assembly.py tests/integration/planning/test_optional_solve.py tests/integration/planning/test_highs_solver.py",
+    "random_seed": 13,
+    "refresh_policy": "Update only when the first-release planning problem contract, required HiGHS configuration, deterministic baseline, or supplemental comparison tolerances intentionally change.",
+    "tpm_artifact_fixture_path": "tests/fixtures/tpm/tpm_artifact_v2.json",
+    "dataset_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json",
+    "created_from_fixture": true,
+    "canonical_backend": "pyomo",
+    "solver_name": "highs"
+  },
+  "planned_contracts": [
+    "specs/009-tpm-planning/contracts/planning-solve-contract.md",
+    "specs/009-tpm-planning/contracts/validation-contract.md"
+  ],
+  "notes": [
+    "This active fixture keeps the first-release planning scope limited to battery and solar decision variables while remaining offline and reviewable in git.",
+    "It records the exact planning definition, required HiGHS provenance, deterministic candidate baseline, and optimal/infeasible outcomes used by the fixture-backed US3 review path.",
+    "Required Pyomo/HiGHS failures are installation failures; only explicitly selected supplemental Gurobi validation may skip when its binary or license is unavailable."
+  ],
+  "tpm_artifact_fixture_path": "tests/fixtures/tpm/tpm_artifact_v2.json",
+  "problem_definition": {
+    "problem_id": "planning-problem-assembly-integration",
+    "tpm_artifact_reference": "tests/fixtures/tpm/tpm_artifact_v2.json",
+    "decision_features": [
+      "battery_capacity_kwh",
+      "solar_capacity_kw"
+    ],
+    "decision_feature_types": {
+      "battery_capacity_kwh": "continuous",
+      "solar_capacity_kw": "continuous"
+    },
+    "shortfall_threshold": 0.05,
+    "chance_limit_epsilon": 0.1,
+    "cost_terms": {
+      "battery_capacity_kwh": 1200.0,
+      "solar_capacity_kw": 950.0
+    },
+    "risk_evaluation_mode": "spn_mip",
+    "objective_direction": "minimize",
+    "solver_configuration": {
+      "backend_name": "pyomo",
+      "solver_name": "highs",
+      "solver_backend_required": true,
+      "solver_execution_optional": false,
+      "numeric_tolerance": 1e-09,
+      "random_seed": 13,
+      "threads": 1,
+      "time_limit_seconds": 30.0
+    },
+    "approximation_contract": {
+      "approximation_kind": "piecewise",
+      "leaf_encoding_mode": "histogram",
+      "sum_encoding_mode": "piecewise"
+    },
+    "fixture_baseline": {
+      "label": "planning-baseline-a",
+      "source_fixture_path": "tests/fixtures/planning/planning_problem_case.json",
+      "expected_status": "optimal",
+      "expected_selected_design": {
+        "battery_capacity_kwh": 8.0,
+        "solar_capacity_kw": 4.0
+      },
+      "expected_objective_value": 13400.0,
+      "expected_estimated_shortfall_risk": 0.0,
+      "expected_candidate_count": 2,
+      "expected_feasible_candidate_count": 2
+    }
+  },
+  "expected_assembly": {
+    "artifact_id": "tpm-artifact:planning-dataset-export-integration",
+    "dataset_reference": "planning-dataset-export-integration",
+    "target_name": "shortfall",
+    "risk_target_name": "shortfall_exceeds_threshold",
+    "candidate_designs": [
+      {
+        "selected_design": {
+          "battery_capacity_kwh": 8.0,
+          "solar_capacity_kw": 4.0
+        },
+        "objective_value": 13400.0,
+        "estimated_shortfall_risk": 0.0,
+        "matched_row_count": 1
+      },
+      {
+        "selected_design": {
+          "battery_capacity_kwh": 10.0,
+          "solar_capacity_kw": 5.0
+        },
+        "objective_value": 16750.0,
+        "estimated_shortfall_risk": 0.0,
+        "matched_row_count": 1
+      }
+    ],
+    "chance_constraint_metadata": {
+      "target_name": "shortfall",
+      "event_target_name": "shortfall_exceeds_threshold",
+      "comparison": ">",
+      "threshold": 0.05,
+      "chance_limit_epsilon": 0.1,
+      "supported_query_mode": "exceedance-probability",
+      "risk_evaluation_mode": "empirical_dataset"
+    },
+    "solver_metadata": {
+      "canonical_backend": "pyomo",
+      "solver_name": "highs",
+      "dataset_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json"
+    },
+    "approximation_contract": {
+      "sum_encoding_mode": "piecewise"
+    },
+    "deterministic_fixture_baseline": {
+      "candidate_count": 2,
+      "feasible_candidate_count": 2,
+      "dataset_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json",
+      "numeric_tolerance": 1e-09,
+      "status": "optimal",
+      "selected_design": {
+        "battery_capacity_kwh": 8.0,
+        "solar_capacity_kw": 4.0
+      },
+      "objective_value": 13400.0,
+      "estimated_shortfall_risk": 0.0,
+      "matched_row_count": 1
+    }
+  },
+  "expected_required_highs_solve": {
+    "solve_config": {
+      "solver_name": "highs",
+      "numeric_tolerance": 1e-09,
+      "random_seed": 13,
+      "threads": 1,
+      "time_limit_seconds": 30.0
+    },
+    "repeatability_tolerance": 1e-09,
+    "optimal_summary": {
+      "status": "optimal",
+      "selected_design": {
+        "battery_capacity_kwh": 8.0,
+        "solar_capacity_kw": 4.0
+      },
+      "objective_value": 13400.0,
+      "estimated_shortfall_risk": 0.0,
+      "backend_module": "pyomo.environ",
+      "handoff_strategy": "native-pyomo",
+      "solve_execution_mode": "native-pyomo-solver",
+      "termination_condition": "optimal",
+      "solutions_loaded": true,
+      "solver_interface": "pyomo.SolverFactory",
+      "solver_options": {
+        "random_seed": 13,
+        "threads": 1,
+        "time_limit": 30.0
+      },
+      "pyomo_version": "6.10.1",
+      "highspy_version": "1.15.1"
+    },
+    "infeasible_case": {
+      "candidate_risk_override": 0.25,
+      "chance_limit_epsilon": 0.1
+    },
+    "infeasible_summary": {
+      "status": "infeasible",
+      "selected_design": {},
+      "objective_value": null,
+      "estimated_shortfall_risk": 0.25,
+      "termination_condition": "infeasible",
+      "solutions_loaded": false
+    }
+  },
+  "supplemental_solver_comparison": {
+    "reference_solver": "highs",
+    "candidate_solver": "gurobi",
+    "objective_tolerance": 1e-09,
+    "risk_tolerance": 1e-09
+  }
+}

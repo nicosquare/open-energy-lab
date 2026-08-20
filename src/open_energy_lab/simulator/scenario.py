@@ -82,6 +82,22 @@ def prepare_controller_context_inputs(
         )
         for step_index, value in enumerate(scenario.load.demand_kw)
     ]
+    local_cooling_electric_kw = [
+        _require_controller_numeric_step_value(
+            value,
+            field_name="site_electric_load_kw",
+            step_index=step_index,
+        )
+        for step_index, value in enumerate(scenario._local_cooling_electric_kw())
+    ]
+    site_electric_load_kw = [
+        base_load_kw + cooling_kw
+        for base_load_kw, cooling_kw in zip(
+            load_kw,
+            local_cooling_electric_kw,
+            strict=True,
+        )
+    ]
 
     for step_index in range(scenario.time_grid.num_steps):
         _require_controller_numeric_step_value(
@@ -117,8 +133,31 @@ def prepare_controller_context_inputs(
 
     return {
         "load_kw": load_kw,
+        "site_electric_load_kw": site_electric_load_kw,
         "pv_generation_kw": pv_generation_kw,
     }
+
+
+def _grid_feasible_battery_request_kw(
+    *,
+    requested_power_kw: float,
+    site_electric_load_kw: float,
+    pv_generation_kw: float,
+    grid_available: bool,
+) -> float:
+    """Limit battery power to the local residual while the grid is unavailable."""
+
+    if grid_available:
+        return float(requested_power_kw)
+
+    residual_load_kw = float(site_electric_load_kw) - float(pv_generation_kw)
+    if requested_power_kw > 0.0:
+        local_surplus_kw = max(0.0, -residual_load_kw)
+        return min(float(requested_power_kw), local_surplus_kw)
+    if requested_power_kw < 0.0:
+        local_deficit_kw = max(0.0, residual_load_kw)
+        return -min(abs(float(requested_power_kw)), local_deficit_kw)
+    return 0.0
 
 
 def build_controller_context_for_step(
@@ -503,6 +542,18 @@ class BatteryLoadPVScenario:
                 else:
                     requested_power_kw.append(0.0)
 
+        pv_generation_kw = self.pv.derive_generation_kw(self.weather)
+        local_cooling_electric_kw = self._local_cooling_electric_kw()
+        site_electric_load_kw = [
+            base_load_kw + cooling_kw
+            for base_load_kw, cooling_kw in zip(
+                self.load.demand_kw,
+                local_cooling_electric_kw,
+                strict=True,
+            )
+        ]
+        blackout_active = self._blackout_active_series()
+
         current_state = build_initial_state(self.battery)
         states: list[BatteryState] = []
         realized_power_kw: list[float] = []
@@ -510,10 +561,16 @@ class BatteryLoadPVScenario:
         constraint_events: list[str] = []
 
         for step_index, requested_power in enumerate(requested_power_kw):
+            feasible_request_kw = _grid_feasible_battery_request_kw(
+                requested_power_kw=requested_power,
+                site_electric_load_kw=site_electric_load_kw[step_index],
+                pv_generation_kw=pv_generation_kw[step_index],
+                grid_available=not blackout_active[step_index],
+            )
             transition = apply_power_request(
                 component=self.battery,
                 state=current_state,
-                requested_power_kw=requested_power,
+                requested_power_kw=feasible_request_kw,
                 time_step_hours=self.time_grid.time_step_hours,
                 step_index=step_index,
             )
@@ -526,16 +583,6 @@ class BatteryLoadPVScenario:
             realized_power_kw.append(transition.realized_power_kw)
             energy_delta_kwh.append(transition.energy_delta_kwh)
 
-        pv_generation_kw = self.pv.derive_generation_kw(self.weather)
-        local_cooling_electric_kw = self._local_cooling_electric_kw()
-        site_electric_load_kw = [
-            base_load_kw + cooling_kw
-            for base_load_kw, cooling_kw in zip(
-                self.load.demand_kw,
-                local_cooling_electric_kw,
-                strict=True,
-            )
-        ]
         settlement = evaluate_net_grid_settlement(
             load_kw=site_electric_load_kw,
             pv_generation_kw=pv_generation_kw,
@@ -544,7 +591,6 @@ class BatteryLoadPVScenario:
             price_signal=self.price_signal,
             objective=self.objective,
         )
-        blackout_active = self._blackout_active_series()
         unmet_load_kw: list[float] = []
         net_grid_power_kw = list(settlement.net_grid_power_kw)
         net_grid_energy_kwh = list(settlement.net_grid_energy_kwh)

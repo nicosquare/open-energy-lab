@@ -13,6 +13,11 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .load import LoadComponent
+    from .planning_export import PlanningExportRequest, export_planning_dataset
+    from .planning_study import (
+        PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION,
+        generate_planning_study_dataset,
+    )
     from .pricing import (
         ArbitrageObjectiveRepresentation,
         DeterministicRulePolicy,
@@ -67,9 +72,19 @@ _EXPORT_MAP = {
     "DeterministicRulePolicy": (".pricing", "DeterministicRulePolicy"),
     "DispatchRequestSeries": (".scenario", "DispatchRequestSeries"),
     "evaluate_demand_family": (".stochastic_demand", "evaluate_demand_family"),
+    "export_planning_dataset": (".planning_export", "export_planning_dataset"),
+    "generate_planning_study_dataset": (
+        ".planning_study",
+        "generate_planning_study_dataset",
+    ),
     "evaluate_with_controller": (".controller_runner", "evaluate_with_controller"),
     "evaluate_weather_family": (".stochastic_weather", "evaluate_weather_family"),
     "LoadComponent": (".load", "LoadComponent"),
+    "PlanningExportRequest": (".planning_export", "PlanningExportRequest"),
+    "PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION": (
+        ".planning_study",
+        "PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION",
+    ),
     "PVComponent": (".pv", "PVComponent"),
     "PriceSignal": (".pricing", "PriceSignal"),
     "SUPPORTED_SUMMARY_OUTPUT_FIELDS": (
@@ -104,9 +119,13 @@ __all__ = [
     "DeterministicRulePolicy",
     "DispatchRequestSeries",
     "evaluate_demand_family",
+    "export_planning_dataset",
+    "generate_planning_study_dataset",
     "evaluate_with_controller",
     "evaluate_weather_family",
     "LoadComponent",
+    "PlanningExportRequest",
+    "PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION",
     "PVComponent",
     "PriceSignal",
     "SUPPORTED_SUMMARY_OUTPUT_FIELDS",

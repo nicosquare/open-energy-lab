@@ -1,0 +1,72 @@
+{
+  "fixture_name": "planning_dataset_export_case",
+  "fixture_status": "active",
+  "purpose": "Deterministic simulator-family export case for the first committed planning-dataset artifact.",
+  "spec_feature": "009-tpm-planning",
+  "provenance": {
+    "author": "OpenAI Codex",
+    "origin": "Fixture-backed current-library export replay using committed weather and demand artifacts",
+    "legacy_evidence_paths": [
+      "legacy/old_tpm/src_py/simulator/data_generation.py",
+      "legacy/old_tpm/src_py/simulator/feature_engineering.py"
+    ],
+    "generation_command": "Replay the committed planning export integration helpers in tests/integration/planning/test_dataset_export.py and persist the resulting PlanningDatasetArtifact contract.",
+    "random_seed": 13,
+    "refresh_policy": "Update only when the exported planning-dataset schema, simulator flattening contract, or fixture-backed weather-demand replay inputs intentionally change."
+  },
+  "planned_contracts": [
+    "specs/009-tpm-planning/contracts/simulator-export-contract.md",
+    "specs/009-tpm-planning/contracts/planning-dataset-contract.md",
+    "specs/009-tpm-planning/contracts/validation-contract.md"
+  ],
+  "notes": [
+    "This active fixture stays offline, deterministic, and reviewable in git by keeping the exported dataset small and fully committed.",
+    "It records the exact flattened field request, design rows, and expected dataset artifact path used by the first-release simulator export workflow."
+  ],
+  "weather_artifact_fixture_path": "tests/fixtures/weather/fitted_weather_artifact_v1.json",
+  "weather_sampling_request_fixture_path": "tests/fixtures/weather/sampling_request_case.json",
+  "demand_artifact_fixture_path": "tests/fixtures/demand/fitted_demand_artifact_v1.json",
+  "demand_sampling_request_fixture_path": "tests/fixtures/demand/sampling_request_case.json",
+  "dataset_artifact_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json",
+  "expected_dataset_id": "planning-dataset-export-integration",
+  "target_name": "shortfall",
+  "event_target_name": "shortfall_exceeds_threshold",
+  "flattened_series_fields": [
+    "global_horizontal_irradiance_w_per_m2",
+    "site_electric_load_kw",
+    "unmet_load_kw"
+  ],
+  "design_metadata_rows": [
+    {
+      "scenario_index": 0,
+      "battery_capacity_kwh": 8.0,
+      "solar_capacity_kw": 4.0,
+      "design_name": "baseline-a"
+    },
+    {
+      "scenario_index": 1,
+      "battery_capacity_kwh": 10.0,
+      "solar_capacity_kw": 5.0,
+      "design_name": "baseline-b"
+    }
+  ],
+  "expected_row_count": 2,
+  "expected_horizon_steps": 3,
+  "expected_column_order": [
+    "scenario_index",
+    "battery_capacity_kwh",
+    "solar_capacity_kw",
+    "design_name",
+    "ghi_0",
+    "ghi_1",
+    "ghi_2",
+    "load_0",
+    "load_1",
+    "load_2",
+    "unmet_load_0",
+    "unmet_load_1",
+    "unmet_load_2",
+    "shortfall",
+    "shortfall_exceeds_threshold"
+  ]
+}

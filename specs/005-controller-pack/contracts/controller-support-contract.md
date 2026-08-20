@@ -54,10 +54,10 @@ The SOC guardrail controller must:
 The PV self-consumption controller must:
 
 - compare current-step `pv_generation_kw` and `load_kw`
-- request charging when PV exceeds load and SOC is below the configured
-  reserve ceiling
-- request discharging when load exceeds PV and SOC is above the configured
-  reserve floor
+- request the current PV surplus for charging, capped by the configured charge
+  limit, when SOC is below the configured reserve ceiling
+- request the current load deficit for discharging, capped by the configured
+  discharge limit, when SOC is above the configured reserve floor
 - idle when load equals PV or the battery is already at the relevant reserve
   boundary
 

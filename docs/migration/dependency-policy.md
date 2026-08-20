@@ -1,9 +1,11 @@
 # Dependency Policy
 
 This policy classifies dependency families before future migrations add them to
-`open_energy_lab`. The foundation stays importable without solver stacks,
-experiment tracking, GPU tooling, notebook tooling, or legacy reference
-toolchains.
+`open_energy_lab`. Installation and import timing are separate decisions: a
+dependency may be required in the standard project environment while remaining
+behind a lazy workflow boundary. The foundation stays importable without
+eagerly loading solver stacks, experiment tracking, GPU tooling, notebook
+tooling, or legacy reference toolchains.
 
 ## Classification Record
 
@@ -29,6 +31,14 @@ Alternatives considered:
 Required for ordinary import and basic use of the library. Core dependencies
 should stay small, stable, and portable.
 
+`required-install`
+
+Installed by the standard project sync because a stable named workflow
+requires it. A required installation may still use lazy imports so package
+roots and unrelated workflows do not load or initialize the backend. Missing
+or incompatible required installations are validation failures, not supported
+skips.
+
 `optional`
 
 Required only for a named capability or adapter. Optional dependencies should
@@ -52,14 +62,103 @@ dependencies must not become required for the unified package.
 
 ## Import Boundary Rules
 
-- `import open_energy_lab` must not require optional research stacks.
+- `import open_energy_lab` must not eagerly import required workflow backends
+  such as SPFlow, PyTorch, Pyomo, or HiGHS, or optional research stacks.
 - Stable public API imports must not trigger W&B login, solver license checks,
   GPU initialization, SLURM commands, Rust compilation, or external data API
   calls.
+- Required-install capability modules must report missing or incompatible
+  installations as errors when their workflows run; routine validation must
+  not convert those errors into successful skips.
 - Optional capability modules may raise clear dependency errors when used
   without their required extras or environment.
 - Tests that require unavailable services, hardware, or licenses must be
   marked or separated so the default test subset remains runnable locally.
+
+## TPM-Backed Planning Classification
+
+The `009-tpm-planning` feature now ships stable simulator export, TPM
+fit/reload/query, planning dataset reload, planning assembly, and required
+license-free solve entry points without widening the ordinary import boundary.
+The review record for the shipped slice is:
+
+```text
+Dependency: Python standard library modules plus existing open_energy_lab simulator, demand, weather, and planning package modules
+Requested by: 009-tpm-planning
+Target module: src/open_energy_lab/simulator/planning_export.py, src/open_energy_lab/tpm/artifact.py, src/open_energy_lab/tpm/data.py, src/open_energy_lab/tpm/features.py, src/open_energy_lab/tpm/fit.py, src/open_energy_lab/tpm/query.py, src/open_energy_lab/tpm/piecewise.py, src/open_energy_lab/tpm/optional_spflow.py, src/open_energy_lab/planning/__init__.py, src/open_energy_lab/planning/dataset.py, src/open_energy_lab/planning/problem.py, src/open_energy_lab/planning/piecewise.py, src/open_energy_lab/planning/optional_solver.py
+Classification: core
+Import boundary: allowed at import time for open_energy_lab.simulator, open_energy_lab.tpm, and open_energy_lab.planning, with package-root exports resolved lazily so ordinary imports, persisted artifact loading, empirical query replay, and planning assembly stay import-light
+Install mechanism: base project environment via conda plus uv
+Fallback or skip behavior: none; simulator export, persisted artifact handling, empirical query replay, and offline planning assembly are part of the normal library surface
+External service, license, hardware, or scheduler assumptions: none
+Rationale: the shipped TPM-planning slice must remain portable, offline-reviewable, and layered on top of the current simulator and artifact contracts while required workflow backends remain lazily imported
+Alternatives considered: keeping the package roots unpromoted or eagerly importing backend modules from package roots were rejected because they weaken discoverability or violate the constitution's import-light boundary
+```
+
+```text
+Dependency: SPFlow
+Requested by: 009-tpm-planning production TPM fit and query workflows
+Target module: src/open_energy_lab/tpm/fit.py and src/open_energy_lab/tpm/optional_spflow.py
+Classification: required-install
+Import boundary: lazy; excluded from open_energy_lab and open_energy_lab.tpm package-root imports until a production TPM workflow invokes it
+Install mechanism: standard uv-managed project environment, locked to spflow==1.1.0 for the first release
+Fallback or skip behavior: package-root imports and dataset/artifact metadata inspection do not invoke SPFlow; a missing or incompatible installation fails production TPM workflows and required validation rather than producing a successful skip
+External service, license, hardware, or scheduler assumptions: CPU-local execution with no service, license, GPU, or scheduler requirement
+Rationale: SPFlow is the required canonical TPM backend, while lazy loading preserves import-light unrelated workflows
+Alternatives considered: an opt-in SPFlow extra was rejected because it weakens the stable TPM contract; eager package-root imports were rejected because installation does not require eager loading
+```
+
+```text
+Dependency: Pyomo and HiGHS (highspy)
+Requested by: 009-tpm-planning required planning solve workflow
+Target module: src/open_energy_lab/planning/optional_solver.py
+Classification: required-install
+Import boundary: lazy; excluded from open_energy_lab and open_energy_lab.planning imports until a caller invokes solve_planning_problem
+Install mechanism: standard uv-managed project environment, locked to pyomo==6.10.1 and highspy==1.15.1 for the first release
+Fallback or skip behavior: planning dataset reload and assembly do not invoke the solver stack; missing or incompatible Pyomo/HiGHS fails the workflow and required solve validation and may not be converted into a successful skip
+External service, license, hardware, or scheduler assumptions: CPU-local execution with no service, commercial license, GPU, or scheduler requirement
+Rationale: Pyomo with default SolverFactory("highs") provides the required license-free planning path while lazy imports keep unrelated workflows light
+Alternatives considered: assembly-only review and treating every solver as optional were rejected because they permit an untested stable solve surface
+```
+
+```text
+Dependency: Gurobi
+Requested by: 009-tpm-planning supplemental cross-solver validation only
+Target module: src/open_energy_lab/planning/optional_solver.py and tests/integration/planning/test_gurobi_solver.py
+Classification: optional
+Import boundary: selected only when solver_name="gurobi"; never imported or license-checked by package roots or the default HiGHS workflow
+Install mechanism: separate user-managed Gurobi package, binary, and license; absent from the standard project dependency set
+Fallback or skip behavior: an explicitly selected Gurobi check may report a documented availability skip only when its package, binary, or license is unavailable; it never replaces or weakens required HiGHS validation
+External service, license, hardware, or scheduler assumptions: a working Gurobi binary and commercial or otherwise valid Gurobi license
+Rationale: cross-solver objective/risk comparison is useful supplemental evidence but cannot be a routine license-free project requirement
+Alternatives considered: requiring Gurobi was rejected because routine validation must not depend on a commercial license; silently falling back from Gurobi to HiGHS was rejected because it would mislabel comparison evidence
+```
+
+```text
+Dependency: IPython kernel, Matplotlib, and Seaborn
+Requested by: 009-tpm-planning configurable autonomy notebook
+Target module: examples/tpm_planning/discrete_study_walkthrough.ipynb only
+Classification: optional
+Import boundary: notebook-only; excluded from open_energy_lab package roots and every core simulator, weather, demand, TPM, and planning module
+Install mechanism: uv sync --group notebook
+Fallback or skip behavior: routine offline library and backend validation proceeds without the notebook group; manual notebook execution must report the group as unavailable rather than widening core dependencies
+External service, license, hardware, or scheduler assumptions: no license, GPU, or scheduler requirement; live PVGIS remains a separately controlled manual network activity
+Rationale: standard research plotting APIs make the walkthrough easier to read and adapt while a dedicated dependency group preserves the ordinary library import boundary
+Alternatives considered: a custom inline-SVG engine was rejected because it obscured the study logic; promoting plotting packages to core dependencies was rejected because library workflows do not render figures
+```
+
+```text
+Dependency: pytest-based TPM/planning validation
+Requested by: 009-tpm-planning
+Target module: tests/unit/tpm, tests/unit/planning, tests/unit/simulator/test_planning_export.py, tests/integration/planning, tests/unit/test_optional_dependency_boundaries.py, tests/unit/test_import_contract.py, tests/unit/test_no_legacy_imports.py
+Classification: optional
+Import boundary: test-only; must not affect library runtime imports
+Install mechanism: uv sync --dev
+Fallback or skip behavior: if dev dependencies are unavailable, document TPM-planning validation as blocked rather than broadening runtime requirements
+External service, license, hardware, or scheduler assumptions: none for required CPU-local current-SPFlow and HiGHS validation; supplemental Gurobi checks may require a separate binary and license
+Rationale: stable TPM-planning API promotion depends on deterministic unit, integration, import-boundary, and fixture evidence, but pytest remains non-runtime tooling
+Alternatives considered: relying only on manual artifact inspection or allowing required-backend checks to skip was rejected because it weakens repeatable review evidence for the shipped surface
+```
 
 ## Weather-Conditioned Demand And Cooling-Aware Simulator Classification
 
@@ -111,8 +210,10 @@ Alternatives considered: treating live services or legacy runtime stacks as defa
 
 Future specs should classify these before use:
 
-- Solver and optimization: Pyomo, Gurobi, CPLEX/docplex.
-- Probabilistic modeling: SPFlow and SPN/MIO support libraries.
+- Solver and optimization: required Pyomo/HiGHS for 009, optional Gurobi, and
+  unclassified future CPLEX/docplex use.
+- Probabilistic modeling: required SPFlow for 009 and any future SPN/MIO
+  support libraries that their owning specs must classify.
 - RL libraries and environment tooling: PyTorch, TorchRL.
 - Legacy-only environment references: CityLearn.
 - Experiment workflow: W&B, notebooks, sweep configs.

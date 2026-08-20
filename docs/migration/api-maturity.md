@@ -20,6 +20,167 @@ An import path is stable public API when all conditions hold:
 Stable public APIs should preserve import paths and documented behavior across
 future migrations unless a deprecation decision is recorded.
 
+### TPM-Backed Planning Stable Surface
+
+The `009-tpm-planning` feature now promotes the shipped simulator export,
+planning dataset and assembly surface, and TPM fit/reload/query surface to
+stable public API.
+
+Stable simulator package-root imports:
+
+```python
+from open_energy_lab.simulator import (
+    PlanningExportRequest,
+    export_planning_dataset,
+)
+```
+
+Stable planning package-root imports:
+
+```python
+from open_energy_lab.planning import (
+    PlanningDatasetArtifact,
+    PlanningProblemAssembly,
+    PlanningProblemDefinition,
+    PlanningSolveConfig,
+    PlanningSolveSummary,
+    PlanningSolverDependencyUnavailableError,
+    PlanningSolverUnavailableError,
+    assemble_planning_problem,
+    load_planning_dataset,
+    solve_planning_problem,
+)
+```
+
+Stable TPM package-root imports:
+
+```python
+from open_energy_lab.tpm import (
+    CURRENT_SPFLOW_ADAPTER_NAME,
+    CURRENT_SPFLOW_BACKEND_GENERATION,
+    REQUIRED_SPFLOW_VERSION,
+    SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS,
+    SUPPORTED_TPM_EXECUTION_MODES,
+    CurrentSPFlowCapabilities,
+    LegacyTPMArtifactVersionError,
+    PiecewiseApproximationMetadata,
+    PiecewiseBreakpointPolicy,
+    SPFlowBackendCompatibilityError,
+    SPFlowDependencyUnavailableError,
+    SPNModelingTerms,
+    SPNPiecewiseCurveSpec,
+    SPNSolveConfig,
+    SPNSolveSummary,
+    SPNSolverDependencyUnavailableError,
+    SPNSolverUnavailableError,
+    TPMArtifact,
+    TPMArtifactBuildRequest,
+    TPMArtifactIntegrityError,
+    TPMFeatureSpec,
+    TPMFitConfig,
+    TPMQueryRequest,
+    TPMTrainingData,
+    UnsupportedTPMArtifactVersionError,
+    UnsupportedSPFlowModuleError,
+    build_piecewise_metadata,
+    build_spn_chance_model,
+    build_spn_chance_model_from_artifact,
+    build_spn_modeling_terms,
+    compile_spflow_model_to_mio,
+    detect_spflow_backend_capabilities,
+    dump_feature_schema,
+    evaluate_compiled_spflow_probability,
+    extract_spn_solution,
+    fit_tpm_artifact,
+    fit_tpm_artifact_from_rows,
+    infer_feature_role,
+    infer_max_sum_terms,
+    load_feature_schema,
+    load_piecewise_metadata,
+    load_tpm_artifact,
+    normalize_training_data,
+    query_tpm_artifact,
+    register_spflow_backend_adapter,
+    require_pyomo_backend,
+    require_spflow_backend,
+    solve_spn_chance_model,
+    solve_spn_chance_model_from_artifact,
+    unregister_spflow_backend_adapter,
+)
+```
+
+These imports are stable because they now have:
+
+- focused unit and integration coverage for dataset export, persisted dataset
+  reload, typed-feature normalization, real current-SPFlow fit/reload/query,
+  sidecar integrity, compiler parity, planning problem validation, piecewise
+  assembly, and required HiGHS optimal/infeasible solves
+- deterministic committed fixtures for simulator export replay, persisted
+  planning datasets, supported and unsupported TPM artifacts, explicit query
+  replay, a real SPFlow 1.1 production sidecar, planning-problem assembly, and
+  required HiGHS outcome expectations
+- import-boundary, import-contract, lazy-dependency-boundary, and
+  no-legacy-import coverage that names the simulator export, planning, and TPM
+  roots explicitly
+- migration documentation that records the simulator-owned export boundary,
+  library-owned `shortfall` semantics, typed feature preservation,
+  current-SPFlow artifact/compiler contracts, solver reproducibility
+  expectations, and the offline review contract
+- documented lazy dependency boundaries proving `open_energy_lab.simulator`,
+  `open_energy_lab.planning`, and `open_energy_lab.tpm` stay import-light
+  until callers explicitly invoke SPFlow-backed fit/query/compiler paths or
+  Pyomo/HiGHS-backed solve paths
+
+Stable API and required installation are separate promises. SPFlow 1.1.0,
+Pyomo 6.10.1, and highspy 1.15.1 are standard project dependencies and are
+loaded lazily at their workflow boundaries. Missing or incompatible versions
+are workflow and validation failures, not supported skips. Gurobi is not part
+of the required stable workflow; it is an explicitly selected supplemental
+solver whose unavailable binary or license may produce a documented skip.
+
+Focused module imports remain intentionally narrower in maturity:
+
+```python
+from open_energy_lab.simulator.planning_export import (
+    PlanningExportRequest,
+    export_planning_dataset,
+)
+
+from open_energy_lab.planning.dataset import PlanningDatasetArtifact, load_planning_dataset
+from open_energy_lab.planning.problem import (
+    PlanningProblemAssembly,
+    PlanningProblemDefinition,
+    assemble_planning_problem,
+)
+from open_energy_lab.planning.optional_solver import (
+    PlanningSolveConfig,
+    PlanningSolveSummary,
+    PlanningSolverDependencyUnavailableError,
+    PlanningSolverUnavailableError,
+    solve_planning_problem,
+)
+
+from open_energy_lab.tpm.artifact import TPMArtifact, load_tpm_artifact
+from open_energy_lab.tpm.data import TPMTrainingData, normalize_training_data
+from open_energy_lab.tpm.features import TPMFeatureSpec
+from open_energy_lab.tpm.fit import (
+    TPMArtifactBuildRequest,
+    TPMFitConfig,
+    fit_tpm_artifact,
+    fit_tpm_artifact_from_rows,
+)
+from open_energy_lab.tpm.mio import compile_spflow_model_to_mio
+from open_energy_lab.tpm.piecewise import PiecewiseApproximationMetadata
+from open_energy_lab.tpm.query import TPMQueryRequest, query_tpm_artifact
+```
+
+These focused imports host the shipped implementation and remain appropriate
+for advanced callers and tests, but the stable user-facing contract for
+ordinary use is the package-root surface shown above. The historical focused
+module name `open_energy_lab.planning.optional_solver` describes lazy solver
+loading; it does not make the default Pyomo/HiGHS solve an optional-install
+capability.
+
 ### Weather-Conditioned Demand And Cooling-Aware Simulator Evaluation
 
 The `008-weather-demand-modeling` feature now promotes the first shipped demand

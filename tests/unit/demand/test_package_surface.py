@@ -13,6 +13,9 @@ EXPECTED_ROOT_EXPORTS = [
     "load_demand_artifact",
     "DemandSamplingRequest",
     "sample_demand_family",
+    "SyntheticCommercialDemandConfig",
+    "build_measured_demand_training_payload",
+    "build_synthetic_demand_training_payload",
 ]
 PLANNED_SUBMODULES = (
     "open_energy_lab.demand._aligned_history",
@@ -20,6 +23,7 @@ PLANNED_SUBMODULES = (
     "open_energy_lab.demand.fit",
     "open_energy_lab.demand.artifact",
     "open_energy_lab.demand.sampling",
+    "open_energy_lab.demand.study_inputs",
 )
 
 

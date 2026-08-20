@@ -70,6 +70,67 @@ capture the intended clean behavior.
   settlement, or trace semantics, and allow cleaner implementation choices
   everywhere else.
 
+## TPM-Backed Planning Validation Governance
+
+The `009-tpm-planning` migration validates current library behavior rather
+than attempting broad equality with the pre-1.0 runtime:
+
+- Simulator export owns flattened planning rows and derives `shortfall` from
+  simulator outputs. TPM owns typed metadata, current-SPFlow fitting,
+  persistence, query, and solver-neutral compilation. Planning owns
+  battery/solar decision validation and the Pyomo/HiGHS solve.
+- The migrated behavior cites exact legacy paths in
+  `docs/migration/tpm-planning.md`; no production module imports or
+  deserializes `legacy/*`.
+- Schema-v1 and pre-1.0 SPFlow artifacts are rejection/refit evidence only.
+  They must be refitted from source rows through current SPFlow 1.1 and cannot
+  serve production queries or planning.
+- The canonical production evidence is
+  `tests/fixtures/tpm/tpm_artifact_spflow_v1.json` plus its SHA-256-verified
+  model sidecar. `tpm_artifact_v2.json` is explicit empirical
+  `fixture_replay` evidence and never a production fallback.
+- Required validation includes real SPFlow 1.1 fit/reload/query, native versus
+  compiled probability checks, and real Pyomo 6.10.1/HiGHS 1.15.1 optimal and
+  infeasible solves. Missing required backends fail validation; only explicitly
+  selected, unavailable Gurobi may skip.
+
+The `spflow-v1-mio-v1` compiler accepts exact native Sum, Product, Normal,
+Bernoulli, and Categorical modules with one output channel and repetition.
+SPFlow `Cat` adapters are unwrapped. Normal leaves use recorded normalized
+breakpoints; discrete leaves and graph composition retain their probability
+semantics. Custom/unsupported leaves, legacy histogram payloads, shared
+subgraphs, custom subclasses, and extra dimensions fail with type/scope
+diagnostics.
+
+Compiler parity is deliberately bounded. The native and solver-neutral
+evaluators are compared at five canonical evidence rows with maximum absolute
+error `1e-6`; repeat compilation/evaluation tolerance is `1e-9`.
+`tests/integration/tpm/test_spflow_v1_mio_parity.py` covers a native
+Sum-of-Products graph, while the committed learned fixture covers Product plus
+Normal/Bernoulli/Categorical leaves. These checks do not claim:
+
+- accuracy across the whole continuous evidence domain
+- support for rejected modules or graph shapes
+- pickle-byte, pre-1.0 runtime, or broad legacy result equality
+- cross-solver equality or production-scale performance
+- a general inference compiler beyond planning's explicit event conditioning,
+  decision-scope retention, and other-scope marginalization
+
+Minimum focused evidence includes:
+
+- `tests/integration/tpm/test_spflow_v1_fit.py`
+- `tests/integration/tpm/test_spflow_v1_persistence.py`
+- `tests/integration/tpm/test_spflow_v1_query.py`
+- `tests/integration/tpm/test_spflow_v1_mio_parity.py`
+- `tests/integration/planning/test_highs_solver.py`
+- `tests/integration/planning/test_spflow_v1_highs_pipeline.py`
+- the TPM/planning unit, lazy-import, import-contract, and no-legacy-import
+  suites listed in `AGENTS.md`
+
+If required SPFlow, Pyomo, or HiGHS validation cannot run, record it as a
+failure rather than a successful skip. Record unavailable supplemental Gurobi
+or legacy-runtime checks separately in the feature quickstart.
+
 ## Controller Boundary Governance
 
 The `004-controller-boundary` migration adds a controller-specific validation
@@ -251,6 +312,7 @@ offline validation subset.
 
 The foundation feature does not migrate TPM, RL, optimization, or planning
 behavior beyond the explicitly shipped features. A later
-migration spec must handle any further algorithm or dependency expansion with
+migration spec must handle any further out-of-scope algorithm migration or
+dependency expansion with
 its own validation path. That keeps out-of-scope migration work explicit and
 reviewable.

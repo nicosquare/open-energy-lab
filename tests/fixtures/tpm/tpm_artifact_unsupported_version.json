@@ -1,0 +1,341 @@
+{
+  "fixture_name": "tpm_artifact_unsupported_version",
+  "fixture_status": "active",
+  "purpose": "Deterministic schema-v2-shaped TPM artifact with an unsupported version for fail-fast compatibility coverage.",
+  "spec_feature": "009-tpm-planning",
+  "provenance": {
+    "author": "OpenAI Codex",
+    "origin": "Copy of the supported schema-v2 fixture with schema_version changed to preserve fail-fast unsupported-version coverage",
+    "legacy_evidence_paths": [
+      "legacy/old_tpm/src_py/simulator/data_generation.py",
+      "legacy/old_tpm/src_py/simulator/feature_engineering.py",
+      "legacy/old_tpm/src_py/tpm/data/datahandler.py",
+      "legacy/old_tpm/src_py/tpm/data/features/feature.py",
+      "legacy/old_tpm/src_py/tpm/spn/main.py",
+      "legacy/old_tpm/src_py/tpm/spn/encoding.py",
+      "legacy/old_tpm/src_py/utils/densities.py"
+    ],
+    "generation_command": "Copy tests/fixtures/tpm/tpm_artifact_v2.json, set fixture_name to tpm_artifact_unsupported_version, change schema_version to v999, and preserve the remaining schema-v2 payload.",
+    "random_seed": 13,
+    "refresh_policy": "Update alongside tpm_artifact_v2.json whenever the explicit artifact compatibility contract changes.",
+    "dataset_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json",
+    "training_dataset_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json",
+    "created_from_fixture": true,
+    "family_id": "weather-family:f7dbcc3a131d|demand-family:91a2f195442c|local-electric",
+    "weather_family_id": "weather-family:f7dbcc3a131d",
+    "family_seed": 13,
+    "paired_family_seed": 13,
+    "training_dataset_id": "planning-dataset-export-integration",
+    "training_row_count": 2,
+    "training_column_order": [
+      "scenario_index",
+      "battery_capacity_kwh",
+      "solar_capacity_kw",
+      "design_name",
+      "ghi_0",
+      "ghi_1",
+      "ghi_2",
+      "load_0",
+      "load_1",
+      "load_2",
+      "unmet_load_0",
+      "unmet_load_1",
+      "unmet_load_2",
+      "shortfall",
+      "shortfall_exceeds_threshold"
+    ],
+    "training_random_seed": 13,
+    "backend_generation": "current-spflow",
+    "backend_api_version": "1.1.0",
+    "production_model": false
+  },
+  "planned_contracts": [
+    "specs/009-tpm-planning/contracts/tpm-artifact-contract.md",
+    "specs/009-tpm-planning/contracts/validation-contract.md"
+  ],
+  "notes": [
+    "This fixture mirrors the supported TPM artifact fixture shape with the schema version changed.",
+    "Loading it must fail fast as unsupported before sidecar, query, or feature validation proceeds."
+  ],
+  "artifact_id": "tpm-artifact:planning-dataset-export-integration",
+  "schema_version": "v999",
+  "created_at": "2026-08-18T00:00:00Z",
+  "dataset_reference": "planning-dataset-export-integration",
+  "feature_schema": [
+    {
+      "feature_name": "scenario_index",
+      "feature_role": "context",
+      "feature_type": "continuous",
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization_rule": "minmax",
+      "bounds": [
+        0,
+        1
+      ]
+    },
+    {
+      "feature_name": "battery_capacity_kwh",
+      "feature_role": "decision",
+      "feature_type": "continuous",
+      "modifiable": true,
+      "monotonicity": "none",
+      "normalization_rule": "minmax",
+      "bounds": [
+        8,
+        10
+      ]
+    },
+    {
+      "feature_name": "solar_capacity_kw",
+      "feature_role": "decision",
+      "feature_type": "continuous",
+      "modifiable": true,
+      "monotonicity": "none",
+      "normalization_rule": "minmax",
+      "bounds": [
+        4,
+        5
+      ]
+    },
+    {
+      "feature_name": "design_name",
+      "feature_role": "decision",
+      "feature_type": "categorical",
+      "modifiable": true,
+      "monotonicity": "none",
+      "normalization_rule": "categorical_index",
+      "discrete_values": [
+        "baseline-a",
+        "baseline-b"
+      ],
+      "ordering": [
+        "baseline-a",
+        "baseline-b"
+      ]
+    },
+    {
+      "feature_name": "ghi_0",
+      "feature_role": "context",
+      "feature_type": "continuous",
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization_rule": "minmax",
+      "bounds": [
+        539.3375007453556,
+        546.8231758693493
+      ]
+    },
+    {
+      "feature_name": "ghi_1",
+      "feature_role": "context",
+      "feature_type": "continuous",
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization_rule": "minmax",
+      "bounds": [
+        397.6607418265808,
+        538.254086611189
+      ]
+    },
+    {
+      "feature_name": "ghi_2",
+      "feature_role": "context",
+      "feature_type": "continuous",
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization_rule": "minmax",
+      "bounds": [
+        294.8168087760353,
+        663.9073429055862
+      ]
+    },
+    {
+      "feature_name": "load_0",
+      "feature_role": "context",
+      "feature_type": "continuous",
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization_rule": "minmax",
+      "bounds": [
+        27.56589437882371,
+        30.191457513664403
+      ]
+    },
+    {
+      "feature_name": "load_1",
+      "feature_role": "context",
+      "feature_type": "continuous",
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization_rule": "minmax",
+      "bounds": [
+        25.419684306339906,
+        35.67498738526516
+      ]
+    },
+    {
+      "feature_name": "load_2",
+      "feature_role": "context",
+      "feature_type": "continuous",
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization_rule": "minmax",
+      "bounds": [
+        29.50412645357472,
+        43.159585855269626
+      ]
+    },
+    {
+      "feature_name": "unmet_load_0",
+      "feature_role": "context",
+      "feature_type": "continuous",
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization_rule": "minmax",
+      "bounds": [
+        0,
+        0
+      ]
+    },
+    {
+      "feature_name": "unmet_load_1",
+      "feature_role": "context",
+      "feature_type": "continuous",
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization_rule": "minmax",
+      "bounds": [
+        0,
+        0
+      ]
+    },
+    {
+      "feature_name": "unmet_load_2",
+      "feature_role": "context",
+      "feature_type": "continuous",
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization_rule": "minmax",
+      "bounds": [
+        0,
+        0
+      ]
+    },
+    {
+      "feature_name": "shortfall",
+      "feature_role": "metric_target",
+      "feature_type": "continuous",
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization_rule": "minmax",
+      "bounds": [
+        0,
+        0
+      ]
+    },
+    {
+      "feature_name": "shortfall_exceeds_threshold",
+      "feature_role": "target",
+      "feature_type": "binary",
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization_rule": "binary_index",
+      "discrete_values": [
+        0,
+        1
+      ],
+      "ordering": [
+        0,
+        1
+      ]
+    }
+  ],
+  "target_definition": {
+    "target_name": "shortfall",
+    "event_target_name": "shortfall_exceeds_threshold",
+    "numerator_source_field": "unmet_load_kw",
+    "denominator_source_field": "site_electric_load_kw",
+    "aggregation_rule": "sum(unmet_load_kw * timestep_hours) / sum(site_electric_load_kw * timestep_hours)",
+    "threshold_default": 0.05,
+    "event_threshold_source": "threshold_default",
+    "event_threshold_comparison": ">",
+    "supported_query_mode": "exceedance-probability"
+  },
+  "fit_configuration": {
+    "backend_name": "spflow",
+    "training_random_seed": 13,
+    "input_row_count": 2,
+    "input_column_order": [
+      "scenario_index",
+      "battery_capacity_kwh",
+      "solar_capacity_kw",
+      "design_name",
+      "ghi_0",
+      "ghi_1",
+      "ghi_2",
+      "load_0",
+      "load_1",
+      "load_2",
+      "unmet_load_0",
+      "unmet_load_1",
+      "unmet_load_2",
+      "shortfall",
+      "shortfall_exceeds_threshold"
+    ],
+    "notes": [
+      "fixture-replay-contract-only",
+      "A reproducibly fitted production current-SPFlow sidecar is introduced by T041."
+    ],
+    "backend_generation": "current-spflow",
+    "backend_api_version": "1.1.0",
+    "learn_spn_kwargs": {},
+    "leaf_families": [
+      "Normal",
+      "Bernoulli",
+      "Categorical"
+    ]
+  },
+  "spn_payload": {
+    "locator": "sidecars/tpm_artifact_v2.fixture.json",
+    "serialization": "fixture-replay-evidence-json"
+  },
+  "spn_payload_format": "fixture-replay-sidecar",
+  "query_configuration": {
+    "supported_output_modes": [
+      "conditional_probability",
+      "log_likelihood"
+    ],
+    "required_decision_features": [
+      "battery_capacity_kwh",
+      "solar_capacity_kw",
+      "design_name"
+    ]
+  },
+  "approximation_metadata": {
+    "approximation_kind": "piecewise",
+    "leaf_encoding_mode": "histogram",
+    "sum_encoding_mode": "piecewise",
+    "breakpoint_policy": {
+      "policy_name": "canonical-five-breakpoint-v1",
+      "piecewise_breakpoint_count": 5,
+      "exp_probability_floor": 0.001,
+      "exp_breakpoint_start": 0.3
+    },
+    "mio_epsilon": 0.000001,
+    "fit_numeric_tolerance": 1e-9,
+    "query_numeric_tolerance": 1e-9,
+    "tolerance": 1e-9,
+    "legacy_reference_paths": [
+      "legacy/old_tpm/src_py/tpm/spn/main.py",
+      "legacy/old_tpm/src_py/tpm/spn/encoding.py",
+      "legacy/old_tpm/src_py/utils/densities.py"
+    ],
+    "compiler_version": "spflow-v1-mio-contract-v1",
+    "compiler_status": "contract-fixture"
+  },
+  "backend_generation": "current-spflow",
+  "backend_api_version": "1.1.0",
+  "execution_mode": "fixture_replay",
+  "payload_hash": "a57f5f009075a2295a321e16c0e05c12eae3340ac9c55bdcbcf1b56abaabb5ff"
+}

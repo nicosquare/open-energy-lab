@@ -177,9 +177,9 @@ regression baselines:
   `PriceThresholdController`
 - `soc_guardrail_arbitrage_case.json` records the exact low-SOC correction
   trace for `SocGuardrailController`
-- `pv_self_consumption_case.json` records the exact PV-driven proposals,
-  realized clamp event, PV derivation outputs, net-grid accounting, and
-  discounted settlement trace for `PVSelfConsumptionController`
+- `pv_self_consumption_case.json` records the exact residual-following PV
+  proposals, PV derivation outputs, net-grid accounting, and discounted
+  settlement trace for `PVSelfConsumptionController`
 
 All three controller-pack fixtures are:
 

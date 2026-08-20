@@ -68,6 +68,7 @@
       ]
     }
   ],
+  "scenario_index_start": 0,
   "notes": [
     "Generated against the committed weather family fixture with the same shared paired-family seed so scenario ordering and replay semantics remain exact across both producers.",
     "Keeps the committed result small by reusing the three-step, two-scenario daily fixture pair while still exercising explicit non-thermal electric and cooling outputs."

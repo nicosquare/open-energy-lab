@@ -33,6 +33,7 @@ class DemandFamilyEvaluationRequest:
     cooling_service_configuration: CoolingServiceConfiguration
     summary_output_fields: tuple[str, ...] = field(default_factory=tuple)
     numeric_tolerance: float = 1e-6
+    controller: object | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,6 +50,10 @@ class DemandScenarioEvaluationResult:
     unserved_cooling_rt: tuple[float, ...]
     district_cooling_settlement: tuple[float, ...]
     site_electric_load_kw: tuple[float, ...]
+    pv_generation_kw: tuple[float, ...]
+    requested_battery_power_kw: tuple[float, ...]
+    realized_battery_power_kw: tuple[float, ...]
+    battery_soc: tuple[float, ...]
     net_grid_power_kw: tuple[float, ...]
     unmet_load_kw: tuple[float, ...]
     blackout_active: tuple[bool, ...]
@@ -68,6 +73,7 @@ class DemandFamilyEvaluationResult:
     paired_family_seed: int = 0
     timestep_hours: float = 0.0
     cooling_service_path: str = ""
+    controller_name: str = ""
 
 
 def evaluate_demand_family(
@@ -111,6 +117,11 @@ def evaluate_demand_family(
         paired_family_seed=int(getattr(demand_family, "paired_family_seed")),
         timestep_hours=float(getattr(demand_family, "timestep_hours")),
         cooling_service_path=request.cooling_service_configuration.service_path,
+        controller_name=(
+            request.controller.__class__.__name__
+            if request.controller is not None
+            else "direct-trace"
+        ),
     )
 
 
@@ -240,14 +251,30 @@ def _evaluate_sampled_trace(
         scenario_index=scenario_index,
         time_step_hours=base_scenario.time_grid.time_step_hours,
     )
-    evaluated_trace = replace(
+    scenario = replace(
         base_scenario,
         scenario_id=f"{base_scenario.scenario_id}:scenario-{scenario_index}",
         weather=weather_component,
         load=load_component,
         cooling_service_balance=cooling_service_balance,
         blackout_grid_available=list(blackout_grid_available) if blackout_grid_available is not None else None,
-    ).evaluate_trace()
+    )
+    if request.controller is None:
+        evaluated_trace = scenario.evaluate_trace()
+    else:
+        from .controller_runner import evaluate_with_controller
+
+        controller_result = evaluate_with_controller(scenario, request.controller)
+        if controller_result.rejection is not None:
+            raise ValueError(
+                "controller-backed demand-family evaluation was rejected: "
+                + controller_result.rejection.reason
+            )
+        if controller_result.underlying_trace is None:
+            raise RuntimeError(
+                "controller-backed demand-family evaluation produced no simulator trace"
+            )
+        evaluated_trace = controller_result.underlying_trace
     return DemandScenarioEvaluationResult(
         scenario_index=scenario_index,
         weather_reference=str(getattr(weather_trace, "derived_identity")),
@@ -263,6 +290,14 @@ def _evaluate_sampled_trace(
             float(value) for value in evaluated_trace.district_cooling_settlement
         ),
         site_electric_load_kw=tuple(float(value) for value in evaluated_trace.site_electric_load_kw),
+        pv_generation_kw=tuple(float(value) for value in evaluated_trace.pv_generation_kw),
+        requested_battery_power_kw=tuple(
+            float(value) for value in evaluated_trace.requested_power_kw
+        ),
+        realized_battery_power_kw=tuple(
+            float(value) for value in evaluated_trace.realized_power_kw
+        ),
+        battery_soc=tuple(float(state.soc) for state in evaluated_trace.states),
         net_grid_power_kw=tuple(float(value) for value in evaluated_trace.net_grid_power_kw),
         unmet_load_kw=tuple(float(value) for value in evaluated_trace.unmet_load_kw),
         blackout_active=tuple(bool(value) for value in evaluated_trace.blackout_active),

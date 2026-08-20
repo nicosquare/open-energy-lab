@@ -44,20 +44,42 @@ def _normalize_energy(value: float, capacity_kwh: float) -> float:
     return value
 
 
+def _normalize_stored_energy(
+    value: float,
+    *,
+    minimum_kwh: float,
+    maximum_kwh: float,
+) -> float:
+    if is_close(value, minimum_kwh, tolerance=DEFAULT_ABSOLUTE_TOLERANCE):
+        return minimum_kwh
+    if is_close(value, maximum_kwh, tolerance=DEFAULT_ABSOLUTE_TOLERANCE):
+        return maximum_kwh
+    if value < minimum_kwh or value > maximum_kwh:
+        raise ValueError("stored energy must remain within configured battery SOC bounds")
+    return value
+
+
 def _build_state(*, step_index: int, component: BatteryComponent, stored_energy_kwh: float) -> BatteryState:
-    normalized_energy = _normalize_energy(stored_energy_kwh, component.capacity_kwh)
+    minimum_energy_kwh = component.min_soc * component.capacity_kwh
+    maximum_energy_kwh = component.max_soc * component.capacity_kwh
+    operating_window_kwh = maximum_energy_kwh - minimum_energy_kwh
+    normalized_energy = _normalize_stored_energy(
+        stored_energy_kwh,
+        minimum_kwh=minimum_energy_kwh,
+        maximum_kwh=maximum_energy_kwh,
+    )
     soc = normalized_energy / component.capacity_kwh
     return BatteryState(
         step_index=step_index,
         soc=soc,
         stored_energy_kwh=normalized_energy,
         available_charge_kwh=_normalize_energy(
-            component.capacity_kwh - normalized_energy,
-            component.capacity_kwh,
+            maximum_energy_kwh - normalized_energy,
+            operating_window_kwh,
         ),
         available_discharge_kwh=_normalize_energy(
-            normalized_energy,
-            component.capacity_kwh,
+            normalized_energy - minimum_energy_kwh,
+            operating_window_kwh,
         ),
     )
 

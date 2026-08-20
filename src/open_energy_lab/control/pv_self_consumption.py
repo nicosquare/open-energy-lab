@@ -19,13 +19,20 @@ class PVSelfConsumptionController:
     def propose_dispatch(self, context: ControllerContext) -> DispatchProposal:
         require_supported_scenario(self.__class__.__name__, context.scenario_kind)
         soc_fraction = context.battery_state.soc_fraction
-        load_kw = context.step_inputs["load_kw"]
+        load_kw = context.step_inputs.get(
+            "site_electric_load_kw",
+            context.step_inputs["load_kw"],
+        )
         pv_generation_kw = context.step_inputs["pv_generation_kw"]
+        pv_surplus_kw = pv_generation_kw - load_kw
 
-        if pv_generation_kw > load_kw and soc_fraction < self.config.reserve_max_soc:
-            requested_power_kw = self.config.charge_request_kw
-        elif load_kw > pv_generation_kw and soc_fraction > self.config.reserve_min_soc:
-            requested_power_kw = -self.config.discharge_request_kw
+        if pv_surplus_kw > 0.0 and soc_fraction < self.config.reserve_max_soc:
+            requested_power_kw = min(pv_surplus_kw, self.config.charge_request_kw)
+        elif pv_surplus_kw < 0.0 and soc_fraction > self.config.reserve_min_soc:
+            requested_power_kw = -min(
+                abs(pv_surplus_kw),
+                self.config.discharge_request_kw,
+            )
         else:
             requested_power_kw = 0.0
 

@@ -30,15 +30,111 @@ EXPECTED_VISUALIZATION_EXPORTS = [
 ]
 EXPECTED_WEATHER_EXPORTS = [
     "fit_weather_model",
+    "fit_weather_dataset",
     "load_weather_artifact",
     "WeatherSamplingRequest",
     "sample_weather_family",
+    "PVGISTMYRequestConfig",
+    "WeatherCacheUnavailableError",
+    "load_or_fetch_tmy_dataset",
 ]
 EXPECTED_DEMAND_EXPORTS = [
     "fit_demand_model",
     "load_demand_artifact",
     "DemandSamplingRequest",
     "sample_demand_family",
+    "SyntheticCommercialDemandConfig",
+    "build_measured_demand_training_payload",
+    "build_synthetic_demand_training_payload",
+]
+EXPECTED_PLANNING_EXPORTS = [
+    "PlanningDatasetArtifact",
+    "load_planning_dataset",
+    "PlanningProblemAssembly",
+    "PlanningProblemDefinition",
+    "assemble_planning_problem",
+    "PlanningSolveConfig",
+    "PlanningSolveSummary",
+    "PlanningSolverDependencyUnavailableError",
+    "PlanningSolverUnavailableError",
+    "solve_planning_problem",
+    "AdequacyEventDefinition",
+    "BatteryDesignOption",
+    "ControllerStudyConfig",
+    "GridAvailabilityPolicy",
+    "PlanningStudyRequest",
+    "SolarDesignOption",
+    "PlanningStudyDatasetManifest",
+    "iter_study_rows",
+    "load_study_dataset_manifest",
+    "CalibrationAssessment",
+    "RecommendationAssessment",
+    "SPNCandidateScore",
+    "assess_calibration",
+    "assess_recommendation",
+    "brier_score_by_configuration",
+    "select_spn_candidate",
+    "CompiledPlanningStudyTPM",
+    "PlanningStudyRunResult",
+    "VerifiedPlanningStudySolution",
+    "compile_planning_study_tpm",
+    "fit_planning_study_tpm",
+    "run_planning_study",
+    "solve_planning_study",
+]
+EXPECTED_TPM_EXPORTS = [
+    "LegacyTPMArtifactVersionError",
+    "SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS",
+    "SUPPORTED_TPM_EXECUTION_MODES",
+    "TPMArtifact",
+    "TPMArtifactIntegrityError",
+    "UnsupportedTPMArtifactVersionError",
+    "load_tpm_artifact",
+    "TPMTrainingData",
+    "normalize_training_data",
+    "TPMFeatureSpec",
+    "dump_feature_schema",
+    "infer_feature_role",
+    "load_feature_schema",
+    "TPMFitConfig",
+    "TPMFitMemoryError",
+    "TPMArtifactBuildRequest",
+    "fit_tpm_artifact",
+    "fit_tpm_artifact_from_rows",
+    "fit_tpm_artifact_from_study_manifest",
+    "SPNModelingTerms",
+    "SPNPiecewiseCurveSpec",
+    "SPNSolveConfig",
+    "SPNSolveSummary",
+    "SPNSolverDependencyUnavailableError",
+    "SPNSolverUnavailableError",
+    "UnsupportedSPFlowModuleError",
+    "build_spn_chance_model",
+    "build_spn_chance_model_from_artifact",
+    "build_spn_modeling_terms",
+    "compile_spflow_model_to_mio",
+    "evaluate_compiled_spflow_probability",
+    "extract_spn_solution",
+    "infer_max_sum_terms",
+    "require_pyomo_backend",
+    "solve_spn_chance_model",
+    "solve_spn_chance_model_from_artifact",
+    "CURRENT_SPFLOW_ADAPTER_NAME",
+    "CURRENT_SPFLOW_BACKEND_GENERATION",
+    "CurrentSPFlowCapabilities",
+    "REQUIRED_SPFLOW_VERSION",
+    "SPFlowBackendCompatibilityError",
+    "SPFlowDependencyUnavailableError",
+    "detect_spflow_backend_capabilities",
+    "register_spflow_backend_adapter",
+    "require_spflow_backend",
+    "PiecewiseApproximationMetadata",
+    "PiecewiseBreakpointPolicy",
+    "build_piecewise_metadata",
+    "load_piecewise_metadata",
+    "TPMQueryRequest",
+    "query_tpm_artifact",
+    "unregister_spflow_backend_adapter",
 ]
 
 
@@ -194,6 +290,72 @@ def test_demand_package_import_contract_stays_reserved_and_import_light():
     assert module.fit_demand_model.__module__ == "open_energy_lab.demand.fit"
     assert module.load_demand_artifact.__module__ == "open_energy_lab.demand.artifact"
     assert module.sample_demand_family.__module__ == "open_energy_lab.demand.sampling"
+
+    newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
+        set(sys.modules) - before_import
+    )
+    assert newly_loaded_optional_modules == set()
+
+
+def test_tpm_package_imports_from_source_tree_without_optional_stacks():
+    before_import = set(sys.modules)
+    module_spec = importlib.util.find_spec("open_energy_lab.tpm")
+
+    if module_spec is None:
+        assert "open_energy_lab.tpm" not in sys.modules
+        return
+
+    module = importlib.import_module("open_energy_lab.tpm")
+
+    assert module.__file__ is not None
+    module_file = Path(module.__file__).resolve()
+    assert module.__name__ == "open_energy_lab.tpm"
+    assert module_file.name == "__init__.py"
+    assert module_file.parent.name == "tpm"
+    assert module_file.parent.parent.name == "open_energy_lab"
+    assert module.__all__ == EXPECTED_TPM_EXPORTS
+    assert all("." not in export_name for export_name in module.__all__)
+    assert all(not export_name.startswith("_") for export_name in module.__all__)
+
+    newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
+        set(sys.modules) - before_import
+    )
+    assert newly_loaded_optional_modules == set()
+
+
+def test_planning_package_imports_from_source_tree_without_optional_stacks():
+    before_import = set(sys.modules)
+    module_spec = importlib.util.find_spec("open_energy_lab.planning")
+
+    if module_spec is None:
+        assert "open_energy_lab.planning" not in sys.modules
+        return
+
+    module = importlib.import_module("open_energy_lab.planning")
+
+    assert module.__file__ is not None
+    module_file = Path(module.__file__).resolve()
+    assert module.__name__ == "open_energy_lab.planning"
+    assert module_file.name == "__init__.py"
+    assert module_file.parent.name == "planning"
+    assert module_file.parent.parent.name == "open_energy_lab"
+    assert module.__all__ == EXPECTED_PLANNING_EXPORTS
+    assert module.PlanningDatasetArtifact.__module__ == "open_energy_lab.planning.dataset"
+    assert module.load_planning_dataset.__module__ == "open_energy_lab.planning.dataset"
+    assert module.PlanningProblemAssembly.__module__ == "open_energy_lab.planning.problem"
+    assert module.PlanningProblemDefinition.__module__ == "open_energy_lab.planning.problem"
+    assert module.assemble_planning_problem.__module__ == "open_energy_lab.planning.problem"
+    assert module.PlanningSolveConfig.__module__ == "open_energy_lab.planning.optional_solver"
+    assert module.PlanningSolveSummary.__module__ == "open_energy_lab.planning.optional_solver"
+    assert (
+        module.PlanningSolverDependencyUnavailableError.__module__
+        == "open_energy_lab.planning.optional_solver"
+    )
+    assert (
+        module.PlanningSolverUnavailableError.__module__
+        == "open_energy_lab.planning.optional_solver"
+    )
+    assert module.solve_planning_problem.__module__ == "open_energy_lab.planning.optional_solver"
 
     newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
         set(sys.modules) - before_import
