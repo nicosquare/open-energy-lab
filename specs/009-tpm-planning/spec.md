@@ -324,7 +324,10 @@ termination status, and solver metadata.
   use the documented current-SPFlow-to-piecewise-MIO compiler. Its
   solver-neutral MIO representation MUST be consumed by the Pyomo MILP, and
   any non-canonical approximations MUST be explicitly marked as deferred or
-  secondary.
+  secondary. When all planning decisions have finite categorical domains, the
+  Pyomo MILP MAY use exact conditional probabilities evaluated from that
+  compiled graph and linked to joint-option indicators; those coefficients
+  MUST NOT come from empirical candidate rows.
 - **FR-010d**: The first-release planning surface MUST optimize battery and
   solar decision variables only, and MUST defer inverter or broader equipment
   decision sets unless a later spec expands the planning scope.
@@ -490,9 +493,10 @@ termination status, and solver metadata.
 - Researchers will use the first release through library-owned workflows. A
   notebook may configure and present those workflows but does not own event,
   simulation, TPM, calibration, or solve semantics.
-- The first release planning dataset is built from current deterministic or
-  family-evaluation simulator surfaces and caller-provided design metadata
-  rather than from a new full design-sweep simulator subsystem.
+- Planning datasets may be built from current deterministic/family-evaluation
+  simulator surfaces plus caller-provided metadata or from the resumable study
+  runner's Cartesian battery-and-solar sweep. The library-owned sweep remains
+  bounded to explicit equipment catalogs and common absolute-indexed samples.
 - The first-release planning target is one explicit adequacy target derived
   from simulator outcomes; broader multi-target planning remains future work.
 - The first-release planning problem uses direct native decision variables,

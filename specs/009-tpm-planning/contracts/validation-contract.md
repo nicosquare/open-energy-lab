@@ -7,6 +7,9 @@
   planning model assembly, real current-SPFlow fit/query, and real Pyomo/HiGHS
   solve checks run without notebooks, live services, GPUs, or commercial
   solver licenses
+- one routine single-version job covers control, simulator, weather, demand,
+  and repository import-boundary regressions; the required backend matrix
+  separately covers Python 3.11 through 3.14
 - package-root import checks verify required backend modules are not imported
   until their workflow boundaries are invoked
 
@@ -19,7 +22,11 @@
 - real current-SPFlow fit, reload, marginalization/query, and payload evidence
 - current-SPFlow-to-piecewise-MIO compilation parity against native likelihood
   results using the canonical five-breakpoint configuration
+- exact categorical compiled-SPN risk parity and solver-strategy metadata for
+  finite categorical battery/solar decisions
 - real Pyomo/HiGHS optimal and infeasible solve cases
+- non-optimal/time-limit handling that does not load an unproved solution
+- cleared notebook execution counts and outputs in the committed walkthrough
 - import-boundary and no-legacy-import checks
 - canonical seed `13` across Python, NumPy, Torch, SPFlow, and solver settings,
   with robustness seeds `37` and `101`

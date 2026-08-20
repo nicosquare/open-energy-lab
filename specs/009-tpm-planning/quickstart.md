@@ -20,8 +20,10 @@ and required Pyomo/HiGHS planning validation are implemented.
 - Production TPM fit/query requires a valid current-SPFlow payload.
 - Empirical replay is allowed only through explicit `fixture_replay` mode and
   never activates automatically.
-- Routine CI exercises real SPFlow and real Pyomo/HiGHS. Fake backends and
-  committed fixtures remain supplementary deterministic evidence.
+- Routine CI exercises real SPFlow and real Pyomo/HiGHS across Python
+  3.11-3.14 and runs control, simulator, weather, demand, and repository import
+  regressions once on Python 3.14. Fake backends and committed fixtures remain
+  supplementary deterministic evidence.
 
 SPFlow 1.1 is a PyTorch-based rewrite. Its maintainers state that pre-1.0
 models are incompatible and must be rebuilt. The migration therefore preserves
@@ -39,7 +41,9 @@ The public staged workflow is:
 3. `compile_planning_study_tpm(...)` compiles the supported current-SPFlow
    graph.
 4. `solve_planning_study(...)` minimizes per-option installed costs in the
-   direct categorical MIO and verifies the selected design with native SPFlow.
+   direct categorical MIO, evaluates finite all-categorical risks exactly from
+   the compiled conditional SPN, and verifies the selected design with native
+   SPFlow. Continuous or mixed decisions retain the general piecewise path.
 
 `run_planning_study(...)` executes the same stages and resumes compatible
 dataset shards. The default controller is PV self-consumption; supplied,
@@ -151,6 +155,26 @@ uses the recorded cache/manifests when their provenance and semantics match.
   all skips were supplemental unavailable-Gurobi checks, while required
   SPFlow, compiler, Pyomo, and HiGHS paths passed.
 
+### Recorded completion reconciliation — 2026-08-20
+
+- The committed notebook contains 32 code cells with zero execution counts and
+  zero outputs. A structural regression prevents generated figures, local
+  paths, or stale recommendation results from being committed again.
+- The notebook-state and CI-workflow contracts passed with `8 passed in
+  0.10s`.
+- The new single-version offline CI command passed exactly as configured with
+  `360 passed in 22.72s`, inside its 120-second limit. It covers control,
+  simulator, weather, demand, and repository import-boundary suites; the
+  existing four-version job continues to own SPFlow/Pyomo/HiGHS compatibility.
+- The complete reconciled regression passed with `601 passed, 6 skipped in
+  41.20s`. All six skips were supplemental unavailable-Gurobi checks; required
+  SPFlow, compiler, Pyomo, and HiGHS paths passed.
+- The all-package import smoke test, strict runtime legacy-import scan, and
+  `git diff --check` passed. The legacy-import scan found only the documented
+  command string and its reproducibility assertion.
+- The new GitHub Actions job is locally contract-tested; its hosted execution
+  remains a normal post-push merge gate and is not claimed as local evidence.
+
 Run the offline example:
 
 ```bash
@@ -178,7 +202,8 @@ uv run python examples/tpm_planning/run_discrete_study.py
 
 - **Preserve**: simulator-owned export, `shortfall` semantics, typed feature
   metadata, deterministic artifact provenance, direct battery-and-solar
-  decisions, and piecewise chance-constraint semantics.
+  decisions, and the canonical compiler with piecewise plus exact-categorical
+  solver encodings.
 - **Port**: legacy Context/`learn_mspn` behavior to current leaf modules,
   scopes, `learn_spn`, PyTorch tensors, model likelihood/marginalization, and a
   versioned current-model sidecar.
@@ -320,8 +345,10 @@ The standard planning workflow is:
 1. Load a production current-SPFlow TPM artifact.
 2. Validate direct battery and solar decision variables.
 3. Compile sum/product structure with one output channel and repetition and
-   Normal, Bernoulli, or Categorical typed leaves to the canonical piecewise
-   Pyomo formulation; reject unsupported modules or graph shapes explicitly.
+   Normal, Bernoulli, or Categorical typed leaves. Use exact compiled-graph
+   probabilities when every decision is finite categorical; otherwise use the
+   canonical piecewise Pyomo formulation. Reject unsupported modules or graph
+   shapes explicitly.
 4. Enforce `P(shortfall > threshold) <= epsilon`.
 5. Solve through `SolverFactory("highs")` with seed `13`, one thread, and a
    30-second fixture time limit.
@@ -387,9 +414,9 @@ Coverage must include:
 Run the complete relevant regression set after those focused checks:
 
 ```bash
-uv run pytest tests/unit/demand tests/integration/demand tests/integration/simulator
+uv run pytest tests/unit/control tests/unit/simulator tests/unit/weather tests/unit/demand tests/integration/weather tests/integration/demand tests/integration/simulator
 uv run pytest tests/unit/planning tests/unit/tpm tests/integration/planning tests/integration/tpm
-uv run pytest tests/unit/test_lazy_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py
+uv run pytest tests/unit/test_ci_workflow.py tests/unit/test_lazy_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py
 uv run python -c "import open_energy_lab; import open_energy_lab.simulator; import open_energy_lab.tpm; import open_energy_lab.planning"
 uv run python -c "import open_energy_lab; import open_energy_lab.weather; import open_energy_lab.demand; import open_energy_lab.simulator; import open_energy_lab.tpm; import open_energy_lab.planning"
 rg "from legacy|import legacy" src/open_energy_lab/tpm src/open_energy_lab/planning src/open_energy_lab/simulator tests/unit/planning tests/unit/tpm tests/integration/planning tests/integration/tpm docs/migration

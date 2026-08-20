@@ -86,3 +86,46 @@ jobs:
               --ignore=tests/integration/planning/test_tpm_fixture_schema.py \
               --strict-markers \
               -ra
+
+  offline-feature-regressions:
+    name: Offline control, simulator, weather, and demand regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.5"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-suffix: offline-py314
+
+      - name: Install locked project environment
+        run: uv sync --locked --group dev
+
+      - name: Run broad offline feature suite (120-second limit)
+        run: |
+          timeout --signal=TERM --kill-after=10s 120s \
+            uv run --locked --no-sync pytest \
+              tests/unit/control \
+              tests/unit/simulator \
+              tests/unit/weather \
+              tests/unit/demand \
+              tests/integration/weather \
+              tests/integration/demand \
+              tests/integration/simulator \
+              tests/unit/test_ci_workflow.py \
+              tests/unit/test_lazy_dependency_boundaries.py \
+              tests/unit/test_import_contract.py \
+              tests/unit/test_no_legacy_imports.py \
+              --strict-markers \
+              -ra

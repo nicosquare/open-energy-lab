@@ -52,9 +52,11 @@ retain battery-and-solar-only planning; make HiGHS the default solver name
 (`highs`), with `appsi_highs` non-canonical and Gurobi supplemental.
 **Scale/Scope**: One horizon-flattened dataset and one `shortfall` target per
 artifact; direct battery and solar decisions; existing typed feature support;
-one canonical piecewise SPN-to-MILP path; corrective changes to dependency
-metadata, backend modes, tests, fixtures, and documentation rather than a
-rewrite of completed export and planning-domain behavior.
+one canonical current-SPFlow compiler with a general piecewise SPN-to-MILP
+encoding and an exact compiled-SPN lookup encoding for finite all-categorical
+decisions; corrective changes to dependency metadata, backend modes, tests,
+fixtures, and documentation rather than a rewrite of completed export and
+planning-domain behavior.
 
 **Reproducibility Defaults**: Canonical seed `13` for Python, NumPy, Torch,
 SPFlow, and solver randomness; robustness seeds `37` and `101`; fit/query,
@@ -62,7 +64,9 @@ repeated HiGHS solve, objective, and risk tolerances `1e-9`; MIO epsilon and
 native-versus-compiled maximum absolute probability error `1e-6`; five
 piecewise breakpoints; HiGHS one thread and 30-second per-fixture time limit.
 The **current-SPFlow-to-piecewise-MIO compiler** produces the solver-neutral
-MIO representation; the Pyomo MILP is the planning model that consumes it.
+conditional graph representation. The Pyomo MILP consumes the general
+piecewise encoding for continuous or mixed decision domains and exact
+compiled-graph probabilities for finite all-categorical decision domains.
 
 ## Constitution Check
 
@@ -233,13 +237,19 @@ completed backend contracts. Explicit battery and solar option catalogs form a
 Cartesian configuration grid. Absolute sample identifiers generate common
 weather, demand, and grid-availability realizations for every configuration,
 independent of batching or worker count. Existing controllers execute each
-trace through the simulator boundary.
+trace through the simulator boundary. During grid-unavailable steps, battery
+requests are limited to local PV surplus or residual total site load; the
+simulation-semantics version participates in study fingerprints so corrected
+energy-balance behavior cannot resume older shards silently.
 
 Rows are persisted incrementally through a schema-v2 JSON manifest referencing
 checksummed JSONL or Parquet shards. All simulation columns remain available,
 while the default SPN fit selects categorical equipment choices, adequacy
 summaries, and one active event. Pyomo optimizes categorical one-hot choices
-using explicit installed option costs. The selected MIO solution is queried
+using explicit installed option costs. For this finite categorical domain,
+joint-option risk coefficients are evaluated exactly from the compiled
+conditional SPN and linked to the feature one-hot variables; empirical event
+rows are not optimizer candidates. The selected MIO solution is queried
 against native SPFlow and fails validation above the documented tolerance.
 
 ## Phase 4: Configurable Abu Dhabi Autonomy Notebook
@@ -255,6 +265,20 @@ score selection. Final recommendation is a separate gate over held-out
 calibration, native/MIO parity, and a one-sided held-out risk bound. Live PVGIS
 and full notebook execution remain manual; unit and reduced real-backend
 integration validation remain offline.
+
+The default 4×4 equipment grid produces 16,000 training, 4,000 validation, and
+4,000 final-test rows. Known SPFlow degenerate-slice failures use narrow,
+deterministic fallbacks and finite leaf stabilization; unrelated backend
+failures still propagate. Non-optimal HiGHS terminations never load a solution
+or produce a recommendation.
+
+## Phase 5: Completion Reconciliation
+
+The final closure pass keeps notebook execution state out of version control,
+adds routine single-version offline CI for the control, simulator, weather,
+and demand layers, and retains the four-version matrix for required SPFlow,
+Pyomo, and HiGHS compatibility. Design records explicitly distinguish the
+canonical compiler from its piecewise and exact-categorical solver encodings.
 
 ## Complexity Tracking
 

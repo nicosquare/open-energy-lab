@@ -219,6 +219,20 @@ and a conservative recommendation gate.
 
 ---
 
+## Phase 9: Completion Reconciliation
+
+**Purpose**: Reconcile the final simulator, SPFlow, categorical-planning, and
+notebook corrections with the feature design records and make their offline
+regression coverage durable before declaring 009 complete.
+
+- [X] T087 [P] Add a notebook structural regression requiring cleared execution counts and outputs in `tests/unit/planning/test_autonomy_notebook.py`, preserving the source-only walkthrough in `examples/tpm_planning/discrete_study_walkthrough.ipynb`
+- [X] T088 [P] Add a single-version routine offline CI job for control, simulator, weather, demand, and repository import-boundary suites plus a workflow contract regression in `.github/workflows/ci.yml` and `tests/unit/test_ci_workflow.py`
+- [X] T089 Reconcile the design-sweep scope, grid-balanced dispatch semantics, robust SPFlow fitting, exact categorical compiled-SPN encoding, and safe non-optimal solver behavior across `specs/009-tpm-planning/spec.md`, `specs/009-tpm-planning/plan.md`, `specs/009-tpm-planning/research.md`, `specs/009-tpm-planning/data-model.md`, and `specs/009-tpm-planning/contracts/validation-contract.md`
+- [X] T090 Update the 009 completion rule and quickstart closure evidence so Phases 7-9, required real backends, the broad offline regression, and optional Gurobi status are all explicit in `specs/009-tpm-planning/tasks.md` and `specs/009-tpm-planning/quickstart.md`
+- [X] T091 Run the complete control, simulator, weather, demand, TPM, planning, import-boundary, no-legacy-import, notebook-state, and CI-workflow regression set and record the exact result in `specs/009-tpm-planning/quickstart.md`
+
+---
+
 ## Dependencies And Execution Order
 
 ### Phase Dependencies
@@ -236,6 +250,9 @@ and a conservative recommendation gate.
 - US3 HiGHS unit/integration work can begin after Phase 2, but end-to-end
   completion depends on US2 compiler output.
 - Phase 6 final validation depends on all selected corrective tasks.
+- Phase 9 documentation reconciliation depends on the completed Phase 7 and 8
+  implementations. Its notebook and CI regressions may be added in parallel;
+  both must pass before the final T091 validation record and completion claim.
 
 ### Corrective Dependency Graph
 
@@ -308,9 +325,11 @@ US1 is already delivered. The corrective MVP is:
 
 ### Completion Rule
 
-The corrected feature is not complete until T061 and T062 pass. Fake-backend,
-fixture-only, assembly-only, or skipped required-backend results cannot satisfy
-the revised specification.
+The corrected feature is not complete until T061, T062, T078, T086, and T091
+pass and every task through Phase 9 is checked. Fake-backend, fixture-only,
+assembly-only, or skipped required-backend results cannot satisfy the revised
+specification. SPFlow, Pyomo, and HiGHS must pass through real backend paths;
+Gurobi and legacy-runtime checks remain supplemental availability evidence.
 
 ## Notes
 

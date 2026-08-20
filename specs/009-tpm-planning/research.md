@@ -118,7 +118,10 @@ formulations canonical.
 **Rationale**: The spec clarification already chose a canonical piecewise
 path. The legacy codebase contains both the direct histogram/piecewise
 machinery and tangent-oriented experiments, but only the piecewise path aligns
-with the selected first-release contract.
+with the selected first-release contract. A finite all-categorical planning
+domain may evaluate the compiled conditional graph exactly and link those
+probabilities to binary one-hot decisions; this remains a solver-driven MILP
+consumer of the canonical compiler rather than a second empirical backend.
 
 **Alternatives considered**:
 
@@ -150,6 +153,10 @@ a substitute for real solver evidence.
   feature asks for a reusable library API.
 
 ## Decision 8: Reuse existing demand and weather families as the canonical export inputs
+
+**Status**: Superseded for scalable studies by Decision 12 after the original
+export, dataset, and TPM contracts stabilized. It remains the contract for the
+single-family export workflow.
 
 **Decision**: The initial dataset export contract will consume current
 `DemandFamilyEvaluationResult` and `WeatherFamilyEvaluationResult` style data,
@@ -259,7 +266,9 @@ reproducible design comparisons.
 
 **Decision**: Encode equipment choices and their installed costs directly in
 the SPN MIO, solve with HiGHS, and compare the selected design's probability
-with native SPFlow.
+with native SPFlow. When every decision is categorical, evaluate each finite
+joint assignment against the compiled conditional SPN and link those exact
+risk coefficients to the decision one-hot variables.
 
 **Rationale**: Exhaustive evaluation is useful for generating training data
 but must not replace the encoded optimization. Selected-point validation is an
@@ -286,3 +295,26 @@ bound.
 **Rationale**: Compiler parity establishes encoding fidelity, not statistical
 calibration. Separating candidate selection from final evidence prevents the
 same samples from selecting and approving the model.
+
+## Decision 16: Preserve general piecewise encoding and specialize finite categorical planning
+
+**Decision**: Keep the canonical current-SPFlow compiler and general piecewise
+Pyomo encoding for continuous or mixed decision domains. For finite
+all-categorical battery/solar domains, use an exact lookup evaluated from the
+compiled conditional graph and record `exact-categorical-lookup` in solver
+metadata.
+
+**Rationale**: The generic disjunctive piecewise formulation can be needlessly
+large and numerically fragile when every feasible decision already has a
+finite categorical domain. Exact compiled-graph coefficients preserve native
+probability parity, remain independent from empirical study rows, and give
+HiGHS a small linear chance constraint without changing TPM ownership.
+
+**Alternatives considered**:
+
+- Enumerate empirical event-rate candidates: rejected because training rows
+  are evidence for fitting, not the optimization model.
+- Replace the general piecewise formulation: rejected because continuous and
+  mixed typed decisions still require it.
+- Load a time-limited incumbent as optimal: rejected because recommendation
+  requires a proved optimal solution and deterministic native verification.

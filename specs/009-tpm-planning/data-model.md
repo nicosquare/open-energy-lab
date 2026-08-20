@@ -151,7 +151,8 @@ log-likelihood outputs from a loaded TPM artifact.
 
 **Fields**: `approximation_kind`, `leaf_encoding_mode`, `sum_encoding_mode`,
 `breakpoint_policy`, `mio_epsilon`, `tolerance`, `backend_compiler_version`,
-`supported_spflow_module_types`, `legacy_reference_paths`.
+`supported_spflow_module_types`, `risk_encoding_strategy`,
+`legacy_reference_paths`.
 
 **Relationships**: Stored in TPM artifact metadata when planning-compatible
 encodings are prepared; consumed by planning model assembly.
@@ -174,6 +175,11 @@ encodings are prepared; consumed by planning model assembly.
 - compiled conditional probabilities must be parity-checked against current
   SPFlow `model.log_likelihood(...)` results within `1e-6` maximum absolute
   error; repeated canonical evaluations must agree within `1e-9`
+- finite all-categorical decision domains use exact probabilities evaluated
+  from the compiled conditional graph and record
+  `risk_encoding_strategy="exact-categorical-lookup"`
+- continuous or mixed decision domains retain the canonical piecewise MIO
+  encoding; exact categorical lookup never reads empirical candidate risks
 
 ## Planning Problem Definition
 
@@ -215,6 +221,10 @@ review fixtures and user-facing diagnostics.
   expectations
 - routine results record Pyomo, `highspy`, solver-interface, termination,
   options, and version metadata; Gurobi results are supplemental
+- solver metadata records whether risk used the general piecewise encoding or
+  exact categorical compiled-SPN lookup
+- non-optimal termination leaves `selected_design` empty and cannot be loaded
+  or verified as a recommendation
 
 ## Canonical TMY Cache Request
 
