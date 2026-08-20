@@ -58,6 +58,8 @@ training observation for the TPM workflow.
 - flattened horizon columns must use the stable `<field>_<step>` naming rule
 - `shortfall` must be derivable from the row’s exported simulator outcome
   fields and the artifact timestep
+- each `unmet_load_<step>` value must be no greater than the corresponding
+  `load_<step>` value; curtailed battery charging is not site-load shortfall
 - missing design metadata for a row is invalid in the first release
 
 ## Shortfall Target Definition

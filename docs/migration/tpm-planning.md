@@ -145,7 +145,9 @@ The target threshold and chance limit remain distinct inputs. The planning
 summary records the selected design, objective, estimated risk, feasibility
 diagnostics, Pyomo/highspy versions, solver interface, exact options,
 termination condition, and whether a solution was loaded. Infeasible runs are
-classified before solution loading; optimal runs load explicitly.
+classified before solution loading; optimal runs load explicitly. A solver
+time limit is returned as a diagnostic `time_limit` summary and is never loaded
+as an optimal solution, so recommendation validation remains blocked.
 
 Assembly-only inspection remains supported, but it does not replace the
 required real HiGHS review path.
@@ -194,6 +196,16 @@ availability policy. The simulator reuses each absolute stochastic sample
 across the full Cartesian equipment grid and writes bounded, resumable Parquet
 or JSONL shards.
 
+The default PV self-consumption controller follows the current total
+site-load/PV residual and treats each option's charge/discharge rating as an
+upper bound. The simulator separately enforces grid feasibility: during an
+islanded or outage step it permits charging only from local PV surplus and
+discharging only into residual site load. This keeps curtailed charging out of
+the unmet-load metric. Manifests record
+`simulation_semantics_version="grid-balanced-dispatch-v2"`, and that version
+participates in the input fingerprint so older shards cannot be resumed under
+the corrected behavior.
+
 Those shards retain the simulator traces needed to inspect policy behavior: PV
 generation, site load, controller-requested and physically realized battery
 power, post-step state of charge, grid availability, and unmet load. Battery
@@ -204,9 +216,12 @@ discharging.
 dense tensor memory requirement. `compile_planning_study_tpm` validates the
 supported SPFlow graph. `solve_planning_study` then places categorical option
 IDs and their installed costs directly in the MIO; the optimizer is not
-choosing from enumerated simulation rows. Finally, the selected option IDs are
-queried against native SPFlow. Encoded/native error above `1e-6` or native risk
-above the chance limit is a validation failure.
+choosing from enumerated simulation rows. When all decisions are categorical,
+the MIO evaluates the compiled conditional graph exactly over the finite joint
+option domain and links those risk coefficients to the feature one-hot
+variables. Finally, the selected option IDs are queried against native SPFlow.
+Encoded/native error above `1e-6` or native risk above the chance limit is a
+validation failure.
 
 Use `run_planning_study` for the same stages as one resumable convenience call,
 or run `examples/tpm_planning/run_discrete_study.py` for an offline 2x2 case.
@@ -231,7 +246,7 @@ SPN selection uses only validation Brier score among candidates that genuinely
 compile. Final-test calibration, native/MIO parity, and the selected design's
 one-sided confidence bound gate the user-facing recommendation. HiGHS output is
 still retained when a gate fails, but is labeled exploratory. Full live PVGIS
-and 13,500-row notebook execution are manual checks; routine validation stays
+and 24,000-row notebook execution are manual checks; routine validation stays
 offline and fixture-backed.
 
 ## Required Review Commands

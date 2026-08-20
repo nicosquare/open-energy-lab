@@ -114,8 +114,8 @@ semantic dataset.
 [`discrete_study_walkthrough.ipynb`](discrete_study_walkthrough.ipynb) presents
 the configurable research-scale workflow. Its default studies a 24-hour
 islanded period at Abu Dhabi city centre and enforces
-`P(unmet_energy_kwh > 0.1) <= 0.05` over 80/120/160 kW solar and
-100/200/300 kWh battery options. Each episode explicitly starts at 100% SOC
+`P(unmet_energy_kwh > 0.1) <= 0.05` over 80/120/160/200 kW solar and
+100/200/300/400 kWh battery options. Each episode explicitly starts at 100% SOC
 with a 10% floor; no simulator burn-in is used.
 
 The notebook requests PVGIS through the versioned 5.3 endpoint and caches both
@@ -134,6 +134,23 @@ calibration, native/MIO error is at most `1e-6`, and the selected design's
 one-sided held-out 95% risk bound is at most 5%; otherwise the result is
 explicitly exploratory.
 
+The notebook prints the selected SPN's native probability for every equipment
+configuration before solving, so an infeasible 5% chance constraint is visibly
+different from a model-fitting failure. Its HiGHS time limit is configurable;
+a time limit returns an exploratory diagnostic result without trying to load
+an unproven Pyomo solution.
+
+For this finite categorical grid, the MIO risk coefficients are evaluated
+exactly from the compiled conditional SPN and linked to joint-option and
+per-feature one-hot variables. They are not empirical event-rate candidates;
+native SPFlow remains the independent post-solve parity check.
+
+The default controller follows the current total site-load/PV residual, with
+equipment charge/discharge power acting as a cap. Islanded simulation permits
+charging only from local PV surplus and does not classify curtailed charging as
+unmet site load. The notebook includes the simulator-semantics version in each
+dataset directory so corrected runs do not reuse older shards.
+
 Matplotlib and Seaborn figures cover representative TMY days and hourly
 distributions, fitted/input demand, sample power/controller/SOC/unmet traces,
 train/validation/test risk heatmaps, native SPN versus held-out probability
@@ -144,7 +161,7 @@ Notebook visualization dependencies are isolated from the core library. Run
 `uv sync --group notebook`, then select the repository's `.venv/bin/python` as
 the kernel in VS Code or another Jupyter frontend. The group provides
 IPython-kernel support, Matplotlib, and Seaborn; the frontend itself is not
-installed by the project. Live PVGIS access and full 13,500-episode notebook
+installed by the project. Live PVGIS access and full 24,000-episode notebook
 execution are manual acceptance activities, not routine CI. The library
 contracts and reduced fixture-backed split/candidate/HiGHS path remain fully
 offline-tested.

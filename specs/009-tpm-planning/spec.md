@@ -86,7 +86,9 @@ lazy backend loading.
   artificial row-count ceiling.
 - Q: How should storage dispatch work? → A: Reuse the shipped named
   controllers through the controller runner, defaulting solar/storage studies
-  to PV self-consumption and resolving requests from equipment power limits.
+  to PV self-consumption. Equipment power values are request limits; the
+  controller follows the current site-load/PV residual within those limits,
+  while the simulator enforces battery and grid feasibility.
 - Q: Which adequacy targets are supported? → A: One active binary event per
   artifact derived from a shortfall-ratio, absolute unmet-energy, or
   unmet-timestep-fraction threshold.
@@ -478,7 +480,7 @@ termination status, and solver metadata.
   planning workflow is invoked. Ordinary imports remain independent of any
   separately managed solver binary or license.
 - **SC-005**: The configurable autonomy notebook exposes the 24-hour Abu Dhabi
-  defaults, produces independent 9,000/2,250/2,250-row manifests in a full
+  defaults, produces independent 16,000/4,000/4,000-row manifests in a full
   acceptance run, compiles real SPFlow candidates, executes HiGHS, and blocks
   recommendation whenever calibration, parity, or the one-sided 95% held-out
   risk bound fails.

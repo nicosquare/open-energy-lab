@@ -45,6 +45,11 @@ The public staged workflow is:
 dataset shards. The default controller is PV self-consumption; supplied,
 islanded, and two-state Markov grid traces are supported. Active adequacy events
 may use shortfall ratio, unmet energy, or unmet-timestep fraction thresholds.
+PV self-consumption follows the current total site-load/PV residual, capped by
+the selected equipment power. During grid-unavailable steps the simulator
+limits charging to local PV surplus and discharging to residual site load, so
+curtailed charging is never counted as unmet demand. Dataset manifests and
+input fingerprints record the simulator semantics version.
 
 ### Configurable Abu Dhabi autonomy notebook
 
@@ -67,9 +72,9 @@ non-cooling electric demand plus cooling RT. Both modes use
 
 Default study evidence is split into independent manifests:
 
-- training: 1,000 episodes/configuration, seed 13, 9,000 rows;
-- validation: 250/configuration, seed 37, 2,250 rows;
-- final test: 250/configuration, seed 101, 2,250 rows.
+- training: 1,000 episodes/configuration, seed 13, 16,000 rows;
+- validation: 250/configuration, seed 37, 4,000 rows;
+- final test: 250/configuration, seed 101, 4,000 rows.
 
 Real default/finer/coarser SPFlow candidates must compile before selection.
 Validation Brier score selects the candidate, with smaller node count breaking
@@ -104,9 +109,47 @@ that dependency group and are not imported by the core library.
 - Python compilation, all-package lazy-import smoke testing, strict Python
   legacy-import scanning, and `git diff --check` passed.
 
-The live PVGIS request and full 8,760-hour/13,500-episode notebook acceptance
-run remain manual by repository policy. They were not run as part of this
-offline validation and are not replaced by fixtures or synthetic provenance.
+The live PVGIS request and full 8,760-hour/24,000-episode notebook acceptance
+remain manual by repository policy. A corrective acceptance run was completed
+on 2026-08-20 after the grid-balanced dispatch change:
+
+- PVGIS 5.3 returned and cached 8,760 canonical hourly records;
+- train/validation/test manifests contained 9,000/2,250/2,250 rows with seeds
+  13/37/101 and distinct semantic hashes;
+- default, finer, and coarser SPFlow candidates all fit and compiled, with
+  validation Brier scores `0.116844`, `0.111646`, and `0.123047`; the finer
+  candidate was selected with 1,391 SPFlow modules and 781 compiled nodes;
+- the selected SPN's minimum native risk was `0.054` for
+  `battery-300`/`solar-160`, above epsilon `0.05`, so HiGHS correctly returned
+  infeasible and the notebook remained exploratory; no selected-design
+  native/MIO parity claim or recommendation was made;
+- the final relevant regression completed with `598 passed, 6 skipped`; all
+  skips were supplemental unavailable-Gurobi checks.
+
+The checked-in notebook outputs are intentionally cleared after acceptance so
+stale live-data results are not presented as current evidence. Re-execution
+uses the recorded cache/manifests when their provenance and semantics match.
+
+### Recorded expanded-grid acceptance — 2026-08-20
+
+- The 4×4 grid added 200 kW solar and 400 kWh storage and produced deterministic
+  16,000/4,000/4,000-row train/validation/test manifests.
+- All three SPFlow candidates fit; after stabilizing one non-finite degenerate
+  Normal scale, the finer candidate compiled and won with validation Brier
+  score `0.092400` and 2,829 SPFlow modules.
+- Exact categorical MIO assembly evaluated risks from the compiled conditional
+  SPN, not empirical rows. HiGHS selected `battery-400`/`solar-120` at
+  AED `840,000` with encoded and native risk `0.0470000057` and discrepancy
+  `0.0`.
+- Final-test calibration passed: mean configuration error `0.010688`, maximum
+  error `0.062000`, both labels observed, and the selected native probability
+  was inside its two-sided interval.
+- The selected design recorded 6 events in 250 final-test episodes (`2.4%`);
+  its one-sided 95% Wilson upper bound was `0.045732`, so the final status was
+  `recommended` with no blocking reasons.
+- The final relevant offline regression completed with `599 passed, 6 skipped`;
+  all skips were supplemental unavailable-Gurobi checks, while required
+  SPFlow, compiler, Pyomo, and HiGHS paths passed.
 
 Run the offline example:
 

@@ -9,10 +9,18 @@ Each absolute sample ID identifies one shared weather, demand, and grid trace
 that is reused across every equipment configuration. Batches and process
 workers may change execution layout, but not semantic rows or their ordering.
 
+For the default PV self-consumption controller, configured equipment power is
+an upper bound rather than a fixed action: charging follows local PV surplus
+and discharging follows residual total site-electric load. During an islanded
+or outage step, the simulator independently limits battery charging to local
+surplus and discharging to local deficit. Curtailed charging is not unmet site
+load, and unmet electric load cannot exceed site electric load for a step.
+
 Schema-v2 datasets use atomic JSON manifests and deterministic JSONL or Parquet
 shards. The manifest records request and semantic hashes, equipment metadata,
-active event semantics, selected compact-fit columns, and shard integrity
-digests. Each row retains the controller name and horizon-indexed PV generation,
+active event semantics, simulator-semantics version, selected compact-fit
+columns, and shard integrity digests. Each row retains the controller name and
+horizon-indexed PV generation,
 site load, requested and realized battery power, post-step battery state of
 charge, grid availability, and unmet load. Positive battery power means charge;
 negative power means discharge. Parquet is the default; JSONL has the same
@@ -25,10 +33,17 @@ duplicating the large training table.
 
 Planning encodes each categorical decision as a one-hot vector and applies the
 installed cost of the selected option directly in the MIO objective. It does
-not enumerate empirical candidates. After HiGHS returns an optimum, the chosen
-option IDs are queried against native SPFlow. A probability discrepancy above
-`1e-6`, or native risk above epsilon plus `1e-9`, produces
-`validation_failed`.
+not enumerate empirical candidates. For an all-categorical equipment grid, it
+evaluates each finite joint option against the compiled conditional SPN and
+links those exact risk coefficients to joint-option indicators and the
+per-feature one-hot variables. After HiGHS returns an optimum, the chosen option
+IDs are queried against native SPFlow. A probability discrepancy above `1e-6`,
+or native risk above epsilon plus `1e-9`, produces `validation_failed`.
+
+Non-optimal solver terminations are not loadable solutions. In particular, a
+HiGHS time limit returns a `time_limit` summary with the native solver status
+and termination condition, leaves the selected design empty, and blocks native
+verification and recommendation.
 
 Hourly studies may set `local_start_step` within the local day. Weather and
 demand requests use the same offset, while the simulator starts every episode

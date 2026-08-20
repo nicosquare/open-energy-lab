@@ -30,8 +30,8 @@ def test_notebook_has_configurable_abu_dhabi_defaults_and_no_fixture_fallback() 
         "LOCAL_START_STEP = 0",
         "INITIAL_SOC = 1.0",
         'DEMAND_MODE = "synthetic"',
-        "SOLAR_CAPACITIES_KW = (80.0, 120.0, 160.0)",
-        "BATTERY_CAPACITIES_KWH = (100.0, 200.0, 300.0)",
+        "SOLAR_CAPACITIES_KW = (80.0, 120.0, 160.0, 200.0)",
+        "BATTERY_CAPACITIES_KWH = (100.0, 200.0, 300.0, 400.0)",
         'EVENT_KIND = "unmet_energy_kwh"',
         "EVENT_THRESHOLD = 0.1",
         "CHANCE_LIMIT = 0.05",
@@ -62,6 +62,11 @@ def test_notebook_separates_splits_selects_candidates_and_gates_recommendation()
     assert source.count("generate_planning_study_dataset") >= 2
     assert "manifest.semantic_sha256" in source
     assert "solution.solve_summary.solver_metadata" in source
+    assert "solution.solve_summary.feasibility_diagnostics" in source
+    assert "PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION" in source
+    assert "Candidate failures (full diagnostics)" in source
+    assert "Minimum native selected-SPN risk" in source
+    assert "SOLVER_TIME_LIMIT_SECONDS = 120.0" in source
 
 
 def test_notebook_includes_all_dynamic_visualization_topics_and_compiles() -> None:
