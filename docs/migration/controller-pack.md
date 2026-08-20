@@ -178,11 +178,20 @@ The committed deterministic arbitrage guardrail fixture uses:
 `PVSelfConsumptionController` applies deterministic current-step PV-balancing
 rules:
 
-- charge when `pv_generation_kw > load_kw` and SOC is below `reserve_max_soc`
-- discharge when `load_kw > pv_generation_kw` and SOC is above `reserve_min_soc`
+- charge by the current PV surplus, capped by `charge_request_kw`, when
+  `pv_generation_kw > site_electric_load_kw` and SOC is below `reserve_max_soc`
+- discharge by the current site-load deficit, capped by
+  `discharge_request_kw`, when load exceeds PV and SOC is above
+  `reserve_min_soc`
 - idle when load equals PV generation or the battery is already at the
   relevant reserve boundary
 - support only `BatteryLoadPVScenario`
+
+When local electric cooling is configured, the controller uses total site
+electric load rather than the non-cooling load alone. During an outage, the
+simulator additionally limits charging to local PV surplus and discharging to
+residual site load, so an unsupported charge request cannot be counted as
+unmet site demand.
 
 The committed deterministic PV self-consumption fixture uses:
 
@@ -190,20 +199,20 @@ The committed deterministic PV self-consumption fixture uses:
   `charge_request_kw=5.0`, `discharge_request_kw=5.0`
 - initial SOC: `0.5`
 - verified trace:
-  - requested power: `[-5.0, 5.0, 5.0]`
-  - realized power: `[-4.75, 5.0, 5.0]`
-  - SOC trace: `[0.0, 0.475, 0.95]`
+  - requested power: `[-2.0, 0.492, 3.468]`
+  - realized power: `[-2.0, 0.492, 3.468]`
+  - SOC trace: `[0.2894736842105263, 0.33621368421052633, 0.6656736842105263]`
   - PV generation: `[0.0, 1.992, 3.968]`
-  - net-grid power: `[-2.75, 4.508, 1.532]`
-  - direction: `["export", "import", "import"]`
-  - step settlement: `[0.22000000000000003, -0.9016000000000001, -0.4596]`
-  - total settlement: `-1.1412`
-  - constraint events: `["step 0: requested -5.0 kW, realized -4.75 kW"]`
+  - net-grid power: `[0.0, 0.0, 0.0]`
+  - direction: `["neutral", "neutral", "neutral"]`
+  - step settlement: `[0.0, 0.0, 0.0]`
+  - total settlement: `0.0`
+  - constraint events: `[]`
 
-This PV fixture is intentionally important for boundary clarity: the native
-controller requests current-step discharge at step 0, while the simulator
-retains ownership of feasibility clamping and records the realized deviation
-explicitly.
+This PV fixture is intentionally important for boundary clarity: configured
+request magnitudes are controller limits, not fixed actions. The controller
+matches the current residual, while the simulator retains ownership of battery
+and grid feasibility.
 
 ## Arbitrage Usage
 

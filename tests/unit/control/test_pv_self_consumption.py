@@ -31,7 +31,14 @@ def _context(
     soc_fraction: float,
     load_kw: float,
     pv_generation_kw: float,
+    site_electric_load_kw: float | None = None,
 ) -> ControllerContext:
+    step_inputs = {
+        "load_kw": load_kw,
+        "pv_generation_kw": pv_generation_kw,
+    }
+    if site_electric_load_kw is not None:
+        step_inputs["site_electric_load_kw"] = site_electric_load_kw
     return ControllerContext(
         scenario_id="pv-self-consumption-unit",
         scenario_kind="BatteryLoadPVScenario",
@@ -50,27 +57,47 @@ def _context(
             currency="USD",
             time_alignment="step-start",
         ),
-        step_inputs={
-            "load_kw": load_kw,
-            "pv_generation_kw": pv_generation_kw,
-        },
+        step_inputs=step_inputs,
     )
 
 
-def test_pv_self_consumption_controller_requests_charge_when_pv_exceeds_load() -> None:
+def test_pv_self_consumption_controller_matches_pv_surplus_up_to_charge_limit() -> None:
     proposal = _controller().propose_dispatch(
         _context(soc_fraction=0.50, load_kw=1.0, pv_generation_kw=3.0)
     )
 
-    assert proposal.requested_power_kw == pytest.approx(5.0)
+    assert proposal.requested_power_kw == pytest.approx(2.0)
+
+    limited = _controller().propose_dispatch(
+        _context(soc_fraction=0.50, load_kw=1.0, pv_generation_kw=9.0)
+    )
+    assert limited.requested_power_kw == pytest.approx(5.0)
 
 
-def test_pv_self_consumption_controller_requests_discharge_when_load_exceeds_pv() -> None:
+def test_pv_self_consumption_controller_matches_load_deficit_up_to_discharge_limit() -> None:
     proposal = _controller().propose_dispatch(
         _context(soc_fraction=0.50, load_kw=3.0, pv_generation_kw=1.0)
     )
 
-    assert proposal.requested_power_kw == pytest.approx(-4.0)
+    assert proposal.requested_power_kw == pytest.approx(-2.0)
+
+    limited = _controller().propose_dispatch(
+        _context(soc_fraction=0.50, load_kw=9.0, pv_generation_kw=1.0)
+    )
+    assert limited.requested_power_kw == pytest.approx(-4.0)
+
+
+def test_pv_self_consumption_controller_uses_total_site_electric_load_when_available() -> None:
+    proposal = _controller().propose_dispatch(
+        _context(
+            soc_fraction=0.50,
+            load_kw=1.0,
+            site_electric_load_kw=3.5,
+            pv_generation_kw=2.0,
+        )
+    )
+
+    assert proposal.requested_power_kw == pytest.approx(-1.5)
 
 
 @pytest.mark.parametrize(

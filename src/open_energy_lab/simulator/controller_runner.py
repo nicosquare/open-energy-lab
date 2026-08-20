@@ -23,6 +23,7 @@ from .scenario import (
     BatteryLoadPVTrace,
     SimulationTrace,
     _ControllerContextInputError,
+    _grid_feasible_battery_request_kw,
     build_controller_context_for_step,
     prepare_controller_context_inputs,
 )
@@ -118,6 +119,19 @@ def evaluate_with_controller(
     constraint_events = []
     step_constraint_events: list[list[str]] = []
 
+    if isinstance(scenario, BatteryLoadPVScenario):
+        local_cooling_electric_kw = scenario._local_cooling_electric_kw()
+        site_electric_load_kw = [
+            base_load_kw + cooling_kw
+            for base_load_kw, cooling_kw in zip(
+                prepared_inputs["load_kw"],
+                local_cooling_electric_kw,
+                strict=True,
+            )
+        ]
+        pv_generation_kw = prepared_inputs["pv_generation_kw"]
+        blackout_active = scenario._blackout_active_series()
+
     for step_index in range(scenario.time_grid.num_steps):
         context = build_controller_context_for_step(
             scenario,
@@ -126,10 +140,18 @@ def evaluate_with_controller(
             prepared_inputs=prepared_inputs,
         )
         proposal = validate_dispatch_proposal(context, _request_dispatch(controller, context))
+        feasible_request_kw = proposal.requested_power_kw
+        if isinstance(scenario, BatteryLoadPVScenario):
+            feasible_request_kw = _grid_feasible_battery_request_kw(
+                requested_power_kw=proposal.requested_power_kw,
+                site_electric_load_kw=site_electric_load_kw[step_index],
+                pv_generation_kw=pv_generation_kw[step_index],
+                grid_available=not blackout_active[step_index],
+            )
         transition = apply_power_request(
             component=scenario.battery,
             state=current_state,
-            requested_power_kw=proposal.requested_power_kw,
+            requested_power_kw=feasible_request_kw,
             time_step_hours=scenario.time_grid.time_step_hours,
             step_index=step_index,
         )
@@ -173,16 +195,6 @@ def evaluate_with_controller(
         )
     else:
         load_kw = prepared_inputs["load_kw"]
-        pv_generation_kw = prepared_inputs["pv_generation_kw"]
-        local_cooling_electric_kw = scenario._local_cooling_electric_kw()
-        site_electric_load_kw = [
-            base_load_kw + cooling_kw
-            for base_load_kw, cooling_kw in zip(
-                load_kw,
-                local_cooling_electric_kw,
-                strict=True,
-            )
-        ]
         settlement = evaluate_net_grid_settlement(
             load_kw=site_electric_load_kw,
             pv_generation_kw=pv_generation_kw,
@@ -191,7 +203,6 @@ def evaluate_with_controller(
             price_signal=scenario.price_signal,
             objective=scenario.objective,
         )
-        blackout_active = scenario._blackout_active_series()
         unmet_load_kw: list[float] = []
         net_grid_power_kw = list(settlement.net_grid_power_kw)
         net_grid_energy_kwh = list(settlement.net_grid_energy_kwh)

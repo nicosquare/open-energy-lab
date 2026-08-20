@@ -53,6 +53,7 @@ def test_simulator_import_stays_lightweight() -> None:
         "evaluate_weather_family",
         "LoadComponent",
         "PlanningExportRequest",
+        "PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION",
         "PVComponent",
         "PriceSignal",
         "SUPPORTED_SUMMARY_OUTPUT_FIELDS",
@@ -84,6 +85,9 @@ def test_simulator_import_stays_lightweight() -> None:
     assert (
         module.PlanningExportRequest.__module__
         == "open_energy_lab.simulator.planning_export"
+    )
+    assert module.PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION == (
+        "grid-balanced-dispatch-v2"
     )
     assert module.PriceSignal.__module__ == "open_energy_lab.simulator.pricing"
     assert module.PVComponent.__module__ == "open_energy_lab.simulator.pv"

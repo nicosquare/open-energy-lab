@@ -46,6 +46,10 @@ _DESIGN_COLUMNS = (
     "controller_name",
 )
 
+# Persisted in every manifest and input fingerprint so datasets generated with
+# older dispatch/energy-balance rules cannot be silently resumed as current.
+PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION = "grid-balanced-dispatch-v2"
+
 
 def generate_planning_study_dataset(
     request: PlanningStudyRequest,
@@ -168,6 +172,7 @@ def generate_planning_study_dataset(
 
     manifest = writer.finalize(
         metadata={
+            "simulation_semantics_version": PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION,
             "study_request": request.to_dict(),
             "configuration_count": len(configurations),
             "samples_per_configuration": request.samples_per_configuration,
@@ -366,6 +371,7 @@ def _input_fingerprint(
     cooling_service_configuration: object,
 ) -> str:
     payload: dict[str, Any] = {
+        "simulation_semantics_version": PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION,
         "request": request.to_dict(),
         "weather_artifact": _artifact_identity(weather_artifact),
         "demand_artifact": _artifact_identity(demand_artifact),
@@ -433,4 +439,7 @@ def _resolve_qualified_name(module: object, qualified_name: str) -> object:
     return value
 
 
-__all__ = ["generate_planning_study_dataset"]
+__all__ = [
+    "PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION",
+    "generate_planning_study_dataset",
+]

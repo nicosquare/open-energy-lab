@@ -14,7 +14,10 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from .load import LoadComponent
     from .planning_export import PlanningExportRequest, export_planning_dataset
-    from .planning_study import generate_planning_study_dataset
+    from .planning_study import (
+        PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION,
+        generate_planning_study_dataset,
+    )
     from .pricing import (
         ArbitrageObjectiveRepresentation,
         DeterministicRulePolicy,
@@ -78,6 +81,10 @@ _EXPORT_MAP = {
     "evaluate_weather_family": (".stochastic_weather", "evaluate_weather_family"),
     "LoadComponent": (".load", "LoadComponent"),
     "PlanningExportRequest": (".planning_export", "PlanningExportRequest"),
+    "PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION": (
+        ".planning_study",
+        "PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION",
+    ),
     "PVComponent": (".pv", "PVComponent"),
     "PriceSignal": (".pricing", "PriceSignal"),
     "SUPPORTED_SUMMARY_OUTPUT_FIELDS": (
@@ -118,6 +125,7 @@ __all__ = [
     "evaluate_weather_family",
     "LoadComponent",
     "PlanningExportRequest",
+    "PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION",
     "PVComponent",
     "PriceSignal",
     "SUPPORTED_SUMMARY_OUTPUT_FIELDS",

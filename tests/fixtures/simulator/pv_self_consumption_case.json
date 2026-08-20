@@ -7,7 +7,7 @@
     "construction": "Manually authored from the US2 controller-pack contracts and then checked against the current implementation with uv run python -c controller-evaluation calculations.",
     "seed": null,
     "generation_command": null,
-    "refresh_policy": "Refresh only when the documented PV self-consumption reserve thresholds, weather-to-PV inputs, battery/timestep inputs, or discounted settlement semantics intentionally change."
+    "refresh_policy": "Refresh only when the documented residual-following PV self-consumption behavior, reserve thresholds, weather-to-PV inputs, battery/timestep inputs, or discounted settlement semantics intentionally change."
   },
   "legacy_references": [
     "legacy/old_tpm/src_py/legacy/storage.py",
@@ -128,19 +128,19 @@
   },
   "expected_trace": {
     "requested_power_kw": [
-      -5.0,
-      5.0,
-      5.0
+      -2.0,
+      0.492,
+      3.468
     ],
     "realized_power_kw": [
-      -4.75,
-      5.0,
-      5.0
+      -2.0,
+      0.492,
+      3.468
     ],
     "soc": [
-      0.0,
-      0.475,
-      0.95
+      0.2894736842105263,
+      0.33621368421052633,
+      0.6656736842105263
     ],
     "pv_generation_kw": [
       0.0,
@@ -148,34 +148,32 @@
       3.968
     ],
     "net_grid_power_kw": [
-      -2.75,
-      4.508,
-      1.532
+      0.0,
+      0.0,
+      0.0
     ],
     "net_grid_energy_kwh": [
-      -2.75,
-      4.508,
-      1.532
+      0.0,
+      0.0,
+      0.0
     ],
     "direction": [
-      "export",
-      "import",
-      "import"
+      "neutral",
+      "neutral",
+      "neutral"
     ],
     "step_settlement": [
-      0.22000000000000003,
-      -0.9016000000000001,
-      -0.4596
+      0.0,
+      0.0,
+      0.0
     ],
-    "total_settlement": -1.1412,
-    "constraint_events": [
-      "step 0: requested -5.0 kW, realized -4.75 kW"
-    ]
+    "total_settlement": 0.0,
+    "constraint_events": []
   },
   "numeric_tolerance": 1e-06,
   "provenance_notes": [
     "Keep the fixture synthetic, small, and reviewable.",
-    "The expected controller proposals, realized trace, PV derivation outputs, and settlement values were verified against evaluate_with_controller for the documented three-step PV self-consumption configuration.",
-    "This fixture intentionally preserves the simulator-side feasibility clamp on the opening discharge request so native controller evidence remains distinct from preserved-path regression coverage."
+    "The expected residual-following controller proposals, realized trace, PV derivation outputs, and settlement values were verified against evaluate_with_controller for the documented three-step PV self-consumption configuration.",
+    "The configured charge and discharge powers are upper bounds; each request matches the current site-load/PV residual, while the simulator remains responsible for battery and grid feasibility."
   ]
 }

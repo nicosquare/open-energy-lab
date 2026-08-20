@@ -154,6 +154,16 @@ class _LargeChargeController:
         )
 
 
+class _LargeDischargeController:
+    def propose_dispatch(self, context: ControllerContext) -> DispatchProposal:
+        return DispatchProposal(
+            step_index=context.step_index,
+            requested_power_kw=-5.0,
+            sign_convention=POSITIVE_DISPATCH_MEANING,
+            controller_name="large-discharge",
+        )
+
+
 class _CountingController:
     def __init__(self) -> None:
         self.calls = 0
@@ -200,6 +210,55 @@ def test_evaluate_with_controller_records_clamping_when_requests_exceed_feasible
     assert result.step_records[0].proposal.requested_power_kw == pytest.approx(5.0)
     assert result.step_records[0].constraint_events
     assert "requested" in result.step_records[0].constraint_events[0]
+
+
+def test_islanded_controller_charge_is_limited_to_local_pv_surplus() -> None:
+    from open_energy_lab.simulator.controller_runner import evaluate_with_controller
+
+    scenario = _battery_load_pv_scenario(num_steps=1)
+    scenario.load.demand_kw = [2.0]
+    scenario.weather.global_horizontal_irradiance_w_per_m2 = [1000.0]
+    scenario.blackout_grid_available = [False]
+
+    result = evaluate_with_controller(scenario, _LargeChargeController())
+
+    assert result.requested_power_kw == pytest.approx([5.0])
+    assert result.realized_power_kw == pytest.approx([2.0])
+    assert result.underlying_trace.unmet_load_kw == pytest.approx([0.0])
+    assert result.underlying_trace.net_grid_power_kw == pytest.approx([0.0])
+    assert result.step_records[0].constraint_events
+
+
+def test_islanded_controller_charge_does_not_become_unmet_site_load() -> None:
+    from open_energy_lab.simulator.controller_runner import evaluate_with_controller
+
+    scenario = _battery_load_pv_scenario(num_steps=1)
+    scenario.load.demand_kw = [2.0]
+    scenario.weather.global_horizontal_irradiance_w_per_m2 = [0.0]
+    scenario.blackout_grid_available = [False]
+
+    result = evaluate_with_controller(scenario, _LargeChargeController())
+
+    assert result.requested_power_kw == pytest.approx([5.0])
+    assert result.realized_power_kw == pytest.approx([0.0])
+    assert result.underlying_trace.unmet_load_kw == pytest.approx([2.0])
+    assert result.underlying_trace.unmet_load_kw[0] <= scenario.load.demand_kw[0]
+
+
+def test_islanded_controller_discharge_is_limited_to_residual_site_load() -> None:
+    from open_energy_lab.simulator.controller_runner import evaluate_with_controller
+
+    scenario = _battery_load_pv_scenario(num_steps=1)
+    scenario.load.demand_kw = [2.0]
+    scenario.weather.global_horizontal_irradiance_w_per_m2 = [0.0]
+    scenario.blackout_grid_available = [False]
+
+    result = evaluate_with_controller(scenario, _LargeDischargeController())
+
+    assert result.requested_power_kw == pytest.approx([-5.0])
+    assert result.realized_power_kw == pytest.approx([-2.0])
+    assert result.underlying_trace.unmet_load_kw == pytest.approx([0.0])
+    assert result.underlying_trace.net_grid_power_kw == pytest.approx([0.0])
 
 
 def test_evaluate_with_controller_returns_named_rejection_before_controller_execution() -> None:
