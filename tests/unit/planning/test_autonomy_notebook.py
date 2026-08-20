@@ -120,6 +120,14 @@ def test_notebook_uses_standard_plotting_libraries_and_explains_organization() -
         assert required_id in markdown_ids
 
 
+def test_notebook_is_committed_without_execution_state() -> None:
+    for cell in _notebook()["cells"]:
+        if cell["cell_type"] != "code":
+            continue
+        assert cell.get("execution_count") is None
+        assert cell.get("outputs", []) == []
+
+
 def test_notebook_placeholder_tariff_satisfies_simulator_contract() -> None:
     notebook = _notebook()
     price_signal_calls: list[ast.Call] = []
@@ -135,7 +143,10 @@ def test_notebook_placeholder_tariff_satisfies_simulator_contract() -> None:
             and isinstance(node.func, ast.Name)
             and node.func.id == "PriceSignal"
         )
-        assert not any(output.get("output_type") == "error" for output in cell["outputs"])
+        assert not any(
+            output.get("output_type") == "error"
+            for output in cell.get("outputs", [])
+        )
 
     assert len(price_signal_calls) == 1
     keywords = {keyword.arg: keyword.value for keyword in price_signal_calls[0].keywords}
