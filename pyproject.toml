@@ -21,8 +21,12 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "ipykernel",
     "pytest>=8.0",
+]
+notebook = [
+    "ipykernel",
+    "matplotlib",
+    "seaborn",
 ]
 
 [tool.hatch.build.targets.wheel]

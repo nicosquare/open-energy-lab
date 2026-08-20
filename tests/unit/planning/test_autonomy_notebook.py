@@ -85,6 +85,36 @@ def test_notebook_includes_all_dynamic_visualization_topics_and_compiles() -> No
             ast.parse("".join(cell["source"]))
 
 
+def test_notebook_uses_standard_plotting_libraries_and_explains_organization() -> None:
+    notebook = _notebook()
+    source = _source()
+    markdown_ids = {
+        cell["id"] for cell in notebook["cells"] if cell["cell_type"] == "markdown"
+    }
+
+    assert "import matplotlib.pyplot as plt" in source
+    assert "import seaborn as sns" in source
+    assert "sns.heatmap(" in source
+    assert "sns.scatterplot(" in source
+    assert "plt.subplots(" in source
+    assert "class InlineSVG" not in source
+    assert "def line_chart(" not in source
+    assert "def heatmap_chart(" not in source
+
+    for required_id in (
+        "notebook-map",
+        "data-config-heading",
+        "physical-config-heading",
+        "evidence-config-heading",
+        "weather-visuals-heading",
+        "demand-visual-heading",
+        "split-heatmaps-heading",
+        "calibration-visuals-heading",
+        "frontier-heading",
+    ):
+        assert required_id in markdown_ids
+
+
 def test_notebook_placeholder_tariff_satisfies_simulator_contract() -> None:
     notebook = _notebook()
     price_signal_calls: list[ast.Call] = []

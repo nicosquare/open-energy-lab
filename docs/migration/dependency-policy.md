@@ -135,6 +135,19 @@ Alternatives considered: requiring Gurobi was rejected because routine validatio
 ```
 
 ```text
+Dependency: IPython kernel, Matplotlib, and Seaborn
+Requested by: 009-tpm-planning configurable autonomy notebook
+Target module: examples/tpm_planning/discrete_study_walkthrough.ipynb only
+Classification: optional
+Import boundary: notebook-only; excluded from open_energy_lab package roots and every core simulator, weather, demand, TPM, and planning module
+Install mechanism: uv sync --group notebook
+Fallback or skip behavior: routine offline library and backend validation proceeds without the notebook group; manual notebook execution must report the group as unavailable rather than widening core dependencies
+External service, license, hardware, or scheduler assumptions: no license, GPU, or scheduler requirement; live PVGIS remains a separately controlled manual network activity
+Rationale: standard research plotting APIs make the walkthrough easier to read and adapt while a dedicated dependency group preserves the ordinary library import boundary
+Alternatives considered: a custom inline-SVG engine was rejected because it obscured the study logic; promoting plotting packages to core dependencies was rejected because library workflows do not render figures
+```
+
+```text
 Dependency: pytest-based TPM/planning validation
 Requested by: 009-tpm-planning
 Target module: tests/unit/tpm, tests/unit/planning, tests/unit/simulator/test_planning_export.py, tests/integration/planning, tests/unit/test_optional_dependency_boundaries.py, tests/unit/test_import_contract.py, tests/unit/test_no_legacy_imports.py

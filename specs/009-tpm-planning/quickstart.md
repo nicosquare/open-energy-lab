@@ -80,6 +80,15 @@ native/MIO error at most `1e-6`, and a one-sided held-out 95% risk upper bound
 at most 5%. A failure produces an exploratory result rather than a reliability
 recommendation.
 
+Install the isolated notebook environment before opening the walkthrough:
+
+```bash
+uv sync --group notebook
+```
+
+Select `.venv/bin/python` as the kernel. Matplotlib and Seaborn are confined to
+that dependency group and are not imported by the core library.
+
 ### Recorded notebook-extension validation — 2026-08-20
 
 - Focused weather cache/offset, demand-input, planning-validation, and notebook

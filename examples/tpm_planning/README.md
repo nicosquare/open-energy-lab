@@ -134,17 +134,20 @@ calibration, native/MIO error is at most `1e-6`, and the selected design's
 one-sided held-out 95% risk bound is at most 5%; otherwise the result is
 explicitly exploratory.
 
-Dynamic dependency-free SVGs cover representative TMY days and hourly
+Matplotlib and Seaborn figures cover representative TMY days and hourly
 distributions, fitted/input demand, sample power/controller/SOC/unmet traces,
 train/validation/test risk heatmaps, native SPN versus held-out probability
-with confidence intervals, and the cost-risk frontier.
+with confidence intervals, the cost-risk frontier, and final recommendation
+status.
 
-`ipykernel` is a development dependency, not a core library dependency. Run
-`uv sync`, then select the repository's `.venv/bin/python` as the kernel in VS
-Code or another Jupyter frontend. The frontend itself is not installed by the
-project. Live PVGIS access and full 13,500-row notebook execution are manual
-acceptance activities, not routine CI. The library contracts and reduced
-fixture-backed split/candidate/HiGHS path remain fully offline-tested.
+Notebook visualization dependencies are isolated from the core library. Run
+`uv sync --group notebook`, then select the repository's `.venv/bin/python` as
+the kernel in VS Code or another Jupyter frontend. The group provides
+IPython-kernel support, Matplotlib, and Seaborn; the frontend itself is not
+installed by the project. Live PVGIS access and full 13,500-episode notebook
+execution are manual acceptance activities, not routine CI. The library
+contracts and reduced fixture-backed split/candidate/HiGHS path remain fully
+offline-tested.
 
 ## Required Environment
 
