@@ -48,6 +48,7 @@ class PlanningProblemDefinition:
     shortfall_threshold: float = 0.0
     chance_limit_epsilon: float = 0.0
     cost_terms: Mapping[str, float] = field(default_factory=dict)
+    option_costs: Mapping[str, Mapping[object, float]] = field(default_factory=dict)
     tpm_artifact_reference: str = ""
     risk_evaluation_mode: str = "spn_mip"
     objective_direction: str = "minimize"
@@ -70,9 +71,8 @@ class PlanningProblemDefinition:
         object.__setattr__(self, "decision_features", decision_features)
         object.__setattr__(self, "decision_feature_types", decision_feature_types)
 
-        shortfall_threshold = _coerce_probability(
-            self.shortfall_threshold,
-            field_name="shortfall_threshold",
+        shortfall_threshold = _coerce_non_negative_real(
+            self.shortfall_threshold, field_name="shortfall_threshold"
         )
         chance_limit_epsilon = _coerce_probability(
             self.chance_limit_epsilon,
@@ -83,6 +83,11 @@ class PlanningProblemDefinition:
 
         cost_terms = {str(name): float(value) for name, value in self.cost_terms.items()}
         object.__setattr__(self, "cost_terms", cost_terms)
+        option_costs = {
+            str(name): {option: float(cost) for option, cost in values.items()}
+            for name, values in self.option_costs.items()
+        }
+        object.__setattr__(self, "option_costs", option_costs)
 
         tpm_artifact_reference = str(self.tpm_artifact_reference)
         object.__setattr__(self, "tpm_artifact_reference", tpm_artifact_reference)
@@ -146,6 +151,7 @@ class PlanningProblemAssembly:
     candidate_designs: tuple[PlanningDecisionCandidate, ...]
     piecewise_terms: PiecewisePlanningTerms
     solver_metadata: Mapping[str, object]
+    option_costs: Mapping[str, Mapping[object, float]] = field(default_factory=dict)
     chance_constraint_metadata: Mapping[str, object] = field(default_factory=dict)
     solver_configuration: Mapping[str, object] = field(default_factory=dict)
     approximation_contract: Mapping[str, object] = field(default_factory=dict)
@@ -167,10 +173,8 @@ def assemble_planning_problem(
     risk_target_name = str(
         resolved_artifact.target_definition.get("event_target_name", target_name)
     )
-    if target_name != "shortfall":
-        raise ValueError(
-            f"unsupported planning target {target_name!r}; expected 'shortfall'"
-        )
+    if not target_name:
+        raise ValueError("planning artifact target_name must be non-empty")
     supported_query_mode = str(
         resolved_artifact.target_definition.get("supported_query_mode", "")
     )
@@ -180,8 +184,8 @@ def assemble_planning_problem(
             "to be 'exceedance-probability'"
         )
 
-    if not problem_definition.cost_terms:
-        raise ValueError("cost_terms must be non-empty for first-release planning")
+    if bool(problem_definition.cost_terms) == bool(problem_definition.option_costs):
+        raise ValueError("define exactly one of cost_terms or option_costs")
 
     feature_specs = {
         feature_spec.feature_name: feature_spec
@@ -197,14 +201,19 @@ def assemble_planning_problem(
             "decision_features reference unknown TPM features: " + ", ".join(missing_features)
         )
 
+    active_costs = (
+        problem_definition.option_costs
+        if problem_definition.option_costs
+        else problem_definition.cost_terms
+    )
     missing_cost_terms = [
         feature_name
         for feature_name in problem_definition.decision_features
-        if feature_name not in problem_definition.cost_terms
+        if feature_name not in active_costs
     ]
     if missing_cost_terms:
         raise ValueError(
-            "cost_terms must define deterministic costs for each decision feature: "
+            "cost configuration must define deterministic costs for each decision feature: "
             + ", ".join(missing_cost_terms)
         )
 
@@ -231,6 +240,16 @@ def assemble_planning_problem(
             )
         resolved_decision_feature_types[feature_name] = feature_spec.feature_type
 
+        if problem_definition.option_costs:
+            if feature_spec.feature_type != "categorical":
+                raise ValueError("option_costs require categorical decision features")
+            categories = tuple(feature_spec.ordering or feature_spec.discrete_values)
+            supplied = problem_definition.option_costs[feature_name]
+            if set(supplied) != set(categories):
+                raise ValueError(
+                    f"option_costs for {feature_name!r} must exactly match {categories!r}"
+                )
+
     actual_risk_evaluation_mode = _resolved_risk_evaluation_mode(
         problem_definition,
         artifact=resolved_artifact,
@@ -243,16 +262,16 @@ def assemble_planning_problem(
         )
         if spn_payload is None:
             actual_risk_evaluation_mode = "empirical_dataset"
-    dataset = _load_empirical_dataset(resolved_artifact)
-    raw_rows = _rows_for_candidate_baseline(
-        resolved_artifact,
-        dataset=dataset,
-    )
-    if raw_rows is None:
-        raise ValueError(
-            "planning assembly requires either a fixture-backed planning dataset or "
-            "a persisted SPFlow sidecar with raw training rows"
-        )
+    raw_rows = None
+    if actual_risk_evaluation_mode != "spn_mip":
+        dataset = _load_empirical_dataset(resolved_artifact)
+        raw_rows = _rows_for_candidate_baseline(resolved_artifact, dataset=dataset)
+        if raw_rows is None:
+            raise ValueError(
+                "empirical planning requires fixture data or persisted training rows"
+            )
+        if problem_definition.option_costs:
+            raise ValueError("option_costs require direct spn_mip risk evaluation")
 
     piecewise_terms = build_piecewise_planning_terms(
         resolved_artifact.approximation_metadata,
@@ -268,20 +287,28 @@ def assemble_planning_problem(
         problem_definition.approximation_contract,
         piecewise_terms=piecewise_terms,
     )
-    candidate_designs = _build_candidate_designs(
-        raw_rows,
-        decision_features=problem_definition.decision_features,
-        risk_target_name=risk_target_name,
-        shortfall_target_name=target_name,
-        shortfall_threshold=problem_definition.shortfall_threshold,
-        cost_terms=problem_definition.cost_terms,
+    candidate_designs = (
+        _build_candidate_designs(
+            raw_rows,
+            decision_features=problem_definition.decision_features,
+            risk_target_name=risk_target_name,
+            shortfall_target_name=target_name,
+            shortfall_threshold=problem_definition.shortfall_threshold,
+            cost_terms=problem_definition.cost_terms,
+        )
+        if raw_rows is not None
+        else ()
     )
-    deterministic_fixture_baseline = _build_deterministic_fixture_baseline(
-        candidate_designs,
-        chance_limit_epsilon=problem_definition.chance_limit_epsilon,
-        solver_configuration=problem_definition.solver_configuration,
-        fixture_baseline=problem_definition.fixture_baseline,
-        dataset_fixture_path=_resolved_dataset_path_text(resolved_artifact.provenance),
+    deterministic_fixture_baseline = (
+        _build_deterministic_fixture_baseline(
+            candidate_designs,
+            chance_limit_epsilon=problem_definition.chance_limit_epsilon,
+            solver_configuration=problem_definition.solver_configuration,
+            fixture_baseline=problem_definition.fixture_baseline,
+            dataset_fixture_path=_resolved_dataset_path_text(resolved_artifact.provenance),
+        )
+        if candidate_designs
+        else {"status": "not_applicable"}
     )
     chance_constraint_metadata = {
         "target_name": target_name,
@@ -341,6 +368,9 @@ def assemble_planning_problem(
         chance_limit_epsilon=problem_definition.chance_limit_epsilon,
         objective_direction=problem_definition.objective_direction,
         cost_terms=dict(problem_definition.cost_terms),
+        option_costs={
+            name: dict(values) for name, values in problem_definition.option_costs.items()
+        },
         candidate_designs=candidate_designs,
         piecewise_terms=piecewise_terms,
         solver_metadata=solver_metadata,
@@ -372,6 +402,15 @@ def _coerce_probability(value: object, *, field_name: str) -> float:
     if not 0.0 <= probability <= 1.0:
         raise ValueError(f"{field_name} must be between 0.0 and 1.0")
     return probability
+
+
+def _coerce_non_negative_real(value: object, *, field_name: str) -> float:
+    if not isinstance(value, Real) or isinstance(value, bool):
+        raise ValueError(f"{field_name} must be a non-negative real number")
+    result = float(value)
+    if result < 0.0 or not math.isfinite(result):
+        raise ValueError(f"{field_name} must be a finite non-negative real number")
+    return result
 
 
 def _load_artifact(

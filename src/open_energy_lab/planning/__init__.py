@@ -23,6 +23,37 @@ if TYPE_CHECKING:
         PlanningProblemDefinition,
         assemble_planning_problem,
     )
+    from .study import (
+        AdequacyEventDefinition,
+        BatteryDesignOption,
+        ControllerStudyConfig,
+        GridAvailabilityPolicy,
+        PlanningStudyRequest,
+        SolarDesignOption,
+    )
+    from .study_dataset import (
+        PlanningStudyDatasetManifest,
+        iter_study_rows,
+        load_study_dataset_manifest,
+    )
+    from .study_validation import (
+        CalibrationAssessment,
+        RecommendationAssessment,
+        SPNCandidateScore,
+        assess_calibration,
+        assess_recommendation,
+        brier_score_by_configuration,
+        select_spn_candidate,
+    )
+    from .workflow import (
+        CompiledPlanningStudyTPM,
+        PlanningStudyRunResult,
+        VerifiedPlanningStudySolution,
+        compile_planning_study_tpm,
+        fit_planning_study_tpm,
+        run_planning_study,
+        solve_planning_study,
+    )
 
 _EXPORT_MAP = {
     "PlanningDatasetArtifact": (".dataset", "PlanningDatasetArtifact"),
@@ -41,6 +72,44 @@ _EXPORT_MAP = {
         "PlanningSolverUnavailableError",
     ),
     "solve_planning_problem": (".optional_solver", "solve_planning_problem"),
+    "AdequacyEventDefinition": (".study", "AdequacyEventDefinition"),
+    "BatteryDesignOption": (".study", "BatteryDesignOption"),
+    "ControllerStudyConfig": (".study", "ControllerStudyConfig"),
+    "GridAvailabilityPolicy": (".study", "GridAvailabilityPolicy"),
+    "PlanningStudyRequest": (".study", "PlanningStudyRequest"),
+    "SolarDesignOption": (".study", "SolarDesignOption"),
+    "PlanningStudyDatasetManifest": (
+        ".study_dataset",
+        "PlanningStudyDatasetManifest",
+    ),
+    "iter_study_rows": (".study_dataset", "iter_study_rows"),
+    "load_study_dataset_manifest": (
+        ".study_dataset",
+        "load_study_dataset_manifest",
+    ),
+    "CalibrationAssessment": (".study_validation", "CalibrationAssessment"),
+    "RecommendationAssessment": (
+        ".study_validation",
+        "RecommendationAssessment",
+    ),
+    "SPNCandidateScore": (".study_validation", "SPNCandidateScore"),
+    "assess_calibration": (".study_validation", "assess_calibration"),
+    "assess_recommendation": (".study_validation", "assess_recommendation"),
+    "brier_score_by_configuration": (
+        ".study_validation",
+        "brier_score_by_configuration",
+    ),
+    "select_spn_candidate": (".study_validation", "select_spn_candidate"),
+    "CompiledPlanningStudyTPM": (".workflow", "CompiledPlanningStudyTPM"),
+    "PlanningStudyRunResult": (".workflow", "PlanningStudyRunResult"),
+    "VerifiedPlanningStudySolution": (
+        ".workflow",
+        "VerifiedPlanningStudySolution",
+    ),
+    "compile_planning_study_tpm": (".workflow", "compile_planning_study_tpm"),
+    "fit_planning_study_tpm": (".workflow", "fit_planning_study_tpm"),
+    "run_planning_study": (".workflow", "run_planning_study"),
+    "solve_planning_study": (".workflow", "solve_planning_study"),
 }
 
 __all__ = [
@@ -54,6 +123,29 @@ __all__ = [
     "PlanningSolverDependencyUnavailableError",
     "PlanningSolverUnavailableError",
     "solve_planning_problem",
+    "AdequacyEventDefinition",
+    "BatteryDesignOption",
+    "ControllerStudyConfig",
+    "GridAvailabilityPolicy",
+    "PlanningStudyRequest",
+    "SolarDesignOption",
+    "PlanningStudyDatasetManifest",
+    "iter_study_rows",
+    "load_study_dataset_manifest",
+    "CalibrationAssessment",
+    "RecommendationAssessment",
+    "SPNCandidateScore",
+    "assess_calibration",
+    "assess_recommendation",
+    "brier_score_by_configuration",
+    "select_spn_candidate",
+    "CompiledPlanningStudyTPM",
+    "PlanningStudyRunResult",
+    "VerifiedPlanningStudySolution",
+    "compile_planning_study_tpm",
+    "fit_planning_study_tpm",
+    "run_planning_study",
+    "solve_planning_study",
 ]
 
 

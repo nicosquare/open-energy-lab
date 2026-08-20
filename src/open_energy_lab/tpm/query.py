@@ -365,7 +365,12 @@ def _evaluate_current_spflow_query(
         value = denominator_log_likelihood
 
     raw_rows = runtime_payload.get("raw_rows")
-    total_row_count = len(raw_rows) if isinstance(raw_rows, tuple | list) else 0
+    total_row_count = int(
+        runtime_payload.get(
+            "training_row_count",
+            len(raw_rows) if isinstance(raw_rows, tuple | list) else 0,
+        )
+    )
     result: dict[str, object] = {
         "matched_row_count": 0,
         "total_row_count": total_row_count,

@@ -29,8 +29,10 @@ if TYPE_CHECKING:
     from .fit import (
         TPMArtifactBuildRequest,
         TPMFitConfig,
+        TPMFitMemoryError,
         fit_tpm_artifact,
         fit_tpm_artifact_from_rows,
+        fit_tpm_artifact_from_study_manifest,
     )
     from .mio import (
         SPNModelingTerms,
@@ -98,9 +100,14 @@ _EXPORT_MAP = {
     "infer_feature_role": (".features", "infer_feature_role"),
     "load_feature_schema": (".features", "load_feature_schema"),
     "TPMFitConfig": (".fit", "TPMFitConfig"),
+    "TPMFitMemoryError": (".fit", "TPMFitMemoryError"),
     "TPMArtifactBuildRequest": (".fit", "TPMArtifactBuildRequest"),
     "fit_tpm_artifact": (".fit", "fit_tpm_artifact"),
     "fit_tpm_artifact_from_rows": (".fit", "fit_tpm_artifact_from_rows"),
+    "fit_tpm_artifact_from_study_manifest": (
+        ".fit",
+        "fit_tpm_artifact_from_study_manifest",
+    ),
     "SPNModelingTerms": (".mio", "SPNModelingTerms"),
     "SPNPiecewiseCurveSpec": (".mio", "SPNPiecewiseCurveSpec"),
     "SPNSolveConfig": (".mio", "SPNSolveConfig"),
@@ -196,9 +203,11 @@ __all__ = [
     "infer_feature_role",
     "load_feature_schema",
     "TPMFitConfig",
+    "TPMFitMemoryError",
     "TPMArtifactBuildRequest",
     "fit_tpm_artifact",
     "fit_tpm_artifact_from_rows",
+    "fit_tpm_artifact_from_study_manifest",
     "SPNModelingTerms",
     "SPNPiecewiseCurveSpec",
     "SPNSolveConfig",

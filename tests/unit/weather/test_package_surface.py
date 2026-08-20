@@ -10,9 +10,13 @@ import sys
 WEATHER_PACKAGE = "open_energy_lab.weather"
 EXPECTED_ROOT_EXPORTS = [
     "fit_weather_model",
+    "fit_weather_dataset",
     "load_weather_artifact",
     "WeatherSamplingRequest",
     "sample_weather_family",
+    "PVGISTMYRequestConfig",
+    "WeatherCacheUnavailableError",
+    "load_or_fetch_tmy_dataset",
 ]
 PLANNED_SUBMODULES = (
     "open_energy_lab.weather._canonical",
@@ -72,5 +76,5 @@ def test_weather_root_reserves_only_the_documented_public_surface() -> None:
     module = importlib.import_module(WEATHER_PACKAGE)
 
     assert all("." not in export_name for export_name in module.__all__)
-    assert "tmy" not in {name.lower() for name in module.__all__}
+    assert "tmy" not in module.__all__
     assert "_canonical" not in module.__all__

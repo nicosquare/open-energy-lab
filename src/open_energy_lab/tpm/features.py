@@ -337,6 +337,24 @@ def build_spflow_training_tensor(
             [spec.normalize_value(row[spec.feature_name]) for spec in schema]
         )
 
+    # Maximum-likelihood leaf fits are undefined at zero variance or infinite
+    # discrete logits. Keep persisted values unchanged while supplying a
+    # deterministic backend-only regularization observation.
+    for column_index, spec in enumerate(schema):
+        if len(matrix) < 2:
+            continue
+        values = [row[column_index] for row in matrix]
+        if min(values) != max(values):
+            continue
+        if spec.feature_type == "continuous":
+            for row_index, row in enumerate(matrix):
+                row[column_index] = values[0] + (row_index % 2) * 1e-6
+        elif spec.feature_type in {"binary", "categorical"} and len(spec.ordering) >= 2:
+            current_index = int(values[0])
+            matrix[-1][column_index] = float(
+                1 if current_index == 0 else 0
+            )
+
     import torch
 
     return torch.tensor(matrix, dtype=torch.float64, device="cpu")

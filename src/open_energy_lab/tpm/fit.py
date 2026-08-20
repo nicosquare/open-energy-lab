@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 import tempfile
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from numbers import Real
 from pathlib import Path
@@ -75,6 +75,7 @@ class TPMFitConfig:
     learn_mspn_kwargs: Mapping[str, object] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
     execution_mode: str = "production"
+    persist_training_rows: bool = True
 
     def __post_init__(self) -> None:
         backend_name = str(self.backend_name)
@@ -120,6 +121,13 @@ class TPMFitConfig:
                 "execution_mode must be 'production' or 'fixture_replay'"
             )
         object.__setattr__(self, "execution_mode", execution_mode)
+
+        if not isinstance(self.persist_training_rows, bool):
+            raise TypeError("persist_training_rows must be boolean")
+
+
+class TPMFitMemoryError(MemoryError):
+    """Raised before fitting when the selected dense tensor exceeds its budget."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -442,6 +450,119 @@ def fit_tpm_artifact_from_rows(
     return artifact
 
 
+def fit_tpm_artifact_from_study_manifest(
+    manifest: object,
+    *,
+    output_path: str | Path,
+    fit_feature_names: Sequence[str] | None = None,
+    max_tensor_bytes: int = 1_073_741_824,
+    fit_config: TPMFitConfig | None = None,
+    spflow_backend: Any | None = None,
+) -> TPMArtifact:
+    """Fit a compact TPM from a file-backed schema-v2 planning-study manifest."""
+
+    from open_energy_lab.planning.study_dataset import (
+        PlanningStudyDatasetManifest,
+        iter_study_rows,
+        load_study_dataset_manifest,
+    )
+
+    resolved = (
+        manifest
+        if isinstance(manifest, PlanningStudyDatasetManifest)
+        else load_study_dataset_manifest(manifest)
+    )
+    if not resolved.source_path:
+        raise ValueError("study TPM fitting requires a file-backed manifest")
+    metadata = dict(resolved.metadata)
+    request_metadata = metadata.get("study_request")
+    if not isinstance(request_metadata, Mapping):
+        raise ValueError("study manifest metadata must include study_request")
+    event_metadata = request_metadata.get("adequacy_event")
+    if not isinstance(event_metadata, Mapping):
+        raise ValueError("study_request must include adequacy_event metadata")
+    target_name = str(event_metadata.get("kind", ""))
+    event_target_name = str(metadata.get("active_event_target", ""))
+    if not target_name or not event_target_name:
+        raise ValueError("study manifest must identify the adequacy target and event")
+
+    selected = tuple(
+        str(name)
+        for name in (
+            fit_feature_names
+            if fit_feature_names is not None
+            else metadata.get("default_fit_feature_names", ())
+        )
+    )
+    required = ("battery_option_id", "solar_option_id", target_name, event_target_name)
+    if not selected or len(set(selected)) != len(selected):
+        raise ValueError("fit_feature_names must be non-empty and unique")
+    missing_required = [name for name in required if name not in selected]
+    if missing_required:
+        raise ValueError(
+            "compact study fit must include decision, target, and event features: "
+            + ", ".join(missing_required)
+        )
+    unknown = [name for name in selected if name not in resolved.column_order]
+    if unknown:
+        raise ValueError("fit_feature_names reference unknown columns: " + ", ".join(unknown))
+    if isinstance(max_tensor_bytes, bool) or int(max_tensor_bytes) <= 0:
+        raise ValueError("max_tensor_bytes must be a positive integer")
+    estimated_tensor_bytes = resolved.row_count * len(selected) * 8
+    if estimated_tensor_bytes > int(max_tensor_bytes):
+        raise TPMFitMemoryError(
+            "selected TPM tensor requires "
+            f"{estimated_tensor_bytes} bytes, exceeding max_tensor_bytes={int(max_tensor_bytes)}"
+        )
+
+    compact_rows = tuple(
+        {name: row[name] for name in selected}
+        for row in iter_study_rows(resolved)
+    )
+    configured = (
+        replace(fit_config, persist_training_rows=False)
+        if fit_config is not None
+        else TPMFitConfig(
+            training_random_seed=int(
+                request_metadata.get("random_seed", CANONICAL_TPM_RANDOM_SEED)
+            ),
+            spn_payload_format="spflow-model-sidecar",
+            persist_training_rows=False,
+        )
+    )
+    return fit_tpm_artifact_from_rows(
+        compact_rows,
+        build_request=TPMArtifactBuildRequest(
+            artifact_id=f"tpm-study:{resolved.dataset_id}",
+            dataset_reference=resolved.dataset_id,
+            decision_features=("battery_option_id", "solar_option_id"),
+            target_name=target_name,
+            event_target_name=event_target_name,
+            target_threshold=float(event_metadata["threshold"]),
+            feature_roles={
+                "battery_option_id": "decision",
+                "solar_option_id": "decision",
+                target_name: "target",
+                event_target_name: "target",
+            },
+            provenance={
+                "study_manifest_path": resolved.source_path.as_posix(),
+                "study_semantic_sha256": resolved.semantic_sha256,
+                "study_request_fingerprint": resolved.request_fingerprint,
+                "study_row_count": resolved.row_count,
+                "fit_feature_names": list(selected),
+                "estimated_tensor_bytes": estimated_tensor_bytes,
+                "training_random_seed": int(
+                    request_metadata.get("random_seed", CANONICAL_TPM_RANDOM_SEED)
+                ),
+            },
+        ),
+        output_path=Path(output_path),
+        fit_config=configured,
+        spflow_backend=spflow_backend,
+    )
+
+
 __all__ = [
     "CANONICAL_OUTPUT_MODES",
     "CANONICAL_TPM_RANDOM_SEED",
@@ -450,9 +571,11 @@ __all__ = [
     "PIECEWISE_LEGACY_EVIDENCE_PATHS",
     "TPMArtifactBuildRequest",
     "TPMFitConfig",
+    "TPMFitMemoryError",
     "TPM_ROBUSTNESS_RANDOM_SEEDS",
     "fit_tpm_artifact",
     "fit_tpm_artifact_from_rows",
+    "fit_tpm_artifact_from_study_manifest",
     "learn_current_spflow_structure",
     "translate_spflow_fit_configuration",
 ]
@@ -545,8 +668,17 @@ def _fit_and_persist_spflow_model(
             "learn_spn_kwargs": dict(translated_kwargs),
             "column_order": list(training_data.column_order),
             "feature_schema": [spec.to_dict() for spec in feature_schema],
-            "normalized_rows": [dict(row) for row in training_data.normalized_rows],
-            "raw_rows": [dict(row) for row in training_data.rows],
+            "normalized_rows": (
+                [dict(row) for row in training_data.normalized_rows]
+                if config.persist_training_rows
+                else []
+            ),
+            "raw_rows": (
+                [dict(row) for row in training_data.rows]
+                if config.persist_training_rows
+                else []
+            ),
+            "training_row_count": len(training_data.rows),
             "event_target_index": training_data.column_order.index(event_target_name),
             "query_strategy": "spflow",
             "fit_summary": dict(fit_summary),

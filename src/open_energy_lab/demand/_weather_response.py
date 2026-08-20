@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from math import isclose
 
 from ._aligned_history import AlignedTrainingHistory
@@ -177,7 +178,11 @@ def _build_design_matrix(
 ) -> list[list[float]]:
     design_matrix: list[list[float]] = []
     for row_index in range(dataset.record_count):
-        step_index = row_index % intervals_per_day
+        local_timestamp = datetime.fromisoformat(
+            dataset.local_civil_step_labels[row_index]
+        )
+        local_hour = local_timestamp.hour + (local_timestamp.minute / 60.0)
+        step_index = int(round(local_hour / dataset.timestep_hours)) % intervals_per_day
         row = [0.0] * (intervals_per_day + len(required_weather_field_order))
         row[step_index] = 1.0
         for offset, field_name in enumerate(required_weather_field_order):

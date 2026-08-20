@@ -323,6 +323,7 @@ def _build_pyomo_model_handoff(
                 problem_id=assembled_problem.problem_id,
                 spn_payload=assembled_problem.spn_mip_payload,
                 cost_terms=assembled_problem.cost_terms,
+                option_costs=assembled_problem.option_costs,
                 chance_limit_epsilon=assembled_problem.chance_limit_epsilon,
                 numeric_tolerance=solve_config.numeric_tolerance,
                 piecewise_terms=assembled_problem.piecewise_terms,
@@ -446,6 +447,7 @@ def _build_native_pyomo_spn_model(
     problem_id: str,
     spn_payload: Mapping[str, object],
     cost_terms: Mapping[str, float],
+    option_costs: Mapping[str, Mapping[object, float]],
     chance_limit_epsilon: float,
     numeric_tolerance: float,
     piecewise_terms: object,
@@ -478,6 +480,10 @@ def _build_native_pyomo_spn_model(
         problem_id=problem_id,
         spn_payload=dict(spn_payload),
         cost_terms={str(key): float(value) for key, value in cost_terms.items()},
+        option_costs={
+            str(name): {option: float(cost) for option, cost in values.items()}
+            for name, values in option_costs.items()
+        },
         chance_limit_epsilon=float(chance_limit_epsilon),
         numeric_tolerance=float(numeric_tolerance),
         piecewise_terms=piecewise_terms,

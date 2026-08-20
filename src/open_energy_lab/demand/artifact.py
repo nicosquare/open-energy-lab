@@ -442,9 +442,10 @@ def validate_sampling_weather_family(
 
     required_fields = set(artifact.required_weather_field_order)
     normalized_traces: list[object] = []
-    for scenario_index, trace in enumerate(sampled_traces):
+    expected_start = int(getattr(weather_family, "scenario_index_start", 0))
+    for position, trace in enumerate(sampled_traces):
         trace_index = int(getattr(trace, "scenario_index"))
-        if trace_index != scenario_index:
+        if trace_index != expected_start + position:
             raise ValueError("weather family scenario ordering must be contiguous")
 
         trace_timestep_hours = float(getattr(trace, "timestep_hours"))

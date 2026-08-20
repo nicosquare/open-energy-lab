@@ -8,9 +8,11 @@ from dataclasses import asdict, is_dataclass
 import pytest
 
 from open_energy_lab.weather.artifact import load_weather_artifact
+from open_energy_lab.weather.fit import WeatherFitConfig, fit_weather_model
 from open_energy_lab.weather.sampling import WeatherSamplingRequest, sample_weather_family
 from tests.integration.weather.fixture_utils import (
     FITTED_WEATHER_ARTIFACT_FIXTURE_PATH,
+    RECORDED_PVGIS_TMY_RESPONSE_FIXTURE_PATH,
     load_weather_fixture,
 )
 
@@ -134,4 +136,59 @@ def test_sample_weather_family_rejects_expected_timestep_mismatch() -> None:
             artifact,
             request=request,
             expected_timestep_hours=12.0,
+        )
+
+
+def test_hourly_local_start_step_slices_daily_weather_and_timestamps() -> None:
+    artifact = fit_weather_model(
+        24.4539,
+        54.3773,
+        recorded_response=load_weather_fixture(
+            RECORDED_PVGIS_TMY_RESPONSE_FIXTURE_PATH
+        ),
+        timezone_name="Asia/Dubai",
+        fit_config=WeatherFitConfig(timestep_hours=1.0),
+    )
+    midnight = sample_weather_family(
+        artifact,
+        request=WeatherSamplingRequest(
+            num_steps=8,
+            scenario_count=1,
+            family_seed=13,
+            local_start_step=0,
+        ),
+    )
+    shifted = sample_weather_family(
+        artifact,
+        request=WeatherSamplingRequest(
+            num_steps=3,
+            scenario_count=1,
+            family_seed=13,
+            local_start_step=5,
+        ),
+    )
+
+    midnight_trace = midnight.sampled_traces[0]
+    shifted_trace = shifted.sampled_traces[0]
+    for field_name in artifact.canonical_field_order[1:]:
+        assert shifted_trace.canonical_field_series[field_name] == (
+            midnight_trace.canonical_field_series[field_name][5:8]
+        )
+    assert shifted_trace.timestamp_utc == midnight_trace.timestamp_utc[5:8]
+    assert shifted.local_start_step == 5
+
+
+@pytest.mark.parametrize("start_step", [-1, 24])
+def test_local_start_step_must_be_within_one_local_day(start_step: int) -> None:
+    artifact = _load_supported_artifact()
+
+    with pytest.raises(ValueError, match="local_start_step"):
+        sample_weather_family(
+            artifact,
+            request=WeatherSamplingRequest(
+                num_steps=1,
+                scenario_count=1,
+                family_seed=1,
+                local_start_step=start_step,
+            ),
         )

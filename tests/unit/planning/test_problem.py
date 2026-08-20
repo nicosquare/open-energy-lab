@@ -80,7 +80,7 @@ def test_planning_problem_definition_defaults_to_spn_mip_risk_mode() -> None:
     ("field_name", "invalid_value"),
     (
         ("shortfall_threshold", -0.01),
-        ("shortfall_threshold", 1.01),
+        ("shortfall_threshold", float("inf")),
         ("shortfall_threshold", True),
         ("chance_limit_epsilon", -0.01),
         ("chance_limit_epsilon", 1.01),

@@ -216,7 +216,8 @@ def _validate_alignment(
     weather_indices = [int(getattr(trace, "scenario_index")) for trace in weather_traces]
     design_indices = [_scenario_index_from_design_row(row) for row in design_rows]
 
-    expected_order = list(range(scenario_count))
+    expected_start = scenario_indices[0]
+    expected_order = list(range(expected_start, expected_start + scenario_count))
     if scenario_indices != expected_order:
         raise ValueError("simulator scenario order must be scenario_index ascending")
     if weather_indices != scenario_indices:

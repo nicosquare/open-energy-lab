@@ -11,22 +11,35 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .artifact import load_weather_artifact
-    from .fit import fit_weather_model
+    from .fit import fit_weather_dataset, fit_weather_model
     from .sampling import WeatherSamplingRequest, sample_weather_family
+    from .tmy import (
+        PVGISTMYRequestConfig,
+        WeatherCacheUnavailableError,
+        load_or_fetch_tmy_dataset,
+    )
 
 
 _EXPORT_MAP = {
     "fit_weather_model": (".fit", "fit_weather_model"),
+    "fit_weather_dataset": (".fit", "fit_weather_dataset"),
     "load_weather_artifact": (".artifact", "load_weather_artifact"),
     "WeatherSamplingRequest": (".sampling", "WeatherSamplingRequest"),
     "sample_weather_family": (".sampling", "sample_weather_family"),
+    "PVGISTMYRequestConfig": (".tmy", "PVGISTMYRequestConfig"),
+    "WeatherCacheUnavailableError": (".tmy", "WeatherCacheUnavailableError"),
+    "load_or_fetch_tmy_dataset": (".tmy", "load_or_fetch_tmy_dataset"),
 }
 
 __all__ = [
     "fit_weather_model",
+    "fit_weather_dataset",
     "load_weather_artifact",
     "WeatherSamplingRequest",
     "sample_weather_family",
+    "PVGISTMYRequestConfig",
+    "WeatherCacheUnavailableError",
+    "load_or_fetch_tmy_dataset",
 ]
 
 

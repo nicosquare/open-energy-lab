@@ -434,10 +434,6 @@ def evaluate_spflow_query(
     if runtime_payload is None:
         return None
 
-    raw_rows = runtime_payload.get("raw_rows")
-    if not isinstance(raw_rows, tuple | list):
-        raise TypeError("persisted SPFlow payload must include raw_rows")
-
     query_strategy = str(runtime_payload.get("query_strategy", "table"))
     if query_strategy == "spflow":
         return _adapter_from_runtime_payload(runtime_payload).evaluate_runtime_query(
@@ -450,6 +446,9 @@ def evaluate_spflow_query(
             numeric_tolerance=numeric_tolerance,
         )
 
+    raw_rows = runtime_payload.get("raw_rows")
+    if not isinstance(raw_rows, tuple | list):
+        raise TypeError("table-backed SPFlow payload must include raw_rows")
     matched_rows = [
         row
         for row in raw_rows
@@ -492,6 +491,8 @@ def build_spn_mip_payload(
 ) -> dict[str, object] | None:
     """Build one solver-facing SPN handoff payload from a persisted sidecar."""
 
+    from .features import load_feature_schema
+
     if target_threshold is None and shortfall_threshold is None:
         raise ValueError("target_threshold must be provided")
     if target_threshold is not None and shortfall_threshold is not None:
@@ -509,13 +510,14 @@ def build_spn_mip_payload(
     if not _runtime_payload_supports_spn_mip(runtime_payload):
         return None
 
-    raw_rows = runtime_payload.get("raw_rows")
-    if not isinstance(raw_rows, tuple | list):
-        raise TypeError("persisted SPFlow payload must include raw_rows")
-
+    feature_specs = {
+        spec.feature_name: spec
+        for spec in load_feature_schema(runtime_payload["feature_schema"])
+    }
     decision_domains = {
         feature_name: list(
-            dict.fromkeys(row[feature_name] for row in raw_rows if feature_name in row)
+            feature_specs[feature_name].ordering
+            or feature_specs[feature_name].discrete_values
         )
         for feature_name in decision_features
     }
@@ -539,7 +541,12 @@ def build_spn_mip_payload(
             artifact.approximation_metadata.get("sum_encoding_mode", "piecewise")
         ),
         "query_strategy": runtime_payload["query_strategy"],
-        "row_count": len(raw_rows),
+        "row_count": int(
+            runtime_payload.get(
+                "training_row_count",
+                len(runtime_payload.get("raw_rows", ())),
+            )
+        ),
         "conditional_models": conditional_models,
     }
 

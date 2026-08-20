@@ -27,6 +27,8 @@ class DemandSamplingRequest:
     num_steps: int
     scenario_count: int
     paired_family_seed: int
+    scenario_index_start: int = 0
+    local_start_step: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +57,13 @@ class DemandScenarioFamily:
     num_steps: int
     timestep_hours: float
     sampled_traces: tuple[SampledDemandTrace, ...]
+    scenario_index_start: int = 0
+
+    @property
+    def local_start_step(self) -> int:
+        marker = ":local-start-"
+        identity = self.sampled_traces[0].derived_identity if self.sampled_traces else ""
+        return int(identity.rsplit(marker, maxsplit=1)[1]) if marker in identity else 0
 
 
 def sample_demand_family(
@@ -78,6 +87,11 @@ def sample_demand_family(
         expected_scenario_count=request.scenario_count,
         paired_family_seed=request.paired_family_seed,
     )
+    weather_local_start = int(getattr(weather_family, "local_start_step", 0))
+    if weather_local_start != request.local_start_step:
+        raise ValueError(
+            "demand local_start_step must match the sampled weather family"
+        )
 
     intervals_per_day = _intervals_per_day(loaded_artifact)
     shared_scales = _shared_residual_scales(loaded_artifact)
@@ -90,6 +104,8 @@ def sample_demand_family(
         paired_family_seed=request.paired_family_seed,
         scenario_count=request.scenario_count,
         num_steps=request.num_steps,
+        scenario_index_start=request.scenario_index_start,
+        local_start_step=request.local_start_step,
     )
 
     sampled_traces = tuple(
@@ -102,8 +118,10 @@ def sample_demand_family(
             cholesky_factor=cholesky_factor,
             paired_family_seed=request.paired_family_seed,
             scenario_index=scenario_index,
+            local_start_step=request.local_start_step,
         )
-        for scenario_index, weather_trace in enumerate(sampled_weather_traces)
+        for weather_trace in sampled_weather_traces
+        for scenario_index in (int(getattr(weather_trace, "scenario_index")),)
     )
 
     return DemandScenarioFamily(
@@ -115,6 +133,7 @@ def sample_demand_family(
         num_steps=request.num_steps,
         timestep_hours=loaded_artifact.timestep_hours,
         sampled_traces=sampled_traces,
+        scenario_index_start=request.scenario_index_start,
     )
 
 
@@ -154,6 +173,14 @@ def _validate_request(request: DemandSamplingRequest) -> None:
         raise ValueError("num_steps must be positive")
     if request.scenario_count <= 0:
         raise ValueError("scenario_count must be positive")
+    if isinstance(request.scenario_index_start, bool) or request.scenario_index_start < 0:
+        raise ValueError("scenario_index_start must be a non-negative integer")
+    if isinstance(request.local_start_step, bool) or not isinstance(
+        request.local_start_step, int
+    ):
+        raise ValueError("local_start_step must be a non-negative integer")
+    if request.local_start_step < 0:
+        raise ValueError("local_start_step must be a non-negative integer")
 
 
 def _intervals_per_day(artifact: DemandArtifact) -> int:
@@ -223,6 +250,7 @@ def _sample_trace(
     cholesky_factor: tuple[tuple[float, float], tuple[float, float]],
     paired_family_seed: int,
     scenario_index: int,
+    local_start_step: int,
 ) -> SampledDemandTrace:
     weather_trace_reference = str(getattr(weather_trace, "derived_identity"))
     canonical_field_series = getattr(weather_trace, "canonical_field_series")
@@ -233,10 +261,19 @@ def _sample_trace(
         scenario_index=scenario_index,
     )
 
+    if local_start_step >= intervals_per_day:
+        raise ValueError("local_start_step must be smaller than intervals_per_day")
+    for _ in range(local_start_step):
+        _sample_correlated_pair(
+            rng=scenario_rng,
+            cholesky_factor=cholesky_factor,
+            scales=shared_scales,
+        )
+
     non_thermal_values: list[float] = []
     cooling_values: list[float] = []
     for step_index in range(len(timestamp_utc)):
-        local_step_index = step_index % intervals_per_day
+        local_step_index = (local_start_step + step_index) % intervals_per_day
         non_thermal_base = _baseline_with_weather(
             output_model=artifact.non_thermal_electric_model,
             baseline_field_name="local_step_baseline_kw",
@@ -261,9 +298,9 @@ def _sample_trace(
         non_thermal_values.append(max(0.0, non_thermal_base + correlated_noise[0]))
         cooling_values.append(max(0.0, cooling_base + correlated_noise[1]))
 
-    derived_identity = (
-        f"{artifact.artifact_id}:weather-{paired_family_seed}:scenario-{scenario_index}"
-    )
+    derived_identity = f"{artifact.artifact_id}:weather-{paired_family_seed}:scenario-{scenario_index}"
+    if local_start_step:
+        derived_identity = f"{derived_identity}:local-start-{local_start_step}"
     return SampledDemandTrace(
         scenario_index=scenario_index,
         paired_family_seed=paired_family_seed,
@@ -335,12 +372,19 @@ def _family_id(
     paired_family_seed: int,
     scenario_count: int,
     num_steps: int,
+    scenario_index_start: int = 0,
+    local_start_step: int = 0,
 ) -> str:
+    identity = (
+        f"{artifact_id}|{weather_family_id}|{paired_family_seed}|"
+        f"{scenario_count}|{num_steps}"
+    )
+    if scenario_index_start:
+        identity = f"{identity}|{scenario_index_start}"
+    if local_start_step:
+        identity = f"{identity}|local-start-{local_start_step}"
     digest = sha256(
-        (
-            f"{artifact_id}|{weather_family_id}|{paired_family_seed}|"
-            f"{scenario_count}|{num_steps}"
-        ).encode("utf-8")
+        identity.encode("utf-8")
     ).hexdigest()[:12]
     return f"demand-family:{digest}"
 

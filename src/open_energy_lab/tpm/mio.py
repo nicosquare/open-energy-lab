@@ -969,6 +969,7 @@ def build_spn_chance_model(
     problem_id: str,
     spn_payload: Mapping[str, object],
     cost_terms: Mapping[str, float],
+    option_costs: Mapping[str, Mapping[object, float]] | None = None,
     chance_limit_epsilon: float,
     numeric_tolerance: float,
     piecewise_terms: object,
@@ -1008,16 +1009,23 @@ def build_spn_chance_model(
     model._open_energy_lab_decision_decoders = {}
 
     total_cost = 0.0
+    resolved_option_costs = dict(option_costs or {})
     for feature_name in decision_features:
         if feature_name not in feature_by_name:
             raise ValueError(f"decision feature {feature_name!r} not present in feature_schema")
         feature_spec = feature_by_name[feature_name]
-        coefficient = float(cost_terms[feature_name])
+        per_option_costs = resolved_option_costs.get(feature_name)
+        if per_option_costs is None and feature_name not in cost_terms:
+            raise ValueError(f"missing cost definition for {feature_name!r}")
+        coefficient = (
+            1.0 if per_option_costs is not None else float(cost_terms[feature_name])
+        )
         decision_payload = _add_decision_variable(
             backend,
             model,
             feature_spec=feature_spec,
             feature_name=feature_name,
+            option_costs=per_option_costs,
         )
         model._open_energy_lab_decision_variables[feature_name] = decision_payload
         model._open_energy_lab_decision_decoders[feature_name] = _decision_decoder(feature_spec)
@@ -1068,6 +1076,7 @@ def build_spn_chance_model_from_artifact(
     problem_id: str,
     decision_features: Sequence[str],
     cost_terms: Mapping[str, float],
+    option_costs: Mapping[str, Mapping[object, float]] | None = None,
     chance_limit_epsilon: float,
     target_threshold: float | None = None,
     numeric_tolerance: float = 1e-9,
@@ -1108,6 +1117,7 @@ def build_spn_chance_model_from_artifact(
         problem_id=problem_id,
         spn_payload=spn_payload,
         cost_terms=cost_terms,
+        option_costs=option_costs,
         chance_limit_epsilon=float(chance_limit_epsilon),
         numeric_tolerance=float(numeric_tolerance),
         piecewise_terms=resolved_piecewise_terms,
@@ -1194,6 +1204,7 @@ def solve_spn_chance_model_from_artifact(
     problem_id: str,
     decision_features: Sequence[str],
     cost_terms: Mapping[str, float],
+    option_costs: Mapping[str, Mapping[object, float]] | None = None,
     chance_limit_epsilon: float,
     target_threshold: float | None = None,
     numeric_tolerance: float = 1e-9,
@@ -1210,6 +1221,7 @@ def solve_spn_chance_model_from_artifact(
         problem_id=problem_id,
         decision_features=decision_features,
         cost_terms=cost_terms,
+        option_costs=option_costs,
         chance_limit_epsilon=chance_limit_epsilon,
         target_threshold=target_threshold,
         numeric_tolerance=numeric_tolerance,
@@ -1329,6 +1341,7 @@ def _add_decision_variable(
     *,
     feature_spec: TPMFeatureSpec,
     feature_name: str,
+    option_costs: Mapping[object, float] | None = None,
 ) -> dict[str, object]:
     if feature_spec.feature_type == "continuous":
         var = backend.Var(bounds=(0.0, 1.0))
@@ -1357,6 +1370,10 @@ def _add_decision_variable(
 
     if feature_spec.feature_type == "categorical":
         categories = tuple(feature_spec.ordering or feature_spec.discrete_values)
+        if option_costs is not None and set(option_costs) != set(categories):
+            raise ValueError(
+                f"option_costs for {feature_name!r} must exactly match {categories!r}"
+            )
         index_set = backend.Set(initialize=tuple(range(len(categories))), ordered=True)
         model.add_component(f"decision_{feature_name}_set", index_set)
         var = backend.Var(index_set, domain=backend.Binary)
@@ -1369,7 +1386,12 @@ def _add_decision_variable(
             "kind": "categorical",
             "normalized_var": var,
             "category_values": categories,
-            "cost_expression": 0.0,
+            "cost_expression": (
+                sum(float(option_costs[category]) * var[index]
+                    for index, category in enumerate(categories))
+                if option_costs is not None
+                else 0.0
+            ),
         }
 
     raise ValueError(

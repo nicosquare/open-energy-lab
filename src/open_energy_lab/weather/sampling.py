@@ -23,6 +23,8 @@ class WeatherSamplingRequest:
     num_steps: int
     scenario_count: int
     family_seed: int
+    scenario_index_start: int = 0
+    local_start_step: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +52,13 @@ class WeatherScenarioFamily:
     timestep_hours: float
     sampled_traces: tuple[SampledWeatherTrace, ...]
     blackout_traces: tuple[object, ...] = ()
+    scenario_index_start: int = 0
+
+    @property
+    def local_start_step(self) -> int:
+        marker = ":local-start-"
+        identity = self.sampled_traces[0].derived_identity if self.sampled_traces else ""
+        return int(identity.rsplit(marker, maxsplit=1)[1]) if marker in identity else 0
 
 
 def sample_weather_family(
@@ -76,6 +85,10 @@ def sample_weather_family(
         raise ValueError(
             "cloud_event_model start_probability_by_local_step must align with intervals_per_day"
         )
+    if request.local_start_step >= intervals_per_day:
+        raise ValueError(
+            "local_start_step must be smaller than the artifact intervals_per_day"
+        )
 
     mean_vector = _numeric_vector(
         base_parameters.get("mean_vector"),
@@ -94,12 +107,14 @@ def sample_weather_family(
 
     physical_bounds_policy = _physical_bounds_policy(loaded_artifact)
     cholesky_factor = _cholesky_factor(covariance_matrix)
-    day_count = ceil(request.num_steps / intervals_per_day)
+    day_count = ceil((request.local_start_step + request.num_steps) / intervals_per_day)
     family_id = _family_id(
         artifact_id=loaded_artifact.artifact_id,
         family_seed=request.family_seed,
         scenario_count=request.scenario_count,
         num_steps=request.num_steps,
+        scenario_index_start=request.scenario_index_start,
+        local_start_step=request.local_start_step,
     )
 
     sampled_traces = tuple(
@@ -114,8 +129,12 @@ def sample_weather_family(
             scenario_index=scenario_index,
             day_count=day_count,
             num_steps=request.num_steps,
+            local_start_step=request.local_start_step,
         )
-        for scenario_index in range(request.scenario_count)
+        for scenario_index in range(
+            request.scenario_index_start,
+            request.scenario_index_start + request.scenario_count,
+        )
     )
 
     return WeatherScenarioFamily(
@@ -126,6 +145,7 @@ def sample_weather_family(
         num_steps=request.num_steps,
         timestep_hours=loaded_artifact.timestep_hours,
         sampled_traces=sampled_traces,
+        scenario_index_start=request.scenario_index_start,
     )
 
 
@@ -157,6 +177,14 @@ def _validate_request(request: WeatherSamplingRequest) -> None:
         raise ValueError("num_steps must be positive")
     if request.scenario_count <= 0:
         raise ValueError("scenario_count must be positive")
+    if isinstance(request.scenario_index_start, bool) or request.scenario_index_start < 0:
+        raise ValueError("scenario_index_start must be a non-negative integer")
+    if isinstance(request.local_start_step, bool) or not isinstance(
+        request.local_start_step, int
+    ):
+        raise ValueError("local_start_step must be a non-negative integer")
+    if request.local_start_step < 0:
+        raise ValueError("local_start_step must be a non-negative integer")
 
 
 def _field_order(artifact: WeatherArtifact) -> tuple[str, ...]:
@@ -218,6 +246,7 @@ def _sample_trace(
     scenario_index: int,
     day_count: int,
     num_steps: int,
+    local_start_step: int,
 ) -> SampledWeatherTrace:
     scenario_rng = _seeded_random(
         "weather-family",
@@ -263,22 +292,24 @@ def _sample_trace(
             for annotation in overlay_result.cloud_event_annotations
         )
 
+    window_end = local_start_step + num_steps
     trimmed_series = {
-        field_name: tuple(values[:num_steps])
+        field_name: tuple(values[local_start_step:window_end])
         for field_name, values in concatenated_series.items()
     }
-    trimmed_annotations = tuple(
-        annotation
-        for annotation in annotations
-        if annotation.start_index < num_steps
+    trimmed_annotations = _slice_annotations(
+        annotations,
+        start_step=local_start_step,
+        end_step=window_end,
     )
     timestamp_utc = _timestamp_sequence(
         artifact=artifact,
         num_steps=num_steps,
+        local_start_step=local_start_step,
     )
-    derived_identity = (
-        f"{artifact.artifact_id}:family-{family_seed}:scenario-{scenario_index}"
-    )
+    derived_identity = f"{artifact.artifact_id}:family-{family_seed}:scenario-{scenario_index}"
+    if local_start_step:
+        derived_identity = f"{derived_identity}:local-start-{local_start_step}"
     return SampledWeatherTrace(
         scenario_index=scenario_index,
         family_seed=family_seed,
@@ -357,12 +388,18 @@ def _timestamp_sequence(
     *,
     artifact: WeatherArtifact,
     num_steps: int,
+    local_start_step: int,
 ) -> tuple[str, ...]:
-    first_timestamp = str(artifact.training_record_summary["first_timestamp_utc"])
+    first_timestamp = str(
+        artifact.base_model_parameters.get(
+            "sampling_anchor_timestamp_utc",
+            artifact.training_record_summary["first_timestamp_utc"],
+        )
+    )
     timestamp = datetime.fromisoformat(first_timestamp.replace("Z", "+00:00"))
     local_timezone = ZoneInfo(artifact.timezone_name)
-    local_timestamp = timestamp.astimezone(local_timezone)
     delta = timedelta(hours=artifact.timestep_hours)
+    local_timestamp = timestamp.astimezone(local_timezone) + (delta * local_start_step)
 
     timestamps = []
     for _ in range(num_steps):
@@ -379,9 +416,16 @@ def _family_id(
     family_seed: int,
     scenario_count: int,
     num_steps: int,
+    scenario_index_start: int = 0,
+    local_start_step: int = 0,
 ) -> str:
+    identity = f"{artifact_id}|{family_seed}|{scenario_count}|{num_steps}"
+    if scenario_index_start:
+        identity = f"{identity}|{scenario_index_start}"
+    if local_start_step:
+        identity = f"{identity}|local-start-{local_start_step}"
     digest = sha1(
-        f"{artifact_id}|{family_seed}|{scenario_count}|{num_steps}".encode("utf-8")
+        identity.encode("utf-8")
     ).hexdigest()[:12]
     return f"weather-family:{digest}"
 
@@ -396,6 +440,29 @@ def _seeded_random(
         f"{namespace}:{family_seed}:{scenario_index}".encode("utf-8")
     ).digest()
     return Random(int.from_bytes(seed_bytes[:8], byteorder="big", signed=False))
+
+
+def _slice_annotations(
+    annotations: Sequence[CloudEventAnnotation],
+    *,
+    start_step: int,
+    end_step: int,
+) -> tuple[CloudEventAnnotation, ...]:
+    sliced: list[CloudEventAnnotation] = []
+    for annotation in annotations:
+        annotation_end = annotation.start_index + annotation.duration_steps
+        overlap_start = max(annotation.start_index, start_step)
+        overlap_end = min(annotation_end, end_step)
+        if overlap_start >= overlap_end:
+            continue
+        sliced.append(
+            CloudEventAnnotation(
+                start_index=overlap_start - start_step,
+                duration_steps=overlap_end - overlap_start,
+                attenuation_fraction=annotation.attenuation_fraction,
+            )
+        )
+    return tuple(sliced)
 
 
 __all__ = [
