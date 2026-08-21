@@ -11,6 +11,22 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from .activation import (
+        ACTIVATION_SCHEMA_VERSION,
+        ACTIVATION_SIGN_SEMANTICS,
+        ACTIVATION_VALUE_SEMANTICS,
+        SUPPORTED_ACTIVATION_SCHEMA_VERSIONS,
+        ActivationImportRequest,
+        ActivationIntegrityError,
+        ActivationPublicationError,
+        ActivationSample,
+        ActivationValidationError,
+        RegulationActivationTrace,
+        UnsupportedActivationSchemaError,
+        import_regulation_activation_trace,
+        load_regulation_activation_trace,
+        write_regulation_activation_trace,
+    )
     from .artifact import (
         FRANCE_AREA_EIC,
         FRANCE_PROFILE_ID,
@@ -89,6 +105,35 @@ _EXPORT_MAP = {
     "parse_iso8601_duration": ("time", "parse_iso8601_duration"),
     "require_complete_blocks": ("time", "require_complete_blocks"),
     "write_market_data_artifact": ("artifact", "write_market_data_artifact"),
+    "ACTIVATION_SCHEMA_VERSION": ("activation", "ACTIVATION_SCHEMA_VERSION"),
+    "ACTIVATION_SIGN_SEMANTICS": ("activation", "ACTIVATION_SIGN_SEMANTICS"),
+    "ACTIVATION_VALUE_SEMANTICS": ("activation", "ACTIVATION_VALUE_SEMANTICS"),
+    "SUPPORTED_ACTIVATION_SCHEMA_VERSIONS": (
+        "activation",
+        "SUPPORTED_ACTIVATION_SCHEMA_VERSIONS",
+    ),
+    "ActivationImportRequest": ("activation", "ActivationImportRequest"),
+    "ActivationIntegrityError": ("activation", "ActivationIntegrityError"),
+    "ActivationPublicationError": ("activation", "ActivationPublicationError"),
+    "ActivationSample": ("activation", "ActivationSample"),
+    "ActivationValidationError": ("activation", "ActivationValidationError"),
+    "RegulationActivationTrace": ("activation", "RegulationActivationTrace"),
+    "UnsupportedActivationSchemaError": (
+        "activation",
+        "UnsupportedActivationSchemaError",
+    ),
+    "import_regulation_activation_trace": (
+        "activation",
+        "import_regulation_activation_trace",
+    ),
+    "load_regulation_activation_trace": (
+        "activation",
+        "load_regulation_activation_trace",
+    ),
+    "write_regulation_activation_trace": (
+        "activation",
+        "write_regulation_activation_trace",
+    ),
 }
 
 __all__ = list(_EXPORT_MAP)

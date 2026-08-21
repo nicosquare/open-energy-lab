@@ -111,12 +111,12 @@ zero penalty, and EUR 0.13 total profit within `1e-6`.
 
 ### Implementation for User Story 2
 
-- [ ] T027 [US2] Implement source-independent activation request/sample/trace entities, both declared import modes, strict validation, serialization, fingerprints, and offline load/write behavior in `src/open_energy_lab/market/activation.py`
-- [ ] T028 [US2] Implement fixed energy/FCR schedule entities, replay request/result entities, complete product-block validation, exact grid alignment, market-volume checks, and symmetric power-headroom validation in `src/open_energy_lab/simulator/stacked_service.py`
-- [ ] T029 [US2] Implement charge-positive substep replay via existing `apply_power_request`, preserving requested/delivered combined and FCR power, baseline diagnostics, SOC/efficiency effects, tracking, non-delivery, and ordered saturation causes/events in `src/open_energy_lab/simulator/stacked_service.py`
-- [ ] T030 [US2] Implement per-interval and aggregate day-ahead/FCR capacity settlement, optional explicit non-delivery penalty, battery-terminal throughput, not-modeled statuses, and exact total-profit reconciliation in `src/open_energy_lab/simulator/fcr_settlement.py`
-- [ ] T031 [US2] Complete 15-minute/hourly/FCR aggregation, energy-conservation checks, deterministic trace/result fingerprints, and report-only terminal-SOC compliance in `src/open_energy_lab/simulator/stacked_service.py`
-- [ ] T032 [US2] Publish import-light activation and replay/settlement exports and extend boundary coverage in `src/open_energy_lab/market/__init__.py`, `src/open_energy_lab/simulator/__init__.py`, and `tests/unit/simulator/test_import_boundary.py`
+- [X] T027 [US2] Implement source-independent activation request/sample/trace entities, both declared import modes, strict validation, serialization, fingerprints, and offline load/write behavior in `src/open_energy_lab/market/activation.py`
+- [X] T028 [US2] Implement fixed energy/FCR schedule entities, replay request/result entities, complete product-block validation, exact grid alignment, market-volume checks, and symmetric power-headroom validation in `src/open_energy_lab/simulator/stacked_service.py`
+- [X] T029 [US2] Implement charge-positive substep replay via existing `apply_power_request`, preserving requested/delivered combined and FCR power, baseline diagnostics, SOC/efficiency effects, tracking, non-delivery, and ordered saturation causes/events in `src/open_energy_lab/simulator/stacked_service.py`
+- [X] T030 [US2] Implement per-interval and aggregate day-ahead/FCR capacity settlement, optional explicit non-delivery penalty, battery-terminal throughput, not-modeled statuses, and exact total-profit reconciliation in `src/open_energy_lab/simulator/fcr_settlement.py`
+- [X] T031 [US2] Complete 15-minute/hourly/FCR aggregation, energy-conservation checks, deterministic trace/result fingerprints, and report-only terminal-SOC compliance in `src/open_energy_lab/simulator/stacked_service.py`
+- [X] T032 [US2] Publish import-light activation and replay/settlement exports and extend boundary coverage in `src/open_energy_lab/market/__init__.py`, `src/open_energy_lab/simulator/__init__.py`, and `tests/unit/simulator/test_import_boundary.py`
 
 **Checkpoint**: User Story 2 passes the manual oracle using only synthetic
 canonical inputs and makes no transport or optimization object available to

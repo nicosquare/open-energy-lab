@@ -39,6 +39,20 @@ EXPECTED_EXPORTS = [
     "parse_iso8601_duration",
     "require_complete_blocks",
     "write_market_data_artifact",
+    "ACTIVATION_SCHEMA_VERSION",
+    "ACTIVATION_SIGN_SEMANTICS",
+    "ACTIVATION_VALUE_SEMANTICS",
+    "SUPPORTED_ACTIVATION_SCHEMA_VERSIONS",
+    "ActivationImportRequest",
+    "ActivationIntegrityError",
+    "ActivationPublicationError",
+    "ActivationSample",
+    "ActivationValidationError",
+    "RegulationActivationTrace",
+    "UnsupportedActivationSchemaError",
+    "import_regulation_activation_trace",
+    "load_regulation_activation_trace",
+    "write_regulation_activation_trace",
 ]
 
 
@@ -68,6 +82,7 @@ def test_market_root_defers_canonical_modules_until_symbol_access():
 
     assert "open_energy_lab.market.time" not in sys.modules
     assert "open_energy_lab.market.artifact" not in sys.modules
+    assert "open_energy_lab.market.activation" not in sys.modules
     assert "open_energy_lab.market.entsoe" not in sys.modules
 
     assert market.CanonicalInterval.__module__ == "open_energy_lab.market.time"
@@ -76,7 +91,14 @@ def test_market_root_defers_canonical_modules_until_symbol_access():
 
     assert market.MarketDataArtifact.__module__ == "open_energy_lab.market.artifact"
     assert "open_energy_lab.market.artifact" in sys.modules
+    assert "open_energy_lab.market.activation" not in sys.modules
     assert "open_energy_lab.market.entsoe" not in sys.modules
+
+    assert (
+        market.RegulationActivationTrace.__module__
+        == "open_energy_lab.market.activation"
+    )
+    assert "open_energy_lab.market.activation" in sys.modules
 
 
 def test_every_documented_export_resolves_from_its_owned_module():
@@ -93,11 +115,33 @@ def test_every_documented_export_resolves_from_its_owned_module():
         "parse_iso8601_duration",
         "require_complete_blocks",
     }
+    activation_exports = {
+        "ACTIVATION_SCHEMA_VERSION",
+        "ACTIVATION_SIGN_SEMANTICS",
+        "ACTIVATION_VALUE_SEMANTICS",
+        "SUPPORTED_ACTIVATION_SCHEMA_VERSIONS",
+        "ActivationImportRequest",
+        "ActivationIntegrityError",
+        "ActivationPublicationError",
+        "ActivationSample",
+        "ActivationValidationError",
+        "RegulationActivationTrace",
+        "UnsupportedActivationSchemaError",
+        "import_regulation_activation_trace",
+        "load_regulation_activation_trace",
+        "write_regulation_activation_trace",
+    }
 
     for name in EXPECTED_EXPORTS:
         value = getattr(market, name)
         if hasattr(value, "__module__"):
-            owner = "time" if name in time_exports else "artifact"
+            owner = (
+                "time"
+                if name in time_exports
+                else "activation"
+                if name in activation_exports
+                else "artifact"
+            )
             assert value.__module__ == f"open_energy_lab.market.{owner}"
 
     assert "open_energy_lab.market.entsoe" not in sys.modules

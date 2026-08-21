@@ -198,6 +198,7 @@ def _replay_request(
     time_contract: object | None = None,
     penalty_rule: object | None = None,
     terminal_soc_target: object | None = None,
+    commitment_validation_mode: str = "strict",
 ):
     request_type = _require("StackedServiceReplayRequest")
     return request_type(
@@ -211,6 +212,7 @@ def _replay_request(
         terminal_soc_target=terminal_soc_target,
         numeric_tolerance=1e-6,
         simulation_semantics_version="stacked-service-replay-v1",
+        commitment_validation_mode=commitment_validation_mode,
     )
 
 
@@ -431,6 +433,7 @@ def test_diagnostic_replay_attributes_power_limit_causes_in_fixed_order(
     request = _replay_request(
         energy_schedule=_energy_schedule([baseline] * 8),
         activation_trace=_activation_trace([activation] * count),
+        commitment_validation_mode="diagnostic",
     )
 
     result = diagnostic_replay(request)
@@ -446,6 +449,7 @@ def test_simultaneous_power_and_soc_causes_follow_the_contract_order() -> None:
         battery=_battery(capacity_kwh=10.0, initial_soc=0.9, max_soc=0.9),
         energy_schedule=_energy_schedule([18.0] * 8),
         activation_trace=_activation_trace([-1.0] * count),
+        commitment_validation_mode="diagnostic",
     )
 
     result = diagnostic_replay(request)

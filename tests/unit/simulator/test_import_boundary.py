@@ -62,6 +62,30 @@ def test_simulator_import_stays_lightweight() -> None:
         "WeatherFamilyEvaluationRequest",
         "WeatherFamilyEvaluationResult",
         "WeatherScenarioEvaluationResult",
+        "EnergyBaselineInterval",
+        "EnergyBaselineSchedule",
+        "FCRCapacitySchedule",
+        "FCRCommitmentInterval",
+        "MultiRateTimeContract",
+        "ReplayIntervalSummary",
+        "ReplaySample",
+        "SaturationEvent",
+        "StackedServiceReplayRequest",
+        "StackedServiceReplayResult",
+        "StackedServiceValidationError",
+        "StateCheckpoint",
+        "TerminalSOCTarget",
+        "TerminalSOCReport",
+        "build_energy_baseline_schedule",
+        "build_fcr_capacity_schedule",
+        "replay_stacked_services",
+        "replay_stacked_services_diagnostic",
+        "EnergySettlementInterval",
+        "FCRPenaltyRule",
+        "FCRSettlementBlock",
+        "FCRSettlementValidationError",
+        "SettlementBreakdown",
+        "settle_stacked_services",
     ]
     assert module.ArbitrageScenario.__module__ == "open_energy_lab.simulator.scenario"
     assert module.BatteryLoadPVScenario.__module__ == "open_energy_lab.simulator.scenario"
@@ -131,6 +155,40 @@ def test_simulator_import_stays_lightweight() -> None:
         "step_settlement",
         "district_cooling_settlement",
     )
+    assert (
+        module.StackedServiceReplayRequest.__module__
+        == "open_energy_lab.simulator.stacked_service"
+    )
+    assert (
+        module.FCRPenaltyRule.__module__
+        == "open_energy_lab.simulator.fcr_settlement"
+    )
+
+
+def test_stacked_service_exports_remain_lazy_and_import_light() -> None:
+    module_names = (
+        "open_energy_lab.simulator.fcr_settlement",
+        "open_energy_lab.simulator.stacked_service",
+        "open_energy_lab.simulator",
+    )
+    for module_name in module_names:
+        sys.modules.pop(module_name, None)
+
+    loaded_before_import = set(sys.modules)
+    module = importlib.import_module("open_energy_lab.simulator")
+
+    assert "open_energy_lab.simulator.stacked_service" not in sys.modules
+    assert "open_energy_lab.simulator.fcr_settlement" not in sys.modules
+    assert module.StackedServiceReplayResult.__module__ == (
+        "open_energy_lab.simulator.stacked_service"
+    )
+    assert "open_energy_lab.simulator.stacked_service" in sys.modules
+    assert "open_energy_lab.simulator.fcr_settlement" not in sys.modules
+    assert module.SettlementBreakdown.__module__ == (
+        "open_energy_lab.simulator.fcr_settlement"
+    )
+    loaded_by_access = set(sys.modules) - loaded_before_import
+    assert OPTIONAL_RESEARCH_MODULES.isdisjoint(loaded_by_access)
 
 
 def test_controller_runner_import_and_export_stay_lightweight() -> None:
