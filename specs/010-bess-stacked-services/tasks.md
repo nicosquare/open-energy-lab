@@ -104,10 +104,10 @@ zero penalty, and EUR 0.13 total profit within `1e-6`.
 
 ### Tests and fixtures for User Story 2
 
-- [ ] T023 [P] [US2] Add failing tests for interval-average and explicit left-hold activation imports, normalization/sign provenance, fingerprints, gaps, duplicates, ambiguous timezones, non-finite/range errors, unsupported semantics, and unproven A83/A84 rejection in `tests/unit/market/test_activation.py`
-- [ ] T024 [P] [US2] Add failing tests for one-BESS schedule validation, complete hourly/four-hour blocks, exact PT10S/PT15M/PT1H/PT4H maps, market-volume/headroom checks, partial/incompatible horizons, requested-versus-delivered attribution, power/SOC saturation causes, aggregation conservation, and deterministic events in `tests/unit/simulator/test_stacked_service.py`
-- [ ] T025 [P] [US2] Add failing tests for schedule-based energy revenue, aligned FCR capacity revenue, absent and explicit EUR/kWh penalties, throughput, not-modeled statuses, and exact profit reconciliation in `tests/unit/simulator/test_fcr_settlement.py`
-- [ ] T026 [P] [US2] Encode the published four-hour arithmetic oracle and add the failing end-to-end assertion table in `tests/fixtures/market/manual_stacked_service_v1.json` and `tests/integration/simulator/test_stacked_service_manual.py`
+- [X] T023 [P] [US2] Add failing tests for interval-average and explicit left-hold activation imports, normalization/sign provenance, fingerprints, gaps, duplicates, ambiguous timezones, non-finite/range errors, unsupported semantics, and unproven A83/A84 rejection in `tests/unit/market/test_activation.py`
+- [X] T024 [P] [US2] Add failing tests for one-BESS schedule validation, complete hourly/four-hour blocks, exact PT10S/PT15M/PT1H/PT4H maps, market-volume/headroom checks, partial/incompatible horizons, requested-versus-delivered attribution, power/SOC saturation causes, aggregation conservation, and deterministic events in `tests/unit/simulator/test_stacked_service.py`
+- [X] T025 [P] [US2] Add failing tests for schedule-based energy revenue, aligned FCR capacity revenue, absent and explicit EUR/kWh penalties, throughput, not-modeled statuses, and exact profit reconciliation in `tests/unit/simulator/test_fcr_settlement.py`
+- [X] T026 [P] [US2] Encode the published four-hour arithmetic oracle and add the failing end-to-end assertion table in `tests/fixtures/market/manual_stacked_service_v1.json` and `tests/integration/simulator/test_stacked_service_manual.py`
 
 ### Implementation for User Story 2
 

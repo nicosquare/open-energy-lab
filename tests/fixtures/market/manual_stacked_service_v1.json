@@ -1,0 +1,243 @@
+{
+  "activation": {
+    "resolution": "PT30M",
+    "value_semantics": "interval-average normalized FCR activation",
+    "values": [
+      1.0,
+      -1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      -1.0
+    ]
+  },
+  "battery": {
+    "capacity_kwh": 4.0,
+    "charge_efficiency": 1.0,
+    "discharge_efficiency": 1.0,
+    "initial_stored_energy_kwh": 2.0,
+    "max_charge_kw": 2.0,
+    "max_discharge_kw": 2.0,
+    "max_stored_energy_kwh": 4.0,
+    "min_stored_energy_kwh": 0.0,
+    "power_sign": "positive is charge"
+  },
+  "case_id": "manual-stacked-service-v1",
+  "energy_schedule": {
+    "power_kw": [
+      1.0,
+      0.0,
+      0.0,
+      -1.0
+    ],
+    "prices_eur_per_mwh": [
+      50.0,
+      60.0,
+      70.0,
+      100.0
+    ],
+    "resolution": "PT1H"
+  },
+  "expected": {
+    "charge_energy_kwh": 1.0,
+    "day_ahead_energy_revenue_eur": 0.05,
+    "delivered_combined_power_kw": [
+      0.0,
+      2.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.0,
+      0.0
+    ],
+    "delivered_fcr_power_kw": [
+      -1.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      -1.0,
+      1.0
+    ],
+    "discharge_energy_kwh": 1.0,
+    "fcr_capacity_revenue_eur": 0.08,
+    "non_delivery_energy_kwh": 0.0,
+    "penalty_eur": 0.0,
+    "requested_combined_power_kw": [
+      0.0,
+      2.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.0,
+      0.0
+    ],
+    "requested_fcr_power_kw": [
+      -1.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      -1.0,
+      1.0
+    ],
+    "signed_tracking_error_kw": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "stored_energy_kwh": [
+      2.0,
+      2.0,
+      3.0,
+      3.0,
+      3.0,
+      3.0,
+      3.0,
+      2.0,
+      2.0
+    ],
+    "throughput_kwh": 2.0,
+    "total_profit_eur": 0.13
+  },
+  "fcr_schedule": {
+    "capacity_kw": [
+      1.0
+    ],
+    "capacity_price_eur_per_mw_per_h": [
+      20.0
+    ],
+    "market_volume_mw": [
+      100.0
+    ],
+    "penalty_rule": null,
+    "resolution": "PT4H"
+  },
+  "interval_convention": "start-inclusive/end-exclusive",
+  "period": {
+    "end_utc": "2022-08-19T02:00:00Z",
+    "market_timezone": "Europe/Paris",
+    "start_utc": "2022-08-18T22:00:00Z"
+  },
+  "sample_assertions": [
+    {
+      "activation": 1.0,
+      "baseline_power_kw": 1.0,
+      "delivered_combined_power_kw": 0.0,
+      "delivered_fcr_power_kw": -1.0,
+      "end_utc": "2022-08-18T22:30:00Z",
+      "requested_combined_power_kw": 0.0,
+      "requested_fcr_power_kw": -1.0,
+      "start_utc": "2022-08-18T22:00:00Z",
+      "stored_energy_after_kwh": 2.0,
+      "stored_energy_before_kwh": 2.0
+    },
+    {
+      "activation": -1.0,
+      "baseline_power_kw": 1.0,
+      "delivered_combined_power_kw": 2.0,
+      "delivered_fcr_power_kw": 1.0,
+      "end_utc": "2022-08-18T23:00:00Z",
+      "requested_combined_power_kw": 2.0,
+      "requested_fcr_power_kw": 1.0,
+      "start_utc": "2022-08-18T22:30:00Z",
+      "stored_energy_after_kwh": 3.0,
+      "stored_energy_before_kwh": 2.0
+    },
+    {
+      "activation": 0.0,
+      "baseline_power_kw": 0.0,
+      "delivered_combined_power_kw": 0.0,
+      "delivered_fcr_power_kw": 0.0,
+      "end_utc": "2022-08-18T23:30:00Z",
+      "requested_combined_power_kw": 0.0,
+      "requested_fcr_power_kw": 0.0,
+      "start_utc": "2022-08-18T23:00:00Z",
+      "stored_energy_after_kwh": 3.0,
+      "stored_energy_before_kwh": 3.0
+    },
+    {
+      "activation": 0.0,
+      "baseline_power_kw": 0.0,
+      "delivered_combined_power_kw": 0.0,
+      "delivered_fcr_power_kw": 0.0,
+      "end_utc": "2022-08-19T00:00:00Z",
+      "requested_combined_power_kw": 0.0,
+      "requested_fcr_power_kw": 0.0,
+      "start_utc": "2022-08-18T23:30:00Z",
+      "stored_energy_after_kwh": 3.0,
+      "stored_energy_before_kwh": 3.0
+    },
+    {
+      "activation": 0.0,
+      "baseline_power_kw": 0.0,
+      "delivered_combined_power_kw": 0.0,
+      "delivered_fcr_power_kw": 0.0,
+      "end_utc": "2022-08-19T00:30:00Z",
+      "requested_combined_power_kw": 0.0,
+      "requested_fcr_power_kw": 0.0,
+      "start_utc": "2022-08-19T00:00:00Z",
+      "stored_energy_after_kwh": 3.0,
+      "stored_energy_before_kwh": 3.0
+    },
+    {
+      "activation": 0.0,
+      "baseline_power_kw": 0.0,
+      "delivered_combined_power_kw": 0.0,
+      "delivered_fcr_power_kw": 0.0,
+      "end_utc": "2022-08-19T01:00:00Z",
+      "requested_combined_power_kw": 0.0,
+      "requested_fcr_power_kw": 0.0,
+      "start_utc": "2022-08-19T00:30:00Z",
+      "stored_energy_after_kwh": 3.0,
+      "stored_energy_before_kwh": 3.0
+    },
+    {
+      "activation": 1.0,
+      "baseline_power_kw": -1.0,
+      "delivered_combined_power_kw": -2.0,
+      "delivered_fcr_power_kw": -1.0,
+      "end_utc": "2022-08-19T01:30:00Z",
+      "requested_combined_power_kw": -2.0,
+      "requested_fcr_power_kw": -1.0,
+      "start_utc": "2022-08-19T01:00:00Z",
+      "stored_energy_after_kwh": 2.0,
+      "stored_energy_before_kwh": 3.0
+    },
+    {
+      "activation": -1.0,
+      "baseline_power_kw": -1.0,
+      "delivered_combined_power_kw": 0.0,
+      "delivered_fcr_power_kw": 1.0,
+      "end_utc": "2022-08-19T02:00:00Z",
+      "requested_combined_power_kw": 0.0,
+      "requested_fcr_power_kw": 1.0,
+      "start_utc": "2022-08-19T01:30:00Z",
+      "stored_energy_after_kwh": 2.0,
+      "stored_energy_before_kwh": 2.0
+    }
+  ],
+  "schema_version": "oel.stacked-service-manual.v1",
+  "source": {
+    "attribution": "Project-authored hand-calculable oracle",
+    "license": "Apache-2.0",
+    "reference": "specs/010-bess-stacked-services/spec.md FR-042"
+  },
+  "time_contract": {
+    "activation_resolution": "PT30M",
+    "energy_resolution": "PT1H",
+    "fcr_resolution": "PT4H",
+    "state_checkpoint_resolution": "PT30M"
+  }
+}
