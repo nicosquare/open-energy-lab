@@ -133,6 +133,7 @@ class ActivationImportRequest:
     source_sign_meaning: str
     normalization_rule: Mapping[str, object]
     redistribution_basis: Mapping[str, object]
+    source_sha256: str | None = None
     source_document_type: str | None = None
     command_semantics_proof: Mapping[str, object] | None = None
 
@@ -172,6 +173,13 @@ class ActivationImportRequest:
             self.redistribution_basis,
             field_name="redistribution_basis",
         )
+        if self.source_sha256 is not None:
+            if not isinstance(self.source_sha256, str) or _SHA256.fullmatch(
+                self.source_sha256
+            ) is None:
+                raise ActivationValidationError(
+                    "source_sha256 must be a lowercase SHA-256 hexadecimal digest"
+                )
         if self.source_document_type in ("A83", "A84"):
             if self.command_semantics_proof is None:
                 raise ActivationValidationError(
@@ -332,6 +340,7 @@ def _source_mapping(request: ActivationImportRequest) -> Mapping[str, object]:
             "name": request.source_name,
             "locator": request.source_locator,
             "revision": request.source_revision,
+            "sha256": request.source_sha256,
             "timezone": request.source_timezone,
             "source_document_type": request.source_document_type,
             "source_sign_meaning": request.source_sign_meaning,

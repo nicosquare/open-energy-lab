@@ -1,0 +1,134 @@
+# French BESS Stacked-Services Migration
+
+## Status
+
+Feature 010 owns the first library-native, fixed-schedule replay of French
+day-ahead energy and symmetric FCR. Market acquisition, canonical artifacts,
+activation artifacts, schedule construction, physical delivery, and settlement
+remain separate boundaries. Routine use is deterministic, fixture-backed, and
+offline.
+
+The synthetic/manual replay path is implemented and validated. The independent
+RTE activation gate passed for the selected delivery day. The real market and
+expected-replay fixtures remain blocked because the 2026-08-21 fixture
+production environment had no caller-provided `ENTSOE_API_TOKEN`; no A44/A81/A89
+request was attempted and no replacement data was introduced. The authoritative
+gate record is in `tests/fixtures/market/README.md`.
+
+## Reference Evidence
+
+The activation behavior was extracted from these exact external sources rather
+than adding a runtime dependency:
+
+- repository: `lauinger/robust-storage-bidding`
+- commit: `7e44738bb30e5c8204efe40103b9be4c2203685c`
+- source data: `data_processing/freq_data/RTE_Frequence_2022_08.txt`
+- source transformation evidence: `data_processing/RTE_frequencies.ipynb`
+- repository license: `LICENSE` at the pinned commit (MIT)
+- raw-file SHA-256:
+  `314a84556383161e9a9628b31eaa885e471f04db213a971c4f25efaef1053a8a`
+
+The external repository and raw RTE file are not imported, opened, downloaded,
+or executed by the library or routine tests. Regeneration is an explicit example
+consumer that accepts a caller-supplied local file and verifies its complete
+digest before parsing. The raw file is not committed.
+
+RTE attribution is “Source: RTE Réseau de Transport d'Électricité.” The RTE
+Services Portal General Terms of Service, Article 9, checked on 2026-08-21,
+permits reuse of public data when the source is mentioned:
+`https://www.services-rte.com/en/general-terms-and-conditions-of-use.html`.
+ENTSO-E publishes a CC BY 4.0 open-data subset, but the exact applicability and
+attribution for all selected A44/A81/A89 documents must be rechecked during the
+credentialed gate before a normalized market fixture is committed:
+`https://transparencyplatform.zendesk.com/hc/en-us/articles/40921911218961-Legal-Terms-and-Conditions`.
+
+## Canonical Activation
+
+The selected local day and UTC replay period are:
+
+```text
+Europe/Paris [2022-08-19T00:00:00+02:00, 2022-08-20T00:00:00+02:00)
+UTC          [2022-08-18T22:00:00Z,      2022-08-19T22:00:00Z)
+```
+
+Direct import proved 8,640 unique observations on an exact 10-second grid,
+with no gap or notebook repair and a frequency range of 49.9234--50.0547 Hz.
+Each naive Europe/Paris timestamp is explicitly interpreted as an instantaneous
+point held over the following half-open interval. The canonical interval-average
+command is:
+
+```text
+xi = clip((50.0 Hz - frequency_hz) / 0.2 Hz, -1, 1)
+```
+
+Positive `xi` means upward/discharge response. Open Energy Lab battery power is
+charge-positive, so replay converts signs exactly once:
+
+```text
+requested_fcr_power_kw = -xi * committed_fcr_capacity_kw
+requested_combined_power_kw = baseline_power_kw + requested_fcr_power_kw
+```
+
+The normalized fixture records the pinned revision, raw digest, source
+timezone, point-to-interval declaration, formula, clipping, attribution,
+content fingerprint, and full artifact fingerprint. Loading the normalized
+fixture never reopens the external file.
+
+## Single-Owner Responsibility Matrix
+
+| Responsibility | Single owner | Boundary |
+| --- | --- | --- |
+| ENTSO-E retrieval and market-source normalization | `open_energy_lab.market.entsoe` | Explicit authenticated fetch/refresh only |
+| Canonical market-artifact validity and integrity | `open_energy_lab.market.artifact` | Immutable A44/A81/A89 manifest and offline load |
+| Canonical activation-artifact validity and integrity | `open_energy_lab.market.activation` | Source-independent import modes, exact tiling, fingerprints |
+| Deterministic fixed energy/FCR schedules | `open_energy_lab.control.stacked_service` | No activation lookahead and no optimization |
+| Battery-constrained physical delivery | `open_energy_lab.simulator.stacked_service` | Existing `apply_power_request`, attribution, aggregation |
+| Day-ahead/FCR settlement | `open_energy_lab.simulator.fcr_settlement` | Accepted schedules and explicit penalties only |
+| Robust bidding and optimization | Later robust-bidding feature | Not implemented or implied by Feature 010 |
+
+The explicit `examples/bess_stacked_services/import_reference_activation.py`
+consumer parses the pinned RTE representation and delegates canonical artifact
+validity to `market.activation`; it is not a second owner of artifact semantics.
+
+## Demonstration Configuration And Gate
+
+Once the ENTSO-E gate passes, the recorded demonstration must use exactly:
+
+- one 100 kWh battery with a 10--90 kWh operating range;
+- 50 kW charge and discharge limits;
+- 0.92 charge and discharge efficiency;
+- 50 kWh initial stored energy;
+- the existing 5 kW price-threshold request below 475 EUR/MWh or above
+  540 EUR/MWh, clipped only for symmetric FCR power headroom;
+- six fixed four-hour 5 kW symmetric-FCR commitments;
+- zero non-delivery penalty; and
+- a report-only 50 kWh terminal target.
+
+Expected baseline intervals, market observation references, physical traces,
+settlement totals, and fingerprints must be generated from the accepted
+fixtures. They must not be inferred from the research plan. Until the gate
+passes, `france_2022-08-19_market_v1.json` and
+`france_2022-08-19_expected_replay_v1.json` remain absent, and the real replay
+and reference benchmark report the recorded skip reason.
+
+## Settlement And Scope
+
+Day-ahead revenue settles the accepted hourly baseline, not realized physical
+delivery. FCR capacity revenue settles the committed eligible kW converted to
+MW, aligned EUR/MW/h remuneration, and block duration. FCR non-delivery is
+measured relative to the accepted baseline. A penalty is zero unless an
+explicit deterministic EUR/kWh rule is supplied. Activation-energy payment,
+imbalance settlement, and degradation cost are reported as `not_modeled`.
+
+Feature 010 does not migrate robust optimization, aFRR, mFRR, generic reserve
+products, bid selection, stochastic lookahead, terminal recovery dispatch,
+network fetch-on-missing, notebooks, SLURM, W&B, GPU, or legacy runtime behavior.
+
+## Reference Benchmark Record
+
+The required one-warm-up/five-measurement reference benchmark cannot be accepted
+until the two blocked fixtures exist. No timing sample is recorded as passing
+while correctness inputs are absent. When resumed, record CPU model, allocated
+cores/processes, available memory, operating system, Python version, repository
+revision, and all five end-to-end timings here without modifying the expected
+fixture during validation.

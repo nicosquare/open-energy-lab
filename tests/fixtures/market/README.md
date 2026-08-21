@@ -93,6 +93,54 @@ recorded raw digest and source revision, rejects gaps and duplicates, and
 publishes only the normalized PT10S trace permitted for reuse. The external raw
 file and its notebook are not routine test dependencies.
 
+## 2026-08-21 Gate Execution Record
+
+The independent RTE activation gate passed using the exact file at
+`lauinger/robust-storage-bidding@7e44738bb30e5c8204efe40103b9be4c2203685c:data_processing/freq_data/RTE_Frequence_2022_08.txt`.
+The complete caller-supplied file has SHA-256
+`314a84556383161e9a9628b31eaa885e471f04db213a971c4f25efaef1053a8a`.
+Direct import, without the reference notebook's gap filling or duplicate
+removal, proved exactly 8,640 timestamps from local `00:00:00` through
+`23:59:50`, a strict 10-second grid, and a 49.9234--50.0547 Hz range. The
+committed normalized fixture is
+`france_2022-08-19_activation_v1.json`; its content fingerprint is
+`9f80abf7e5913b05a281f6e8c1129b7ad7c6dcab69419e6872383f3a199d26f2`
+and its artifact fingerprint is
+`a3463ee73afc7149f1a75d1fa19866ddb53997fac1e054feed96203d0943df18`.
+The raw file is not committed. Attribution is to RTE Réseau de Transport
+d'Électricité; the RTE Services Portal General Terms of Service Article 9,
+checked on 2026-08-21, permits reuse of public data when the source is named.
+The pinned reference repository records an MIT license for its software and
+documentation.
+
+The ENTSO-E market-fixture gate is **blocked**. The explicit producer preflight
+on 2026-08-21 found no caller-provided `ENTSOE_API_TOKEN`, so no credentialed
+request was made and compatible complete France A44, A81, and A89 coverage,
+document revisions, response digests, and exact normalized-fixture reuse terms
+could not be proven for UTC
+`[2022-08-18T22:00:00Z, 2022-08-19T22:00:00Z)`. Consequently:
+
+- `france_2022-08-19_market_v1.json` is intentionally absent;
+- `france_2022-08-19_expected_replay_v1.json` cannot be produced; and
+- no partial market data, RTE price substitute, synthetic replacement, gap
+  fill, interpolation, or alternate delivery period has been used.
+
+Resume the gate only with an explicitly supplied ENTSO-E token and re-check the
+then-current ENTSO-E open-data list and attribution terms for every selected
+series before publishing either missing fixture.
+
+## Single-Owner Boundary
+
+| Responsibility | Owner |
+| --- | --- |
+| ENTSO-E retrieval and market normalization | `open_energy_lab.market.entsoe` |
+| Market-artifact validity | `open_energy_lab.market.artifact` |
+| Activation-artifact validity | `open_energy_lab.market.activation` |
+| Fixed schedules | `open_energy_lab.control.stacked_service` |
+| Physical delivery | `open_energy_lab.simulator.stacked_service` |
+| Settlement | `open_energy_lab.simulator.fcr_settlement` |
+| Robust bidding | A later feature, not Feature 010 |
+
 ## Offline Review Contract
 
 Routine unit and integration tests use only committed synthetic or canonical
