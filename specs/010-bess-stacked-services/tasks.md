@@ -44,10 +44,10 @@ used by both market-data production and simulation.
 **Critical**: These tasks block every user story. Tests must fail before the
 corresponding implementation when practical.
 
-- [ ] T005 [P] Add failing tests for aware half-open UTC intervals, Europe/Paris labels and folds, 23/25-hour delivery days, exact resolution divisibility, and multi-rate boundary maps in `tests/unit/market/test_time.py`
-- [ ] T006 [P] Add failing tests for the v1 market schema, required France series, units, coverage, deterministic JSON, content fingerprints, artifact fingerprints, and cross-series FCR alignment in `tests/unit/market/test_artifact.py`
-- [ ] T007 [P] Add failing tests for unknown schemas, malformed/non-finite data, immutable atomic writes, digest-only evidence, safe verified sidecars, traversal rejection, and offline loading in `tests/unit/market/test_artifact_io.py`
-- [ ] T008 [P] Add failing package-surface tests proving `open_energy_lab.market` is import-light and does not import networking, notebooks, solvers, credentials, or `legacy/*` in `tests/unit/market/test_import_boundary.py`
+- [X] T005 [P] Add failing tests for aware half-open UTC intervals, Europe/Paris labels and folds, 23/25-hour delivery days, exact resolution divisibility, and multi-rate boundary maps in `tests/unit/market/test_time.py`
+- [X] T006 [P] Add failing tests for the v1 market schema, required France series, units, coverage, deterministic JSON, content fingerprints, artifact fingerprints, and cross-series FCR alignment in `tests/unit/market/test_artifact.py`
+- [X] T007 [P] Add failing tests for unknown schemas, malformed/non-finite data, immutable atomic writes, digest-only evidence, safe verified sidecars, traversal rejection, and offline loading in `tests/unit/market/test_artifact_io.py`
+- [X] T008 [P] Add failing package-surface tests proving `open_energy_lab.market` is import-light and does not import networking, notebooks, solvers, credentials, or `legacy/*` in `tests/unit/market/test_import_boundary.py`
 - [ ] T009 Implement canonical intervals, UTC/local delivery metadata validation, resolution parsing, complete-block checks, and exact multi-rate index construction in `src/open_energy_lab/market/time.py`
 - [ ] T010 Implement immutable market-series/artifact entities, strict schema and France-profile validation, canonical serialization, and dual SHA-256 fingerprints in `src/open_energy_lab/market/artifact.py`
 - [ ] T011 Implement token-free immutable filenames, manifest-last atomic publication, load-time integrity checks, and optional raw-sidecar containment/digest validation in `src/open_energy_lab/market/artifact.py`
