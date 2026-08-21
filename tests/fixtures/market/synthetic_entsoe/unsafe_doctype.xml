@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Project-authored unsafe syntax fixture; parser must reject before parse. -->
+<!DOCTYPE Publication_MarketDocument [
+  <!ELEMENT Publication_MarketDocument ANY>
+]>
+<Publication_MarketDocument xmlns="urn:iec62325.351:tc57wg16:451-3:publicationdocument:7:3">
+  <mRID>synthetic-unsafe-doctype</mRID>
+</Publication_MarketDocument>

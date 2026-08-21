@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Project-authored complete 23-hour Europe/Paris day; not an ENTSO-E response. -->
+<Publication_MarketDocument xmlns="urn:iec62325.351:tc57wg16:451-3:publicationdocument:7:3">
+  <mRID>synthetic-a44-dst-spring-20220327</mRID>
+  <revisionNumber>1</revisionNumber>
+  <type>A44</type>
+  <process.processType>A01</process.processType>
+  <createdDateTime>2022-03-26T10:00:00Z</createdDateTime>
+  <period.timeInterval><start>2022-03-26T23:00Z</start><end>2022-03-27T22:00Z</end></period.timeInterval>
+  <TimeSeries>
+    <mRID>synthetic-a44-dst-spring-series</mRID><businessType>A62</businessType>
+    <in_Domain.mRID codingScheme="A01">10YFR-RTE------C</in_Domain.mRID><out_Domain.mRID codingScheme="A01">10YFR-RTE------C</out_Domain.mRID>
+    <currency_Unit.name>EUR</currency_Unit.name><price_Measure_Unit.name>MWH</price_Measure_Unit.name><curveType>A01</curveType>
+    <Period>
+      <timeInterval><start>2022-03-26T23:00Z</start><end>2022-03-27T22:00Z</end></timeInterval>
+      <resolution>PT1H</resolution>
+      <Point><position>1</position><price.amount>101.0</price.amount></Point>
+      <Point><position>2</position><price.amount>102.0</price.amount></Point>
+      <Point><position>3</position><price.amount>103.0</price.amount></Point>
+      <Point><position>4</position><price.amount>104.0</price.amount></Point>
+      <Point><position>5</position><price.amount>105.0</price.amount></Point>
+      <Point><position>6</position><price.amount>106.0</price.amount></Point>
+      <Point><position>7</position><price.amount>107.0</price.amount></Point>
+      <Point><position>8</position><price.amount>108.0</price.amount></Point>
+      <Point><position>9</position><price.amount>109.0</price.amount></Point>
+      <Point><position>10</position><price.amount>110.0</price.amount></Point>
+      <Point><position>11</position><price.amount>111.0</price.amount></Point>
+      <Point><position>12</position><price.amount>112.0</price.amount></Point>
+      <Point><position>13</position><price.amount>113.0</price.amount></Point>
+      <Point><position>14</position><price.amount>114.0</price.amount></Point>
+      <Point><position>15</position><price.amount>115.0</price.amount></Point>
+      <Point><position>16</position><price.amount>116.0</price.amount></Point>
+      <Point><position>17</position><price.amount>117.0</price.amount></Point>
+      <Point><position>18</position><price.amount>118.0</price.amount></Point>
+      <Point><position>19</position><price.amount>119.0</price.amount></Point>
+      <Point><position>20</position><price.amount>120.0</price.amount></Point>
+      <Point><position>21</position><price.amount>121.0</price.amount></Point>
+      <Point><position>22</position><price.amount>122.0</price.amount></Point>
+      <Point><position>23</position><price.amount>123.0</price.amount></Point>
+    </Period>
+  </TimeSeries>
+</Publication_MarketDocument>
