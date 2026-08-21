@@ -80,11 +80,11 @@ credentialed source check is explicitly selected.
 
 ### Implementation for User Story 1
 
-- [ ] T018 [US1] Implement the token-free France request/profile types, typed sanitized failures, injected synchronous HTTPS transport, byte limit, and fixed three-attempt retry policy in `src/open_energy_lab/market/entsoe.py`
-- [ ] T019 [US1] Implement defensive A44/A81/A89 XML classification, parsing, revision selection, curve expansion, France/product validation, unit normalization, and complete requested-period validation in `src/open_energy_lab/market/entsoe.py`
-- [ ] T020 [US1] Implement explicit `fetch_entsoe_market_data` with enclosing local-day query windows, in-memory all-series validation, raw-response digests, retention metadata, and atomic artifact publication in `src/open_energy_lab/market/entsoe.py`
-- [ ] T021 [US1] Implement explicit `refresh_entsoe_market_data` outcomes for unchanged content, linked immutable publication, and comparable revision regression without mutating the current artifact in `src/open_energy_lab/market/entsoe.py`
-- [ ] T022 [US1] Implement the token-safe `fetch` and `refresh` example consumer, reading `ENTSOE_API_TOKEN` only at the explicit retrieval boundary, in `examples/bess_stacked_services/fetch_french_period.py`
+- [X] T018 [US1] Implement the token-free France request/profile types, typed sanitized failures, injected synchronous HTTPS transport, byte limit, and fixed three-attempt retry policy in `src/open_energy_lab/market/entsoe.py`
+- [X] T019 [US1] Implement defensive A44/A81/A89 XML classification, parsing, revision selection, curve expansion, France/product validation, unit normalization, and complete requested-period validation in `src/open_energy_lab/market/entsoe.py`
+- [X] T020 [US1] Implement explicit `fetch_entsoe_market_data` with enclosing local-day query windows, in-memory all-series validation, raw-response digests, retention metadata, and atomic artifact publication in `src/open_energy_lab/market/entsoe.py`
+- [X] T021 [US1] Implement explicit `refresh_entsoe_market_data` outcomes for unchanged content, linked immutable publication, and comparable revision regression without mutating the current artifact in `src/open_energy_lab/market/entsoe.py`
+- [X] T022 [US1] Implement the token-safe `fetch` and `refresh` example consumer, reading `ENTSOE_API_TOKEN` only at the explicit retrieval boundary, in `examples/bess_stacked_services/fetch_french_period.py`
 
 **Checkpoint**: User Story 1 passes entirely with injected transports and can
 optionally prove current ENTSO-E compatibility with a caller credential.
