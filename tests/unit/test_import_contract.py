@@ -16,12 +16,20 @@ OPTIONAL_RESEARCH_MODULES = {
 }
 
 EXPECTED_CONTROL_EXPORTS = [
+    "ArbitrageOnlyBaselineConfig",
+    "BaselineScheduleBundle",
     "PVSelfConsumptionConfig",
     "PVSelfConsumptionController",
     "PriceThresholdConfig",
     "PriceThresholdController",
+    "RegulationOnlyBaselineConfig",
     "SocGuardrailConfig",
     "SocGuardrailController",
+    "StackedBaselineValidationError",
+    "StackedHeuristicConfig",
+    "build_arbitrage_only_baseline",
+    "build_regulation_only_baseline",
+    "build_stacked_heuristic_baseline",
 ]
 EXPECTED_VISUALIZATION_EXPORTS = [
     "build_inspection_view",
@@ -177,6 +185,15 @@ def test_control_package_imports_from_source_tree_without_optional_stacks():
     assert module.PriceThresholdController.__module__ == "open_energy_lab.control.price_threshold"
     assert module.SocGuardrailConfig.__module__ == "open_energy_lab.control._config"
     assert module.SocGuardrailController.__module__ == "open_energy_lab.control.soc_guardrail"
+    assert module.ArbitrageOnlyBaselineConfig.__module__ == (
+        "open_energy_lab.control.stacked_service"
+    )
+    assert module.StackedHeuristicConfig.__module__ == (
+        "open_energy_lab.control.stacked_service"
+    )
+    assert module.build_stacked_heuristic_baseline.__module__ == (
+        "open_energy_lab.control.stacked_service"
+    )
 
     newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
         set(sys.modules) - before_import

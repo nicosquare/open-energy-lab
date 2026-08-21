@@ -168,14 +168,14 @@ revenue, and future activation changes cannot alter schedule construction.
 
 ### Tests for User Story 4
 
-- [ ] T040 [P] [US4] Add failing unit tests for a zero energy schedule, efficiency-aware centered initial energy, no recovery dispatch, fixed FCR commitments, headroom-clipped price-threshold requests, empty admissible intervals, determinism, and no activation lookahead in `tests/unit/control/test_stacked_service.py`
-- [ ] T041 [P] [US4] Add failing integration tests for zero-FCR physical/SOC/throughput/settlement parity, zero-energy regulation-only revenue and delivery, deterministic stacked replay, exact reproduction of the fixed schedule recorded in `tests/fixtures/market/france_2022-08-19_expected_replay_v1.json`, and report-only terminal-target invariance in `tests/integration/simulator/test_stacked_service_compatibility.py`
+- [X] T040 [P] [US4] Add failing unit tests for a zero energy schedule, efficiency-aware centered initial energy, no recovery dispatch, fixed FCR commitments, headroom-clipped price-threshold requests, empty admissible intervals, determinism, and no activation lookahead in `tests/unit/control/test_stacked_service.py`
+- [X] T041 [P] [US4] Add failing integration tests for zero-FCR physical/SOC/throughput/settlement parity, zero-energy regulation-only revenue and delivery, deterministic stacked replay, exact reproduction of the fixed schedule recorded in `tests/fixtures/market/france_2022-08-19_expected_replay_v1.json`, and report-only terminal-target invariance in `tests/integration/simulator/test_stacked_service_compatibility.py`
 
 ### Implementation for User Story 4
 
-- [ ] T042 [US4] Implement deterministic arbitrage-only and regulation-only schedule configuration/builders, including the efficiency-aware centered initial energy and no recovery schedule, in `src/open_energy_lab/control/stacked_service.py`
-- [ ] T043 [US4] Implement the deterministic stacked builder that invokes current-step price-threshold behavior and clips every energy request to bidirectional power remaining after symmetric FCR reservation without reading activation in `src/open_energy_lab/control/stacked_service.py`
-- [ ] T044 [US4] Publish lazy baseline-builder exports and extend control package-boundary tests in `src/open_energy_lab/control/__init__.py` and `tests/unit/control/test_import_boundary.py`
+- [X] T042 [US4] Implement deterministic arbitrage-only and regulation-only schedule configuration/builders, including the efficiency-aware centered initial energy and no recovery schedule, in `src/open_energy_lab/control/stacked_service.py`
+- [X] T043 [US4] Implement the deterministic stacked builder that invokes current-step price-threshold behavior and clips every energy request to bidirectional power remaining after symmetric FCR reservation without reading activation in `src/open_energy_lab/control/stacked_service.py`
+- [X] T044 [US4] Publish lazy baseline-builder exports and extend control package-boundary tests in `src/open_energy_lab/control/__init__.py` and `tests/unit/control/test_import_boundary.py`
 
 **Checkpoint**: All three deterministic baselines are independently repeatable,
 and neither schedule construction nor replay embeds robust optimization.

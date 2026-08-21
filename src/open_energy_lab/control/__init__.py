@@ -18,6 +18,16 @@ if TYPE_CHECKING:
     from .price_threshold import PriceThresholdController
     from .pv_self_consumption import PVSelfConsumptionController
     from .soc_guardrail import SocGuardrailController
+    from .stacked_service import (
+        ArbitrageOnlyBaselineConfig,
+        BaselineScheduleBundle,
+        RegulationOnlyBaselineConfig,
+        StackedBaselineValidationError,
+        StackedHeuristicConfig,
+        build_arbitrage_only_baseline,
+        build_regulation_only_baseline,
+        build_stacked_heuristic_baseline,
+    )
 
 
 _EXPORT_MAP = {
@@ -30,15 +40,49 @@ _EXPORT_MAP = {
     "PriceThresholdController": (".price_threshold", "PriceThresholdController"),
     "SocGuardrailConfig": ("._config", "SocGuardrailConfig"),
     "SocGuardrailController": (".soc_guardrail", "SocGuardrailController"),
+    "ArbitrageOnlyBaselineConfig": (
+        ".stacked_service",
+        "ArbitrageOnlyBaselineConfig",
+    ),
+    "BaselineScheduleBundle": (".stacked_service", "BaselineScheduleBundle"),
+    "RegulationOnlyBaselineConfig": (
+        ".stacked_service",
+        "RegulationOnlyBaselineConfig",
+    ),
+    "StackedBaselineValidationError": (
+        ".stacked_service",
+        "StackedBaselineValidationError",
+    ),
+    "StackedHeuristicConfig": (".stacked_service", "StackedHeuristicConfig"),
+    "build_arbitrage_only_baseline": (
+        ".stacked_service",
+        "build_arbitrage_only_baseline",
+    ),
+    "build_regulation_only_baseline": (
+        ".stacked_service",
+        "build_regulation_only_baseline",
+    ),
+    "build_stacked_heuristic_baseline": (
+        ".stacked_service",
+        "build_stacked_heuristic_baseline",
+    ),
 }
 
 __all__ = [
+    "ArbitrageOnlyBaselineConfig",
+    "BaselineScheduleBundle",
     "PVSelfConsumptionConfig",
     "PVSelfConsumptionController",
     "PriceThresholdConfig",
     "PriceThresholdController",
+    "RegulationOnlyBaselineConfig",
     "SocGuardrailConfig",
     "SocGuardrailController",
+    "StackedBaselineValidationError",
+    "StackedHeuristicConfig",
+    "build_arbitrage_only_baseline",
+    "build_regulation_only_baseline",
+    "build_stacked_heuristic_baseline",
 ]
 
 
