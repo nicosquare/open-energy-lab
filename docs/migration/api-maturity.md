@@ -20,6 +20,52 @@ An import path is stable public API when all conditions hold:
 Stable public APIs should preserve import paths and documented behavior across
 future migrations unless a deprecation decision is recorded.
 
+## Experimental-v1 Stacked-Services Surface
+
+Feature `010-bess-stacked-services` publishes an **experimental-v1** API. The
+module locations below are the stable homes for this capability, but their
+individual signatures and result fields may still evolve through a recorded
+specification change before promotion to stable API:
+
+```text
+open_energy_lab.market.artifact
+open_energy_lab.market.activation
+open_energy_lab.market.entsoe
+open_energy_lab.control.stacked_service
+open_energy_lab.simulator.stacked_service
+open_energy_lab.simulator.fcr_settlement
+```
+
+Source-independent market artifact and activation types, deterministic baseline
+builders, replay entities/functions, and settlement entities/functions are
+also resolved lazily from their package roots. ENTSO-E acquisition remains a
+focused-module operation and is deliberately not exported from
+`open_energy_lab.market` because it is transport- and credential-bearing.
+
+The default contract is offline: package import, canonical artifact loading,
+schedule construction, replay, settlement, manual-oracle validation, and
+normalized activation-fixture validation never read a credential or open a
+network connection. Fetch, refresh, the live ENTSO-E compatibility case, raw
+RTE fixture regeneration, and the reference-host benchmark are explicit
+operations. Missing gated inputs fail closed; they do not trigger fetch,
+substitution, interpolation, trimming, or synthetic repair.
+
+The fixed public maturity is intentionally narrower than robust bidding. These
+APIs accept or build deterministic fixed schedules and replay one BESS; they do
+not optimize bids, inspect future activation, or claim robust SOC feasibility.
+
+### Feature 010 Single-Owner Matrix
+
+| Responsibility ID | Responsibility | Single owner |
+| --- | --- | --- |
+| `OEL-F010-OWNER-RETRIEVAL` | ENTSO-E retrieval and market normalization | `open_energy_lab.market.entsoe` |
+| `OEL-F010-OWNER-MARKET-ARTIFACT` | Market-artifact validity | `open_energy_lab.market.artifact` |
+| `OEL-F010-OWNER-ACTIVATION` | Activation-artifact validity | `open_energy_lab.market.activation` |
+| `OEL-F010-OWNER-SCHEDULES` | Deterministic fixed schedules | `open_energy_lab.control.stacked_service` |
+| `OEL-F010-OWNER-PHYSICAL` | Battery-constrained physical delivery | `open_energy_lab.simulator.stacked_service` |
+| `OEL-F010-OWNER-SETTLEMENT` | Day-ahead and FCR settlement | `open_energy_lab.simulator.fcr_settlement` |
+| `OEL-F010-OWNER-ROBUST` | Robust bidding and optimization | later robust-bidding feature |
+
 ### TPM-Backed Planning Stable Surface
 
 The `009-tpm-planning` feature now promotes the shipped simulator export,

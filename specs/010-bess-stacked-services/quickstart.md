@@ -1,6 +1,6 @@
 # Quickstart: French BESS Stacked Services
 
-This quickstart describes the Feature 010 implementation target. Routine review
+This quickstart describes the implemented Feature 010 experimental-v1 surface. Routine review
 is offline. A network and ENTSO-E token are needed only for an explicitly
 selected fetch, refresh, or live compatibility check.
 
@@ -32,11 +32,26 @@ uv sync
 No additional solver, notebook, live service, or legacy environment is needed
 for the offline workflow.
 
+## Current Reference-Fixture Gate
+
+The independent RTE activation gate passed and
+`tests/fixtures/market/france_2022-08-19_activation_v1.json` is committed. The
+2026-08-21 production environment had no caller-provided `ENTSOE_API_TOKEN`, so
+the credentialed A44/A81/A89 completeness and reuse gate could not run. The
+market and expected-replay fixtures therefore remain intentionally absent. The
+authoritative blocker is recorded in `tests/fixtures/market/README.md`; no
+partial, RTE-price, synthetic, filled, or alternate-period replacement is
+permitted.
+
 ## Run The Recorded Offline Demonstration
 
 ```bash
 uv run python examples/bess_stacked_services/run_offline_replay.py
 ```
+
+This command is ready but currently fails closed with the recorded gate reason
+and names the two missing fixtures. It becomes the default successful
+demonstration only after the credentialed gate publishes both files.
 
 The example loads:
 
@@ -50,6 +65,21 @@ It validates artifact and trace fingerprints, loads the documented fixed
 stacked schedule, replays 8,640 samples without a transport, compares the trace
 and totals with the expected-result fixture, and prints the settlement
 breakdown. Repeated execution must produce the same result fingerprint.
+
+The import-light implementation uses these public names:
+
+```python
+from open_energy_lab.market import (
+    load_market_data_artifact,
+    load_regulation_activation_trace,
+)
+from open_energy_lab.control import build_stacked_heuristic_baseline
+from open_energy_lab.simulator import (
+    StackedServiceReplayRequest,
+    replay_stacked_services,
+    settle_stacked_services,
+)
+```
 
 ## Run The Explicit Reference Benchmark
 
@@ -87,7 +117,7 @@ uv run pytest tests/unit/control tests/unit/simulator
 uv run pytest tests/integration/control tests/integration/simulator -m "not reference_benchmark"
 uv run pytest tests/unit/test_lazy_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py
 uv run python -c "import open_energy_lab; import open_energy_lab.market; import open_energy_lab.control; import open_energy_lab.simulator"
-rg "from legacy|import legacy" src/open_energy_lab/market src/open_energy_lab/control/stacked_service.py src/open_energy_lab/simulator/stacked_service.py src/open_energy_lab/simulator/fcr_settlement.py tests/unit/market tests/integration/market
+rg "from legacy|import legacy" src/open_energy_lab/market src/open_energy_lab/control/stacked_service.py src/open_energy_lab/simulator/stacked_service.py src/open_energy_lab/simulator/fcr_settlement.py tests/unit/market tests/unit/control tests/unit/simulator tests/integration/market tests/integration/control tests/integration/simulator
 ```
 
 The routine group must complete without a token or network. The live and
@@ -164,6 +194,12 @@ This is a source-compatibility check, not the reproducibility gate. Network or
 credential unavailability is documented separately and does not cause the
 offline fixtures to be regenerated, skipped, or weakened.
 
+On 2026-08-21 this optional check was not run: no caller supplied
+`ENTSOE_API_TOKEN`, and network access was not deliberately selected for a live
+compatibility operation. This is recorded as unavailable rather than converted
+to a passing live check. It does not weaken the successful offline suites and
+does not authorize publication of a market fixture.
+
 ## Explicitly Regenerate The Reference Activation Artifact
 
 This optional provenance workflow requires a caller-supplied local copy of the
@@ -173,10 +209,11 @@ validation:
 ```bash
 uv run python examples/bess_stacked_services/import_reference_activation.py \
   --input /path/to/RTE_Frequence_2022_08.txt \
-  --expected-sha256 VERIFIED_RAW_FILE_SHA256 \
+  --expected-sha256 314a84556383161e9a9628b31eaa885e471f04db213a971c4f25efaef1053a8a \
   --source-revision 7e44738bb30e5c8204efe40103b9be4c2203685c \
   --start 2022-08-18T22:00:00Z \
   --end 2022-08-19T22:00:00Z \
+  --created-at 2026-08-21T20:00:00Z \
   --destination artifacts/market
 ```
 
@@ -187,30 +224,23 @@ not execute the reference notebook's gap filling or duplicate removal. Routine
 tests validate the committed normalized artifact without reopening this raw
 file.
 
-## Inspect Provenance Without A Token
+## Inspect Committed Activation Provenance Without A Token
 
 ```python
 from pathlib import Path
 
-from open_energy_lab.market import load_market_data_artifact
+from open_energy_lab.market import load_regulation_activation_trace
 
-artifact = load_market_data_artifact(
-    Path("tests/fixtures/market/france_2022-08-19_market_v1.json")
+artifact = load_regulation_activation_trace(
+    Path("tests/fixtures/market/france_2022-08-19_activation_v1.json")
 )
 
 print(artifact.artifact_fingerprint)
-for series_id, series in artifact.series.items():
-    print(
-        series_id,
-        series.source_document_type,
-        series.source_resolution,
-        series.canonical_resolution,
-        series.canonical_unit,
-        len(series.observations),
-    )
+print(artifact.source["revision"], artifact.source["sha256"])
+print(artifact.resolution, len(artifact.samples))
 ```
 
-Loading a canonical artifact has no network-capable argument and does not read
+Loading either canonical artifact has no network-capable argument and does not read
 `ENTSOE_API_TOKEN`.
 
 ## Compatibility Checks

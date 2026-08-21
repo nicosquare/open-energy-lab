@@ -5,8 +5,9 @@ explicit boundary between source acquisition and deterministic offline replay;
 reusable retrieval, artifact, activation, schedule, battery, and settlement
 behavior belongs under `src/open_energy_lab`, not in these scripts.
 
-Phase 1 establishes this outline. Later tasks add the consumers and validated
-fixtures named below.
+The consumers are implemented. The RTE activation fixture is validated and
+committed; the ENTSO-E market and derived expected-replay fixtures remain
+blocked by the credentialed gate recorded in `tests/fixtures/market/README.md`.
 
 ## Consumer Map
 
@@ -21,7 +22,7 @@ source, or moves source-specific types into the simulator.
 
 ## Explicit Fetch And Refresh
 
-`fetch_french_period.py` will expose `fetch` and `refresh` modes. It reads
+`fetch_french_period.py` exposes `fetch` and `refresh` modes. It reads
 `ENTSOE_API_TOKEN` only immediately before calling the explicit ENTSO-E producer
 and passes the token as a separate keyword-only operation argument. The token
 is never part of a request object, path, cache key, artifact, log, diagnostic,
@@ -53,18 +54,21 @@ import, artifact loading, fixture review, schedule construction, or replay.
 
 ## Explicit Activation Import
 
-`import_reference_activation.py` will accept a caller-supplied local copy of
+`import_reference_activation.py` accepts a caller-supplied local copy of
 the selected RTE frequency file, its expected SHA-256 digest, source revision,
 period, and destination. It performs no download and no notebook execution. It
 validates gap-free naive Europe/Paris timestamps, applies the declared
 left-hold PT10S conversion and `clip((50-f)/0.2,-1,1)` normalization, and
-publishes a separately fingerprinted activation artifact.
+publishes a separately fingerprinted activation artifact. The accepted pinned
+file digest is
+`314a84556383161e9a9628b31eaa885e471f04db213a971c4f25efaef1053a8a`;
+the reproducible command is recorded in the feature quickstart.
 
 This regeneration workflow is optional and is not part of routine validation.
 
 ## Default Offline Replay
 
-`run_offline_replay.py` will be the default demonstration consumer:
+`run_offline_replay.py` is the default demonstration consumer:
 
 ```bash
 uv run python examples/bess_stacked_services/run_offline_replay.py
@@ -81,6 +85,23 @@ The offline consumer has no transport argument and never reads
 `ENTSOE_API_TOKEN`. Missing, incomplete, incompatible, or corrupt inputs fail
 before normal replay; the consumer does not fill, trim, interpolate, prorate,
 or fetch a replacement.
+
+At present the command exits with status 2 and identifies
+`france_2022-08-19_market_v1.json` and
+`france_2022-08-19_expected_replay_v1.json` as missing because the credentialed
+gate has not passed. That is the required behavior, not an installation error.
+
+## Experimental-v1 Library Surface
+
+Source-independent market and activation artifacts resolve lazily from
+`open_energy_lab.market`; deterministic baseline builders resolve lazily from
+`open_energy_lab.control`; replay and settlement resolve lazily from
+`open_energy_lab.simulator`. The source-bearing producer remains the focused
+`open_energy_lab.market.entsoe` module and is never imported by offline replay.
+
+The complete API names, fixture paths, fetch/refresh commands, activation
+regeneration command, validation selections, and failure semantics are kept in
+`specs/010-bess-stacked-services/quickstart.md`.
 
 ## Validation Selection
 

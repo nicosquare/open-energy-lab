@@ -132,3 +132,21 @@ while correctness inputs are absent. When resumed, record CPU model, allocated
 cores/processes, available memory, operating system, Python version, repository
 revision, and all five end-to-end timings here without modifying the expected
 fixture during validation.
+
+An explicit attempt on 2026-08-21 produced the following preflight record:
+
+| Field | Observed value |
+| --- | --- |
+| CPU model | Intel Xeon Gold 5218R at 2.10 GHz |
+| Host logical CPUs | 80 |
+| Process-visible allocation | 10 CPUs, one CPython process, no deliberate parallelism |
+| Memory | 503 GiB total, 428 GiB available at preflight |
+| Operating system | Linux 6.8.0-124-generic x86_64 GNU/Linux |
+| Python | CPython 3.14.6 |
+| Repository revision | `9e8adc5` plus the pending Phase 7 documentation changes |
+| Command | `uv run pytest tests/integration/simulator/test_stacked_service_real_replay.py -m reference_benchmark -q` |
+| Outcome | skipped before warm-up because the market and expected-replay fixtures are gated and absent |
+| Five timing samples | not produced; no correctness input was available to benchmark |
+
+This is not a passing benchmark record and T050 remains incomplete. The
+expected-result fixture was absent and therefore was not modified.
