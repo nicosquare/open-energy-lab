@@ -48,10 +48,10 @@ corresponding implementation when practical.
 - [X] T006 [P] Add failing tests for the v1 market schema, required France series, units, coverage, deterministic JSON, content fingerprints, artifact fingerprints, and cross-series FCR alignment in `tests/unit/market/test_artifact.py`
 - [X] T007 [P] Add failing tests for unknown schemas, malformed/non-finite data, immutable atomic writes, digest-only evidence, safe verified sidecars, traversal rejection, and offline loading in `tests/unit/market/test_artifact_io.py`
 - [X] T008 [P] Add failing package-surface tests proving `open_energy_lab.market` is import-light and does not import networking, notebooks, solvers, credentials, or `legacy/*` in `tests/unit/market/test_import_boundary.py`
-- [ ] T009 Implement canonical intervals, UTC/local delivery metadata validation, resolution parsing, complete-block checks, and exact multi-rate index construction in `src/open_energy_lab/market/time.py`
-- [ ] T010 Implement immutable market-series/artifact entities, strict schema and France-profile validation, canonical serialization, and dual SHA-256 fingerprints in `src/open_energy_lab/market/artifact.py`
-- [ ] T011 Implement token-free immutable filenames, manifest-last atomic publication, load-time integrity checks, and optional raw-sidecar containment/digest validation in `src/open_energy_lab/market/artifact.py`
-- [ ] T012 Publish lazy canonical-artifact and time exports and verify the public surface in `src/open_energy_lab/market/__init__.py` and `tests/unit/market/test_package_surface.py`
+- [X] T009 Implement canonical intervals, UTC/local delivery metadata validation, resolution parsing, complete-block checks, and exact multi-rate index construction in `src/open_energy_lab/market/time.py`
+- [X] T010 Implement immutable market-series/artifact entities, strict schema and France-profile validation, canonical serialization, and dual SHA-256 fingerprints in `src/open_energy_lab/market/artifact.py`
+- [X] T011 Implement token-free immutable filenames, manifest-last atomic publication, load-time integrity checks, and optional raw-sidecar containment/digest validation in `src/open_energy_lab/market/artifact.py`
+- [X] T012 Publish lazy canonical-artifact and time exports and verify the public surface in `src/open_energy_lab/market/__init__.py` and `tests/unit/market/test_package_surface.py`
 
 **Checkpoint**: Canonical market artifacts can be constructed, written, and
 loaded deterministically with no source adapter or network access.
