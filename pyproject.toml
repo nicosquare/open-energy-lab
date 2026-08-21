@@ -36,3 +36,7 @@ packages = ["src/open_energy_lab"]
 testpaths = ["tests/unit"]
 pythonpath = [".", "src"]
 addopts = "-ra"
+markers = [
+    "live_entsoe: explicitly selected credentialed ENTSO-E compatibility checks (excluded from routine offline validation)",
+    "reference_benchmark: explicitly selected reference-host performance checks (excluded from routine correctness validation)",
+]

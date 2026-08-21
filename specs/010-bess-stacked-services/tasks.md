@@ -29,10 +29,10 @@ moving source access into the simulator.
 **Purpose**: Establish the import-light package, test, fixture, and example
 surfaces without changing `legacy/*` or adding a core dependency.
 
-- [ ] T001 Create the import-light market and test-package scaffolds in `src/open_energy_lab/market/__init__.py`, `tests/unit/market/__init__.py`, and `tests/integration/market/__init__.py`
-- [ ] T002 [P] Register the explicitly selected `live_entsoe` and `reference_benchmark` pytest markers without adding either to routine test selection in `pyproject.toml`
-- [ ] T003 [P] Document the market-fixture layout, token prohibition, raw-sidecar rule, and gated real-fixture policy in `tests/fixtures/market/README.md`
-- [ ] T004 [P] Create the explicit-fetch and offline-replay consumer outline in `examples/bess_stacked_services/README.md`
+- [X] T001 Create the import-light market and test-package scaffolds in `src/open_energy_lab/market/__init__.py`, `tests/unit/market/__init__.py`, and `tests/integration/market/__init__.py`
+- [X] T002 [P] Register the explicitly selected `live_entsoe` and `reference_benchmark` pytest markers without adding either to routine test selection in `pyproject.toml`
+- [X] T003 [P] Document the market-fixture layout, token prohibition, raw-sidecar rule, and gated real-fixture policy in `tests/fixtures/market/README.md`
+- [X] T004 [P] Create the explicit-fetch and offline-replay consumer outline in `examples/bess_stacked_services/README.md`
 
 ---
 
