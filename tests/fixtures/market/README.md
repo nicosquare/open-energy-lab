@@ -164,6 +164,17 @@ France values and derived replay fixture, plus required attribution. A token or
 internal/academic-use entitlement alone does not resolve that publication
 blocker.
 
+The repository now has a fail-closed resume path for that external decision.
+Use the request and evidence checklist in
+`docs/migration/epex-spot-publication-permission.md`, then pass the reviewed
+non-confidential record and the private permission document to
+`examples/bess_stacked_services/authorize_reference_market.py`. The consumer
+verifies the private evidence SHA-256 and exact repository/period/scope, keeps
+raw responses digest-only, preserves the normalized content fingerprint, and
+writes the fixed market fixture with a new permission-bearing artifact
+fingerprint. The example JSON deliberately contains placeholders and false
+scope flags and cannot authorize publication as committed.
+
 ## Single-Owner Boundary
 
 | Responsibility | Owner |

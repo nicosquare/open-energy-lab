@@ -216,4 +216,6 @@ public repository distribution.
 
 The local artifacts remain excluded from Git. T037 and T050 stay incomplete
 until the permission record is durable and the reviewed artifacts can be
-committed without changing their validated bytes.
+committed without changing their validated bytes. The exact request,
+rights/scope checklist, evidence-digest record, and resume commands are in the
+[EPEX SPOT publication permission dossier](epex-spot-publication-permission.md).

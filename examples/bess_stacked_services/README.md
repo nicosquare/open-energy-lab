@@ -18,6 +18,7 @@ basis. The technical and legal gates are recorded separately in
 | --- | --- | --- |
 | `fetch_french_period.py` | Explicit ENTSO-E HTTPS operation; caller token required | Fetch or refresh canonical A44/combined-A81 market artifacts |
 | `import_reference_activation.py` | No network; caller-supplied local raw file | Verify and normalize the selected RTE PT10S activation trace |
+| `authorize_reference_market.py` | No network or token; caller-supplied reviewed permission record and private evidence | Verify the EPEX grant digest/scope and publish the fixed market fixture |
 | `generate_reference_replay.py` | No network; validated local artifacts | Build and independently reconcile the gated fixed replay fixture |
 | `run_offline_replay.py` | None | Load recorded artifacts, replay the fixed schedule, and compare deterministic results |
 
@@ -112,6 +113,15 @@ fingerprints. When A44 remains local-only, it rejects every destination outside
 the ignored `artifacts/` tree; producing a local expected replay is not
 permission to commit either restricted file. See the feature quickstart for
 the exact generation and private-benchmark commands.
+
+If EPEX SPOT later grants the required public rights,
+`authorize_reference_market.py` is the only resume step. It requires a
+non-confidential JSON summary plus the private grant bytes, verifies the
+grant-document SHA-256 and every exact scope flag, and writes
+`france_2022-08-19_market_v1.json` without changing normalized market content.
+The request language, acceptance checklist, deliberately non-authorizing JSON
+template, and commands are in the
+[EPEX SPOT publication permission dossier](../../docs/migration/epex-spot-publication-permission.md).
 
 ## Experimental-v1 Library Surface
 

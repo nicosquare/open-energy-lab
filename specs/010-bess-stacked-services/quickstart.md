@@ -134,6 +134,23 @@ They do not change the committed-fixture acceptance requirement, and their
 results remain informative until the reviewed A44 basis permits publishing the
 market and expected-replay fixtures.
 
+If EPEX SPOT supplies a reviewed grant, follow
+`docs/migration/epex-spot-publication-permission.md`. The resume operation is
+explicit and token-free:
+
+```bash
+uv run python examples/bess_stacked_services/authorize_reference_market.py \
+  --market artifacts/market/reference-gate/MARKET_ARTIFACT.json \
+  --permission artifacts/legal/epex/permission.json \
+  --permission-evidence artifacts/legal/epex/permission-evidence.pdf \
+  --destination tests/fixtures/market
+```
+
+The operation fails unless the private evidence digest and the exact EPEX,
+repository, period, distribution, adaptation, derived-fixture, fork/archive,
+attribution, downstream, and AI/ML terms are recorded. It does not interpret a
+token, successful fetch, internal-use license, or academic purpose as consent.
+
 ## Verify The Manual Four-Hour Oracle
 
 ```bash

@@ -108,8 +108,34 @@ def test_entsoe_architecture_guide_records_the_exact_r3_api_contract() -> None:
         "epex spot",
         "prior consent",
         "public repository distribution",
+        "marketdata.sales@epexspot.com",
+        "derived usage",
+        "ai/ml",
         "official entso-e postman collection",
         "list of data available for free reuse",
+    )
+    missing = [term for term in required if term not in content]
+    assert missing == [], f"{path} is missing: {missing}"
+
+
+def test_epex_permission_dossier_is_exact_and_fail_closed() -> None:
+    path = Path("docs/migration/epex-spot-publication-permission.md")
+    content = _read_text(path)
+    required = (
+        "marketdata.sales@epexspot.com",
+        "fr day-ahead auction price and volumes - histo (up to y-1)",
+        "2022-08-18 22:00 utc",
+        "2022-08-19 22:00 utc",
+        "24 normalized hourly values",
+        "public forks",
+        "derived replay fixture",
+        "ai/ml-use terms",
+        "permission evidence",
+        "sha-256",
+        "authorize_reference_market.py",
+        "france_2022-08-19_market_v1.json",
+        "t037 and t050",
+        "does not satisfy",
     )
     missing = [term for term in required if term not in content]
     assert missing == [], f"{path} is missing: {missing}"

@@ -3,12 +3,21 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import replace
 from datetime import timedelta
+import hashlib
 import json
 from pathlib import Path
+import socket
 
 import pytest
 
+from examples.bess_stacked_services.authorize_reference_market import (
+    MarketPublicationPermissionError,
+    authorize_reference_market_artifact,
+    load_market_publication_permission,
+    write_authorized_reference_market_fixture,
+)
 from examples.bess_stacked_services.generate_reference_replay import (
     ReferenceReplayGenerationError,
     _require_safe_destination,
@@ -28,6 +37,56 @@ from tests.unit.market.test_artifact import (
 ACTIVATION_PATH = Path(
     "tests/fixtures/market/france_2022-08-19_activation_v1.json"
 )
+PERMISSION_TEMPLATE_PATH = Path(
+    "examples/bess_stacked_services/epex_publication_permission.example.json"
+)
+PERMISSION_EVIDENCE = b"synthetic rights-holder grant used only by this test"
+
+
+def _permission_payload() -> dict[str, object]:
+    return {
+        "schema_version": "oel.epex-publication-permission.v1",
+        "rights_holder": "EPEX SPOT SE",
+        "grant_type": "written_permission",
+        "permission_reference": "SYNTHETIC-TEST-PERMISSION-001",
+        "permission_evidence_sha256": hashlib.sha256(
+            PERMISSION_EVIDENCE
+        ).hexdigest(),
+        "effective_date": "2026-08-22",
+        "reviewed_at_utc": "2026-08-22T10:30:00Z",
+        "reviewed_by": "synthetic test legal-review role",
+        "repository_url": "https://github.com/nicosquare/open-energy-lab",
+        "covered_data": {
+            "area_eic": "10YFR-RTE------C",
+            "document_type": "A44",
+            "delivery_start_utc": "2022-08-18T22:00:00Z",
+            "delivery_end_utc": "2022-08-19T22:00:00Z",
+            "description": "24 normalized France hourly day-ahead prices",
+        },
+        "grant_scope": {
+            "public_repository_distribution": True,
+            "normalized_a44_value_distribution": True,
+            "derived_replay_fixture_distribution": True,
+            "adaptation_and_normalization": True,
+            "public_forks_and_source_archives": True,
+        },
+        "attribution": "Source: EPEX SPOT SE; normalized by Open Energy Lab",
+        "downstream_terms": (
+            "Synthetic test terms standing in for the rights-holder grant"
+        ),
+        "ai_ml_terms": (
+            "Synthetic test field; the real grant must state the applicable terms"
+        ),
+        "source_terms": {
+            "title": "EPEX SPOT General Conditions for Market Data",
+            "version_date": "2025-11-01",
+            "url": (
+                "https://www.epexspot.com/sites/default/files/"
+                "download_center_files/EPEX%20SPOT%20GENERAL%20CONDITIONS_"
+                "Market%20Data%20as%20of%201st%20November%202025.pdf"
+            ),
+        },
+    }
 
 
 def _reference_market(*, publication: str | None = None):
@@ -189,3 +248,177 @@ def test_local_only_market_cannot_publish_outside_ignored_artifacts(
         _require_safe_destination(market, tmp_path)
 
     _require_safe_destination(market, Path("artifacts/market/reference-gate"))
+
+
+def test_exact_permission_attestation_authorizes_only_repository_metadata() -> None:
+    market = _reference_market(
+        publication="blocked_while_any_series_is_local_only"
+    )
+    permission = load_market_publication_permission(_permission_payload())
+
+    authorized = authorize_reference_market_artifact(
+        market,
+        permission,
+        permission_evidence=PERMISSION_EVIDENCE,
+    )
+
+    assert authorized.content_fingerprint == market.content_fingerprint
+    assert authorized.artifact_fingerprint != market.artifact_fingerprint
+    assert authorized.predecessor_artifact_fingerprint == market.artifact_fingerprint
+    assert authorized.created_at_utc == "2026-08-22T10:30:00Z"
+    policy = authorized.retention_and_license
+    assert policy["repository_publication"] == "permitted"
+    assert policy["series_redistribution"]["day_ahead_price"] == {
+        "status": "rights_holder_permission",
+        "source_document_type": "A44",
+        "rights_holder": "EPEX SPOT SE",
+        "permission_reference": "SYNTHETIC-TEST-PERMISSION-001",
+    }
+    assert policy["publication_permission"]["permission_evidence_sha256"] == (
+        hashlib.sha256(PERMISSION_EVIDENCE).hexdigest()
+    )
+    assert all(
+        item.retention_status == "digest_only" for item in authorized.raw_responses
+    )
+    assert market.retention_and_license["repository_publication"].startswith(
+        "blocked"
+    )
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        (
+            lambda payload: payload.update(rights_holder="unverified owner"),
+            "EPEX SPOT SE",
+        ),
+        (
+            lambda payload: payload["grant_scope"].update(
+                public_repository_distribution=False
+            ),
+            "public_repository_distribution",
+        ),
+        (
+            lambda payload: payload.update(permission_evidence_sha256="placeholder"),
+            "permission_evidence_sha256",
+        ),
+        (
+            lambda payload: payload.update(repository_url="https://example.test/repo"),
+            "repository_url",
+        ),
+    ],
+)
+def test_incomplete_or_misdirected_permission_is_rejected(
+    mutate: object,
+    message: str,
+) -> None:
+    payload = _permission_payload()
+    mutate(payload)
+
+    with pytest.raises(MarketPublicationPermissionError, match=message):
+        load_market_publication_permission(payload)
+
+
+def test_committed_permission_template_cannot_authorize_publication() -> None:
+    with pytest.raises(
+        MarketPublicationPermissionError,
+        match="placeholder|explicitly true|SHA-256",
+    ):
+        load_market_publication_permission(PERMISSION_TEMPLATE_PATH)
+
+
+def test_permission_must_cover_the_artifact_period() -> None:
+    payload = _permission_payload()
+    payload["covered_data"]["delivery_end_utc"] = "2022-08-20T22:00:00Z"
+    permission = load_market_publication_permission(payload)
+
+    with pytest.raises(
+        MarketPublicationPermissionError,
+        match="covered data|period",
+    ):
+        authorize_reference_market_artifact(
+            _reference_market(),
+            permission,
+            permission_evidence=PERMISSION_EVIDENCE,
+        )
+
+
+def test_permission_evidence_bytes_must_match_the_recorded_digest() -> None:
+    permission = load_market_publication_permission(_permission_payload())
+
+    with pytest.raises(
+        MarketPublicationPermissionError,
+        match="evidence.*SHA-256|SHA-256.*evidence",
+    ):
+        authorize_reference_market_artifact(
+            _reference_market(),
+            permission,
+            permission_evidence=b"different evidence",
+        )
+
+
+def test_authorization_revalidates_an_already_constructed_permission() -> None:
+    permission = load_market_publication_permission(_permission_payload())
+    bypass_attempt = replace(permission, rights_holder="unverified owner")
+
+    with pytest.raises(MarketPublicationPermissionError, match="EPEX SPOT SE"):
+        authorize_reference_market_artifact(
+            _reference_market(),
+            bypass_attempt,
+            permission_evidence=PERMISSION_EVIDENCE,
+        )
+
+
+def test_permission_workflow_writes_fixed_fixture_and_unblocks_replay_generation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    local_market = _reference_market(
+        publication="blocked_while_any_series_is_local_only"
+    )
+    local_market_path = write_market_data_artifact(
+        local_market,
+        destination_dir=tmp_path / "private",
+    )
+    permission_path = tmp_path / "permission.json"
+    permission_path.write_text(
+        json.dumps(_permission_payload()),
+        encoding="utf-8",
+    )
+    evidence_path = tmp_path / "private-rights-holder-grant.pdf"
+    evidence_path.write_bytes(PERMISSION_EVIDENCE)
+
+    def _network_forbidden(*args: object, **kwargs: object) -> None:
+        raise AssertionError("publication authorization attempted network access")
+
+    monkeypatch.setattr(socket, "socket", _network_forbidden)
+
+    first = write_authorized_reference_market_fixture(
+        local_market_path,
+        permission_path=permission_path,
+        permission_evidence_path=evidence_path,
+        destination_dir=tmp_path / "published",
+    )
+    first_bytes = first.read_bytes()
+    second = write_authorized_reference_market_fixture(
+        local_market_path,
+        permission_path=permission_path,
+        permission_evidence_path=evidence_path,
+        destination_dir=tmp_path / "published",
+    )
+
+    assert first.name == "france_2022-08-19_market_v1.json"
+    assert second == first
+    assert second.read_bytes() == first_bytes
+    assert PERMISSION_EVIDENCE not in first_bytes
+    assert str(evidence_path).encode() not in first_bytes
+    published = json.loads(first_bytes)
+    assert published["retention_and_license"]["repository_publication"] == (
+        "permitted"
+    )
+    expected_path = write_reference_replay_fixture(
+        first,
+        activation_path=ACTIVATION_PATH,
+        destination_dir=tmp_path / "published",
+    )
+    assert expected_path.name == "france_2022-08-19_expected_replay_v1.json"

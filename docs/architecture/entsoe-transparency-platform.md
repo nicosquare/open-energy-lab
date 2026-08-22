@@ -154,6 +154,22 @@ required attribution, effective date, and a durable permission reference. A
 token, private/internal-use entitlement, or generic RTE public-data term is not
 sufficient for these EPEX-owned prices.
 
+EPEX SPOT's current General Conditions for Market Data describe separately
+selected Internal, External, and Derived Usage rights, with the chosen product
+and Market Data Agreement controlling the actual scope. They also require
+separate written consent for specified AI/ML uses. The current catalogue lists
+`FR Day-Ahead Auction Price and Volumes - Histo (up to Y-1)`, and the official
+Market Data contact is `marketdata.sales@epexspot.com`. These materials identify
+a permission route; they are not themselves a public-redistribution grant.
+
+The ready-to-send request, exact acceptance checklist, private evidence-digest
+workflow, and fail-closed authorization command are recorded in
+[EPEX SPOT publication permission dossier](../migration/epex-spot-publication-permission.md).
+The authorization consumer preserves the normalized content fingerprint and
+publishes a new artifact fingerprint only after the permission record matches
+the exact repository, A44 period, required uses, and private grant-document
+SHA-256.
+
 Researchers may run the documented producer privately with their own account
 and token. Code, request documentation, provenance schemas, and synthetic
 fixtures remain redistributable independently of real A44 values.
@@ -169,3 +185,6 @@ fixtures remain redistributable independently of real A44 values.
 - [List of data available for free reuse](https://transparency.entsoe.eu/content/static_content/download?path=%2FStatic+content%2Fterms+and+conditions%2F231018_List_of_Data_available_for_reuse.pdf)
 - [ENTSO-E Energy Prices 12.1(d) ownership profile](https://transparencyplatform.zendesk.com/hc/en-us/articles/16647234190100-Energy-Prices-12-1-D)
 - [RTE French spot-price ownership and use terms](https://www.rte-france.com/en/data-publications/eco2mix/market-data)
+- [EPEX SPOT Market Data contacts](https://www.epexspot.com/en/contact)
+- [EPEX SPOT General Conditions for Market Data, 1 November 2025](https://www.epexspot.com/sites/default/files/download_center_files/EPEX%20SPOT%20GENERAL%20CONDITIONS_Market%20Data%20as%20of%201st%20November%202025.pdf)
+- [EPEX SPOT Market Data Information Products catalogue](https://www.epexspot.com/sites/default/files/download_center_files/20200113_EPEX%20Webshop_product%20catalogue.pdf)

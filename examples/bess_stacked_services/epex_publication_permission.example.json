@@ -1,0 +1,33 @@
+{
+  "ai_ml_terms": "REPLACE_WITH_THE_GRANT'S_EXACT_AI_AND_ML_USE_SUMMARY",
+  "attribution": "REPLACE_WITH_THE_REQUIRED_PUBLIC_ATTRIBUTION",
+  "covered_data": {
+    "area_eic": "10YFR-RTE------C",
+    "delivery_end_utc": "2022-08-19T22:00:00Z",
+    "delivery_start_utc": "2022-08-18T22:00:00Z",
+    "description": "24 normalized France hourly day-ahead prices",
+    "document_type": "A44"
+  },
+  "downstream_terms": "REPLACE_WITH_THE_GRANT'S_PUBLIC_DOWNSTREAM_TERMS",
+  "effective_date": "REPLACE_WITH_YYYY-MM-DD",
+  "grant_scope": {
+    "adaptation_and_normalization": false,
+    "derived_replay_fixture_distribution": false,
+    "normalized_a44_value_distribution": false,
+    "public_forks_and_source_archives": false,
+    "public_repository_distribution": false
+  },
+  "grant_type": "written_permission",
+  "permission_evidence_sha256": "REPLACE_WITH_SHA256_OF_PRIVATE_GRANT_DOCUMENT",
+  "permission_reference": "REPLACE_WITH_DURABLE_NON_CONFIDENTIAL_REFERENCE",
+  "repository_url": "https://github.com/nicosquare/open-energy-lab",
+  "reviewed_at_utc": "REPLACE_WITH_UTC_TIMESTAMP",
+  "reviewed_by": "REPLACE_WITH_REVIEWER_NAME_OR_ACCOUNTABLE_ROLE",
+  "rights_holder": "EPEX SPOT SE",
+  "schema_version": "oel.epex-publication-permission.v1",
+  "source_terms": {
+    "title": "EPEX SPOT General Conditions for Market Data",
+    "url": "https://www.epexspot.com/sites/default/files/download_center_files/EPEX%20SPOT%20GENERAL%20CONDITIONS_Market%20Data%20as%20of%201st%20November%202025.pdf",
+    "version_date": "2025-11-01"
+  }
+}
