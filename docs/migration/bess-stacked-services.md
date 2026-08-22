@@ -188,3 +188,32 @@ An explicit attempt on 2026-08-21 produced the following preflight record:
 
 This is not a passing benchmark record and T050 remains incomplete. The
 expected-result fixture was absent and therefore was not modified.
+
+### Private pre-publication reference-host preflight
+
+On 2026-08-22, the same benchmark passed against the technically validated,
+Git-ignored market and expected-result artifacts. This run establishes that the
+implementation meets the correctness and performance protocol on the reference
+host, but it is not T050 acceptance evidence: the A44 values and reconstructable
+expected replay still lack an EPEX SPOT permission or another reviewed basis for
+public repository distribution.
+
+| Field | Observed value |
+| --- | --- |
+| CPU model | Intel Xeon Gold 5218R at 2.10 GHz |
+| Host logical CPUs | 80 |
+| Process-visible allocation | 10 CPUs, one CPython process, no deliberate parallelism |
+| Memory | 503 GiB total, 440 GiB available at measurement |
+| Operating system | Linux 6.8.0-124-generic x86_64 GNU/Linux |
+| Python | CPython 3.14.6, Anaconda build, GCC 14.3.0 |
+| Clean repository revision | `60be2b50d0b736b3a0df5fe1f25fa427feada5d0` |
+| Command | `OEL_REFERENCE_MARKET_PATH=<ignored-market-artifact> OEL_REFERENCE_EXPECTED_PATH=<ignored-expected-artifact> uv run pytest tests/integration/simulator/test_stacked_service_real_replay.py -m reference_benchmark -q` |
+| Network boundary | `socket.socket` replaced with a function that fails the test on any use |
+| Warm-up | completed with all expected counts, totals, and fingerprints matching |
+| Five timings (seconds) | `0.871289687231183`, `0.8309785253368318`, `0.8352879141457379`, `0.8531687618233263`, `0.8487713071517646` |
+| Threshold result | all five measured end-to-end runs below 10 seconds |
+| Fixture mutation check | benchmark reads the expected artifact only; worktree remained clean after the run |
+
+The local artifacts remain excluded from Git. T037 and T050 stay incomplete
+until the permission record is durable and the reviewed artifacts can be
+committed without changing their validated bytes.
