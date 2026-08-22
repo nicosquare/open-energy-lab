@@ -32,17 +32,17 @@ uv sync
 No additional solver, notebook, live service, or legacy environment is needed
 for the offline workflow.
 
-## Current Reference-Fixture Gate
+## Restricted Reference-Fixture Status
 
 The independent RTE activation gate passed and
 `tests/fixtures/market/france_2022-08-19_activation_v1.json` is committed. The
 earlier A81 HTTP 400 was traced to obsolete pre-R3 query assumptions. The
 correct R3 profile uses A44 plus combined A81 (`B95/A52/A01`) containing both
-reserve quantity and procurement price. Technical compatibility is validated
-separately from redistribution. The current ENTSO-E CC BY 4.0 free-reuse list
-does not include A44 day-ahead prices, and no Primary Owner permission was
-supplied. The market and expected-replay fixtures therefore remain
-intentionally absent even when a private local fetch succeeds. See the
+reserve quantity and procurement price. The credentialed technical gate passed
+and the market and expected-replay fixtures are committed for authorized
+collaborators in this private repository. Their metadata prohibits public,
+package, release, fork/mirror, and external-artifact distribution; remove all
+three real fixtures before any public visibility change. See the
 [ENTSO-E Transparency Platform integration](../../docs/architecture/entsoe-transparency-platform.md)
 and the authoritative gate record in `tests/fixtures/market/README.md`.
 
@@ -52,9 +52,8 @@ and the authoritative gate record in `tests/fixtures/market/README.md`.
 uv run python examples/bess_stacked_services/run_offline_replay.py
 ```
 
-This command is ready but currently fails closed with the recorded gate reason
-and names the two missing fixtures. It becomes the default successful
-demonstration only after the credentialed gate publishes both files.
+This command succeeds from the committed restricted fixture set and requires
+no network or credential.
 
 The example loads:
 
@@ -68,6 +67,38 @@ It validates artifact and trace fingerprints, loads the documented fixed
 stacked schedule, replays 8,640 samples without a transport, compares the trace
 and totals with the expected-result fixture, and prints the settlement
 breakdown. Repeated execution must produce the same result fingerprint.
+
+## Explore The Working Notebook
+
+Install the optional notebook and plotting dependencies:
+
+```bash
+uv sync --group notebook
+```
+
+Open
+`examples/bess_stacked_services/stacked_services_walkthrough.ipynb` in a
+Jupyter-capable editor and select `.venv/bin/python` as the kernel. The notebook
+reuses `run_offline_replay` and explains and plots every primary market,
+controller, FCR activation, battery power/energy/SOC, delivery-quality,
+settlement, terminal-target, and fingerprint variable. Its default execution
+never fetches data, reads `.env`, or modifies a fixture.
+
+An “Optional live ENTSO-E R3 query” section is guarded by
+`RUN_LIVE_QUERY = False`. After deliberately opting in, a user can edit the UTC
+start/end, HTTPS endpoint, and normalization version; the cell then uses the
+existing explicit acquisition helper to read the token, derives the A44 and
+combined A81 `B95/A52/A01` requests, and plots `day_ahead_price`,
+`fcr_contracted_volume`, and `fcr_capacity_price`. It uses digest-only raw
+retention and writes beneath ignored `artifacts/market/notebook-live-query`.
+The live artifact does not replace the reviewed replay fixtures and is not fed
+into the physical replay automatically.
+
+The notebook is committed with cleared outputs. Executed outputs, screenshots,
+HTML exports, saved figures, and live-query artifacts contain restricted real values
+and must not be published. Optional figure export is disabled by default and
+targets ignored
+`tmp/bess-stacked-services-notebook/figures` when deliberately enabled.
 
 The import-light implementation uses these public names:
 

@@ -1,4 +1,4 @@
-"""Run the gated French stacked-services demonstration entirely offline."""
+"""Run the restricted French stacked-services demonstration entirely offline."""
 
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ def _required_paths(fixture_dir: Path) -> tuple[Path, Path, Path]:
     missing = [path.name for path in paths if not path.is_file()]
     if missing:
         raise OfflineReplayError(
-            "credentialed ENTSO-E fixture gate is incomplete; missing "
+            "restricted private-repository fixture set is incomplete; missing "
             + ", ".join(missing)
             + "; see tests/fixtures/market/README.md and do not substitute data"
         )

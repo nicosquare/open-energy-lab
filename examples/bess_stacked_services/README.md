@@ -22,6 +22,7 @@ staged and validated for the default offline consumer.
 | `stage_private_reference_market.py` | No network or token; explicit private-repository acknowledgement | Stage the fixed market fixture with restricted storage and prohibited-publication metadata |
 | `generate_reference_replay.py` | No network; validated local or privately staged artifacts | Build and independently reconcile the restricted fixed replay fixture |
 | `run_offline_replay.py` | None | Load recorded artifacts, replay the fixed schedule, and compare deterministic results |
+| `stacked_services_walkthrough.ipynb` | None by default; optional explicit ENTSO-E token/network | Explain and visualize the offline replay, or fetch and plot caller-selected A44/combined-A81 market variables behind a disabled guard |
 
 No consumer downloads on import, fetches on cache miss, chooses an alternative
 source, or moves source-specific types into the simulator.
@@ -116,6 +117,44 @@ the feature quickstart and the
 [restricted-fixture policy](../../docs/migration/restricted-reference-fixtures.md)
 for the exact commands. The three real-data fixtures must be removed before
 this repository or its relevant history is made public.
+
+## Interactive Working Notebook
+
+[`stacked_services_walkthrough.ipynb`](stacked_services_walkthrough.ipynb) is
+the documented interactive example. From the repository root, install the
+optional analysis dependencies:
+
+```bash
+uv sync --group notebook
+```
+
+Open the notebook in a Jupyter-capable editor and select `.venv/bin/python` as
+the kernel. Its default execution is entirely offline and plots:
+
+- A44 day-ahead price and controller thresholds;
+- A81 FCR capacity price and contracted volume;
+- hourly threshold requests, admissible reserve headroom, fixed energy
+  baseline, and four-hour FCR commitment;
+- 10-second activation and requested/delivered combined and FCR power;
+- stored energy, SOC, charge/discharge energy, and cumulative throughput;
+- baseline/FCR tracking, non-delivery, and saturation evidence; and
+- interval settlement, total profit, terminal-target status, and fingerprints.
+
+The “Optional live ENTSO-E R3 query” section also demonstrates direct
+acquisition for editable UTC start/end, endpoint, and normalization parameters.
+It is guarded by `RUN_LIVE_QUERY = False`. When deliberately changed to `True`,
+the cell reads the token only through the existing explicit acquisition helper,
+derives the A44 and combined A81 `B95/A52/A01` requests, publishes three
+canonical series from two source responses with digest-only retention, and
+plots them. Live artifacts stay beneath ignored
+`artifacts/market/notebook-live-query`; they do not replace or modify the
+reviewed replay fixtures.
+
+The committed notebook has no execution state. Its executed outputs,
+screenshots, HTML exports, and optional figures contain restricted real values
+and must remain private. Figure export is disabled by default and, when
+explicitly enabled, writes beneath ignored
+`tmp/bess-stacked-services-notebook/figures`.
 
 ## Experimental-v1 Library Surface
 

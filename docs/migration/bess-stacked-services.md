@@ -26,6 +26,19 @@ recorded 24 hourly decisions, six FCR blocks, 8,640 activation samples,
 independently reconciled totals, trace fingerprint, and result fingerprint.
 T037 and the clean committed-fixture benchmark in T050 are complete.
 
+The source-only interactive consumer at
+`examples/bess_stacked_services/stacked_services_walkthrough.ipynb` documents
+and plots the market, controller, activation, physical delivery, battery state,
+tracking/saturation, settlement, terminal-target, and fingerprint surfaces.
+Notebook execution is optional and offline by default. A disabled live-query
+section can explicitly call the same ENTSO-E producer for caller-selected UTC
+bounds, derive A44 plus combined A81 `B95/A52/A01`, and plot all three canonical
+market variables. The token and source adapter remain inside that opt-in guard;
+digest-only output is written under ignored `artifacts/` and never replaces the
+reviewed replay fixtures. Executed outputs, live artifacts, and exported figures
+inherit the restricted real-data boundary and must not be committed or
+distributed publicly.
+
 ## Reference Evidence
 
 The activation behavior was extracted from these exact external sources rather

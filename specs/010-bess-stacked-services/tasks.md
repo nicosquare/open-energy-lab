@@ -229,6 +229,18 @@ fixtures.
 
 ---
 
+## Phase 10: Interactive Offline Walkthrough
+
+**Purpose**: Provide a documented notebook consumer that makes the complete
+stacked-service market, control, physical, battery, quality, settlement, and
+audit surfaces inspectable without weakening the private-fixture boundary.
+
+- [X] T066 Add a source-only working notebook that reuses the validated offline replay, retains every canonical interval/sample in analysis tables, and plots the A44/A81 market series, deterministic decisions and FCR headroom, activation and requested/delivered power, battery energy/SOC/throughput, tracking/non-delivery/saturation, settlement, terminal target, and reproducibility fingerprints in `examples/bess_stacked_services/stacked_services_walkthrough.ipynb`
+- [X] T067 Document optional notebook setup and restricted-output handling, add a structural regression for cleared execution state, complete variable/plot coverage, and zero network/secret imports on the default path, then execute every code cell headlessly against the committed fixtures without saving outputs in `examples/bess_stacked_services/README.md`, `specs/010-bess-stacked-services/quickstart.md`, and `tests/unit/simulator/test_stacked_services_notebook.py`
+- [X] T068 Add a disabled-by-default live ENTSO-E notebook section with caller-editable UTC query parameters, guarded dotenv/token handling, A44 plus combined A81 `B95/A52/A01` acquisition, sanitized request/result summaries, direct plots of all three canonical market series, ignored digest-only output, and structural guard coverage in `examples/bess_stacked_services/stacked_services_walkthrough.ipynb`, `tests/unit/simulator/test_stacked_services_notebook.py`, and notebook guidance
+
+---
+
 ## Dependencies And Execution Order
 
 ### Phase Dependencies
@@ -251,6 +263,10 @@ fixtures.
   assumption that public redistribution permission was required for internal
   Git storage. Owner-confirmed private, collaborator-only storage unblocks
   T037/T050 while public/package/release distribution remains prohibited.
+- **Phase 10 (Interactive offline walkthrough)**: Depends on the complete
+  restricted fixture set and offline replay. Its default path remains offline;
+  its source adapter and secret helper load only inside a disabled explicit-live
+  guard, and notebook execution remains outside routine validation.
 
 ### User Story Dependency Graph
 
@@ -346,6 +362,8 @@ Contributor B: T040 and T042-T044 baseline implementation; finish T041 after T03
 4. Join them through the gated recorded French day (US3).
 5. Add limiting-case deterministic baseline proofs (US4).
 6. Run cross-cutting offline, import-boundary, and optional-live validation.
+7. Add the source-only, optional-dependency notebook walkthrough after the
+   restricted offline reference is complete.
 
 ### Scope Guardrails
 

@@ -193,6 +193,7 @@ examples/bess_stacked_services/
 ├── import_reference_activation.py   # explicit local-raw fixture regeneration
 ├── stage_private_reference_market.py # token-free restricted staging consumer
 ├── generate_reference_replay.py     # deterministic expected-result generator
+├── stacked_services_walkthrough.ipynb # offline-default visual walkthrough with guarded live acquisition
 └── run_offline_replay.py            # default recorded demonstration
 
 tests/
@@ -217,6 +218,9 @@ tests/
     ├── test_stacked_service_manual.py
     ├── test_stacked_service_real_replay.py
     └── test_stacked_service_compatibility.py
+
+tests/unit/simulator/
+└── test_stacked_services_notebook.py # source-only notebook contract
 
 docs/migration/
 ├── bess-stacked-services.md          # exact reference provenance and boundaries
