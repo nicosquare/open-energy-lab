@@ -24,7 +24,7 @@ The market and expected-replay fixtures were staged on 2026-08-22 with
 prohibited-publication metadata. The complete offline replay reproduces the
 recorded 24 hourly decisions, six FCR blocks, 8,640 activation samples,
 independently reconciled totals, trace fingerprint, and result fingerprint.
-T037 is complete; T050 remains pending the clean committed-fixture benchmark.
+T037 and the clean committed-fixture benchmark in T050 are complete.
 
 ## Reference Evidence
 
@@ -186,12 +186,34 @@ network fetch-on-missing, notebooks, SLURM, W&B, GPU, or legacy runtime behavior
 
 ## Reference Benchmark Record
 
-The required one-warm-up/five-measurement reference benchmark remains pending
-until the privately staged fixtures are committed. No timing sample is recorded
-as acceptance evidence while correctness inputs are absent. Record CPU model, allocated
-cores/processes, available memory, operating system, Python version, repository
-revision, and all five end-to-end timings here without modifying the expected
-fixture during validation.
+### Accepted committed-fixture run — 2026-08-22
+
+The exact T050 command ran against the clean committed fixture revision with
+network creation replaced by a function that fails the test. The warm-up and
+all five measured runs loaded and validated the three default fixture paths,
+replayed and settled the full day, and matched every expected count, total, and
+fingerprint.
+
+| Field | Observed value |
+| --- | --- |
+| CPU model | Intel Xeon Gold 5218R at 2.10 GHz |
+| Host logical CPUs | 80 |
+| Process-visible allocation | 10 CPUs, one CPython process, no deliberate parallelism |
+| Memory | 503 GiB total, 447 GiB available at measurement |
+| Operating system | Linux 6.8.0-124-generic x86_64 GNU/Linux |
+| Python | CPython 3.14.6, Anaconda build, GCC 14.3.0 |
+| Clean fixture revision | `a1f82d89cbe470f5fc729e390fa1d293424e7e8d` |
+| Command | `uv run pytest tests/integration/simulator/test_stacked_service_real_replay.py -m reference_benchmark -q` |
+| Network boundary | `socket.socket` replaced with a function that fails the test on any use |
+| Warm-up | passed with all expected counts, totals, and fingerprints matching |
+| Five timings (seconds) | `0.9719087048433721`, `0.9722548210993409`, `0.9897750439122319`, `0.9791286489926279`, `0.9830326829105616` |
+| Threshold result | all five measured end-to-end runs below 10 seconds |
+| Expected-fixture integrity | SHA-256 remained `13df60b98ca511bf6f71252ab669eb828f00ba04363fec7064043e730118208f`; worktree remained clean |
+
+The command passed (`1 passed, 1 deselected`) in 5.97 seconds. This is the T050
+acceptance record.
+
+### Earlier blocked attempt
 
 An explicit attempt on 2026-08-21 produced the following preflight record:
 
@@ -208,7 +230,7 @@ An explicit attempt on 2026-08-21 produced the following preflight record:
 | Outcome | skipped before warm-up because the market and expected-replay fixtures are gated and absent |
 | Five timing samples | not produced; no correctness input was available to benchmark |
 
-This is not a passing benchmark record and T050 remains incomplete. The
+This historical attempt was not a passing benchmark record. The
 expected-result fixture was absent and therefore was not modified.
 
 ### Ignored-artifact reference-host preflight
