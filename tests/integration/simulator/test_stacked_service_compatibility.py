@@ -195,8 +195,8 @@ def test_terminal_target_is_report_only_for_dispatch_and_settlement() -> None:
 def test_stacked_builder_reproduces_the_recorded_reference_schedule() -> None:
     if not EXPECTED_REFERENCE_PATH.is_file() or not MARKET_REFERENCE_PATH.is_file():
         pytest.skip(
-            "A44 redistribution blocks publishing the technically validated "
-            "ENTSO-E reference fixture"
+            "the complete restricted private-repository reference fixture "
+            "set has not been staged"
         )
     from open_energy_lab.market import load_market_data_artifact
     from open_energy_lab.simulator import BatteryComponent, build_fcr_capacity_schedule

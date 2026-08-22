@@ -399,9 +399,13 @@ DST transition, exercises large French price variation, and has complete
 source-explicit high-resolution frequency observations.
 
 **Blocking gate**: If credentialed ENTSO-E acquisition does not prove complete
-compatible A44/combined-A81 source data and reusable normalized-fixture terms for
-this exact day, no real fixture may be published under Feature 010 until the
-selected period is amended through the specification workflow.
+compatible A44/combined-A81 source data for this exact day, no real fixture may
+be staged under Feature 010 until the selected period is amended through the
+specification workflow. The owner-confirmed private repository may hold the
+validated normalized and derived fixtures only for authorized collaborators,
+with public/package/release distribution prohibited and removal required before
+any public visibility change. This storage decision does not claim public A44
+redistribution rights.
 
 ## Decision 13: Make routine validation completely offline
 
@@ -435,6 +439,9 @@ concerns, not prerequisites for reproducible simulation review.
 - ENTSO-E publishes a list of data available for free reuse under CC BY 4.0;
   the exact current list and attribution requirement must be captured when the
   real fixture is generated. See [ENTSO-E legal terms](https://transparencyplatform.zendesk.com/hc/en-us/articles/40921911218961-Legal-Terms-and-Conditions).
+- The real Feature 010 fixtures are restricted private-repository data rather
+  than publicly redistributable inputs. They are excluded from build outputs
+  and must be removed before repository visibility becomes public.
 - RTE's terms permit reuse of public data with source attribution. The selected
   activation fixture must identify RTE and the reference repository's exact
   transformation provenance. See [RTE terms](https://www.services-rte.com/en/general-terms-and-conditions-of-use.html).

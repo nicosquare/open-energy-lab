@@ -141,38 +141,27 @@ power exchanges or TSOs as the Primary Owner; RTE's French market-data page
 identifies the displayed French spot prices as EPEX SPOT data and states that
 copying or distribution requires the power exchange's prior consent.
 
-Accordingly, this repository does not commit, package, attach to CI, or release
-real A44 responses, normalized A44 values, or granular derived outputs capable
-of reconstructing them without documented EPEX SPOT permission or another
-reviewed legal basis. Academic or non-commercial use does not by itself remove
-that publication gate.
+The repository owner confirmed on 2026-08-22 that this is a private repository
+and limited to authorized collaborators. The exact Feature 010 normalized
+market, activation, and derived replay fixtures may therefore be stored here
+only as restricted private-repository data. That decision does not claim public
+redistribution permission for A44 values. The fixtures are not offered under
+the project license and must not enter a public repository, fork, mirror,
+package, release, public CI artifact, or external artifact store. They must be
+removed before repository visibility is changed to public.
 
-Acceptable permission evidence must identify EPEX SPOT or another proven rights
-holder, the France 2022-08-19 day-ahead values, public repository distribution
-of the normalized artifact and derived replay fixture, permitted adaptation,
-required attribution, effective date, and a durable permission reference. A
-token, private/internal-use entitlement, or generic RTE public-data term is not
-sufficient for these EPEX-owned prices.
-
-EPEX SPOT's current General Conditions for Market Data describe separately
-selected Internal, External, and Derived Usage rights, with the chosen product
-and Market Data Agreement controlling the actual scope. They also require
-separate written consent for specified AI/ML uses. The current catalogue lists
-`FR Day-Ahead Auction Price and Volumes - Histo (up to Y-1)`, and the official
-Market Data contact is `marketdata.sales@epexspot.com`. These materials identify
-a permission route; they are not themselves a public-redistribution grant.
-
-The ready-to-send request, exact acceptance checklist, private evidence-digest
-workflow, and fail-closed authorization command are recorded in
-[EPEX SPOT publication permission dossier](../migration/epex-spot-publication-permission.md).
-The authorization consumer preserves the normalized content fingerprint and
-publishes a new artifact fingerprint only after the permission record matches
-the exact repository, A44 period, required uses, and private grant-document
-SHA-256.
+The staging consumer performs no network access, requires explicit
+acknowledgement of the private/restricted repository, preserves normalized
+content, and emits a new artifact fingerprint carrying
+`repository_storage=permitted_private_restricted` and
+`repository_publication=prohibited`. Raw responses remain digest-only. The
+complete storage and removal policy is recorded in
+[Restricted French reference fixtures](../migration/restricted-reference-fixtures.md).
 
 Researchers may run the documented producer privately with their own account
 and token. Code, request documentation, provenance schemas, and synthetic
-fixtures remain redistributable independently of real A44 values.
+fixtures remain redistributable independently of the restricted real-data
+fixtures.
 
 ## Official References
 
@@ -185,6 +174,3 @@ fixtures remain redistributable independently of real A44 values.
 - [List of data available for free reuse](https://transparency.entsoe.eu/content/static_content/download?path=%2FStatic+content%2Fterms+and+conditions%2F231018_List_of_Data_available_for_reuse.pdf)
 - [ENTSO-E Energy Prices 12.1(d) ownership profile](https://transparencyplatform.zendesk.com/hc/en-us/articles/16647234190100-Energy-Prices-12-1-D)
 - [RTE French spot-price ownership and use terms](https://www.rte-france.com/en/data-publications/eco2mix/market-data)
-- [EPEX SPOT Market Data contacts](https://www.epexspot.com/en/contact)
-- [EPEX SPOT General Conditions for Market Data, 1 November 2025](https://www.epexspot.com/sites/default/files/download_center_files/EPEX%20SPOT%20GENERAL%20CONDITIONS_Market%20Data%20as%20of%201st%20November%202025.pdf)
-- [EPEX SPOT Market Data Information Products catalogue](https://www.epexspot.com/sites/default/files/download_center_files/20200113_EPEX%20Webshop_product%20catalogue.pdf)

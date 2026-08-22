@@ -104,14 +104,15 @@ Acceptance requires:
 - fixed demonstration battery, schedules/heuristic config, zero penalty, and
   optional report-only terminal target as specified in `research.md`
 - recorded input, trace, and result fingerprints plus component totals
-- documented reuse/attribution basis for every committed normalized artifact
+- documented attribution and restricted private-repository storage policy for
+  every committed real-data artifact
 
 Two offline runs must have zero transport calls and identical traces, event
 ordering, settlement components, throughput, terminal report, and fingerprints.
 
-If A44/combined-A81 completeness or reuse terms fail for this period, the real
-fixture is blocked. Synthetic completion and silent alternative sources are
-forbidden.
+If A44/combined-A81 completeness or the restricted-storage policy fails for
+this period, the real fixture is blocked. Public/package distribution,
+synthetic completion, and silent alternative sources are forbidden.
 
 ## Required Offline Validation Matrix
 

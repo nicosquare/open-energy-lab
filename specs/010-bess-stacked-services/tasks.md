@@ -212,7 +212,20 @@ restricted A44 values.
 - [X] T058 [P] Reconcile `spec.md`, `plan.md`, `research.md`, `data-model.md`, contracts, quickstart, and this task history with the corrective R3 contract while retaining the original failed gate as a superseded diagnostic in `specs/010-bess-stacked-services/`
 - [X] T059 [P] Document the R3 version, endpoint, exact requests, authentication/dotenv boundary, XML/ZIP handling, normalization, retries, official references, and redistribution policy in `docs/architecture/entsoe-transparency-platform.md`, and link it from architecture, migration, feature, and example guidance
 - [X] T060 Run the focused offline market, control, simulator, import-boundary, and existing battery/arbitrage regression suites; keep routine validation token-free and offline
-- [X] T061 Run the credentialed exact-period live gate from `.env`, record technical compatibility separately from A44 redistribution, scan outputs for the token, and leave real market/replay fixtures uncommitted until an A44 reuse basis is documented
+- [X] T061 Run the credentialed exact-period live gate from `.env`, record technical compatibility separately from A44 redistribution, scan outputs for the token, and leave real market/replay fixtures uncommitted pending an explicit repository-storage decision
+
+---
+
+## Phase 9: Restricted Private-Repository Fixture Boundary
+
+**Purpose**: Apply the repository owner's confirmation that the repository is
+private without claiming or enabling public redistribution of the real-data
+fixtures.
+
+- [X] T062 Reconcile the Feature 010 specification, plan, research, data model, contracts, quickstart, architecture, migration, example, and fixture guidance with restricted collaborator-only repository storage, prohibited public/package/release distribution, and removal before any public visibility change
+- [X] T063 Replace the public-publication authorization workflow with an explicit token-free private staging consumer, fail-closed metadata validation, replay policy propagation, focused tests, and source/wheel distribution exclusions
+- [ ] T064 Stage the exact technically validated market fixture with unchanged content and a new restricted-policy artifact fingerprint, generate the independently checked expected replay, scan committed bytes for the token, and complete T037
+- [ ] T065 Run the committed-fixture reference-host benchmark with networking blocked, record the clean revision and five timings, and complete T050
 
 ---
 
@@ -226,14 +239,18 @@ restricted A44 values.
 - **Phase 4 (US2)**: Depends on Phase 2. It consumes canonical in-memory or
   synthetic artifacts and can proceed in parallel with US1.
 - **Phase 5 (US3)**: Depends on completed US1 and US2 contracts. T035 and T036
-  can run in parallel, but T037--T039 require both artifacts and the legal gate.
+  can run in parallel, but T037--T039 require both artifacts and their storage
+  gate.
 - **Phase 6 (US4)**: Depends on US2 and the existing price-threshold controller;
   its unit work can proceed in parallel with US3, while T041's recorded-schedule
   assertion additionally depends on T037.
 - **Phase 7 (Polish)**: Depends on all completed, unblocked user stories.
 - **Phase 8 (Corrective R3 alignment)**: Supersedes the Phase 3 source adapter
-  assumptions and the technical portion of T036/T052. It does not unblock T037
-  or T050 while A44 redistribution remains unresolved.
+  assumptions and the technical portion of T036/T052.
+- **Phase 9 (Restricted private-repository boundary)**: Supersedes the earlier
+  assumption that public redistribution permission was required for internal
+  Git storage. Owner-confirmed private, collaborator-only storage unblocks
+  T037/T050 while public/package/release distribution remains prohibited.
 
 ### User Story Dependency Graph
 
@@ -256,8 +273,9 @@ T041's recorded-schedule compatibility assertion, which depends on T037.
 - Keep networking confined to explicit US1 fetch/refresh operations.
 - Keep activation import source-independent and separate from A83/A84.
 - Reuse existing battery physics before adding aggregation and settlement.
-- Do not publish a real fixture until its source completeness, integrity, and
-  redistribution conditions pass.
+- Do not stage a real fixture until source completeness, integrity, and the
+  restricted private-repository policy pass. Never package or publicly
+  distribute the real fixtures.
 
 ### Parallel Opportunities
 

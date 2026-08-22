@@ -391,7 +391,7 @@ plus the deterministic output of the stacked heuristic.
   the ENTSO-E API generation and endpoint, exact case-sensitive A44/A81
   requests, authentication/dotenv boundary, XML/ZIP handling, normalization
   formula, retry/failure behavior, official references, and the distinction
-  between private academic processing and redistribution.
+  between restricted private-repository storage and public redistribution.
 
 #### Activation-Trace Ingestion
 
@@ -553,9 +553,13 @@ plus the deterministic output of the stacked heuristic.
   10-second FCR activation trace, one fixed deterministic stacked schedule,
   and recorded expected outputs.
 - **FR-044**: The real-data demonstration artifacts MUST be preserved for
-  reproducible offline replay and routine validation subject to recorded
-  redistribution terms. Routine tests MUST NOT require a live credential,
-  network access, notebook execution, or regeneration of the fixture.
+  reproducible offline replay and routine validation only in the owner-
+  confirmed private repository for authorized collaborators. Their metadata
+  MUST prohibit public publication, packages, releases, public forks/mirrors,
+  and external artifact upload; the build MUST exclude them, and they MUST be
+  removed before repository visibility becomes public. Routine tests MUST NOT
+  require a live credential, network access, notebook execution, or fixture
+  regeneration.
 - **FR-045**: A credentialed fetch/refresh check MAY be run explicitly to
   validate current source compatibility, but its absence or network
   unavailability MUST be documented separately and MUST NOT weaken offline
@@ -747,10 +751,12 @@ plus the deterministic output of the stacked heuristic.
   compatible, and legally preservable as a normalized offline fixture. A
   period that does not satisfy those conditions is rejected rather than
   patched with synthetic values.
-- Real A44 responses, normalized values, and reconstructable derived outputs
-  remain local under ignored `artifacts/` until a documented Primary Owner
-  permission or other reviewed redistribution basis exists. Academic or
-  non-commercial intent does not by itself authorize repository publication.
+- Real A44 responses remain digest-only. Normalized values and reconstructable
+  derived outputs may be committed only to the owner-confirmed private
+  repository for authorized collaborators, with public redistribution and
+  package/release distribution explicitly prohibited. This restricted storage
+  decision is not a public-data license; remove the fixtures before making the
+  repository or its relevant history public.
 - The French reference market timezone is `Europe/Paris`; UTC is the canonical
   computation timeline, and local delivery meaning remains metadata.
 - The reference day-ahead schedule uses hourly blocks, the state-checkpoint

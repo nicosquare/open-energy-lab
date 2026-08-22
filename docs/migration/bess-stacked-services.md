@@ -11,10 +11,13 @@ offline.
 The synthetic/manual replay path is implemented and validated. The independent
 RTE activation gate passed for the selected delivery day. The earlier A81 HTTP
 400 was caused by obsolete query assumptions and is superseded by the current
-R3 A44/combined-A81 contract. Technical compatibility and publication rights
-are recorded separately. A44 redistribution still lacks a documented basis
-under the current ENTSO-E free-reuse list, so the market and expected-replay
-fixtures remain absent, with no replacement data introduced. The authoritative gate record is in
+R3 A44/combined-A81 contract. Technical compatibility and public
+redistribution rights are recorded separately. The repository owner confirmed
+on 2026-08-22 that this repository is private and collaborator-restricted, so
+the real fixtures may be committed under a policy that prohibits public,
+package, release, fork/mirror, and external-artifact distribution. This does
+not claim public A44 redistribution permission. The authoritative storage and
+gate records are in `docs/migration/restricted-reference-fixtures.md` and
 `tests/fixtures/market/README.md`.
 
 ## Reference Evidence
@@ -47,7 +50,8 @@ The current ENTSO-E Energy Prices profile names power exchanges or TSOs as the
 Primary Owner, while RTE's French market-data page identifies the French spot
 prices as EPEX SPOT property and requires prior consent for copying or
 distribution. No such EPEX permission was supplied, so the normalized market
-fixture is not redistributed:
+fixture is restricted to authorized collaborators in this private repository
+and is not publicly redistributed:
 `https://transparencyplatform.zendesk.com/hc/en-us/articles/40921911218961-Legal-Terms-and-Conditions`
 and
 `https://transparencyplatform.zendesk.com/hc/article_attachments/40921869379729`,
@@ -74,8 +78,9 @@ are documented in the
 The corrected opt-in production gate passed on 2026-08-22 with 24 A44
 intervals and six aligned PT4H volume/price blocks sourced from the same A81
 document. Its token scan passed and its temporary artifact was not retained.
-This resolves technical compatibility only; A44 redistribution remains the
-reason the committed market and expected-replay fixtures are absent.
+This resolves technical compatibility. Public A44 redistribution remains
+prohibited, while the subsequent owner-confirmed private-repository decision
+allows deterministic restricted staging for authorized collaborators.
 ENTSO-E's archive notice records that legacy R2 data items were discontinued on
 11 December 2025:
 `https://transparencyplatform.zendesk.com/hc/en-us/articles/41986091964305-Archives-for-legacy-Transparency-Platform-publications`.
@@ -130,7 +135,7 @@ validity to `market.activation`; it is not a second owner of artifact semantics.
 
 ## Demonstration Configuration And Gate
 
-Once the ENTSO-E gate passes, the recorded demonstration must use exactly:
+The ENTSO-E gate passed, and the recorded demonstration uses exactly:
 
 - one 100 kWh battery with a 10--90 kWh operating range;
 - 50 kW charge and discharge limits;
@@ -144,10 +149,9 @@ Once the ENTSO-E gate passes, the recorded demonstration must use exactly:
 
 Expected baseline intervals, market observation references, physical traces,
 settlement totals, and fingerprints must be generated from the accepted
-fixtures. They must not be inferred from the research plan. Until the gate
-passes, `france_2022-08-19_market_v1.json` and
-`france_2022-08-19_expected_replay_v1.json` remain absent, and the real replay
-and reference benchmark report the recorded skip reason.
+fixtures. They must not be inferred from the research plan. Repository copies
+must carry the restricted storage policy, remain excluded from distributions,
+and be removed before any public visibility change.
 
 ## Settlement And Scope
 
@@ -164,9 +168,9 @@ network fetch-on-missing, notebooks, SLURM, W&B, GPU, or legacy runtime behavior
 
 ## Reference Benchmark Record
 
-The required one-warm-up/five-measurement reference benchmark cannot be accepted
-until the two blocked fixtures exist. No timing sample is recorded as passing
-while correctness inputs are absent. When resumed, record CPU model, allocated
+The required one-warm-up/five-measurement reference benchmark remains pending
+until the privately staged fixtures are committed. No timing sample is recorded
+as acceptance evidence while correctness inputs are absent. Record CPU model, allocated
 cores/processes, available memory, operating system, Python version, repository
 revision, and all five end-to-end timings here without modifying the expected
 fixture during validation.
@@ -189,14 +193,13 @@ An explicit attempt on 2026-08-21 produced the following preflight record:
 This is not a passing benchmark record and T050 remains incomplete. The
 expected-result fixture was absent and therefore was not modified.
 
-### Private pre-publication reference-host preflight
+### Ignored-artifact reference-host preflight
 
 On 2026-08-22, the same benchmark passed against the technically validated,
 Git-ignored market and expected-result artifacts. This run establishes that the
 implementation meets the correctness and performance protocol on the reference
-host, but it is not T050 acceptance evidence: the A44 values and reconstructable
-expected replay still lack an EPEX SPOT permission or another reviewed basis for
-public repository distribution.
+host, but it is not T050 acceptance evidence because it predates the committed
+restricted fixture set.
 
 | Field | Observed value |
 | --- | --- |
@@ -214,8 +217,8 @@ public repository distribution.
 | Threshold result | all five measured end-to-end runs below 10 seconds |
 | Fixture mutation check | benchmark reads the expected artifact only; worktree remained clean after the run |
 
-The local artifacts remain excluded from Git. T037 and T050 stay incomplete
-until the permission record is durable and the reviewed artifacts can be
-committed without changing their validated bytes. The exact request,
-rights/scope checklist, evidence-digest record, and resume commands are in the
-[EPEX SPOT publication permission dossier](epex-spot-publication-permission.md).
+At this preflight revision the local artifacts remained excluded from Git. The
+owner's subsequent private-repository confirmation permits T037 and T050 to
+proceed through the deterministic restricted staging workflow without changing
+normalized content. The command and distribution prohibitions are in
+[Restricted French reference fixtures](restricted-reference-fixtures.md).

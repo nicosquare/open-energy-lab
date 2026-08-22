@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
+import tomllib
 
 
 MIGRATION_POLICY_DOCS = (
@@ -107,10 +108,10 @@ def test_entsoe_architecture_guide_records_the_exact_r3_api_contract() -> None:
         "cc by 4.0",
         "epex spot",
         "prior consent",
-        "public repository distribution",
-        "marketdata.sales@epexspot.com",
-        "derived usage",
-        "ai/ml",
+        "private repository",
+        "repository_publication=prohibited",
+        "package",
+        "removed before repository visibility",
         "official entso-e postman collection",
         "list of data available for free reuse",
     )
@@ -118,24 +119,49 @@ def test_entsoe_architecture_guide_records_the_exact_r3_api_contract() -> None:
     assert missing == [], f"{path} is missing: {missing}"
 
 
-def test_epex_permission_dossier_is_exact_and_fail_closed() -> None:
-    path = Path("docs/migration/epex-spot-publication-permission.md")
+def test_restricted_fixture_policy_is_exact_and_fail_closed() -> None:
+    path = Path("docs/migration/restricted-reference-fixtures.md")
     content = _read_text(path)
     required = (
-        "marketdata.sales@epexspot.com",
-        "fr day-ahead auction price and volumes - histo (up to y-1)",
-        "2022-08-18 22:00 utc",
-        "2022-08-19 22:00 utc",
-        "24 normalized hourly values",
-        "public forks",
-        "derived replay fixture",
-        "ai/ml-use terms",
-        "permission evidence",
-        "sha-256",
-        "authorize_reference_market.py",
+        "authorized repository collaborators",
+        "permitted_private_restricted",
+        "repository_publication` as `prohibited",
+        "public repository, fork, or mirror",
+        "source or wheel package",
+        "release attachment",
+        "remove all three fixtures",
+        "not offered under the repository's apache-2.0 license",
+        "stage_private_reference_market.py",
+        "--acknowledge-private-restricted-repository",
         "france_2022-08-19_market_v1.json",
-        "t037 and t050",
-        "does not satisfy",
+        "france_2022-08-19_activation_v1.json",
+        "france_2022-08-19_expected_replay_v1.json",
+        "does not claim public redistribution rights",
     )
     missing = [term for term in required if term not in content]
     assert missing == [], f"{path} is missing: {missing}"
+
+    assert not Path(
+        "examples/bess_stacked_services/authorize_reference_market.py"
+    ).exists()
+    assert not Path(
+        "examples/bess_stacked_services/epex_publication_permission.example.json"
+    ).exists()
+    assert not Path(
+        "docs/migration/epex-spot-publication-permission.md"
+    ).exists()
+
+
+def test_restricted_real_fixtures_are_excluded_from_distributions() -> None:
+    configuration = tomllib.loads(Path("pyproject.toml").read_text("utf-8"))
+    exclusions = set(
+        configuration["tool"]["hatch"]["build"]["targets"]["sdist"][
+            "exclude"
+        ]
+    )
+    expected = {
+        "/tests/fixtures/market/france_2022-08-19_market_v1.json",
+        "/tests/fixtures/market/france_2022-08-19_activation_v1.json",
+        "/tests/fixtures/market/france_2022-08-19_expected_replay_v1.json",
+    }
+    assert expected <= exclusions

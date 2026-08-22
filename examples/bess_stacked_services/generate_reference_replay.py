@@ -1,8 +1,9 @@
-"""Generate the gated French reference replay from validated local artifacts.
+"""Generate the French reference replay under its restricted-data boundary.
 
 The default workflow writes only beneath the Git-ignored ``artifacts/`` tree.
-Publication into the committed fixture directory is rejected while the market
-artifact records any source series as local-only.
+Writing elsewhere requires market metadata produced by the explicit private-
+repository staging workflow. That metadata permits restricted repository
+storage but prohibits public publication and package or release distribution.
 """
 
 from __future__ import annotations
@@ -75,14 +76,57 @@ def _battery_payload(battery: BatteryComponent) -> dict[str, object]:
     }
 
 
-def _market_publication_allowed(market: MarketDataArtifact) -> bool:
-    policy = market.retention_and_license.get("repository_publication")
-    if policy is not None:
-        return policy == "permitted"
-    legacy_policy = market.retention_and_license.get(
-        "normalized_fixture_redistribution"
+def _private_repository_storage_allowed(market: MarketDataArtifact) -> bool:
+    retention = market.retention_and_license
+    policy = retention.get("restricted_repository_policy")
+    if not isinstance(policy, Mapping):
+        return False
+    return (
+        retention.get("repository_storage")
+        == "permitted_private_restricted"
+        and retention.get("repository_publication") == "prohibited"
+        and policy.get("repository_visibility") == "private"
+        and policy.get("authorized_audience") == "repository collaborators"
+        and policy.get("repository_storage") == "permitted"
+        and policy.get("public_distribution") == "prohibited"
+        and policy.get("public_forks_and_mirrors") == "prohibited"
+        and policy.get("package_distribution") == "prohibited"
+        and policy.get("release_attachment") == "prohibited"
+        and policy.get("external_artifact_upload") == "prohibited"
     )
-    return legacy_policy in {"permitted", "permitted-for-tests", "cc-by-4.0"}
+
+
+def _restricted_data_policy_payload(
+    market: MarketDataArtifact,
+) -> dict[str, object]:
+    retention = market.retention_and_license
+    if _private_repository_storage_allowed(market):
+        policy = retention["restricted_repository_policy"]
+        assert isinstance(policy, Mapping)
+        return {
+            "policy_version": policy.get("policy_version"),
+            "repository_storage": retention["repository_storage"],
+            "repository_publication": retention["repository_publication"],
+            "authorized_audience": policy["authorized_audience"],
+            "public_distribution": policy["public_distribution"],
+            "public_forks_and_mirrors": policy["public_forks_and_mirrors"],
+            "package_distribution": policy["package_distribution"],
+            "release_attachment": policy["release_attachment"],
+            "external_artifact_upload": policy["external_artifact_upload"],
+            "source_market_artifact": market.artifact_fingerprint,
+        }
+    return {
+        "policy_version": "oel.local-artifact-only.v1",
+        "repository_storage": "prohibited_until_private_staging",
+        "repository_publication": "prohibited",
+        "authorized_audience": "local operator only",
+        "public_distribution": "prohibited",
+        "public_forks_and_mirrors": "prohibited",
+        "package_distribution": "prohibited",
+        "release_attachment": "prohibited",
+        "external_artifact_upload": "prohibited",
+        "source_market_artifact": market.artifact_fingerprint,
+    }
 
 
 def _is_beneath(path: Path, root: Path) -> bool:
@@ -97,13 +141,13 @@ def _require_safe_destination(
     market: MarketDataArtifact,
     destination_dir: Path,
 ) -> None:
-    if _market_publication_allowed(market):
+    if _private_repository_storage_allowed(market):
         return
     if not _is_beneath(destination_dir, Path("artifacts")):
         raise ReferenceReplayGenerationError(
-            "market artifact is local-only; expected replay output must remain "
-            "beneath ignored artifacts/ until a reviewed A44 publication basis "
-            "is recorded in the market artifact"
+            "unstaged A44 market data must remain beneath ignored artifacts/; "
+            "repository fixture output requires the explicit restricted private-"
+            "repository staging policy"
         )
 
 
@@ -403,6 +447,7 @@ def build_reference_replay_payload(
     )
     return {
         "schema_version": "oel.stacked-service-reference.v1",
+        "restricted_data_policy": _restricted_data_policy_payload(market),
         "period": {
             "start_utc": _z(REFERENCE_START),
             "end_utc": _z(REFERENCE_END),
@@ -464,7 +509,7 @@ def write_reference_replay_fixture(
     activation_path: str | Path = DEFAULT_ACTIVATION_PATH,
     destination_dir: str | Path = DEFAULT_DESTINATION,
 ) -> Path:
-    """Generate and atomically write the reference payload under its legal gate."""
+    """Generate and atomically write the replay under its storage boundary."""
 
     market = load_market_data_artifact(market_path)
     destination = Path(destination_dir)
@@ -527,7 +572,12 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, TypeError, ValueError) as exc:
         parser.error(str(exc))
     print(f"expected_replay={output}")
-    print("publication_status=local_only_pending_reviewed_a44_basis")
+    market = load_market_data_artifact(args.market)
+    if _private_repository_storage_allowed(market):
+        print("repository_storage=permitted_private_restricted")
+    else:
+        print("repository_storage=ignored_artifacts_only")
+    print("repository_publication=prohibited")
     return 0
 
 

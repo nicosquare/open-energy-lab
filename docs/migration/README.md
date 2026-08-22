@@ -43,9 +43,9 @@ parity validation, and environment assumptions.
 - `fixture-provenance.md`: fixture record requirements, including planning,
   TPM, weather, demand, and simulator-family provenance rules for recorded
   responses and deterministic baselines
-- `epex-spot-publication-permission.md`: exact request, grant acceptance
-  checklist, private evidence-digest workflow, and fail-closed resume command
-  for the two Feature 010 A44-gated fixtures
+- `restricted-reference-fixtures.md`: private-repository storage boundary,
+  distribution prohibitions, package exclusions, and explicit staging workflow
+  for the three Feature 010 real-data fixtures
 
 ## TPM-Planning Review Path
 

@@ -7,10 +7,10 @@ behavior belongs under `src/open_energy_lab`, not in these scripts.
 
 The consumers are implemented. The RTE activation fixture is validated and
 committed. The obsolete A81 request assumptions have been replaced by the
-current R3 combined A81 contract; the ENTSO-E market and derived replay
-fixtures remain uncommitted because A44 redistribution lacks a documented
-basis. The technical and legal gates are recorded separately in
-`tests/fixtures/market/README.md`.
+current R3 combined A81 contract. The repository owner has confirmed that this
+repository is private, so the real reference fixtures may be stored for
+authorized collaborators under the restricted-data policy; public and package
+distribution remain prohibited.
 
 ## Consumer Map
 
@@ -18,8 +18,8 @@ basis. The technical and legal gates are recorded separately in
 | --- | --- | --- |
 | `fetch_french_period.py` | Explicit ENTSO-E HTTPS operation; caller token required | Fetch or refresh canonical A44/combined-A81 market artifacts |
 | `import_reference_activation.py` | No network; caller-supplied local raw file | Verify and normalize the selected RTE PT10S activation trace |
-| `authorize_reference_market.py` | No network or token; caller-supplied reviewed permission record and private evidence | Verify the EPEX grant digest/scope and publish the fixed market fixture |
-| `generate_reference_replay.py` | No network; validated local artifacts | Build and independently reconcile the gated fixed replay fixture |
+| `stage_private_reference_market.py` | No network or token; explicit private-repository acknowledgement | Stage the fixed market fixture with restricted storage and prohibited-publication metadata |
+| `generate_reference_replay.py` | No network; validated local or privately staged artifacts | Build and independently reconcile the restricted fixed replay fixture |
 | `run_offline_replay.py` | None | Load recorded artifacts, replay the fixed schedule, and compare deterministic results |
 
 No consumer downloads on import, fetches on cache miss, chooses an alternative
@@ -100,28 +100,21 @@ The offline consumer has no transport argument and never reads
 before normal replay; the consumer does not fill, trim, interpolate, prorate,
 or fetch a replacement.
 
-At present the command exits with status 2 and identifies
-`france_2022-08-19_market_v1.json` and
-`france_2022-08-19_expected_replay_v1.json` as missing because the credentialed
-publication gate has not passed. Technical source compatibility is already
-validated. That is the required behavior, not an installation error.
+`stage_private_reference_market.py` is the explicit bridge between the ignored
+credentialed output and this private repository. It accepts only the exact
+validated reference period, requires
+`--acknowledge-private-restricted-repository`, preserves normalized content,
+and records that repository publication, packages, releases, public forks and
+mirrors, and external uploads are prohibited.
 
-`generate_reference_replay.py` is the explicit private fixture-production
-step after a successful local market fetch. It records the full threshold and
-headroom derivation plus independently reconciled replay totals and
-fingerprints. When A44 remains local-only, it rejects every destination outside
-the ignored `artifacts/` tree; producing a local expected replay is not
-permission to commit either restricted file. See the feature quickstart for
-the exact generation and private-benchmark commands.
-
-If EPEX SPOT later grants the required public rights,
-`authorize_reference_market.py` is the only resume step. It requires a
-non-confidential JSON summary plus the private grant bytes, verifies the
-grant-document SHA-256 and every exact scope flag, and writes
-`france_2022-08-19_market_v1.json` without changing normalized market content.
-The request language, acceptance checklist, deliberately non-authorizing JSON
-template, and commands are in the
-[EPEX SPOT publication permission dossier](../../docs/migration/epex-spot-publication-permission.md).
+`generate_reference_replay.py` records the full threshold and headroom
+derivation plus independently reconciled replay totals and fingerprints.
+Unstaged A44 data can write only beneath ignored `artifacts/`; a repository
+fixture can be generated only from the privately staged market artifact. See
+the feature quickstart and the
+[restricted-fixture policy](../../docs/migration/restricted-reference-fixtures.md)
+for the exact commands. The three real-data fixtures must be removed before
+this repository or its relevant history is made public.
 
 ## Experimental-v1 Library Surface
 

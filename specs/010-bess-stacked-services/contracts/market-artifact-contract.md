@@ -52,7 +52,7 @@ separate contract.
 - Every raw response is represented by byte count, media type, SHA-256,
   retrieval time, sanitized request identity, and retention basis.
 - Raw bytes are never embedded in canonical JSON.
-- `digest_only` is always valid when normalized-fixture reuse is permitted.
+- `digest_only` is always valid under the selected artifact storage policy.
 - `sidecar_retained` additionally requires a safe relative locator and digest.
 - Loading resolves sidecars beneath an explicit artifact root, rejects absolute
   paths and traversal, and verifies bytes before returning the artifact.
@@ -71,6 +71,18 @@ field. It is verified on load and identifies replay input.
 Lists have defined order, keys are sorted for hashing, text is UTF-8, and JSON
 serialization rejects NaN/infinity. Consumers never recompute fingerprints
 from a lossy dataframe representation.
+
+## Restricted Reference Storage
+
+The real France reference artifact is staged only after the credentialed
+technical gate and an explicit acknowledgement that repository access is
+private and collaborator-restricted. Its retention metadata records
+`repository_storage=permitted_private_restricted`,
+`repository_publication=prohibited`, digest-only raw evidence, and prohibitions
+on packages, releases, public forks/mirrors, and external artifact upload.
+Staging preserves `content_fingerprint`, changes `artifact_fingerprint`, and
+links the unstaged artifact as predecessor. The fixture must be removed before
+the repository or relevant history becomes public.
 
 ## Immutability And Filenames
 

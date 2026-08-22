@@ -23,11 +23,15 @@ The hand-calculable four-hour case is the equation-level oracle. The selected
 real demonstration is the Europe/Paris delivery day **2022-08-19**, represented
 in UTC as `[2022-08-18T22:00:00Z, 2022-08-19T22:00:00Z)`. It was pre-screened
 against the cited robust-storage-bidding data for 24 hourly prices, six FCR
-blocks, and 8,640 gap-free RTE frequency observations. Fixture publication is
+blocks, and 8,640 gap-free RTE frequency observations. Fixture staging is
 conditional on a credentialed ENTSO-E completeness check proving compatible
-`A44` and combined `A81` coverage for that exact period. Failure of that gate
-blocks the fixture; it does not authorize interpolation, synthetic patching,
-or an RTE price fallback.
+`A44` and combined `A81` coverage for that exact period. The repository owner
+confirmed that this repository is private and collaborator-restricted; the
+three real-data fixtures may be committed only with prohibited-publication
+metadata and build exclusions. They must never enter packages, releases,
+public forks/mirrors, or external artifact stores and must be removed before a
+public visibility change. Failure of the technical gate blocks the fixture; it
+does not authorize interpolation, synthetic patching, or an RTE price fallback.
 
 ## Technical Context
 
@@ -187,11 +191,14 @@ examples/bess_stacked_services/
 ├── README.md
 ├── fetch_french_period.py           # explicit credentialed fetch/refresh consumer
 ├── import_reference_activation.py   # explicit local-raw fixture regeneration
+├── stage_private_reference_market.py # token-free restricted staging consumer
+├── generate_reference_replay.py     # deterministic expected-result generator
 └── run_offline_replay.py            # default recorded demonstration
 
 tests/
 ├── fixtures/market/
 │   ├── README.md
+│   ├── RESTRICTED_DATA.md            # handling boundary for real fixtures
 │   ├── synthetic_entsoe/            # redistributable parser/sidecar fixtures
 │   ├── manual_stacked_service_v1.json
 │   ├── france_2022-08-19_market_v1.json
@@ -212,7 +219,8 @@ tests/
     └── test_stacked_service_compatibility.py
 
 docs/migration/
-└── bess-stacked-services.md          # exact reference provenance and boundaries
+├── bess-stacked-services.md          # exact reference provenance and boundaries
+└── restricted-reference-fixtures.md # private storage/distribution policy
 
 docs/architecture/
 └── entsoe-transparency-platform.md   # R3 endpoint, requests, parsing, and reuse policy
@@ -241,8 +249,9 @@ Research outcomes are captured in [research.md](./research.md). They resolve:
 - reuse of charge-positive `apply_power_request`, exact unit/sign conversion,
   FCR performance attribution, settlement, and throughput semantics
 - deterministic regulation-only and headroom-clipped stacked baselines
-- selection of 2022-08-19 and the credentialed completeness/licensing gates
-  required before committing the real ENTSO-E fixture
+- selection of 2022-08-19, the credentialed completeness gate, and the explicit
+  restricted private-repository staging boundary required before committing
+  the real ENTSO-E fixture
 
 No `NEEDS CLARIFICATION` items remain. The selected real period is deliberately
 an acceptance gate: if ENTSO-E does not provide complete compatible required
@@ -304,8 +313,9 @@ The [data model](./data-model.md), [quickstart](./quickstart.md), and
 6. Implement settlement, explicit penalty, throughput, and the report-only
    terminal-target result.
 7. Publish the manual fixture and expected equations. After the credentialed
-   completeness and legal-reuse gates pass, publish the normalized 2022-08-19
-   market artifact, activation artifact, and expected replay result. The fixed
+   completeness gate passes, privately stage the normalized 2022-08-19 market
+   artifact, activation artifact, and expected replay result under the
+   restricted-storage policy and package exclusions. The fixed
    demonstration configuration records the 475/540 EUR/MWh price thresholds,
    5 kW controller request, each unmodified threshold request, each admissible
    FCR-headroom interval, the resulting fixed hourly baseline, and expected

@@ -5,11 +5,12 @@ stacked services. Fixtures are versioned, deterministic, and small enough for
 routine review. Source retrieval and raw-source handling remain explicit
 producer workflows; simulator tests consume only validated canonical artifacts.
 
-## Planned Layout
+## Layout
 
 ```text
 market/
 ├── README.md
+├── RESTRICTED_DATA.md
 ├── synthetic_entsoe/
 │   └── ...                         # redistributable XML parser cases
 ├── manual_stacked_service_v1.json
@@ -23,12 +24,10 @@ market/
   are test documents, not recorded production responses.
 - `manual_stacked_service_v1.json` is the published four-hour arithmetic
   oracle defined by the feature contracts.
-- The three `france_2022-08-19_*` files form the gated real demonstration:
+- The three `france_2022-08-19_*` files form the restricted real demonstration:
   canonical market input, separately provenanced activation input, and expected
-  replay output. They must be mutually linked by their recorded fingerprints.
-
-Later phases create these files. Their names here reserve the reviewed fixture
-layout; their presence must never be inferred as proof that a source gate passed.
+  replay output. They must be mutually linked by their recorded fingerprints,
+  excluded from packages/releases, and kept inside the private repository.
 
 ## Credential And Token Prohibition
 
@@ -66,26 +65,33 @@ A missing or mismatched sidecar invalidates an artifact that claims
 digest and source metadata. Redistributable synthetic XML cases are authored
 test inputs and must be labeled as such rather than presented as raw evidence.
 
-## Gated Real-Fixture Policy
+## Restricted Real-Fixture Policy
 
 The selected market period is the Europe/Paris delivery day 2022-08-19, or UTC
 `[2022-08-18T22:00:00Z, 2022-08-19T22:00:00Z)`. The normalized market fixture
-may be committed only after one explicitly selected credentialed workflow
-proves all of the following for that exact period:
+may be staged only after one explicitly selected credentialed workflow proves
+all of the following for that exact period:
 
 - complete compatible France A44 day-ahead price coverage;
 - complete compatible combined A81 symmetric-FCR contracted-volume and
   procurement-price coverage from the same points and document;
 - accepted document identities, revisions, units, resolutions, and response
   digests; and
-- a documented attribution and legal basis for redistributing the normalized
-  fixture and for any separately retained raw sidecar.
+- documented attribution, raw-response retention, and storage policy.
 
-If any completeness, compatibility, integrity, or reuse gate fails, do not
-publish the real market fixture. Record the blocker in this README during the
-fixture-production task. Do not fill gaps, interpolate, substitute RTE prices,
-patch with synthetic observations, or choose another period without a
+If any completeness, compatibility, integrity, or storage gate fails, do not
+stage the real market fixture. Do not fill gaps, interpolate, substitute RTE
+prices, patch with synthetic observations, or choose another period without a
 specification change.
+
+The repository owner confirmed on 2026-08-22 that this repository is private
+and limited to authorized collaborators. That permits restricted repository
+storage; it does not grant public redistribution. All three real-data fixtures
+are governed by `RESTRICTED_DATA.md` and
+`docs/migration/restricted-reference-fixtures.md`. They must never be included
+in packages, releases, public CI artifacts, public forks or mirrors, or
+external artifact stores, and must be removed before repository visibility is
+changed to public.
 
 The activation fixture has an independent gate. Its explicit regeneration
 consumer accepts a caller-supplied local RTE frequency file, verifies the
@@ -128,10 +134,10 @@ A token-safe probe and the corrected opt-in live gate for UTC
 six sparse PT30M changes covering the day. Each volume/price pair reconciles
 exactly to one PT4H block. The gate passed on 2026-08-22 with 24 A44 intervals
 and six aligned PT4H FCR blocks from the same A81 document. The token scan
-passed. Technical compatibility is recorded separately from publication
-rights; no token, raw response, or normalized production artifact is committed.
+passed. Technical compatibility is recorded separately from public
+redistribution rights. No token or raw response is committed.
 
-The legal-reuse gate independently fails. The ENTSO-E list checked on
+The public-redistribution review remains restrictive. The ENTSO-E list checked on
 2026-08-22 places contracted reserve amount and reserved-capacity price (the
 two combined A81 measures, items 22 and 23) in its CC BY 4.0 free-reuse subset, but does
 not list Article 12.1(d) day-ahead prices (A44). The current Terms of Use require
@@ -139,8 +145,9 @@ users to check that list and seek the Primary Owner's agreement where reuse may
 prejudice its rights. ENTSO-E names power exchanges or TSOs as Primary Owners
 for Article 12.1(d), and RTE's French market-data page identifies the French
 spot prices as EPEX SPOT property with copying or distribution subject to prior
-consent. No EPEX permission was supplied, so this repository has no documented
-basis for redistributing a normalized A44 fixture. Sources:
+consent. No EPEX permission was supplied, so the private-repository decision
+must not be interpreted as permission to publish a normalized A44 fixture.
+Sources:
 
 - `https://transparencyplatform.zendesk.com/hc/en-us/articles/40921911218961-Legal-Terms-and-Conditions`
 - `https://transparencyplatform.zendesk.com/hc/article_attachments/40921869379729`
@@ -148,32 +155,14 @@ basis for redistributing a normalized A44 fixture. Sources:
 - `https://www.rte-france.com/en/data-publications/eco2mix/market-data`
 - `https://transparencyplatform.zendesk.com/hc/en-us/articles/41986091964305-Archives-for-legacy-Transparency-Platform-publications`
 
-Consequently:
-
-- `france_2022-08-19_market_v1.json` is intentionally absent;
-- `france_2022-08-19_expected_replay_v1.json` may be produced only as an
-  ignored private preflight and cannot be committed; and
-- no partial market data, RTE price substitute, synthetic replacement, gap
-  fill, interpolation, or alternate delivery period has been used.
-
-The technical source contract is now identified. Resume publication of the
-committed market and replay fixtures only after permission to redistribute A44
-or another reviewed legal basis is documented. Permission evidence must cover
-public repository distribution and adaptation of the normalized 2022-08-19
-France values and derived replay fixture, plus required attribution. A token or
-internal/academic-use entitlement alone does not resolve that publication
-blocker.
-
-The repository now has a fail-closed resume path for that external decision.
-Use the request and evidence checklist in
-`docs/migration/epex-spot-publication-permission.md`, then pass the reviewed
-non-confidential record and the private permission document to
-`examples/bess_stacked_services/authorize_reference_market.py`. The consumer
-verifies the private evidence SHA-256 and exact repository/period/scope, keeps
-raw responses digest-only, preserves the normalized content fingerprint, and
-writes the fixed market fixture with a new permission-bearing artifact
-fingerprint. The example JSON deliberately contains placeholders and false
-scope flags and cannot authorize publication as committed.
+Consequently, the validated artifacts may be committed only with
+`repository_storage=permitted_private_restricted` and
+`repository_publication=prohibited`. The token-free
+`stage_private_reference_market.py` consumer requires an explicit private-
+repository acknowledgement, keeps raw evidence digest-only, preserves the
+normalized content fingerprint, and creates a new policy-bearing artifact
+fingerprint. No partial data, RTE price substitute, synthetic replacement, gap
+fill, interpolation, or alternate delivery period is used.
 
 ## Single-Owner Boundary
 

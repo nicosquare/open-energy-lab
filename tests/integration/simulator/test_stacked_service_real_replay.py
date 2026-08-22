@@ -1,4 +1,4 @@
-"""Gated zero-network replay and benchmark for the selected French day."""
+"""Restricted zero-network replay and benchmark for the selected French day."""
 
 from __future__ import annotations
 
@@ -46,9 +46,8 @@ EXPECTED_PATH = Path(
     )
 )
 BLOCKER = (
-    "the ENTSO-E A44 redistribution gate blocks publishing the otherwise "
-    "technically validated A44/combined-A81 reference fixture, as recorded in "
-    "tests/fixtures/market/README.md"
+    "the complete restricted private-repository reference fixture set is "
+    "required, as recorded in tests/fixtures/market/README.md"
 )
 
 

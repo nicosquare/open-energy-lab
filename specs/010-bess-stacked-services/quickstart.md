@@ -102,54 +102,40 @@ allocation, memory, operating system, Python version, repository revision, and
 five timings in `docs/migration/bess-stacked-services.md`. Results from other
 hosts are informative until their relationship to the reference is documented.
 
-Before the A44 publication gate passes, the same correctness and timing test
-can be run as a private preflight against ignored local artifacts. First fetch
-the market artifact as described below, then generate the independently
-reconciled expected replay:
+The credentialed producer initially writes beneath ignored `artifacts/`. After
+technical validation, explicitly stage the exact market artifact into this
+private repository:
+
+```bash
+uv run python examples/bess_stacked_services/stage_private_reference_market.py \
+  --market artifacts/market/reference-gate/MARKET_ARTIFACT.json \
+  --destination tests/fixtures/market \
+  --acknowledge-private-restricted-repository
+```
+
+This token-free operation requires an explicit private-repository
+acknowledgement and records `repository_publication=prohibited`. It preserves
+the normalized content fingerprint while changing the artifact fingerprint to
+cover the restricted storage policy. Generate the expected replay from that
+staged artifact:
 
 ```bash
 uv run python examples/bess_stacked_services/generate_reference_replay.py \
-  --market artifacts/market/reference-gate/MARKET_ARTIFACT.json \
-  --destination artifacts/market/reference-gate
+  --market tests/fixtures/market/france_2022-08-19_market_v1.json \
+  --destination tests/fixtures/market
 ```
 
 The generator records the 475/540 EUR/MWh thresholds, every unmodified 5 kW
 controller request, every admissible FCR-headroom interval, the fixed hourly
-baseline, independently calculated settlement/throughput totals, and all
-input/trace/result fingerprints. A market artifact whose A44 series remains
-local-only can write only beneath ignored `artifacts/`; this command cannot
-publish into `tests/fixtures/market`.
+baseline, independently calculated settlement/throughput totals, input and
+result fingerprints, and the same restricted-data policy. Unstaged A44 data
+can write only beneath ignored `artifacts/`.
 
-Run the private benchmark without copying either restricted file into Git:
-
-```bash
-OEL_REFERENCE_MARKET_PATH=artifacts/market/reference-gate/MARKET_ARTIFACT.json \
-OEL_REFERENCE_EXPECTED_PATH=artifacts/market/reference-gate/france_2022-08-19_expected_replay_v1.json \
-uv run pytest tests/integration/simulator/test_stacked_service_real_replay.py \
-  -m reference_benchmark -q
-```
-
-Environment-path overrides are explicit inputs to the selected test only.
-They do not change the committed-fixture acceptance requirement, and their
-results remain informative until the reviewed A44 basis permits publishing the
-market and expected-replay fixtures.
-
-If EPEX SPOT supplies a reviewed grant, follow
-`docs/migration/epex-spot-publication-permission.md`. The resume operation is
-explicit and token-free:
-
-```bash
-uv run python examples/bess_stacked_services/authorize_reference_market.py \
-  --market artifacts/market/reference-gate/MARKET_ARTIFACT.json \
-  --permission artifacts/legal/epex/permission.json \
-  --permission-evidence artifacts/legal/epex/permission-evidence.pdf \
-  --destination tests/fixtures/market
-```
-
-The operation fails unless the private evidence digest and the exact EPEX,
-repository, period, distribution, adaptation, derived-fixture, fork/archive,
-attribution, downstream, and AI/ML terms are recorded. It does not interpret a
-token, successful fetch, internal-use license, or academic purpose as consent.
+The three real-data fixtures are for authorized collaborators in this private
+repository only. They are excluded from packages and releases and must not be
+placed in public forks, mirrors, CI artifacts, or external stores. Remove them
+before changing repository visibility. See
+`docs/migration/restricted-reference-fixtures.md`.
 
 ## Verify The Manual Four-Hour Oracle
 

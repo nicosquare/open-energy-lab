@@ -175,6 +175,16 @@ Immutable source-independent artifact consumed by the simulator.
 | `predecessor_artifact_fingerprint` | SHA-256/null | Immutable refresh lineage |
 | `retention_and_license` | object | Attribution and normalized-fixture reuse terms |
 
+For the real Feature 010 fixture, `retention_and_license` records
+`repository_storage=permitted_private_restricted`,
+`repository_publication=prohibited`, and a versioned
+`restricted_repository_policy`. That policy limits access to private-repository
+collaborators, prohibits public distribution, public forks/mirrors, package or
+release distribution, and external artifact upload, and requires fixture
+removal before any public visibility change. Raw responses remain
+`digest_only`. These policy fields affect `artifact_fingerprint` but not
+`content_fingerprint`.
+
 `content_fingerprint` excludes artifact identity, retrieval/publication times,
 lineage, and sidecar locator. `artifact_fingerprint` covers all manifest fields
 except itself. The canonical serialization uses UTF-8 JSON, sorted keys,
