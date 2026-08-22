@@ -105,6 +105,9 @@ def test_entsoe_architecture_guide_records_the_exact_r3_api_contract() -> None:
         "entsoe_api_token",
         "application/zip",
         "cc by 4.0",
+        "epex spot",
+        "prior consent",
+        "public repository distribution",
         "official entso-e postman collection",
         "list of data available for free reuse",
     )

@@ -43,11 +43,16 @@ ENTSO-E publishes a CC BY 4.0 open-data subset. The list checked on 2026-08-22
 includes contracted reserve amount and price but not Article 12.1(d) day-ahead
 prices. The Terms of Use place the pre-reuse check on the data user and direct
 the user to seek the Primary Owner's agreement where rights may be prejudiced.
-No such A44 permission was supplied, so the normalized market fixture is not
-redistributed:
+The current ENTSO-E Energy Prices profile names power exchanges or TSOs as the
+Primary Owner, while RTE's French market-data page identifies the French spot
+prices as EPEX SPOT property and requires prior consent for copying or
+distribution. No such EPEX permission was supplied, so the normalized market
+fixture is not redistributed:
 `https://transparencyplatform.zendesk.com/hc/en-us/articles/40921911218961-Legal-Terms-and-Conditions`
 and
-`https://transparencyplatform.zendesk.com/hc/article_attachments/40921869379729`.
+`https://transparencyplatform.zendesk.com/hc/article_attachments/40921869379729`,
+with ownership confirmation at
+`https://www.rte-france.com/en/data-publications/eco2mix/market-data`.
 
 ## Credentialed ENTSO-E Gate
 

@@ -102,6 +102,38 @@ allocation, memory, operating system, Python version, repository revision, and
 five timings in `docs/migration/bess-stacked-services.md`. Results from other
 hosts are informative until their relationship to the reference is documented.
 
+Before the A44 publication gate passes, the same correctness and timing test
+can be run as a private preflight against ignored local artifacts. First fetch
+the market artifact as described below, then generate the independently
+reconciled expected replay:
+
+```bash
+uv run python examples/bess_stacked_services/generate_reference_replay.py \
+  --market artifacts/market/reference-gate/MARKET_ARTIFACT.json \
+  --destination artifacts/market/reference-gate
+```
+
+The generator records the 475/540 EUR/MWh thresholds, every unmodified 5 kW
+controller request, every admissible FCR-headroom interval, the fixed hourly
+baseline, independently calculated settlement/throughput totals, and all
+input/trace/result fingerprints. A market artifact whose A44 series remains
+local-only can write only beneath ignored `artifacts/`; this command cannot
+publish into `tests/fixtures/market`.
+
+Run the private benchmark without copying either restricted file into Git:
+
+```bash
+OEL_REFERENCE_MARKET_PATH=artifacts/market/reference-gate/MARKET_ARTIFACT.json \
+OEL_REFERENCE_EXPECTED_PATH=artifacts/market/reference-gate/france_2022-08-19_expected_replay_v1.json \
+uv run pytest tests/integration/simulator/test_stacked_service_real_replay.py \
+  -m reference_benchmark -q
+```
+
+Environment-path overrides are explicit inputs to the selected test only.
+They do not change the committed-fixture acceptance requirement, and their
+results remain informative until the reviewed A44 basis permits publishing the
+market and expected-replay fixtures.
+
 ## Verify The Manual Four-Hour Oracle
 
 ```bash

@@ -132,14 +132,27 @@ Real acquisition output is local research material under the Git-ignored
 `artifacts/` directory. Routine tests use project-authored synthetic XML; live
 tests are opt-in and do not snapshot production responses.
 
-ENTSO-E's free-reuse list places contracted reserve amount and price under
-CC BY 4.0, so redistributed A81-derived values require ENTSO-E attribution and an
-indication of changes. A44 day-ahead prices are not present in that list.
+ENTSO-E's current free-reuse list, last modified 18 October 2023 and rechecked
+through the legal page on 22 August 2026, places contracted reserve amount and
+price under CC BY 4.0. Redistributed A81-derived values therefore require
+ENTSO-E attribution and an indication of changes. Article 12.1(d) day-ahead
+prices are absent from that list. ENTSO-E's current Energy Prices page names
+power exchanges or TSOs as the Primary Owner; RTE's French market-data page
+identifies the displayed French spot prices as EPEX SPOT data and states that
+copying or distribution requires the power exchange's prior consent.
+
 Accordingly, this repository does not commit, package, attach to CI, or release
 real A44 responses, normalized A44 values, or granular derived outputs capable
-of reconstructing them without documented permission from the relevant
-Primary Owner or another reviewed legal basis. Academic or non-commercial use
-does not by itself remove that publication gate.
+of reconstructing them without documented EPEX SPOT permission or another
+reviewed legal basis. Academic or non-commercial use does not by itself remove
+that publication gate.
+
+Acceptable permission evidence must identify EPEX SPOT or another proven rights
+holder, the France 2022-08-19 day-ahead values, public repository distribution
+of the normalized artifact and derived replay fixture, permitted adaptation,
+required attribution, effective date, and a durable permission reference. A
+token, private/internal-use entitlement, or generic RTE public-data term is not
+sufficient for these EPEX-owned prices.
 
 Researchers may run the documented producer privately with their own account
 and token. Code, request documentation, provenance schemas, and synthetic
@@ -154,3 +167,5 @@ fixtures remain redistributable independently of real A44 values.
 - [Legacy-publication archive migration](https://transparencyplatform.zendesk.com/hc/en-us/articles/41986091964305-Archives-for-legacy-Transparency-Platform-publications)
 - [ENTSO-E legal terms](https://transparencyplatform.zendesk.com/hc/en-us/articles/40921911218961-Legal-Terms-and-Conditions)
 - [List of data available for free reuse](https://transparency.entsoe.eu/content/static_content/download?path=%2FStatic+content%2Fterms+and+conditions%2F231018_List_of_Data_available_for_reuse.pdf)
+- [ENTSO-E Energy Prices 12.1(d) ownership profile](https://transparencyplatform.zendesk.com/hc/en-us/articles/16647234190100-Energy-Prices-12-1-D)
+- [RTE French spot-price ownership and use terms](https://www.rte-france.com/en/data-publications/eco2mix/market-data)

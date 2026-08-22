@@ -136,25 +136,33 @@ The legal-reuse gate independently fails. The ENTSO-E list checked on
 two combined A81 measures, items 22 and 23) in its CC BY 4.0 free-reuse subset, but does
 not list Article 12.1(d) day-ahead prices (A44). The current Terms of Use require
 users to check that list and seek the Primary Owner's agreement where reuse may
-prejudice its rights. No A44 Primary Owner permission was supplied, so this
-repository has no documented basis for redistributing a normalized A44
-fixture. Sources:
+prejudice its rights. ENTSO-E names power exchanges or TSOs as Primary Owners
+for Article 12.1(d), and RTE's French market-data page identifies the French
+spot prices as EPEX SPOT property with copying or distribution subject to prior
+consent. No EPEX permission was supplied, so this repository has no documented
+basis for redistributing a normalized A44 fixture. Sources:
 
 - `https://transparencyplatform.zendesk.com/hc/en-us/articles/40921911218961-Legal-Terms-and-Conditions`
 - `https://transparencyplatform.zendesk.com/hc/article_attachments/40921869379729`
+- `https://transparencyplatform.zendesk.com/hc/en-us/articles/16647234190100-Energy-Prices-12-1-D`
+- `https://www.rte-france.com/en/data-publications/eco2mix/market-data`
 - `https://transparencyplatform.zendesk.com/hc/en-us/articles/41986091964305-Archives-for-legacy-Transparency-Platform-publications`
 
 Consequently:
 
 - `france_2022-08-19_market_v1.json` is intentionally absent;
-- `france_2022-08-19_expected_replay_v1.json` cannot be produced; and
+- `france_2022-08-19_expected_replay_v1.json` may be produced only as an
+  ignored private preflight and cannot be committed; and
 - no partial market data, RTE price substitute, synthetic replacement, gap
   fill, interpolation, or alternate delivery period has been used.
 
 The technical source contract is now identified. Resume publication of the
 committed market and replay fixtures only after permission to redistribute A44
-or another reviewed legal basis is documented. A token alone does not resolve
-that publication blocker.
+or another reviewed legal basis is documented. Permission evidence must cover
+public repository distribution and adaptation of the normalized 2022-08-19
+France values and derived replay fixture, plus required attribution. A token or
+internal/academic-use entitlement alone does not resolve that publication
+blocker.
 
 ## Single-Owner Boundary
 

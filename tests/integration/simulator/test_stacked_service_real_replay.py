@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import json
+import os
 from pathlib import Path
 import socket
 from time import perf_counter
@@ -26,9 +27,24 @@ from open_energy_lab.simulator import (
 
 
 FIXTURE_DIR = Path(__file__).parents[2] / "fixtures" / "market"
-MARKET_PATH = FIXTURE_DIR / "france_2022-08-19_market_v1.json"
-ACTIVATION_PATH = FIXTURE_DIR / "france_2022-08-19_activation_v1.json"
-EXPECTED_PATH = FIXTURE_DIR / "france_2022-08-19_expected_replay_v1.json"
+MARKET_PATH = Path(
+    os.environ.get(
+        "OEL_REFERENCE_MARKET_PATH",
+        FIXTURE_DIR / "france_2022-08-19_market_v1.json",
+    )
+)
+ACTIVATION_PATH = Path(
+    os.environ.get(
+        "OEL_REFERENCE_ACTIVATION_PATH",
+        FIXTURE_DIR / "france_2022-08-19_activation_v1.json",
+    )
+)
+EXPECTED_PATH = Path(
+    os.environ.get(
+        "OEL_REFERENCE_EXPECTED_PATH",
+        FIXTURE_DIR / "france_2022-08-19_expected_replay_v1.json",
+    )
+)
 BLOCKER = (
     "the ENTSO-E A44 redistribution gate blocks publishing the otherwise "
     "technically validated A44/combined-A81 reference fixture, as recorded in "
@@ -41,7 +57,11 @@ def _instant(value: str) -> datetime:
 
 
 def _require_complete_reference_fixture_set() -> None:
-    missing = [path.name for path in (MARKET_PATH, ACTIVATION_PATH, EXPECTED_PATH) if not path.is_file()]
+    missing = [
+        path.name
+        for path in (MARKET_PATH, ACTIVATION_PATH, EXPECTED_PATH)
+        if not path.is_file()
+    ]
     if missing:
         pytest.skip(f"{BLOCKER}; missing {', '.join(missing)}")
 
@@ -155,6 +175,7 @@ def test_selected_french_day_replays_offline_with_exact_recorded_results(
 @pytest.mark.reference_benchmark
 def test_selected_french_day_reference_benchmark(
     monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
 ) -> None:
     def _network_forbidden(*args: object, **kwargs: object) -> None:
         raise AssertionError("reference benchmark attempted network access")
@@ -167,3 +188,9 @@ def test_selected_french_day_reference_benchmark(
         _assert_reference_result(_load_and_replay())
         timings.append(perf_counter() - started)
     assert all(elapsed < 10.0 for elapsed in timings), timings
+    terminal_reporter = request.config.pluginmanager.get_plugin("terminalreporter")
+    if terminal_reporter is not None:
+        terminal_reporter.write_line(
+            "reference_benchmark_timings_seconds="
+            + json.dumps(timings, separators=(",", ":"))
+        )

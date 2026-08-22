@@ -18,6 +18,7 @@ basis. The technical and legal gates are recorded separately in
 | --- | --- | --- |
 | `fetch_french_period.py` | Explicit ENTSO-E HTTPS operation; caller token required | Fetch or refresh canonical A44/combined-A81 market artifacts |
 | `import_reference_activation.py` | No network; caller-supplied local raw file | Verify and normalize the selected RTE PT10S activation trace |
+| `generate_reference_replay.py` | No network; validated local artifacts | Build and independently reconcile the gated fixed replay fixture |
 | `run_offline_replay.py` | None | Load recorded artifacts, replay the fixed schedule, and compare deterministic results |
 
 No consumer downloads on import, fetches on cache miss, chooses an alternative
@@ -101,8 +102,16 @@ or fetch a replacement.
 At present the command exits with status 2 and identifies
 `france_2022-08-19_market_v1.json` and
 `france_2022-08-19_expected_replay_v1.json` as missing because the credentialed
-technical and legal-reuse gates have not passed. That is the required behavior,
-not an installation error.
+publication gate has not passed. Technical source compatibility is already
+validated. That is the required behavior, not an installation error.
+
+`generate_reference_replay.py` is the explicit private fixture-production
+step after a successful local market fetch. It records the full threshold and
+headroom derivation plus independently reconciled replay totals and
+fingerprints. When A44 remains local-only, it rejects every destination outside
+the ignored `artifacts/` tree; producing a local expected replay is not
+permission to commit either restricted file. See the feature quickstart for
+the exact generation and private-benchmark commands.
 
 ## Experimental-v1 Library Surface
 
