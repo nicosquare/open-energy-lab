@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import subprocess
 import sys
+import textwrap
 from pathlib import Path
 
 
@@ -19,6 +21,20 @@ OPTIONAL_RESEARCH_MODULES = {
     "torchrl",
     "wandb",
 }
+
+
+def _run_isolated_python(source: str) -> None:
+    completed = subprocess.run(
+        [sys.executable, "-c", textwrap.dedent(source)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert completed.returncode == 0, (
+        f"isolated import check failed\nstdout:\n{completed.stdout}"
+        f"\nstderr:\n{completed.stderr}"
+    )
 
 
 def test_simulator_import_stays_lightweight() -> None:
@@ -166,29 +182,39 @@ def test_simulator_import_stays_lightweight() -> None:
 
 
 def test_stacked_service_exports_remain_lazy_and_import_light() -> None:
-    module_names = (
-        "open_energy_lab.simulator.fcr_settlement",
-        "open_energy_lab.simulator.stacked_service",
-        "open_energy_lab.simulator",
-    )
-    for module_name in module_names:
-        sys.modules.pop(module_name, None)
+    _run_isolated_python(
+        """
+        import sys
 
-    loaded_before_import = set(sys.modules)
-    module = importlib.import_module("open_energy_lab.simulator")
+        loaded_before_import = set(sys.modules)
+        import open_energy_lab.simulator as module
 
-    assert "open_energy_lab.simulator.stacked_service" not in sys.modules
-    assert "open_energy_lab.simulator.fcr_settlement" not in sys.modules
-    assert module.StackedServiceReplayResult.__module__ == (
-        "open_energy_lab.simulator.stacked_service"
+        assert "open_energy_lab.simulator.stacked_service" not in sys.modules
+        assert "open_energy_lab.simulator.fcr_settlement" not in sys.modules
+        assert module.StackedServiceReplayResult.__module__ == (
+            "open_energy_lab.simulator.stacked_service"
+        )
+        assert "open_energy_lab.simulator.stacked_service" in sys.modules
+        assert "open_energy_lab.simulator.fcr_settlement" not in sys.modules
+        assert module.SettlementBreakdown.__module__ == (
+            "open_energy_lab.simulator.fcr_settlement"
+        )
+
+        optional_research_modules = {
+            "citylearn",
+            "docplex",
+            "gurobipy",
+            "jupyter",
+            "pyomo",
+            "spflow",
+            "torch",
+            "torchrl",
+            "wandb",
+        }
+        loaded_by_access = set(sys.modules) - loaded_before_import
+        assert optional_research_modules.isdisjoint(loaded_by_access)
+        """
     )
-    assert "open_energy_lab.simulator.stacked_service" in sys.modules
-    assert "open_energy_lab.simulator.fcr_settlement" not in sys.modules
-    assert module.SettlementBreakdown.__module__ == (
-        "open_energy_lab.simulator.fcr_settlement"
-    )
-    loaded_by_access = set(sys.modules) - loaded_before_import
-    assert OPTIONAL_RESEARCH_MODULES.isdisjoint(loaded_by_access)
 
 
 def test_controller_runner_import_and_export_stay_lightweight() -> None:

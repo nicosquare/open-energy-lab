@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import importlib
+import subprocess
 import sys
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -43,6 +45,20 @@ def _optional_modules_loaded_after(before_import: set[str]) -> set[str]:
     return OPTIONAL_RESEARCH_MODULES & (set(sys.modules) - before_import)
 
 
+def _run_isolated_python(source: str) -> None:
+    completed = subprocess.run(
+        [sys.executable, "-c", textwrap.dedent(source)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert completed.returncode == 0, (
+        f"isolated import check failed\nstdout:\n{completed.stdout}"
+        f"\nstderr:\n{completed.stderr}"
+    )
+
+
 def test_control_package_import_stays_lightweight() -> None:
     loaded_before_import = set(sys.modules)
 
@@ -61,32 +77,28 @@ def test_control_package_import_stays_lightweight() -> None:
 
 
 def test_control_root_import_defers_controller_submodule_loading() -> None:
-    for module_name in (
-        "open_energy_lab.control",
-        "open_energy_lab.control._config",
-        "open_energy_lab.control.price_threshold",
-        "open_energy_lab.control.soc_guardrail",
-        "open_energy_lab.control.pv_self_consumption",
-        "open_energy_lab.control.stacked_service",
-    ):
-        sys.modules.pop(module_name, None)
+    _run_isolated_python(
+        """
+        import sys
 
-    module = importlib.import_module("open_energy_lab.control")
+        import open_energy_lab.control as module
 
-    assert "open_energy_lab.control._config" not in sys.modules
-    assert "open_energy_lab.control.price_threshold" not in sys.modules
-    assert "open_energy_lab.control.soc_guardrail" not in sys.modules
-    assert "open_energy_lab.control.pv_self_consumption" not in sys.modules
-    assert "open_energy_lab.control.stacked_service" not in sys.modules
+        assert "open_energy_lab.control._config" not in sys.modules
+        assert "open_energy_lab.control.price_threshold" not in sys.modules
+        assert "open_energy_lab.control.soc_guardrail" not in sys.modules
+        assert "open_energy_lab.control.pv_self_consumption" not in sys.modules
+        assert "open_energy_lab.control.stacked_service" not in sys.modules
 
-    getattr(module, "PriceThresholdConfig")
-    getattr(module, "PriceThresholdController")
+        getattr(module, "PriceThresholdConfig")
+        getattr(module, "PriceThresholdController")
 
-    assert "open_energy_lab.control._config" in sys.modules
-    assert "open_energy_lab.control.price_threshold" in sys.modules
-    assert "open_energy_lab.control.soc_guardrail" not in sys.modules
-    assert "open_energy_lab.control.pv_self_consumption" not in sys.modules
-    assert "open_energy_lab.control.stacked_service" not in sys.modules
+        assert "open_energy_lab.control._config" in sys.modules
+        assert "open_energy_lab.control.price_threshold" in sys.modules
+        assert "open_energy_lab.control.soc_guardrail" not in sys.modules
+        assert "open_energy_lab.control.pv_self_consumption" not in sys.modules
+        assert "open_energy_lab.control.stacked_service" not in sys.modules
+        """
+    )
 
 
 @pytest.mark.parametrize(
