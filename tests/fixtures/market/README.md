@@ -164,6 +164,23 @@ normalized content fingerprint, and creates a new policy-bearing artifact
 fingerprint. No partial data, RTE price substitute, synthetic replacement, gap
 fill, interpolation, or alternate delivery period is used.
 
+The restricted staging and replay generation completed on 2026-08-22. The
+market fixture preserves content fingerprint
+`64494e7ba5c00bdcdcbd3e3f09eed4a162d46ef971a13b86e72f4ce1989159c5`
+and has restricted-policy artifact fingerprint
+`8e591eb1e2f8aa65bace94d482bcc08acccc9c43061df7fede92397d064de025`.
+The expected replay file SHA-256 is
+`13df60b98ca511bf6f71252ab669eb828f00ba04363fec7064043e730118208f`;
+its trace fingerprint is
+`706666d280dd08d04a58c5d8a001115c489fc16c46b79e4658a889e1946541a9`
+and result fingerprint is
+`39599ea6b04d2369e327cf4627c324cc817856c0990f02deac16a6519fbbfc67`.
+It records 24 hourly decisions, six 5 kW FCR blocks, 8,640 activation
+samples, the fixed battery/controller configuration, independent totals, and
+all component fingerprints. Regeneration was byte-stable, the complete
+offline replay suite passed, and the token scan found zero occurrences across
+the three restricted fixtures.
+
 ## Single-Owner Boundary
 
 | Responsibility | Owner |

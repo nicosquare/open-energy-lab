@@ -10,7 +10,8 @@ committed. The obsolete A81 request assumptions have been replaced by the
 current R3 combined A81 contract. The repository owner has confirmed that this
 repository is private, so the real reference fixtures may be stored for
 authorized collaborators under the restricted-data policy; public and package
-distribution remain prohibited.
+distribution remain prohibited. The exact market and expected replay are now
+staged and validated for the default offline consumer.
 
 ## Consumer Map
 

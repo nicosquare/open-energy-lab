@@ -20,6 +20,12 @@ not claim public A44 redistribution permission. The authoritative storage and
 gate records are in `docs/migration/restricted-reference-fixtures.md` and
 `tests/fixtures/market/README.md`.
 
+The market and expected-replay fixtures were staged on 2026-08-22 with
+prohibited-publication metadata. The complete offline replay reproduces the
+recorded 24 hourly decisions, six FCR blocks, 8,640 activation samples,
+independently reconciled totals, trace fingerprint, and result fingerprint.
+T037 is complete; T050 remains pending the clean committed-fixture benchmark.
+
 ## Reference Evidence
 
 The activation behavior was extracted from these exact external sources rather
@@ -152,6 +158,18 @@ settlement totals, and fingerprints must be generated from the accepted
 fixtures. They must not be inferred from the research plan. Repository copies
 must carry the restricted storage policy, remain excluded from distributions,
 and be removed before any public visibility change.
+
+The staged market artifact has content fingerprint
+`64494e7ba5c00bdcdcbd3e3f09eed4a162d46ef971a13b86e72f4ce1989159c5`
+and restricted-policy artifact fingerprint
+`8e591eb1e2f8aa65bace94d482bcc08acccc9c43061df7fede92397d064de025`.
+The expected replay file SHA-256 is
+`13df60b98ca511bf6f71252ab669eb828f00ba04363fec7064043e730118208f`,
+with trace fingerprint
+`706666d280dd08d04a58c5d8a001115c489fc16c46b79e4658a889e1946541a9`
+and result fingerprint
+`39599ea6b04d2369e327cf4627c324cc817856c0990f02deac16a6519fbbfc67`.
+The `.env` token scan found zero occurrences in the three fixture files.
 
 ## Settlement And Scope
 
