@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Project-authored synthetic acknowledgement; not an ENTSO-E response. -->
+<Acknowledgement_MarketDocument xmlns="urn:iec62325.351:tc57wg16:451-1:acknowledgementdocument:8:1">
+  <mRID>synthetic-acknowledgement</mRID>
+  <createdDateTime>2022-08-18T10:00:00Z</createdDateTime>
+  <Reason>
+    <code>999</code>
+    <text>Synthetic request rejected for parser testing</text>
+  </Reason>
+</Acknowledgement_MarketDocument>

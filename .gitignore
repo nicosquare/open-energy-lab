@@ -224,6 +224,7 @@ Thumbs.db
 *.swp
 .idea/
 .env*
+!.env.example
 .venv/
 wandb/
 **/wandb/

@@ -1,0 +1,35 @@
+# Synthetic ENTSO-E XML fixtures
+
+These XML documents are project-authored test inputs distributed under the
+repository's Apache-2.0 license. They imitate only the small IEC 62325 surface
+needed to validate the France day-ahead and symmetric-FCR profile. They are not
+recorded ENTSO-E responses and contain no API token, request URL, or production
+market observation.
+
+The common success horizon is UTC
+`[2022-08-18T22:00:00Z, 2022-08-19T02:00:00Z)`, the first four hours of the
+Europe/Paris delivery day. `A44` contains four hourly prices while the combined
+R3 `A81` document contains aligned reserve quantity and procurement price.
+
+| Fixture | Contract exercised |
+| --- | --- |
+| `a44_success.xml` | Complete hourly France day-ahead prices, including a negative price |
+| `a81_success.xml` | Combined R3 A81 sparse PT30M quantity and procurement price, exactly reconcilable to PT4H |
+| `a89_success.xml` | Obsolete legacy-shaped document retained only as rejection/reference evidence |
+| `a44_variable_blocks.xml` | Unambiguous variable-sized-block expansion |
+| `a44_revision_1.xml` / `a44_revision_3.xml` | Comparable lower and higher document revisions |
+| `acknowledgement.xml` | ENTSO-E acknowledgement/error root classification |
+| `empty_publication.xml` | Valid data root with no time series |
+| `a44_exact_duplicate.xml` | Repeated position with the same value |
+| `a44_conflicting_duplicate.xml` | Repeated position with conflicting values |
+| `a44_gap.xml` | Missing position within declared coverage |
+| `a81_wrong_product.xml` | Non-symmetric reserve direction |
+| `a81_missing_price.xml` / `a81_wrong_unit.xml` | Missing combined measure and incompatible unit |
+| `a44_wrong_resolution.xml` | Day-ahead prices declared at PT30M |
+| `wrong_namespace.xml` | Data-shaped root outside the accepted namespace family |
+| `unsafe_doctype.xml` / `unsafe_entity.xml` | DTD and entity declarations rejected before parsing |
+| `a44_dst_spring_23h.xml` | Complete 23-hour Europe/Paris delivery day |
+| `a44_dst_fall_25h.xml` | Complete 25-hour Europe/Paris delivery day |
+
+Tests may copy these bytes into temporary directories, but must not rewrite the
+committed corpus or present it as source evidence for a real market artifact.

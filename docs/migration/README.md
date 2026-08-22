@@ -43,6 +43,9 @@ parity validation, and environment assumptions.
 - `fixture-provenance.md`: fixture record requirements, including planning,
   TPM, weather, demand, and simulator-family provenance rules for recorded
   responses and deterministic baselines
+- `restricted-reference-fixtures.md`: private-repository storage boundary,
+  distribution prohibitions, package exclusions, and explicit staging workflow
+  for the three Feature 010 real-data fixtures
 
 ## TPM-Planning Review Path
 

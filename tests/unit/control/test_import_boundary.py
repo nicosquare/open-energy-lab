@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import importlib
+import subprocess
 import sys
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -22,17 +24,39 @@ OPTIONAL_RESEARCH_MODULES = {
 }
 
 EXPECTED_ROOT_EXPORTS = [
+    "ArbitrageOnlyBaselineConfig",
+    "BaselineScheduleBundle",
     "PVSelfConsumptionConfig",
     "PVSelfConsumptionController",
     "PriceThresholdConfig",
     "PriceThresholdController",
+    "RegulationOnlyBaselineConfig",
     "SocGuardrailConfig",
     "SocGuardrailController",
+    "StackedBaselineValidationError",
+    "StackedHeuristicConfig",
+    "build_arbitrage_only_baseline",
+    "build_regulation_only_baseline",
+    "build_stacked_heuristic_baseline",
 ]
 
 
 def _optional_modules_loaded_after(before_import: set[str]) -> set[str]:
     return OPTIONAL_RESEARCH_MODULES & (set(sys.modules) - before_import)
+
+
+def _run_isolated_python(source: str) -> None:
+    completed = subprocess.run(
+        [sys.executable, "-c", textwrap.dedent(source)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert completed.returncode == 0, (
+        f"isolated import check failed\nstdout:\n{completed.stdout}"
+        f"\nstderr:\n{completed.stderr}"
+    )
 
 
 def test_control_package_import_stays_lightweight() -> None:
@@ -53,29 +77,28 @@ def test_control_package_import_stays_lightweight() -> None:
 
 
 def test_control_root_import_defers_controller_submodule_loading() -> None:
-    for module_name in (
-        "open_energy_lab.control",
-        "open_energy_lab.control._config",
-        "open_energy_lab.control.price_threshold",
-        "open_energy_lab.control.soc_guardrail",
-        "open_energy_lab.control.pv_self_consumption",
-    ):
-        sys.modules.pop(module_name, None)
+    _run_isolated_python(
+        """
+        import sys
 
-    module = importlib.import_module("open_energy_lab.control")
+        import open_energy_lab.control as module
 
-    assert "open_energy_lab.control._config" not in sys.modules
-    assert "open_energy_lab.control.price_threshold" not in sys.modules
-    assert "open_energy_lab.control.soc_guardrail" not in sys.modules
-    assert "open_energy_lab.control.pv_self_consumption" not in sys.modules
+        assert "open_energy_lab.control._config" not in sys.modules
+        assert "open_energy_lab.control.price_threshold" not in sys.modules
+        assert "open_energy_lab.control.soc_guardrail" not in sys.modules
+        assert "open_energy_lab.control.pv_self_consumption" not in sys.modules
+        assert "open_energy_lab.control.stacked_service" not in sys.modules
 
-    getattr(module, "PriceThresholdConfig")
-    getattr(module, "PriceThresholdController")
+        getattr(module, "PriceThresholdConfig")
+        getattr(module, "PriceThresholdController")
 
-    assert "open_energy_lab.control._config" in sys.modules
-    assert "open_energy_lab.control.price_threshold" in sys.modules
-    assert "open_energy_lab.control.soc_guardrail" not in sys.modules
-    assert "open_energy_lab.control.pv_self_consumption" not in sys.modules
+        assert "open_energy_lab.control._config" in sys.modules
+        assert "open_energy_lab.control.price_threshold" in sys.modules
+        assert "open_energy_lab.control.soc_guardrail" not in sys.modules
+        assert "open_energy_lab.control.pv_self_consumption" not in sys.modules
+        assert "open_energy_lab.control.stacked_service" not in sys.modules
+        """
+    )
 
 
 @pytest.mark.parametrize(
@@ -87,6 +110,14 @@ def test_control_root_import_defers_controller_submodule_loading() -> None:
         ("PriceThresholdController", "open_energy_lab.control.price_threshold"),
         ("SocGuardrailConfig", "open_energy_lab.control._config"),
         ("SocGuardrailController", "open_energy_lab.control.soc_guardrail"),
+        ("ArbitrageOnlyBaselineConfig", "open_energy_lab.control.stacked_service"),
+        ("BaselineScheduleBundle", "open_energy_lab.control.stacked_service"),
+        ("RegulationOnlyBaselineConfig", "open_energy_lab.control.stacked_service"),
+        ("StackedBaselineValidationError", "open_energy_lab.control.stacked_service"),
+        ("StackedHeuristicConfig", "open_energy_lab.control.stacked_service"),
+        ("build_arbitrage_only_baseline", "open_energy_lab.control.stacked_service"),
+        ("build_regulation_only_baseline", "open_energy_lab.control.stacked_service"),
+        ("build_stacked_heuristic_baseline", "open_energy_lab.control.stacked_service"),
     ),
 )
 def test_control_root_exports_resolve_from_expected_modules(
@@ -121,6 +152,19 @@ def test_control_root_exports_resolve_from_expected_modules(
         (
             "open_energy_lab.control.pv_self_consumption",
             ("PVSelfConsumptionController",),
+        ),
+        (
+            "open_energy_lab.control.stacked_service",
+            (
+                "ArbitrageOnlyBaselineConfig",
+                "BaselineScheduleBundle",
+                "RegulationOnlyBaselineConfig",
+                "StackedBaselineValidationError",
+                "StackedHeuristicConfig",
+                "build_arbitrage_only_baseline",
+                "build_regulation_only_baseline",
+                "build_stacked_heuristic_baseline",
+            ),
         ),
     ),
 )

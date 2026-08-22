@@ -54,6 +54,63 @@ The fixture README mirrors these requirements and is the default place for the
 provenance template when a dedicated fixture-specific metadata file is not
 needed.
 
+## French BESS Stacked-Services Fixture Guidance
+
+Feature `010-bess-stacked-services` is an **experimental-v1** public workflow
+whose stable module locations are `open_energy_lab.market.artifact`,
+`open_energy_lab.market.activation`, `open_energy_lab.market.entsoe`,
+`open_energy_lab.control.stacked_service`,
+`open_energy_lab.simulator.stacked_service`, and
+`open_energy_lab.simulator.fcr_settlement`. Its routine fixture contract is
+offline and never turns a missing fixture into a network fetch.
+
+The committed activation record is:
+
+- fixture path: `tests/fixtures/market/france_2022-08-19_activation_v1.json`
+- purpose: exact PT10S regulation input for the selected Europe/Paris delivery
+  day, validated without reopening the raw source
+- origin: RTE France public grid-frequency data preserved at
+  `lauinger/robust-storage-bidding@7e44738bb30e5c8204efe40103b9be4c2203685c:data_processing/freq_data/RTE_Frequence_2022_08.txt`
+- generation script: `examples/bess_stacked_services/import_reference_activation.py`
+- complete raw SHA-256:
+  `314a84556383161e9a9628b31eaa885e471f04db213a971c4f25efaef1053a8a`
+- input and invariant: exactly 8,640 unique naive Europe/Paris timestamps on a
+  10-second grid, frequency range 49.9234--50.0547 Hz, no gap filling or
+  duplicate removal
+- transformation: explicit left hold and
+  `clip((50.0 - frequency_hz) / 0.2, -1, 1)`
+- tolerance: exact timestamps and fingerprints; replay numeric tolerance
+  `1e-6`
+- license/access: source attribution to RTE under the RTE Services Portal
+  public-data reuse terms; pinned reference software/documentation is MIT; the
+  raw file is not committed
+- refresh policy: regenerate only for an intentional pinned source, activation
+  schema, normalization, selected period, or provenance-policy change
+
+Reproduction uses the documented command in
+`specs/010-bess-stacked-services/quickstart.md`, including the exact digest and
+an explicit `--created-at` when byte-stable artifact identity is required.
+
+The market and expected-replay fixtures are deliberately absent as of the
+2026-08-21 gate record because no caller-provided ENTSO-E credential was
+available to prove exact A44/combined-A81 completeness and normalized-fixture reuse
+terms. Do not create a small smoke substitute for these identity-bearing real
+fixtures: the manual oracle already supplies synthetic arithmetic coverage,
+while the real replay and benchmark must skip with the documented blocker until
+the hard gate passes.
+
+### Feature 010 Single-Owner Matrix
+
+| Responsibility ID | Responsibility | Single owner |
+| --- | --- | --- |
+| `OEL-F010-OWNER-RETRIEVAL` | ENTSO-E retrieval and market normalization | `open_energy_lab.market.entsoe` |
+| `OEL-F010-OWNER-MARKET-ARTIFACT` | Market-artifact validity | `open_energy_lab.market.artifact` |
+| `OEL-F010-OWNER-ACTIVATION` | Activation-artifact validity | `open_energy_lab.market.activation` |
+| `OEL-F010-OWNER-SCHEDULES` | Deterministic fixed schedules | `open_energy_lab.control.stacked_service` |
+| `OEL-F010-OWNER-PHYSICAL` | Battery-constrained physical delivery | `open_energy_lab.simulator.stacked_service` |
+| `OEL-F010-OWNER-SETTLEMENT` | Day-ahead and FCR settlement | `open_energy_lab.simulator.fcr_settlement` |
+| `OEL-F010-OWNER-ROBUST` | Robust bidding and optimization | later robust-bidding feature |
+
 ## TPM-Backed Planning Fixture Guidance
 
 The `009-tpm-planning` feature has simulator-export and planning fixtures under

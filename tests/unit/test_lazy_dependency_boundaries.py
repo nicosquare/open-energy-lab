@@ -105,6 +105,7 @@ def test_package_roots_do_not_load_required_backends() -> None:
         import open_energy_lab.control
         import open_energy_lab.core
         import open_energy_lab.demand
+        import open_energy_lab.market
         import open_energy_lab.planning
         import open_energy_lab.simulator
         import open_energy_lab.tpm
@@ -167,6 +168,7 @@ def test_planning_workflow_loads_pyomo_and_highspy_only_at_its_boundary() -> Non
         "open_energy_lab.simulator",
         "open_energy_lab.core",
         "open_energy_lab.control",
+        "open_energy_lab.market",
         "open_energy_lab.weather",
         "open_energy_lab.demand",
         "open_energy_lab.tpm",
@@ -196,6 +198,13 @@ def test_package_imports_stay_clear_of_lazy_research_stacks(module_name: str) ->
         "open_energy_lab.demand",
         "open_energy_lab.simulator.stochastic_demand",
         "open_energy_lab.simulator.planning_export",
+        "open_energy_lab.market.time",
+        "open_energy_lab.market.artifact",
+        "open_energy_lab.market.activation",
+        "open_energy_lab.market.entsoe",
+        "open_energy_lab.control.stacked_service",
+        "open_energy_lab.simulator.stacked_service",
+        "open_energy_lab.simulator.fcr_settlement",
         "open_energy_lab.tpm",
         "open_energy_lab.tpm.artifact",
         "open_energy_lab.tpm.data",

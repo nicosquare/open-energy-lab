@@ -16,12 +16,20 @@ OPTIONAL_RESEARCH_MODULES = {
 }
 
 EXPECTED_CONTROL_EXPORTS = [
+    "ArbitrageOnlyBaselineConfig",
+    "BaselineScheduleBundle",
     "PVSelfConsumptionConfig",
     "PVSelfConsumptionController",
     "PriceThresholdConfig",
     "PriceThresholdController",
+    "RegulationOnlyBaselineConfig",
     "SocGuardrailConfig",
     "SocGuardrailController",
+    "StackedBaselineValidationError",
+    "StackedHeuristicConfig",
+    "build_arbitrage_only_baseline",
+    "build_regulation_only_baseline",
+    "build_stacked_heuristic_baseline",
 ]
 EXPECTED_VISUALIZATION_EXPORTS = [
     "build_inspection_view",
@@ -177,6 +185,51 @@ def test_control_package_imports_from_source_tree_without_optional_stacks():
     assert module.PriceThresholdController.__module__ == "open_energy_lab.control.price_threshold"
     assert module.SocGuardrailConfig.__module__ == "open_energy_lab.control._config"
     assert module.SocGuardrailController.__module__ == "open_energy_lab.control.soc_guardrail"
+    assert module.ArbitrageOnlyBaselineConfig.__module__ == (
+        "open_energy_lab.control.stacked_service"
+    )
+    assert module.StackedHeuristicConfig.__module__ == (
+        "open_energy_lab.control.stacked_service"
+    )
+    assert module.build_stacked_heuristic_baseline.__module__ == (
+        "open_energy_lab.control.stacked_service"
+    )
+
+    newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
+        set(sys.modules) - before_import
+    )
+    assert newly_loaded_optional_modules == set()
+
+
+def test_feature_010_public_imports_resolve_from_owned_modules_without_optional_stacks():
+    before_import = set(sys.modules)
+
+    market = importlib.import_module("open_energy_lab.market")
+    control = importlib.import_module("open_energy_lab.control")
+    simulator = importlib.import_module("open_energy_lab.simulator")
+
+    expected_owners = {
+        market.RegulationActivationTrace: "open_energy_lab.market.activation",
+        market.MarketDataArtifact: "open_energy_lab.market.artifact",
+        control.StackedHeuristicConfig: "open_energy_lab.control.stacked_service",
+        control.build_stacked_heuristic_baseline: (
+            "open_energy_lab.control.stacked_service"
+        ),
+        simulator.StackedServiceReplayRequest: (
+            "open_energy_lab.simulator.stacked_service"
+        ),
+        simulator.replay_stacked_services: (
+            "open_energy_lab.simulator.stacked_service"
+        ),
+        simulator.SettlementBreakdown: (
+            "open_energy_lab.simulator.fcr_settlement"
+        ),
+        simulator.settle_stacked_services: (
+            "open_energy_lab.simulator.fcr_settlement"
+        ),
+    }
+    for exported, owner in expected_owners.items():
+        assert exported.__module__ == owner
 
     newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
         set(sys.modules) - before_import

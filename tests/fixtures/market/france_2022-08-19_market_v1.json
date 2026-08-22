@@ -1,0 +1,927 @@
+{
+  "actual_covered_period": {
+    "end_fold": 0,
+    "end_utc": "2022-08-19T22:00:00Z",
+    "end_utc_offset_seconds": 7200,
+    "interval_convention": "start-inclusive/end-exclusive",
+    "local_end": "2022-08-20T00:00:00+02:00",
+    "local_start": "2022-08-19T00:00:00+02:00",
+    "market_timezone": "Europe/Paris",
+    "start_fold": 0,
+    "start_utc": "2022-08-18T22:00:00Z",
+    "start_utc_offset_seconds": 7200
+  },
+  "area": {
+    "eic": "10YFR-RTE------C",
+    "market_timezone": "Europe/Paris",
+    "name": "France"
+  },
+  "artifact_fingerprint": "8e591eb1e2f8aa65bace94d482bcc08acccc9c43061df7fede92397d064de025",
+  "artifact_id": "fr-market-20220818T220000Z-20220819T220000Z-v1",
+  "content_fingerprint": "64494e7ba5c00bdcdcbd3e3f09eed4a162d46ef971a13b86e72f4ce1989159c5",
+  "created_at_utc": "2026-08-22T05:46:53.741808Z",
+  "normalization_version": "entsoe-fr-v1",
+  "predecessor_artifact_fingerprint": "86f98e79915de9c2fbd9dbdbc360469643119215f0869a964f8a47ab72829287",
+  "profile_id": "fr-day-ahead-symmetric-fcr-v1",
+  "query_windows": [
+    {
+      "area_parameter": "10YFR-RTE------C",
+      "attempt_count": 1,
+      "business_type": null,
+      "document_type": "A44",
+      "end_utc": "2022-08-19T22:00:00Z",
+      "process_type": "A01",
+      "start_utc": "2022-08-18T22:00:00Z",
+      "window_id": "fr-a44-2022-08-19-2022-08-19"
+    },
+    {
+      "area_parameter": "10YFR-RTE------C",
+      "attempt_count": 1,
+      "business_type": "B95",
+      "document_type": "A81",
+      "end_utc": "2022-08-19T22:00:00Z",
+      "market_agreement_type": "A01",
+      "process_type": "A52",
+      "start_utc": "2022-08-18T22:00:00Z",
+      "window_id": "fr-a81-2022-08-19-2022-08-19"
+    }
+  ],
+  "raw_responses": [
+    {
+      "byte_count": 4935,
+      "media_type": "text/xml",
+      "redistribution_basis": {
+        "attribution": "ENTSO-E Transparency Platform",
+        "changes": "raw bytes omitted; response digest and normalized values retained",
+        "source": "ENTSO-E Transparency Platform",
+        "terms_version": "digest-only-v1"
+      },
+      "response_id": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d",
+      "retention_status": "digest_only",
+      "retrieved_at_utc": "2026-08-22T05:46:47.833272Z",
+      "sha256": "e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d",
+      "sidecar_locator": null,
+      "sidecar_sha256": null,
+      "window_id": "fr-a44-2022-08-19-2022-08-19"
+    },
+    {
+      "byte_count": 1047,
+      "media_type": "application/zip",
+      "redistribution_basis": {
+        "attribution": "ENTSO-E Transparency Platform",
+        "changes": "raw bytes omitted; response digest and normalized values retained",
+        "source": "ENTSO-E Transparency Platform",
+        "terms_version": "digest-only-v1"
+      },
+      "response_id": "response-a81-efdb8c3daf8676abf71d4423addcfdb0943e4742a78a693ed938024deb29b8d1",
+      "retention_status": "digest_only",
+      "retrieved_at_utc": "2026-08-22T05:46:53.739975Z",
+      "sha256": "efdb8c3daf8676abf71d4423addcfdb0943e4742a78a693ed938024deb29b8d1",
+      "sidecar_locator": null,
+      "sidecar_sha256": null,
+      "window_id": "fr-a81-2022-08-19-2022-08-19"
+    }
+  ],
+  "requested_period": {
+    "end_fold": 0,
+    "end_utc": "2022-08-19T22:00:00Z",
+    "end_utc_offset_seconds": 7200,
+    "interval_convention": "start-inclusive/end-exclusive",
+    "local_end": "2022-08-20T00:00:00+02:00",
+    "local_start": "2022-08-19T00:00:00+02:00",
+    "market_timezone": "Europe/Paris",
+    "start_fold": 0,
+    "start_utc": "2022-08-18T22:00:00Z",
+    "start_utc_offset_seconds": 7200
+  },
+  "retention_and_license": {
+    "normalization_version": "entsoe-fr-v1",
+    "normalized_artifact_attribution": "ENTSO-E Transparency Platform",
+    "profile": "fr-day-ahead-symmetric-fcr-v1",
+    "raw_retention_policy": "digest_only",
+    "repository_publication": "prohibited",
+    "repository_storage": "permitted_private_restricted",
+    "restricted_repository_policy": {
+      "authorized_audience": "repository collaborators",
+      "basis": "repository owner confirmed private restricted use on 2026-08-22",
+      "external_artifact_upload": "prohibited",
+      "package_distribution": "prohibited",
+      "policy_version": "oel.restricted-private-fixture.v1",
+      "public_distribution": "prohibited",
+      "public_forks_and_mirrors": "prohibited",
+      "release_attachment": "prohibited",
+      "repository_storage": "permitted",
+      "repository_visibility": "private",
+      "visibility_change_action": "remove restricted fixtures before making the repository public"
+    },
+    "series_redistribution": {
+      "day_ahead_price": {
+        "source_document_type": "A44",
+        "status": "restricted_private_repository_only"
+      },
+      "fcr_capacity_price": {
+        "source_document_type": "A81",
+        "status": "cc-by-4.0"
+      },
+      "fcr_contracted_volume": {
+        "source_document_type": "A81",
+        "status": "cc-by-4.0"
+      }
+    },
+    "source": "ENTSO-E Transparency Platform",
+    "source_endpoint": "https://web-api.tp.entsoe.eu/api"
+  },
+  "schema_version": "oel.market-data.v1",
+  "series": {
+    "day_ahead_price": {
+      "area_eic": "10YFR-RTE------C",
+      "canonical_resolution": "PT1H",
+      "canonical_unit": "EUR/MWh",
+      "conversion": null,
+      "currency": "EUR",
+      "diagnostics": {
+        "curve_type": "A03",
+        "exact_duplicates_collapsed": 0,
+        "expanded_variable_blocks": 24
+      },
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-18T23:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T01:00:00+02:00",
+            "local_start": "2022-08-19T00:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-18T22:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 1,
+          "value": 510.09
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T00:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T02:00:00+02:00",
+            "local_start": "2022-08-19T01:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-18T23:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 2,
+          "value": 467.63
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T01:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T03:00:00+02:00",
+            "local_start": "2022-08-19T02:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T00:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 3,
+          "value": 450.1
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T02:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T04:00:00+02:00",
+            "local_start": "2022-08-19T03:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T01:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 4,
+          "value": 429.24
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T03:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T05:00:00+02:00",
+            "local_start": "2022-08-19T04:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T02:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 5,
+          "value": 439.39
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T04:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T06:00:00+02:00",
+            "local_start": "2022-08-19T05:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T03:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 6,
+          "value": 469.62
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T05:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T07:00:00+02:00",
+            "local_start": "2022-08-19T06:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T04:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 7,
+          "value": 521.93
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T06:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T08:00:00+02:00",
+            "local_start": "2022-08-19T07:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T05:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 8,
+          "value": 571.14
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T07:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T09:00:00+02:00",
+            "local_start": "2022-08-19T08:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T06:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 9,
+          "value": 581.2
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T08:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T10:00:00+02:00",
+            "local_start": "2022-08-19T09:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T07:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 10,
+          "value": 550.31
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T09:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T11:00:00+02:00",
+            "local_start": "2022-08-19T10:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T08:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 11,
+          "value": 528.04
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T10:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T12:00:00+02:00",
+            "local_start": "2022-08-19T11:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T09:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 12,
+          "value": 517.42
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T11:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T13:00:00+02:00",
+            "local_start": "2022-08-19T12:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T10:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 13,
+          "value": 501.72
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T12:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T14:00:00+02:00",
+            "local_start": "2022-08-19T13:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T11:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 14,
+          "value": 490.84
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T13:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T15:00:00+02:00",
+            "local_start": "2022-08-19T14:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T12:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 15,
+          "value": 474.3
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T14:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T16:00:00+02:00",
+            "local_start": "2022-08-19T15:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T13:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 16,
+          "value": 455.51
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T15:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T17:00:00+02:00",
+            "local_start": "2022-08-19T16:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T14:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 17,
+          "value": 490.86
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T16:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T18:00:00+02:00",
+            "local_start": "2022-08-19T17:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T15:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 18,
+          "value": 517.42
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T17:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T19:00:00+02:00",
+            "local_start": "2022-08-19T18:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T16:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 19,
+          "value": 545.56
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T18:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T20:00:00+02:00",
+            "local_start": "2022-08-19T19:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T17:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 20,
+          "value": 568.99
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T19:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T21:00:00+02:00",
+            "local_start": "2022-08-19T20:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T18:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 21,
+          "value": 569.4
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T20:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T22:00:00+02:00",
+            "local_start": "2022-08-19T21:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T19:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 22,
+          "value": 550.0
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T21:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T23:00:00+02:00",
+            "local_start": "2022-08-19T22:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T20:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 23,
+          "value": 530.58
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T22:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-20T00:00:00+02:00",
+            "local_start": "2022-08-19T23:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T21:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 24,
+          "value": 504.93
+        }
+      ],
+      "semantic_version": "fr-day-ahead-price-v1",
+      "series_id": "day_ahead_price",
+      "source_document_type": "A44",
+      "source_resolution": "PT60M",
+      "source_unit": "EUR/MWh",
+      "source_value_field": "price.amount"
+    },
+    "fcr_capacity_price": {
+      "area_eic": "10YFR-RTE------C",
+      "canonical_resolution": "PT4H",
+      "canonical_unit": "EUR/MW/h",
+      "conversion": {
+        "canonical_unit": "EUR/MW/h",
+        "conversion_ref": "a81-eur-per-mw-isp-to-eur-per-mw-hour",
+        "factor": 2.0,
+        "formula": "source_value / ISP_duration_hours",
+        "isp_duration_hours": 0.5,
+        "source_resolution": "PT30M",
+        "source_unit": "EUR/MW/ISP"
+      },
+      "currency": "EUR",
+      "diagnostics": {
+        "curve_type": "A03",
+        "exact_duplicates_collapsed": 0,
+        "expanded_change_points": 6,
+        "pt4h_reconciliation": "identical_complete_isps_only"
+      },
+      "observations": [
+        {
+          "conversion_ref": "a81-eur-per-mw-isp-to-eur-per-mw-hour",
+          "document_ref": "response-a81-efdb8c3daf8676abf71d4423addcfdb0943e4742a78a693ed938024deb29b8d1:member-a41a95078dce:dd87f8a43c204b5fbb799940d914ee2e:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T02:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T04:00:00+02:00",
+            "local_start": "2022-08-19T00:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-18T22:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 1,
+          "value": 17.5
+        },
+        {
+          "conversion_ref": "a81-eur-per-mw-isp-to-eur-per-mw-hour",
+          "document_ref": "response-a81-efdb8c3daf8676abf71d4423addcfdb0943e4742a78a693ed938024deb29b8d1:member-a41a95078dce:dd87f8a43c204b5fbb799940d914ee2e:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T06:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T08:00:00+02:00",
+            "local_start": "2022-08-19T04:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T02:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 9,
+          "value": 38.3
+        },
+        {
+          "conversion_ref": "a81-eur-per-mw-isp-to-eur-per-mw-hour",
+          "document_ref": "response-a81-efdb8c3daf8676abf71d4423addcfdb0943e4742a78a693ed938024deb29b8d1:member-a41a95078dce:dd87f8a43c204b5fbb799940d914ee2e:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T10:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T12:00:00+02:00",
+            "local_start": "2022-08-19T08:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T06:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 17,
+          "value": 20.08
+        },
+        {
+          "conversion_ref": "a81-eur-per-mw-isp-to-eur-per-mw-hour",
+          "document_ref": "response-a81-efdb8c3daf8676abf71d4423addcfdb0943e4742a78a693ed938024deb29b8d1:member-a41a95078dce:dd87f8a43c204b5fbb799940d914ee2e:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T14:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T16:00:00+02:00",
+            "local_start": "2022-08-19T12:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T10:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 25,
+          "value": 28.04
+        },
+        {
+          "conversion_ref": "a81-eur-per-mw-isp-to-eur-per-mw-hour",
+          "document_ref": "response-a81-efdb8c3daf8676abf71d4423addcfdb0943e4742a78a693ed938024deb29b8d1:member-a41a95078dce:dd87f8a43c204b5fbb799940d914ee2e:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T18:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T20:00:00+02:00",
+            "local_start": "2022-08-19T16:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T14:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 33,
+          "value": 28.0
+        },
+        {
+          "conversion_ref": "a81-eur-per-mw-isp-to-eur-per-mw-hour",
+          "document_ref": "response-a81-efdb8c3daf8676abf71d4423addcfdb0943e4742a78a693ed938024deb29b8d1:member-a41a95078dce:dd87f8a43c204b5fbb799940d914ee2e:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T22:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-20T00:00:00+02:00",
+            "local_start": "2022-08-19T20:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T18:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 41,
+          "value": 13.78
+        }
+      ],
+      "semantic_version": "fr-symmetric-fcr-capacity-price-v1",
+      "series_id": "fcr_capacity_price",
+      "source_document_type": "A81",
+      "source_resolution": "PT30M",
+      "source_unit": "EUR/MW/ISP",
+      "source_value_field": "procurement_Price.amount"
+    },
+    "fcr_contracted_volume": {
+      "area_eic": "10YFR-RTE------C",
+      "canonical_resolution": "PT4H",
+      "canonical_unit": "MW",
+      "conversion": null,
+      "currency": null,
+      "diagnostics": {
+        "curve_type": "A03",
+        "exact_duplicates_collapsed": 0,
+        "expanded_change_points": 6,
+        "pt4h_reconciliation": "identical_complete_isps_only"
+      },
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a81-efdb8c3daf8676abf71d4423addcfdb0943e4742a78a693ed938024deb29b8d1:member-a41a95078dce:dd87f8a43c204b5fbb799940d914ee2e:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T02:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T04:00:00+02:00",
+            "local_start": "2022-08-19T00:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-18T22:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 1,
+          "value": 467.0
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a81-efdb8c3daf8676abf71d4423addcfdb0943e4742a78a693ed938024deb29b8d1:member-a41a95078dce:dd87f8a43c204b5fbb799940d914ee2e:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T06:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T08:00:00+02:00",
+            "local_start": "2022-08-19T04:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T02:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 9,
+          "value": 450.0
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a81-efdb8c3daf8676abf71d4423addcfdb0943e4742a78a693ed938024deb29b8d1:member-a41a95078dce:dd87f8a43c204b5fbb799940d914ee2e:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T10:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T12:00:00+02:00",
+            "local_start": "2022-08-19T08:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T06:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 17,
+          "value": 522.0
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a81-efdb8c3daf8676abf71d4423addcfdb0943e4742a78a693ed938024deb29b8d1:member-a41a95078dce:dd87f8a43c204b5fbb799940d914ee2e:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T14:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T16:00:00+02:00",
+            "local_start": "2022-08-19T12:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T10:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 25,
+          "value": 444.0
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a81-efdb8c3daf8676abf71d4423addcfdb0943e4742a78a693ed938024deb29b8d1:member-a41a95078dce:dd87f8a43c204b5fbb799940d914ee2e:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T18:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-19T20:00:00+02:00",
+            "local_start": "2022-08-19T16:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T14:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 33,
+          "value": 431.0
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "response-a81-efdb8c3daf8676abf71d4423addcfdb0943e4742a78a693ed938024deb29b8d1:member-a41a95078dce:dd87f8a43c204b5fbb799940d914ee2e:r1",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2022-08-19T22:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2022-08-20T00:00:00+02:00",
+            "local_start": "2022-08-19T20:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2022-08-19T18:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_position": 41,
+          "value": 558.0
+        }
+      ],
+      "semantic_version": "fr-symmetric-fcr-volume-v1",
+      "series_id": "fcr_contracted_volume",
+      "source_document_type": "A81",
+      "source_resolution": "PT30M",
+      "source_unit": "MW",
+      "source_value_field": "quantity"
+    }
+  },
+  "source_documents": [
+    {
+      "archive_member": null,
+      "area_eic": "10YFR-RTE------C",
+      "business_type": "A62",
+      "created_at_utc": "2026-08-22T05:46:47Z",
+      "document_mrid": "8d35d37f2cd64e849a265f67dcd553b9",
+      "document_period": {
+        "end_fold": 0,
+        "end_utc": "2022-08-19T22:00:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2022-08-20T00:00:00+02:00",
+        "local_start": "2022-08-19T00:00:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2022-08-18T22:00:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "document_ref": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d:8d35d37f2cd64e849a265f67dcd553b9:r1",
+      "document_type": "A44",
+      "flow_direction": null,
+      "market_agreement_type": null,
+      "namespace_uri": "urn:iec62325.351:tc57wg16:451-3:publicationdocument:7:3",
+      "process_type": null,
+      "product_identity": {
+        "business_type": "A62",
+        "series_mrid": "1"
+      },
+      "response_id": "response-a44-e974fbc8bb82f51ca00e860c491c2eebf130c2cc2e5188528d765f33387a422d",
+      "revision_number": 1,
+      "root_document_type": "Publication_MarketDocument",
+      "status": "selected"
+    },
+    {
+      "archive_member": "001-AMOUNT_AND_PRICES_PAID_OF_BALANCING_RESERVES_UNDER_CONTRACT_R3_202208182200-202208192200.xml",
+      "area_eic": "10YFR-RTE------C",
+      "business_type": "B95",
+      "created_at_utc": "2026-08-22T05:46:53Z",
+      "document_mrid": "dd87f8a43c204b5fbb799940d914ee2e",
+      "document_period": {
+        "end_fold": 0,
+        "end_utc": "2022-08-19T22:00:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2022-08-20T00:00:00+02:00",
+        "local_start": "2022-08-19T00:00:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2022-08-18T22:00:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "document_ref": "response-a81-efdb8c3daf8676abf71d4423addcfdb0943e4742a78a693ed938024deb29b8d1:member-a41a95078dce:dd87f8a43c204b5fbb799940d914ee2e:r1",
+      "document_type": "A81",
+      "flow_direction": "A03",
+      "market_agreement_type": "A01",
+      "namespace_uri": "urn:iec62325.351:tc57wg16:451-6:balancingdocument:4:4",
+      "process_type": "A52",
+      "product_identity": {
+        "business_type": "B95",
+        "flow_direction": "A03",
+        "market_agreement_type": "A01",
+        "market_product_type": null,
+        "psr_type": "A03",
+        "series_mrid": "1"
+      },
+      "response_id": "response-a81-efdb8c3daf8676abf71d4423addcfdb0943e4742a78a693ed938024deb29b8d1",
+      "revision_number": 1,
+      "root_document_type": "Balancing_MarketDocument",
+      "status": "selected"
+    }
+  ]
+}

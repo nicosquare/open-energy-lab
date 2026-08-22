@@ -12,6 +12,14 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from .fcr_settlement import (
+        EnergySettlementInterval,
+        FCRPenaltyRule,
+        FCRSettlementBlock,
+        FCRSettlementValidationError,
+        SettlementBreakdown,
+        settle_stacked_services,
+    )
     from .load import LoadComponent
     from .planning_export import PlanningExportRequest, export_planning_dataset
     from .planning_study import (
@@ -44,6 +52,26 @@ if TYPE_CHECKING:
         WeatherFamilyEvaluationResult,
         WeatherScenarioEvaluationResult,
         evaluate_weather_family,
+    )
+    from .stacked_service import (
+        EnergyBaselineInterval,
+        EnergyBaselineSchedule,
+        FCRCapacitySchedule,
+        FCRCommitmentInterval,
+        MultiRateTimeContract,
+        ReplayIntervalSummary,
+        ReplaySample,
+        SaturationEvent,
+        StackedServiceReplayRequest,
+        StackedServiceReplayResult,
+        StackedServiceValidationError,
+        StateCheckpoint,
+        TerminalSOCTarget,
+        TerminalSOCReport,
+        build_energy_baseline_schedule,
+        build_fcr_capacity_schedule,
+        replay_stacked_services,
+        replay_stacked_services_diagnostic,
     )
     from .weather import WeatherComponent
 
@@ -105,6 +133,54 @@ _EXPORT_MAP = {
         ".stochastic_weather",
         "WeatherScenarioEvaluationResult",
     ),
+    "EnergyBaselineInterval": (".stacked_service", "EnergyBaselineInterval"),
+    "EnergyBaselineSchedule": (".stacked_service", "EnergyBaselineSchedule"),
+    "FCRCapacitySchedule": (".stacked_service", "FCRCapacitySchedule"),
+    "FCRCommitmentInterval": (".stacked_service", "FCRCommitmentInterval"),
+    "MultiRateTimeContract": (".stacked_service", "MultiRateTimeContract"),
+    "ReplayIntervalSummary": (".stacked_service", "ReplayIntervalSummary"),
+    "ReplaySample": (".stacked_service", "ReplaySample"),
+    "SaturationEvent": (".stacked_service", "SaturationEvent"),
+    "StackedServiceReplayRequest": (
+        ".stacked_service",
+        "StackedServiceReplayRequest",
+    ),
+    "StackedServiceReplayResult": (
+        ".stacked_service",
+        "StackedServiceReplayResult",
+    ),
+    "StackedServiceValidationError": (
+        ".stacked_service",
+        "StackedServiceValidationError",
+    ),
+    "StateCheckpoint": (".stacked_service", "StateCheckpoint"),
+    "TerminalSOCTarget": (".stacked_service", "TerminalSOCTarget"),
+    "TerminalSOCReport": (".stacked_service", "TerminalSOCReport"),
+    "build_energy_baseline_schedule": (
+        ".stacked_service",
+        "build_energy_baseline_schedule",
+    ),
+    "build_fcr_capacity_schedule": (
+        ".stacked_service",
+        "build_fcr_capacity_schedule",
+    ),
+    "replay_stacked_services": (".stacked_service", "replay_stacked_services"),
+    "replay_stacked_services_diagnostic": (
+        ".stacked_service",
+        "replay_stacked_services_diagnostic",
+    ),
+    "EnergySettlementInterval": (
+        ".fcr_settlement",
+        "EnergySettlementInterval",
+    ),
+    "FCRPenaltyRule": (".fcr_settlement", "FCRPenaltyRule"),
+    "FCRSettlementBlock": (".fcr_settlement", "FCRSettlementBlock"),
+    "FCRSettlementValidationError": (
+        ".fcr_settlement",
+        "FCRSettlementValidationError",
+    ),
+    "SettlementBreakdown": (".fcr_settlement", "SettlementBreakdown"),
+    "settle_stacked_services": (".fcr_settlement", "settle_stacked_services"),
 }
 
 __all__ = [
@@ -134,6 +210,30 @@ __all__ = [
     "WeatherFamilyEvaluationRequest",
     "WeatherFamilyEvaluationResult",
     "WeatherScenarioEvaluationResult",
+    "EnergyBaselineInterval",
+    "EnergyBaselineSchedule",
+    "FCRCapacitySchedule",
+    "FCRCommitmentInterval",
+    "MultiRateTimeContract",
+    "ReplayIntervalSummary",
+    "ReplaySample",
+    "SaturationEvent",
+    "StackedServiceReplayRequest",
+    "StackedServiceReplayResult",
+    "StackedServiceValidationError",
+    "StateCheckpoint",
+    "TerminalSOCTarget",
+    "TerminalSOCReport",
+    "build_energy_baseline_schedule",
+    "build_fcr_capacity_schedule",
+    "replay_stacked_services",
+    "replay_stacked_services_diagnostic",
+    "EnergySettlementInterval",
+    "FCRPenaltyRule",
+    "FCRSettlementBlock",
+    "FCRSettlementValidationError",
+    "SettlementBreakdown",
+    "settle_stacked_services",
 ]
 
 

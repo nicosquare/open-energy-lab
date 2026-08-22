@@ -32,7 +32,18 @@ notebook = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/open_energy_lab"]
 
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "/tests/fixtures/market/france_2022-08-19_market_v1.json",
+    "/tests/fixtures/market/france_2022-08-19_activation_v1.json",
+    "/tests/fixtures/market/france_2022-08-19_expected_replay_v1.json",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests/unit"]
 pythonpath = [".", "src"]
 addopts = "-ra"
+markers = [
+    "live_entsoe: explicitly selected credentialed ENTSO-E compatibility checks (excluded from routine offline validation)",
+    "reference_benchmark: explicitly selected reference-host performance checks (excluded from routine correctness validation)",
+]
