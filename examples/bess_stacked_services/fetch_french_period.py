@@ -41,7 +41,7 @@ def _utc_instant(value: str) -> datetime:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Explicitly acquire complete France A44/A81/A89 market data and "
+            "Explicitly acquire complete France A44/combined-A81 R3 market data and "
             "publish a validated immutable artifact."
         )
     )

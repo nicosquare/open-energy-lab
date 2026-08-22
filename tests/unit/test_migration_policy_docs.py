@@ -86,3 +86,27 @@ def test_feature_010_docs_record_maturity_locations_and_offline_default() -> Non
         content = _read_text(path)
         missing = [term for term in required if term.lower() not in content]
         assert missing == [], f"{path} is missing: {missing}"
+
+
+def test_entsoe_architecture_guide_records_the_exact_r3_api_contract() -> None:
+    path = Path("docs/architecture/entsoe-transparency-platform.md")
+    content = _read_text(path)
+    required = (
+        "transparency platform **r3**",
+        "https://web-api.tp.entsoe.eu/api",
+        "documenttype` | `a44",
+        "documenttype` | `a81",
+        "businesstype` | `b95",
+        "processtype` | `a52",
+        "type_marketagreement.type` | `a01",
+        "controlarea_domain` | `10yfr-rte------c",
+        "eur/mw/h = source_value / isp_duration_hours",
+        "securitytoken",
+        "entsoe_api_token",
+        "application/zip",
+        "cc by 4.0",
+        "official entso-e postman collection",
+        "list of data available for free reuse",
+    )
+    missing = [term for term in required if term not in content]
+    assert missing == [], f"{path} is missing: {missing}"

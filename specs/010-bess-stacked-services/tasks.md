@@ -198,6 +198,24 @@ offline evidence suite without widening feature scope.
 
 ---
 
+## Phase 8: Corrective ENTSO-E R3 Alignment
+
+**Purpose**: Supersede the obsolete pre-R3 A81/A89 acquisition assumptions
+without changing the three source-independent canonical series or publishing
+restricted A44 values.
+
+- [X] T053 [P] [US1] Replace source-contract tests with exact A44 and combined A81 `B95/A52/A01` requests, R3 XML fields, dynamic ISP conversion, shared provenance, and legacy A89 rejection in `tests/unit/market/`
+- [X] T054 [P] [US1] Replace reserve success fixtures with project-authored R3 combined A81 XML and exercise XML/ZIP, missing-measure, wrong-product/unit, archive-safety, and exact PT4H reconciliation cases in `tests/fixtures/market/synthetic_entsoe/` and `tests/integration/market/`
+- [X] T055 [US1] Revise `oel.market-data.v1` in place so both FCR series carry exact source-value fields and reference the same selected A81 document, with optional archive-member provenance and explicit rejection of legacy A89 artifacts in `src/open_energy_lab/market/artifact.py`
+- [X] T056 [US1] Implement bounded ZIP extraction, R3 `Balancing_MarketDocument` parsing, sparse combined quantity/price expansion, ISP-duration price conversion, and inference-free PT4H reconciliation in `src/open_energy_lab/market/entsoe.py`
+- [X] T057 [US1] Update fake and opt-in live acquisition to publish three canonical series from two responses and scan all outputs for the token in `tests/integration/market/`
+- [X] T058 [P] Reconcile `spec.md`, `plan.md`, `research.md`, `data-model.md`, contracts, quickstart, and this task history with the corrective R3 contract while retaining the original failed gate as a superseded diagnostic in `specs/010-bess-stacked-services/`
+- [X] T059 [P] Document the R3 version, endpoint, exact requests, authentication/dotenv boundary, XML/ZIP handling, normalization, retries, official references, and redistribution policy in `docs/architecture/entsoe-transparency-platform.md`, and link it from architecture, migration, feature, and example guidance
+- [X] T060 Run the focused offline market, control, simulator, import-boundary, and existing battery/arbitrage regression suites; keep routine validation token-free and offline
+- [X] T061 Run the credentialed exact-period live gate from `.env`, record technical compatibility separately from A44 redistribution, scan outputs for the token, and leave real market/replay fixtures uncommitted until an A44 reuse basis is documented
+
+---
+
 ## Dependencies And Execution Order
 
 ### Phase Dependencies
@@ -213,6 +231,9 @@ offline evidence suite without widening feature scope.
   its unit work can proceed in parallel with US3, while T041's recorded-schedule
   assertion additionally depends on T037.
 - **Phase 7 (Polish)**: Depends on all completed, unblocked user stories.
+- **Phase 8 (Corrective R3 alignment)**: Supersedes the Phase 3 source adapter
+  assumptions and the technical portion of T036/T052. It does not unblock T037
+  or T050 while A44 redistribution remains unresolved.
 
 ### User Story Dependency Graph
 
@@ -318,7 +339,7 @@ Contributor B: T040 and T042-T044 baseline implementation; finish T041 after T03
   resolution-and-semantics proof.
 - Do not let market-source types enter replay, or physical/settlement behavior
   enter the market producer.
-- Do not add a fallback source or synthetic patch if the real A44/A81/A89 gate
+- Do not add a fallback source or synthetic patch if the real A44/combined-A81 gate
   fails.
 
 ---

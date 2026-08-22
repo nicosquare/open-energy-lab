@@ -33,6 +33,7 @@ REQUIRED_SERIES_IDS = (
 _SERIES_PROFILE = {
     "day_ahead_price": {
         "document_type": "A44",
+        "source_value_field": "price.amount",
         "canonical_unit": "EUR/MWh",
         "canonical_resolution": "PT1H",
         "currency": "EUR",
@@ -40,13 +41,15 @@ _SERIES_PROFILE = {
     },
     "fcr_contracted_volume": {
         "document_type": "A81",
+        "source_value_field": "quantity",
         "canonical_unit": "MW",
         "canonical_resolution": "PT4H",
         "currency": None,
         "negative_allowed": False,
     },
     "fcr_capacity_price": {
-        "document_type": "A89",
+        "document_type": "A81",
+        "source_value_field": "procurement_Price.amount",
         "canonical_unit": "EUR/MW/h",
         "canonical_resolution": "PT4H",
         "currency": "EUR",
@@ -232,6 +235,7 @@ class MarketSeries:
     semantic_version: str
     area_eic: str
     source_document_type: str
+    source_value_field: str
     source_resolution: str | tuple[str, ...]
     canonical_resolution: str
     source_unit: str
@@ -247,6 +251,7 @@ class MarketSeries:
             "semantic_version": self.semantic_version,
             "area_eic": self.area_eic,
             "source_document_type": self.source_document_type,
+            "source_value_field": self.source_value_field,
             "source_resolution": _thaw(self.source_resolution),
             "canonical_resolution": self.canonical_resolution,
             "source_unit": self.source_unit,
@@ -331,6 +336,7 @@ class SourceDocumentEvidence:
     market_agreement_type: str | None
     product_identity: Mapping[str, object]
     document_period: CanonicalInterval
+    archive_member: str | None
     status: str
 
     def to_dict(self) -> dict[str, object]:
@@ -350,6 +356,7 @@ class SourceDocumentEvidence:
             "market_agreement_type": self.market_agreement_type,
             "product_identity": _thaw(self.product_identity),
             "document_period": self.document_period.to_dict(),
+            "archive_member": self.archive_member,
             "status": self.status,
         }
 
@@ -479,6 +486,7 @@ def _market_series(
             "semantic_version",
             "area_eic",
             "source_document_type",
+            "source_value_field",
             "source_resolution",
             "canonical_resolution",
             "source_unit",
@@ -497,6 +505,7 @@ def _market_series(
     expected = _SERIES_PROFILE[series_id]
     for field, expected_value in (
         ("source_document_type", expected["document_type"]),
+        ("source_value_field", expected["source_value_field"]),
         ("canonical_resolution", expected["canonical_resolution"]),
         ("canonical_unit", expected["canonical_unit"]),
         ("currency", expected["currency"]),
@@ -597,6 +606,7 @@ def _market_series(
         ),
         area_eic=FRANCE_AREA_EIC,
         source_document_type=str(expected["document_type"]),
+        source_value_field=str(expected["source_value_field"]),
         source_resolution=source_resolution,
         canonical_resolution=canonical_resolution,
         source_unit=source_unit,
@@ -771,6 +781,7 @@ def _source_document(payload: object, *, index: int) -> SourceDocumentEvidence:
         "market_agreement_type",
         "product_identity",
         "document_period",
+        "archive_member",
         "status",
     )
     _required(data, required, field_name=f"source_documents[{index}]")
@@ -835,6 +846,17 @@ def _source_document(payload: object, *, index: int) -> SourceDocumentEvidence:
             data["document_period"],
             field_name=f"source_documents[{index}].document_period",
         ),
+        archive_member=(
+            None
+            if data["archive_member"] is None
+            else _safe_sidecar_locator(
+                _non_empty_string(
+                    data["archive_member"],
+                    field_name=f"source_documents[{index}].archive_member",
+                ),
+                field_name=f"source_documents[{index}].archive_member",
+            )
+        ),
         status=status,
     )
 
@@ -884,20 +906,42 @@ def _validate_cross_series_fcr(
     price_intervals = tuple(item.interval.to_dict() for item in price.observations)
     if volume_intervals != price_intervals:
         raise MarketArtifactValidationError(
-            "FCR A81 volume and A89 capacity price intervals must align exactly"
+            "FCR A81 volume and capacity price intervals must align exactly"
         )
-    selected_by_type = {
-        document.document_type: document
-        for document in source_documents
-        if document.status == "selected" and document.document_type in {"A81", "A89"}
-    }
-    if set(selected_by_type) != {"A81", "A89"}:
-        raise MarketArtifactValidationError("FCR requires selected A81 and A89 documents")
-    if _thaw(selected_by_type["A81"].product_identity) != _thaw(
-        selected_by_type["A89"].product_identity
-    ):
+    volume_refs = tuple(item.document_ref for item in volume.observations)
+    price_refs = tuple(item.document_ref for item in price.observations)
+    if volume_refs != price_refs:
         raise MarketArtifactValidationError(
-            "FCR A81 and A89 product identity must align exactly"
+            "FCR volume and price must reference the same combined A81 document"
+        )
+    selected_a81 = {
+        document.document_ref: document
+        for document in source_documents
+        if document.status == "selected" and document.document_type == "A81"
+    }
+    referenced = set(volume_refs)
+    if not referenced or referenced - set(selected_a81):
+        raise MarketArtifactValidationError(
+            "FCR requires shared selected combined A81 document provenance"
+        )
+
+
+def _validate_france_r3_evidence(
+    query_windows: tuple[SourceQueryWindow, ...],
+    source_documents: tuple[SourceDocumentEvidence, ...],
+) -> None:
+    if {window.document_type for window in query_windows} != {"A44", "A81"}:
+        raise MarketArtifactValidationError(
+            "France v1 requires exactly A44 and combined A81 query windows"
+        )
+    selected_types = {
+        document.document_type
+        for document in source_documents
+        if document.status == "selected"
+    }
+    if selected_types != {"A44", "A81"}:
+        raise MarketArtifactValidationError(
+            "France v1 requires selected A44 and combined A81 documents"
         )
 
 
@@ -1018,6 +1062,7 @@ def _build_market_data_artifact(payload: Mapping[str, Any]) -> MarketDataArtifac
         raw_responses=raw_responses,
         source_documents=source_documents,
     )
+    _validate_france_r3_evidence(query_windows, source_documents)
     _validate_cross_series_fcr(series, source_documents)
     predecessor_value = data["predecessor_artifact_fingerprint"]
     predecessor = (

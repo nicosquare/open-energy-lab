@@ -12,8 +12,8 @@ three market series in the same completed artifact:
 | Canonical series | Source document | Required semantics |
 | --- | --- | --- |
 | Day-ahead energy price | `A44` | France in/out bidding-zone domain, day-ahead process, `EUR/MWh` |
-| Symmetric FCR contracted volume | `A81` | France control area, contracted process `A34`, daily market agreement `A01`, FCR business type `A95`, symmetric direction `A03`, `MW` |
-| Symmetric FCR capacity price | `A89` | Same contracted FCR product identity and delivery interval as A81, source price in currency/MW/ISP converted explicitly to `EUR/MW/h` |
+| Symmetric FCR contracted volume | combined `A81` | France control area, process `A52`, market agreement `A01`, business type `B95`, symmetric direction `A03`, optional standard product `A01`, mixed PSR `A03`, `MW` |
+| Symmetric FCR capacity price | combined `A81` | `procurement_Price.amount` from the same points and document, converted from `EUR/MW/ISP` to `EUR/MW/h` by ISP duration |
 
 The query builder sends only the parameters supported for the applicable data
 item. The parser then validates the returned document, process, business,
@@ -21,12 +21,12 @@ direction, area, market-agreement/product, currency, unit, interval, and
 revision fields. A query parameter is not treated as proof that the response
 has the requested meaning.
 
-ENTSO-E's current material identifies `A81` and `A89` as contracted reserve
-volume and price documents, `A95` as FCR, `A34` as contracted, `A01` as the
-daily market-agreement type required by this query, and `A03` as a symmetric
-direction. It also defines reserve volume per ISP and price as
-currency/MW/ISP. The FCR Cooperation describes the relevant product as a
-usually four-hour symmetric product, subject to daylight-saving shifts.
+The official Postman collection published on 2026-01-16 and checked on
+2026-08-22 defines the current 17.1.B&C request as `A81/B95/A52/A01`. The R3
+`Balancing_MarketDocument` combines `quantity` and
+`procurement_Price.amount`; the legacy separate A89 request is not part of this
+profile. It defines reserve price as currency/MW/ISP. The canonical conversion
+is `source_value / ISP_duration_hours`, so PT30M uses factor 2.
 
 **Rationale**: This is the narrowest profile that satisfies the feature without
 creating a generic European market framework. Strict returned-semantics checks
@@ -39,7 +39,8 @@ data.
 - `entsoe-py`: useful for generic analysis, but its dataframe boundary hides
   source-document revisions and raw-response evidence needed by this feature.
 - RTE or regelleistung.net price fallback: useful future adapters, but not a
-  substitute for the required ENTSO-E demonstration. Missing A81/A89 fails.
+  substitute for the required ENTSO-E demonstration. Missing either combined
+  A81 measure fails atomically.
 - A83/A84 as the FCR command: these represent activated quantities/prices and
   do not prove a 10-second normalized FCR request.
 
@@ -132,13 +133,14 @@ one-day demonstration and month-scale research periods.
 
 ## Decision 4: Parse XML defensively without adding a dependency
 
-**Decision**: Parse bounded byte responses with the standard library after
-rejecting DTD/entity declarations and enforcing a fixed response-size ceiling.
+**Decision**: Parse bounded XML or ZIP responses with the standard library
+after rejecting unsafe archive members, DTD/entity declarations, and content
+above fixed compressed/uncompressed size and member ceilings.
 Validate the root local name and namespace family before reading content. Keep
 namespace URI, document mRID, revision number, created timestamp, process,
 area, and time-series identity in source evidence.
 
-Support the fixed-position curve form and the variable-sized-block form only
+Support the fixed-position curve form for A44 and the sparse A03 form only
 when positions are monotone, resolution is explicit, and the next point or
 period end determines every interval unambiguously. Select the highest revision
 for repeated versions of the same document mRID; record superseded evidence.
@@ -204,10 +206,10 @@ start-inclusive/end-exclusive.
 
 The reference profile accepts hourly A44 values and constructs four-hour FCR
 blocks only from source intervals that exactly cover one declared product
-block and have compatible product identity and units. Finer A81/A89 source
-intervals may collapse only through an explicit recorded conversion when all
-constituent intervals cover the block with no gap/overlap and their conversion
-reconciles exactly. No averaging or forward fill is inferred.
+block and have compatible product identity and units. Combined A81 ISP
+intervals collapse only when a complete PT4H run has identical product,
+quantity, and price semantics. Price conversion divides by ISP duration; no
+averaging or forward fill is inferred.
 
 Market artifacts may represent 23- or 25-hour local days if source intervals
 are unambiguous. The 24-hour reference replay rejects a DST day whose hourly,
@@ -286,9 +288,9 @@ p_base + r <=  P_charge
 r / 1000 <= contracted_fcr_volume_mw
 ```
 
-It also requires one compatible A89 price and A81 volume for every commitment
-block. These are immediate power/market checks, not a claim of robust SOC
-feasibility for all possible signals.
+It also requires compatible volume and price observations derived from the
+same combined A81 points for every commitment block. These are immediate
+power/market checks, not a claim of robust SOC feasibility for all signals.
 
 **Rationale**: Reusing `src/open_energy_lab/simulator/battery.py` is the most
 direct path to zero-FCR physical parity and avoids a second battery model.
@@ -374,8 +376,8 @@ UTC:    [2022-08-18T22:00:00Z,      2022-08-19T22:00:00Z)
 
 Pre-screening against the cited external reference found 24 hourly French
 day-ahead values, six four-hour French FCR price blocks, and a complete raw
-10-second RTE frequency day. The feature must still acquire and validate A44,
-A81, and A89 through its own ENTSO-E producer before the market fixture is
+10-second RTE frequency day. The feature must still acquire and validate A44
+and combined A81 through its own ENTSO-E producer before the market fixture is
 accepted. The committed fixture records the ENTSO-E document revisions,
 response digests, retrieval time, legal-reuse basis, normalization version,
 and activation source/commit.
@@ -397,7 +399,7 @@ DST transition, exercises large French price variation, and has complete
 source-explicit high-resolution frequency observations.
 
 **Blocking gate**: If credentialed ENTSO-E acquisition does not prove complete
-compatible A44/A81/A89 source data and reusable normalized-fixture terms for
+compatible A44/combined-A81 source data and reusable normalized-fixture terms for
 this exact day, no real fixture may be published under Feature 010 until the
 selected period is amended through the specification workflow.
 

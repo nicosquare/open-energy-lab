@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import UTC, datetime
+import io
 import importlib
 from pathlib import Path
 from types import ModuleType
 from typing import Any
+import zipfile
 
 import pytest
 
@@ -25,7 +27,6 @@ PERIOD_END = datetime(2022, 8, 19, 2, tzinfo=UTC)
 SERIES_BY_DOCUMENT = {
     "A44": "day_ahead_price",
     "A81": "fcr_contracted_volume",
-    "A89": "fcr_capacity_price",
 }
 
 
@@ -64,8 +65,8 @@ def _window_for(document_type: str, start: datetime, end: datetime):
     return _window(
         window_id=f"fr-{document_type.lower()}-{start.date().isoformat()}",
         document_type=document_type,
-        process_type="A01" if document_type == "A44" else "A34",
-        business_type=None if document_type == "A44" else "A95",
+        process_type="A01" if document_type == "A44" else "A52",
+        business_type=None if document_type == "A44" else "B95",
         start_utc=start,
         end_utc=end,
         market_agreement_type=None if document_type == "A44" else "A01",
@@ -157,15 +158,8 @@ def _assert_failure_diagnostic(
             "a81_success.xml",
             "A81",
             "fcr_contracted_volume",
-            "ReserveAllocationResult_MarketDocument",
-            "PT4H",
-        ),
-        (
-            "a89_success.xml",
-            "A89",
-            "fcr_capacity_price",
-            "ReserveAllocationResult_MarketDocument",
-            "PT4H",
+            "Balancing_MarketDocument",
+            "PT30M",
         ),
     ],
 )
@@ -228,23 +222,42 @@ def test_a44_accepts_and_preserves_source_pt60m_as_canonical_pt1h() -> None:
     assert parsed.series.canonical_resolution == "PT1H"
 
 
-def test_a81_and_a89_share_product_identity_and_normalize_capacity_price() -> None:
-    volume = _parse("a81_success.xml", document_type="A81")
-    price = _parse("a89_success.xml", document_type="A89")
+def test_combined_a81_produces_aligned_volume_and_capacity_price_series() -> None:
+    parsed = _parse("a81_success.xml", document_type="A81")
+    volume = parsed.series
+    price = parsed.additional_series[0]
 
-    assert dict(volume.source_document.product_identity) == dict(
-        price.source_document.product_identity
+    assert parsed.source_document.business_type == "B95"
+    assert parsed.source_document.process_type == "A52"
+    assert parsed.source_document.flow_direction == "A03"
+    assert parsed.source_document.market_agreement_type == "A01"
+    assert parsed.source_document.root_document_type == "Balancing_MarketDocument"
+    assert volume.source_document_type == price.source_document_type == "A81"
+    assert volume.source_value_field == "quantity"
+    assert price.source_value_field == "procurement_Price.amount"
+    assert volume.source_unit == "MW"
+    assert volume.canonical_resolution == "PT4H"
+    assert volume.observations[0].value == 125.0
+    assert price.source_unit == "EUR/MW/ISP"
+    assert price.canonical_unit == "EUR/MW/h"
+    assert price.canonical_resolution == "PT4H"
+    assert price.observations[0].value == 17.5
+    assert price.conversion is not None
+    assert price.conversion["factor"] == 2.0
+    assert price.conversion["formula"] == "source_value / ISP_duration_hours"
+    assert price.observations[0].conversion_ref
+    assert volume.observations[0].document_ref == price.observations[0].document_ref
+
+
+def test_combined_a81_allows_absent_standard_market_product_and_preserves_null() -> None:
+    body = _fixture("a81_success.xml").replace(
+        b"    <standard_MarketProduct.marketProductType>A01</standard_MarketProduct.marketProductType>\n",
+        b"",
     )
-    assert volume.source_document.business_type == "A95"
-    assert volume.source_document.flow_direction == "A03"
-    assert volume.series.source_unit == "MW"
-    assert volume.series.observations[0].value == 125.0
-    assert price.series.source_unit == "EUR/MW/ISP"
-    assert price.series.canonical_unit == "EUR/MW/h"
-    assert price.series.observations[0].value == 10.0
-    assert price.series.conversion is not None
-    assert price.series.conversion["factor"] == 0.25
-    assert price.series.observations[0].conversion_ref
+
+    parsed = _parse_bytes(body, document_type="A81")
+
+    assert parsed.source_document.product_identity["market_product_type"] is None
 
 
 def test_variable_sized_blocks_expand_until_the_next_position_or_period_end() -> None:
@@ -344,12 +357,6 @@ def test_malformed_xml_has_a_typed_sanitized_failure() -> None:
             b"<flowDirection.direction>A03</flowDirection.direction>",
             "fcr_contracted_volume",
         ),
-        (
-            "a89_success.xml",
-            "A89",
-            b"<businessType>A95</businessType>",
-            "fcr_capacity_price",
-        ),
     ],
 )
 def test_required_semantic_fields_cannot_be_inferred_from_the_request(
@@ -369,6 +376,18 @@ def test_required_semantic_fields_cannot_be_inferred_from_the_request(
         )
 
     _assert_failure_diagnostic(caught.value, required_series=required_series)
+
+
+def test_combined_a81_requires_both_quantity_and_price_at_every_change() -> None:
+    semantic_error = _require("EntsoeSemanticValidationError")
+
+    with pytest.raises(semantic_error, match="price|procurement|required|field") as caught:
+        _parse("a81_missing_price.xml", document_type="A81")
+
+    _assert_failure_diagnostic(
+        caught.value,
+        required_series="fcr_contracted_volume",
+    )
 
 
 def test_exact_duplicate_collapses_only_with_an_explicit_diagnostic() -> None:
@@ -418,7 +437,7 @@ def test_wrong_fcr_product_is_rejected_without_query_assumption() -> None:
     _assert_failure_diagnostic(
         caught.value,
         required_series="fcr_contracted_volume",
-        observed_resolution="PT4H",
+        observed_resolution="PT30M",
         observed_unit="MW",
         observed_coverage=True,
     )
@@ -428,15 +447,98 @@ def test_wrong_unit_is_rejected_with_observed_unit() -> None:
     unit_error = _require("EntsoeUnitValidationError")
 
     with pytest.raises(unit_error, match="unit|MWH|MAW") as caught:
-        _parse("a89_wrong_unit.xml", document_type="A89")
+        _parse("a81_wrong_unit.xml", document_type="A81")
 
     _assert_failure_diagnostic(
         caught.value,
-        required_series="fcr_capacity_price",
-        observed_resolution="PT4H",
+        required_series="fcr_contracted_volume",
+        observed_resolution="PT30M",
         observed_unit="EUR/MWh",
         observed_coverage=True,
     )
+
+
+def test_pt4h_reconciliation_rejects_nonconstant_isps_without_inference() -> None:
+    resolution_error = _require("EntsoeResolutionValidationError")
+    body = _fixture("a81_success.xml").replace(
+        b"</Point>",
+        b"</Point><Point><position>2</position><quantity>126.0</quantity>"
+        b"<procurement_Price.amount>8.75</procurement_Price.amount></Point>",
+        1,
+    )
+
+    with pytest.raises(resolution_error, match="PT4H|constant|reconcil") as caught:
+        _parse_bytes(body, document_type="A81")
+
+    _assert_failure_diagnostic(
+        caught.value,
+        required_series="fcr_contracted_volume",
+        observed_resolution="PT30M",
+        observed_unit="MW",
+        observed_coverage=True,
+    )
+
+
+def test_zip_response_members_are_bounded_and_preserve_member_provenance() -> None:
+    extract_members = _require("extract_entsoe_xml_members")
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("r3/a81.xml", _fixture("a81_success.xml"))
+
+    members = extract_members(
+        buffer.getvalue(),
+        media_type="application/zip",
+        max_uncompressed_bytes=1024 * 1024,
+    )
+    assert members == (("r3/a81.xml", _fixture("a81_success.xml")),)
+
+    parse_entsoe_document = _require("parse_entsoe_document")
+    parsed = parse_entsoe_document(
+        members[0][1],
+        request=_request_for(PERIOD_START, PERIOD_END),
+        window=_window_for("A81", PERIOD_START, PERIOD_END),
+        response_id="response-archive",
+        archive_member=members[0][0],
+    )
+    assert parsed.source_document.archive_member == "r3/a81.xml"
+
+
+@pytest.mark.parametrize(
+    ("member_name", "body"),
+    [
+        ("../escape.xml", b"<x/>") ,
+        ("nested.zip", b"PK\x03\x04"),
+        ("not-xml.txt", b"<x/>") ,
+    ],
+)
+def test_zip_response_rejects_traversal_nested_and_non_xml_members(
+    member_name: str,
+    body: bytes,
+) -> None:
+    extract_members = _require("extract_entsoe_xml_members")
+    archive_error = _require("EntsoeArchiveValidationError")
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, mode="w") as archive:
+        archive.writestr(member_name, body)
+
+    with pytest.raises(archive_error, match="archive|ZIP|member|XML|path"):
+        extract_members(
+            buffer.getvalue(),
+            media_type="application/zip",
+            max_uncompressed_bytes=1024,
+        )
+
+
+def test_legacy_a89_query_is_rejected_by_the_revised_v1_profile() -> None:
+    validation_error = _require("EntsoeRequestValidationError")
+
+    with pytest.raises(validation_error, match="A44|A81|document_type"):
+        _window(
+            document_type="A89",
+            process_type="A34",
+            business_type="A95",
+            market_agreement_type="A01",
+        )
 
 
 def test_wrong_resolution_is_rejected_with_observed_resolution() -> None:

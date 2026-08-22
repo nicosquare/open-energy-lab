@@ -98,7 +98,7 @@ UTC          [2022-08-18 22:00:00Z,      2022-08-19 22:00:00Z)
 
 Acceptance requires:
 
-- ENTSO-E-produced, complete, compatible A44/A81/A89 normalized artifact
+- ENTSO-E-produced, complete, compatible A44/combined-A81 normalized artifact
 - separately provenanced RTE-derived PT10S activation artifact
 - 24 energy intervals, 96 checkpoint intervals, 6 FCR blocks, 8,640 samples
 - fixed demonstration battery, schedules/heuristic config, zero penalty, and
@@ -109,7 +109,7 @@ Acceptance requires:
 Two offline runs must have zero transport calls and identical traces, event
 ordering, settlement components, throughput, terminal report, and fingerprints.
 
-If A44/A81/A89 completeness or reuse terms fail for this period, the real
+If A44/combined-A81 completeness or reuse terms fail for this period, the real
 fixture is blocked. Synthetic completion and silent alternative sources are
 forbidden.
 

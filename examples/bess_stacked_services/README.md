@@ -6,15 +6,17 @@ reusable retrieval, artifact, activation, schedule, battery, and settlement
 behavior belongs under `src/open_energy_lab`, not in these scripts.
 
 The consumers are implemented. The RTE activation fixture is validated and
-committed; the ENTSO-E market and derived expected-replay fixtures remain
-blocked after the 2026-08-22 credentialed A81 compatibility failure and A44
-reuse review recorded in `tests/fixtures/market/README.md`.
+committed. The obsolete A81 request assumptions have been replaced by the
+current R3 combined A81 contract; the ENTSO-E market and derived replay
+fixtures remain uncommitted because A44 redistribution lacks a documented
+basis. The technical and legal gates are recorded separately in
+`tests/fixtures/market/README.md`.
 
 ## Consumer Map
 
 | Consumer | Network or secret | Responsibility |
 | --- | --- | --- |
-| `fetch_french_period.py` | Explicit ENTSO-E HTTPS operation; caller token required | Fetch or refresh canonical A44/A81/A89 market artifacts |
+| `fetch_french_period.py` | Explicit ENTSO-E HTTPS operation; caller token required | Fetch or refresh canonical A44/combined-A81 market artifacts |
 | `import_reference_activation.py` | No network; caller-supplied local raw file | Verify and normalize the selected RTE PT10S activation trace |
 | `run_offline_replay.py` | None | Load recorded artifacts, replay the fixed schedule, and compare deterministic results |
 
@@ -49,7 +51,7 @@ uv run python examples/bess_stacked_services/fetch_french_period.py \
 The caller supplies the credential through the dedicated environment variable
 without putting its value in command arguments. A successful fetch prints only
 a token-free immutable artifact path and sanitized source summary. It publishes
-only after all required France A44, A81, and A89 windows validate.
+only after the A44 window and both combined A81 measures validate.
 
 Refresh additionally receives `--current PATH`. Its result is exactly one of
 `unchanged`, `published`, or `revision_regression`; it never overwrites the
@@ -59,6 +61,8 @@ leaves no complete or partially referenced artifact.
 
 Acquisition is an explicitly selected workflow. It is not invoked by package
 import, artifact loading, fixture review, schedule construction, or replay.
+The exact R3 requests and response mapping are documented in
+[ENTSO-E Transparency Platform integration](../../docs/architecture/entsoe-transparency-platform.md).
 
 ## Explicit Activation Import
 

@@ -102,11 +102,18 @@ def _source_document(
     flow_direction: str | None,
     product_identity: Mapping[str, object],
 ) -> dict[str, object]:
+    is_balancing = document_type == "A81"
     return {
         "document_ref": document_ref,
         "response_id": response_id,
-        "namespace_uri": "urn:iec62325.351:tc57wg16:451-3:publicationdocument:7:3",
-        "root_document_type": "Publication_MarketDocument",
+        "namespace_uri": (
+            "urn:iec62325.351:tc57wg16:451-6:balancingdocument:4:4"
+            if is_balancing
+            else "urn:iec62325.351:tc57wg16:451-3:publicationdocument:7:3"
+        ),
+        "root_document_type": (
+            "Balancing_MarketDocument" if is_balancing else "Publication_MarketDocument"
+        ),
         "document_mrid": f"document-{document_type.lower()}-unit",
         "revision_number": 2,
         "created_at_utc": "2022-08-18T20:00:00Z",
@@ -115,9 +122,10 @@ def _source_document(
         "business_type": business_type,
         "flow_direction": flow_direction,
         "area_eic": FRANCE_EIC,
-        "market_agreement_type": "A01" if document_type == "A44" else "A04",
+        "market_agreement_type": None if document_type == "A44" else "A01",
         "product_identity": dict(product_identity),
         "document_period": _canonical_interval_payload(PERIOD_START, PERIOD_END),
+        "archive_member": None,
         "status": "selected",
     }
 
@@ -148,9 +156,9 @@ def _valid_artifact_input() -> dict[str, object]:
             PERIOD_START + timedelta(hours=4 * index),
             PERIOD_START + timedelta(hours=4 * (index + 1)),
             20.0 + index,
-            document_ref="a89-selected",
-            source_position=index + 1,
-            conversion_ref="a89-eur-per-mw-isp-to-eur-per-mw-hour",
+            document_ref="a81-selected",
+            source_position=8 * index + 1,
+            conversion_ref="a81-eur-per-mw-isp-to-eur-per-mw-hour",
         )
         for index in range(2)
     ]
@@ -162,19 +170,20 @@ def _valid_artifact_input() -> dict[str, object]:
 
     query_windows = []
     raw_responses = []
-    for document_type in ("A44", "A81", "A89"):
+    for document_type in ("A44", "A81"):
         window_id = f"fr-{document_type.lower()}-2022-08-19"
         response_bytes = f"synthetic-{document_type}-response".encode()
         query_windows.append(
             {
                 "window_id": window_id,
                 "document_type": document_type,
-                "process_type": "A01" if document_type == "A44" else "A34",
-                "business_type": None if document_type == "A44" else "A95",
+                "process_type": "A01" if document_type == "A44" else "A52",
+                "business_type": None if document_type == "A44" else "B95",
                 "area_parameter": FRANCE_EIC,
                 "start_utc": _z(PERIOD_START),
                 "end_utc": _z(PERIOD_END),
                 "attempt_count": 1,
+                "market_agreement_type": None if document_type == "A44" else "A01",
             }
         )
         raw_responses.append(
@@ -216,6 +225,7 @@ def _valid_artifact_input() -> dict[str, object]:
                 "semantic_version": "fr-day-ahead-price-v1",
                 "area_eic": FRANCE_EIC,
                 "source_document_type": "A44",
+                "source_value_field": "price.amount",
                 "source_resolution": "PT1H",
                 "canonical_resolution": "PT1H",
                 "source_unit": "EUR/MWh",
@@ -234,7 +244,8 @@ def _valid_artifact_input() -> dict[str, object]:
                 "semantic_version": "fr-symmetric-fcr-volume-v1",
                 "area_eic": FRANCE_EIC,
                 "source_document_type": "A81",
-                "source_resolution": "PT4H",
+                "source_value_field": "quantity",
+                "source_resolution": "PT30M",
                 "canonical_resolution": "PT4H",
                 "source_unit": "MW",
                 "canonical_unit": "MW",
@@ -251,23 +262,24 @@ def _valid_artifact_input() -> dict[str, object]:
                 "series_id": "fcr_capacity_price",
                 "semantic_version": "fr-symmetric-fcr-capacity-price-v1",
                 "area_eic": FRANCE_EIC,
-                "source_document_type": "A89",
-                "source_resolution": "PT4H",
+                "source_document_type": "A81",
+                "source_value_field": "procurement_Price.amount",
+                "source_resolution": "PT30M",
                 "canonical_resolution": "PT4H",
                 "source_unit": "EUR/MW/PT4H",
                 "canonical_unit": "EUR/MW/h",
                 "currency": "EUR",
                 "conversion": {
-                    "conversion_ref": "a89-eur-per-mw-isp-to-eur-per-mw-hour",
-                    "formula": "source_value / 4",
-                    "factor": 0.25,
-                    "source_resolution": "PT4H",
+                    "conversion_ref": "a81-eur-per-mw-isp-to-eur-per-mw-hour",
+                    "formula": "source_value / ISP_duration_hours",
+                    "factor": 2.0,
+                    "source_resolution": "PT30M",
                 },
                 "observations": price_observations,
                 "diagnostics": {
                     "exact_duplicates_collapsed": 0,
                     "superseded_revisions": [],
-                    "conversions": ["a89-eur-per-mw-isp-to-eur-per-mw-hour"],
+                    "conversions": ["a81-eur-per-mw-isp-to-eur-per-mw-hour"],
                 },
             },
         },
@@ -287,17 +299,8 @@ def _valid_artifact_input() -> dict[str, object]:
                 document_ref="a81-selected",
                 response_id="response-a81",
                 document_type="A81",
-                process_type="A34",
-                business_type="A95",
-                flow_direction="A03",
-                product_identity=fcr_product,
-            ),
-            _source_document(
-                document_ref="a89-selected",
-                response_id="response-a89",
-                document_type="A89",
-                process_type="A34",
-                business_type="A95",
+                process_type="A52",
+                business_type="B95",
                 flow_direction="A03",
                 product_identity=fcr_product,
             ),
@@ -336,7 +339,10 @@ def test_v1_artifact_preserves_the_required_france_profile_and_series() -> None:
     )
     assert artifact.series["day_ahead_price"].source_document_type == "A44"
     assert artifact.series["fcr_contracted_volume"].source_document_type == "A81"
-    assert artifact.series["fcr_capacity_price"].source_document_type == "A89"
+    assert artifact.series["fcr_capacity_price"].source_document_type == "A81"
+    assert artifact.series["fcr_capacity_price"].source_value_field == (
+        "procurement_Price.amount"
+    )
     assert artifact.series["day_ahead_price"].observations[1].value == -5.0
 
 
@@ -519,21 +525,16 @@ def test_fcr_volume_and_price_require_exact_interval_alignment() -> None:
         _build_artifact(payload)
 
 
-def test_fcr_volume_and_price_require_matching_product_identity() -> None:
+def test_fcr_volume_and_price_require_the_same_combined_a81_document() -> None:
     payload = _valid_artifact_input()
-    source_documents = payload["source_documents"]
-    assert isinstance(source_documents, list)
-    price_document = next(
-        document
-        for document in source_documents
-        if isinstance(document, dict) and document["document_type"] == "A89"
-    )
-    price_document["product_identity"] = {
-        "product": "symmetric-fcr",
-        "tender": "weekly-incompatible",
-        "block_duration": "PT4H",
-    }
+    series = payload["series"]
+    assert isinstance(series, dict)
+    price = series["fcr_capacity_price"]
+    assert isinstance(price, dict)
+    observations = price["observations"]
+    assert isinstance(observations, list)
+    observations[0]["document_ref"] = "a44-selected"
 
     error_type = _require("MarketArtifactValidationError")
-    with pytest.raises(error_type, match="A81|A89|FCR|fcr|product|align"):
+    with pytest.raises(error_type, match="A81|FCR|fcr|document|series"):
         _build_artifact(payload)

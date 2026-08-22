@@ -93,7 +93,7 @@ an explicit `--created-at` when byte-stable artifact identity is required.
 
 The market and expected-replay fixtures are deliberately absent as of the
 2026-08-21 gate record because no caller-provided ENTSO-E credential was
-available to prove exact A44/A81/A89 completeness and normalized-fixture reuse
+available to prove exact A44/combined-A81 completeness and normalized-fixture reuse
 terms. Do not create a small smoke substitute for these identity-bearing real
 fixtures: the manual oracle already supplies synthetic arithmetic coverage,
 while the real replay and benchmark must skip with the documented blocker until

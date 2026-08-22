@@ -304,9 +304,11 @@ plus the deterministic output of the stacked heuristic.
   or FCR product blocks.
 - **FR-005**: A complete first-release market artifact MUST contain French
   day-ahead energy prices from the applicable price document (`A44`),
-  applicable symmetric-FCR contracted capacity volumes (`A81`), and applicable
-  FCR capacity prices (`A89`) covering the requested period, with the exact
-  product and process filters preserved in provenance.
+  applicable symmetric-FCR contracted capacity volumes, and applicable FCR
+  capacity prices from the same combined R3 contracted-reserve document
+  (`A81`) covering the requested period, with the exact source fields, product,
+  and process filters preserved in provenance. A separate `A89` request MUST
+  NOT be issued by this profile.
 - **FR-006**: The library-owned market-data boundary MUST expose three explicit
   workflows. The ENTSO-E adapter MUST own `fetch` to create an artifact from a
   source request and `refresh` to compare a new source response with an existing
@@ -338,6 +340,11 @@ plus the deterministic output of the stacked heuristic.
   a raw response MAY be preserved as a separately managed sidecar referenced
   by locator and verified against the recorded digest; otherwise no raw
   sidecar is retained.
+- **FR-010a**: XML and ZIP responses MUST be accepted only within explicit
+  compressed and uncompressed byte/member limits. ZIP processing MUST reject
+  encryption, traversal, absolute paths, directories, duplicate names, nested
+  archives, non-XML members, malformed archives, and size overflow, and MUST
+  preserve the selected archive-member name in document provenance.
 - **FR-011**: Canonical instants MUST be represented in UTC while preserving
   Europe/Paris local delivery labels, UTC offsets, and daylight-saving fold or
   gap meaning needed to reconstruct market delivery periods unambiguously.
@@ -375,6 +382,16 @@ plus the deterministic output of the stacked heuristic.
   consistent: energy prices in `EUR/MWh`, reserve volume in `MW`, and FCR
   capacity remuneration in `EUR/MW/h`, with source conversions preserved in
   provenance.
+- **FR-018a**: Combined A81 `quantity` and `procurement_Price.amount` points
+  MUST be expanded from their declared sparse `A03` ISP curve. The capacity
+  price conversion MUST use `source_value / ISP_duration_hours`; canonical
+  PT4H blocks may be formed only from complete consecutive ISPs with identical
+  product, volume, and price semantics.
+- **FR-018b**: `docs/architecture/entsoe-transparency-platform.md` MUST record
+  the ENTSO-E API generation and endpoint, exact case-sensitive A44/A81
+  requests, authentication/dotenv boundary, XML/ZIP handling, normalization
+  formula, retry/failure behavior, official references, and the distinction
+  between private academic processing and redistribution.
 
 #### Activation-Trace Ingestion
 
@@ -730,6 +747,10 @@ plus the deterministic output of the stacked heuristic.
   compatible, and legally preservable as a normalized offline fixture. A
   period that does not satisfy those conditions is rejected rather than
   patched with synthetic values.
+- Real A44 responses, normalized values, and reconstructable derived outputs
+  remain local under ignored `artifacts/` until a documented Primary Owner
+  permission or other reviewed redistribution basis exists. Academic or
+  non-commercial intent does not by itself authorize repository publication.
 - The French reference market timezone is `Europe/Paris`; UTC is the canonical
   computation timeline, and local delivery meaning remains metadata.
 - The reference day-ahead schedule uses hourly blocks, the state-checkpoint

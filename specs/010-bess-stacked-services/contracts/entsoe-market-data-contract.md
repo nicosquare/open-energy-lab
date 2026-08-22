@@ -3,7 +3,7 @@
 ## Ownership
 
 `open_energy_lab.market.entsoe` owns authenticated source access, France query
-construction, retries, XML classification/parsing, normalization, source
+construction, retries, XML/ZIP classification/parsing, normalization, source
 diagnostics, and handoff to atomic artifact publication. ENTSO-E transport or
 XML types never enter simulator or controller APIs.
 
@@ -41,9 +41,9 @@ The v1 profile accepts only:
 
 - Area EIC `10YFR-RTE------C`
 - `A44` day-ahead price for the France bidding zone
-- `A81` contracted reserve volume with process `A34`, daily market agreement
-  `A01`, business type `A95`, and symmetric direction `A03`
-- `A89` contracted reserve price matched to the same FCR product and intervals
+- combined `A81` contracted reserve volume and price with process `A52`, market
+  agreement `A01`, business type `B95`, symmetric direction `A03`, standard
+  product `A01` when returned, and mixed PSR type `A03`
 - Market timezone `Europe/Paris`
 - Canonical units `EUR/MWh`, `MW`, and `EUR/MW/h`
 
@@ -58,8 +58,8 @@ assumption based only on the request.
 The A44 query window records process `A01`, but Article 12.1(d) response
 documents are permitted to omit `process.processType`, as specified by the
 ENTSO-E extraction profile. That absence is preserved as null in source
-document evidence. If an A44 process is returned it must be `A01`; A81/A89
-response documents must return `A34`.
+document evidence. If an A44 process is returned it must be `A01`; combined
+A81 response documents must return `A52`. The producer never issues A89.
 
 ## Period Contract
 
@@ -104,14 +104,18 @@ Attempt diagnostics contain source, document, window, attempt number, status or
 acknowledgement class, delay decision, and final outcome. They contain no full
 wire URL or header/body material.
 
-## XML Contract
+## XML And ZIP Contract
 
 - Reject DTD or entity declarations and over-bound input before parse.
-- Accept only validated ENTSO-E data root/namespace families for A44/A81/A89.
+- Accept XML or ZIP with bounded compressed/uncompressed sizes and member
+  count; reject encrypted, duplicate, directory, traversal, nested-archive,
+  non-XML, malformed, and over-bound members.
+- Preserve a safe archive-member path in source-document provenance.
+- Accept only validated ENTSO-E data root/namespace families for A44 and A81.
 - Classify acknowledgement/problem/empty responses explicitly.
 - Require document mRID, revision, created time, profile-applicable process, area, period,
   resolution, unit, series identity, and point values needed by the profile.
-- Support fixed-position and variable-sized-block curves only when their
+- Support fixed-position A44 and sparse A03 A81 curves only when their
   intervals expand unambiguously.
 - Select the highest revision for repeated versions of one document mRID and
   retain evidence of superseded versions.
@@ -125,10 +129,11 @@ wire URL or header/body material.
 ## Unit And Product Conversion
 
 Any source-to-canonical conversion records source unit/resolution, canonical
-unit/resolution, factor/formula, constituent intervals, and product evidence.
-Finer reserve intervals can form one four-hour block only when they cover it
-exactly, share product identity, and reconcile without inference. Ambiguous
-currency/MW/ISP semantics fail; they are not guessed from a filename or value.
+unit/resolution, factor/formula, constituent intervals, product evidence, and
+exact source value field. A81 quantity and procurement price must occur at the
+same change points. `EUR/MW/h = source_value / ISP_duration_hours`; finer ISPs
+form a PT4H block only when complete and identical in product, volume, and
+price semantics. Ambiguity fails instead of being averaged or inferred.
 
 ## Atomicity
 
@@ -159,7 +164,7 @@ profile, and retry/final status. Distinct typed failures cover at least:
 - missing/invalid authentication
 - acknowledgement or empty response
 - transient exhaustion and permanent HTTP failure
-- malformed/unsafe/over-bound XML
+- malformed/unsafe/over-bound XML or ZIP
 - missing series or field
 - wrong area/product/process/direction
 - gap, overlap, or conflicting duplicate

@@ -35,15 +35,16 @@ for the offline workflow.
 ## Current Reference-Fixture Gate
 
 The independent RTE activation gate passed and
-`tests/fixtures/market/france_2022-08-19_activation_v1.json` is committed. A
-credentialed production run on 2026-08-22 authenticated and validated A44, then
-failed on a permanent A81 HTTP 400; the optional live test reproduced that
-failure. The current ENTSO-E CC BY 4.0 free-reuse list also does not include A44
-day-ahead prices, and no Primary Owner permission was supplied. The market and
-expected-replay fixtures therefore remain intentionally absent. The
-authoritative blocker is recorded in `tests/fixtures/market/README.md`; no
-partial, RTE-price, synthetic, filled, or alternate-period replacement is
-permitted.
+`tests/fixtures/market/france_2022-08-19_activation_v1.json` is committed. The
+earlier A81 HTTP 400 was traced to obsolete pre-R3 query assumptions. The
+correct R3 profile uses A44 plus combined A81 (`B95/A52/A01`) containing both
+reserve quantity and procurement price. Technical compatibility is validated
+separately from redistribution. The current ENTSO-E CC BY 4.0 free-reuse list
+does not include A44 day-ahead prices, and no Primary Owner permission was
+supplied. The market and expected-replay fixtures therefore remain
+intentionally absent even when a private local fetch succeeds. See the
+[ENTSO-E Transparency Platform integration](../../docs/architecture/entsoe-transparency-platform.md)
+and the authoritative gate record in `tests/fixtures/market/README.md`.
 
 ## Run The Recorded Offline Demonstration
 
@@ -162,8 +163,9 @@ unset ENTSOE_API_TOKEN
 ```
 
 A successful fetch prints a token-free artifact path and source/document
-summary. It publishes only after A44 day-ahead price, A81 symmetric FCR volume,
-and A89 compatible FCR price all validate for the period.
+summary. It publishes locally only after A44 day-ahead price and both the
+quantity and procurement-price measures in combined A81 validate for the
+period. Do not commit the real output without the documented A44 reuse gate.
 
 An acknowledgement, missing series, incompatible FCR product, gap, duplicate
 conflict, wrong resolution/unit, or incomplete coverage fails and publishes no
@@ -203,11 +205,16 @@ This is a source-compatibility check, not the reproducibility gate. Network or
 credential unavailability is documented separately and does not cause the
 offline fixtures to be regenerated, skipped, or weakened.
 
-On 2026-08-22 this optional check ran with a deliberately supplied token and
-network. Authentication and A44 parsing succeeded; A81 returned permanent HTTP
-400 on its single allowed attempt, so the check failed. No token appeared in
-captured diagnostics and no artifact was published. This does not weaken the
-successful offline suites or authorize a substitute market fixture.
+The optional check asserts 24 A44 intervals and six aligned PT4H FCR volume and
+price blocks sourced from the same A81 document. It scans diagnostics and
+output files for the supplied token. Technical success does not authorize
+committing the resulting A44 values.
+
+On 2026-08-22 the corrected live check passed against the production R3 API in
+40.43 seconds: two requests yielded 24 A44 intervals plus six aligned combined
+A81 volume/price blocks. The token scan passed, and pytest's temporary output
+was not retained as a repository fixture. The A44 redistribution gate remains
+open.
 
 ## Explicitly Regenerate The Reference Activation Artifact
 

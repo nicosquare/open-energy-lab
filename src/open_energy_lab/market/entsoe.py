@@ -11,9 +11,10 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 import hashlib
+import io
 import math
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import tempfile
 import time
 from types import MappingProxyType
@@ -22,6 +23,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+import zipfile
 from zoneinfo import ZoneInfo
 
 from .artifact import (
@@ -46,14 +48,14 @@ from .time import CanonicalInterval, FRANCE_MARKET_TIMEZONE, parse_iso8601_durat
 ENTSOE_SOURCE_NAME = "ENTSO-E Transparency Platform"
 DEFAULT_ENTSOE_ENDPOINT = "https://web-api.tp.entsoe.eu/api"
 DEFAULT_MAX_RESPONSE_BYTES = 10 * 1024 * 1024
+MAX_ARCHIVE_MEMBERS = 16
 MAX_TRANSPORT_ATTEMPTS = 3
 MAX_RETRY_AFTER_SECONDS = 120
-EXPECTED_FRANCE_CONTRACT = "France A44/A81/A89 market-data contract v1"
+EXPECTED_FRANCE_CONTRACT = "France A44/combined-A81 ENTSO-E R3 market-data contract v1"
 
 _DOCUMENT_SERIES = {
     "A44": "day_ahead_price",
     "A81": "fcr_contracted_volume",
-    "A89": "fcr_capacity_price",
 }
 
 
@@ -87,7 +89,7 @@ class FranceEntsoeProfile:
     profile_id: str = FRANCE_PROFILE_ID
     area_eic: str = FRANCE_AREA_EIC
     market_timezone: str = FRANCE_MARKET_TIMEZONE
-    required_document_types: tuple[str, ...] = ("A44", "A81", "A89")
+    required_document_types: tuple[str, ...] = ("A44", "A81")
 
     def __post_init__(self) -> None:
         if self.profile_id != FRANCE_PROFILE_ID:
@@ -100,9 +102,9 @@ class FranceEntsoeProfile:
             raise EntsoeRequestValidationError(
                 f"market_timezone must be {FRANCE_MARKET_TIMEZONE}"
             )
-        if self.required_document_types != ("A44", "A81", "A89"):
+        if self.required_document_types != ("A44", "A81"):
             raise EntsoeRequestValidationError(
-                "required_document_types must be exactly A44, A81, and A89"
+                "required_document_types must be exactly A44 and combined A81"
             )
 
 
@@ -184,14 +186,14 @@ class EntsoeQueryWindow:
         window_id = _non_empty(self.window_id, field_name="window_id")
         if self.document_type not in _DOCUMENT_SERIES:
             raise EntsoeRequestValidationError(
-                "document_type must be A44, A81, or A89"
+                "document_type must be A44 or A81"
             )
-        expected_process = "A01" if self.document_type == "A44" else "A34"
+        expected_process = "A01" if self.document_type == "A44" else "A52"
         if self.process_type != expected_process:
             raise EntsoeRequestValidationError(
                 f"{self.document_type} process_type must be {expected_process}"
             )
-        expected_business = None if self.document_type == "A44" else "A95"
+        expected_business = None if self.document_type == "A44" else "B95"
         if self.business_type != expected_business:
             raise EntsoeRequestValidationError(
                 f"{self.document_type} business_type must be {expected_business!r}"
@@ -329,7 +331,7 @@ class UrllibEntsoeTransport:
         wire_request = urllib.request.Request(
             wire_url,
             headers={
-                "Accept": "application/xml, text/xml",
+                "Accept": "application/xml, text/xml, application/zip",
                 "User-Agent": "open-energy-lab/entsoe-market-data-v1",
             },
             method="GET",
@@ -738,6 +740,10 @@ class EntsoeUnsafeXmlError(EntsoeXmlParseError):
     """Raised before parse when DTD or entity syntax is present."""
 
 
+class EntsoeArchiveValidationError(EntsoeAcquisitionError):
+    """Raised when a ZIP response cannot be extracted within safe bounds."""
+
+
 class EntsoeXmlClassificationError(EntsoeAcquisitionError):
     """Raised when the XML root or namespace is not an accepted data family."""
 
@@ -788,6 +794,11 @@ class ParsedEntsoeDocument:
 
     source_document: SourceDocumentEvidence
     series: MarketSeries
+    additional_series: tuple[MarketSeries, ...] = ()
+
+    @property
+    def all_series(self) -> tuple[MarketSeries, ...]:
+        return (self.series,) + self.additional_series
 
 
 @dataclass(frozen=True, slots=True)
@@ -796,6 +807,100 @@ class EntsoeRevisionSelection:
 
     selected: tuple[ParsedEntsoeDocument, ...]
     superseded: tuple[ParsedEntsoeDocument, ...]
+
+
+def extract_entsoe_xml_members(
+    body: bytes,
+    *,
+    media_type: str,
+    max_uncompressed_bytes: int = DEFAULT_MAX_RESPONSE_BYTES,
+) -> tuple[tuple[str | None, bytes], ...]:
+    """Return bounded XML payloads from an XML or ZIP transport response."""
+
+    if not isinstance(body, bytes):
+        raise TypeError("body must be bytes")
+    if not isinstance(media_type, str) or not media_type.strip():
+        raise TypeError("media_type must be a non-empty string")
+    if (
+        isinstance(max_uncompressed_bytes, bool)
+        or not isinstance(max_uncompressed_bytes, int)
+        or max_uncompressed_bytes <= 0
+    ):
+        raise ValueError("max_uncompressed_bytes must be a positive integer")
+    normalized_media_type = media_type.partition(";")[0].strip().casefold()
+    zip_media_types = {
+        "application/zip",
+        "application/x-zip-compressed",
+        "multipart/x-zip",
+    }
+    is_zip = normalized_media_type in zip_media_types or body.startswith(b"PK\x03\x04")
+    if not is_zip:
+        if len(body) > max_uncompressed_bytes:
+            raise EntsoeArchiveValidationError(
+                "XML response exceeds the uncompressed byte ceiling"
+            )
+        return ((None, body),)
+
+    try:
+        with zipfile.ZipFile(io.BytesIO(body)) as archive:
+            members = archive.infolist()
+            if not members:
+                raise EntsoeArchiveValidationError("ZIP response contains no XML member")
+            if len(members) > MAX_ARCHIVE_MEMBERS:
+                raise EntsoeArchiveValidationError(
+                    "ZIP response contains too many archive members"
+                )
+            names: set[str] = set()
+            total_size = 0
+            extracted: list[tuple[str | None, bytes]] = []
+            for info in members:
+                name = info.filename
+                if info.is_dir():
+                    raise EntsoeArchiveValidationError(
+                        "ZIP response must not contain directory members"
+                    )
+                if name in names:
+                    raise EntsoeArchiveValidationError(
+                        "ZIP response contains duplicate member names"
+                    )
+                names.add(name)
+                if info.flag_bits & 0x1:
+                    raise EntsoeArchiveValidationError(
+                        "encrypted ZIP response members are forbidden"
+                    )
+                if "\\" in name or ":" in name:
+                    raise EntsoeArchiveValidationError(
+                        "ZIP member path is not a portable relative path"
+                    )
+                member_path = PurePosixPath(name)
+                if (
+                    member_path.is_absolute()
+                    or not member_path.parts
+                    or any(part in {"", ".", ".."} for part in member_path.parts)
+                ):
+                    raise EntsoeArchiveValidationError(
+                        "ZIP member path contains traversal or is not relative"
+                    )
+                if member_path.suffix.casefold() != ".xml":
+                    raise EntsoeArchiveValidationError(
+                        "ZIP response may contain only XML members; nested archives are forbidden"
+                    )
+                total_size += info.file_size
+                if total_size > max_uncompressed_bytes:
+                    raise EntsoeArchiveValidationError(
+                        "ZIP response exceeds the uncompressed byte ceiling"
+                    )
+                member_body = archive.read(info)
+                if len(member_body) != info.file_size:
+                    raise EntsoeArchiveValidationError(
+                        "ZIP member size differs from its declared size"
+                    )
+                extracted.append((name, member_body))
+            return tuple(extracted)
+    except EntsoeArchiveValidationError:
+        raise
+    except (OSError, RuntimeError, zipfile.BadZipFile, zipfile.LargeZipFile) as exc:
+        raise EntsoeArchiveValidationError("malformed or unsupported ZIP response") from exc
 
 
 def _local_name(tag: str) -> str:
@@ -1035,8 +1140,6 @@ def _observed_unit(
         return normalized_measure
     if currency is None:
         return normalized_measure
-    if document_type == "A89" and measure_unit == "MAW":
-        return f"{currency}/MW/ISP"
     return f"{currency}/{normalized_measure}"
 
 
@@ -1051,30 +1154,6 @@ def _validate_units(
     observed_end: datetime,
     resolution: str,
 ) -> tuple[str, str | None, str, Mapping[str, object] | None, str | None]:
-    if document_type == "A81":
-        measure_unit = _required_text(
-            time_series,
-            "quantity_Measure_Unit.name",
-            request=request,
-            window=window,
-            attempt_count=attempt_count,
-        )
-        unit = _observed_unit(document_type, currency=None, measure_unit=measure_unit)
-        if measure_unit != "MAW":
-            _raise_parse_failure(
-                EntsoeUnitValidationError,
-                request,
-                window,
-                issue=f"unexpected unit {unit}; expected MW",
-                final_outcome="unit_validation_failure",
-                attempt_count=attempt_count,
-                observed_start_utc=observed_start,
-                observed_end_utc=observed_end,
-                observed_resolution=resolution,
-                observed_unit=unit,
-            )
-        return "MW", None, "MW", None, None
-
     currency = _required_text(
         time_series,
         "currency_Unit.name",
@@ -1107,27 +1186,12 @@ def _validate_units(
             observed_resolution=resolution,
             observed_unit=unit,
         )
-    if document_type == "A44":
-        if measure_unit != "MWH":
-            _raise_parse_failure(
-                EntsoeUnitValidationError,
-                request,
-                window,
-                issue=f"unexpected unit {unit}; expected EUR/MWh",
-                final_outcome="unit_validation_failure",
-                attempt_count=attempt_count,
-                observed_start_utc=observed_start,
-                observed_end_utc=observed_end,
-                observed_resolution=resolution,
-                observed_unit=unit,
-            )
-        return "EUR/MWh", "EUR", "EUR/MWh", None, None
-    if measure_unit != "MAW":
+    if document_type != "A44" or measure_unit != "MWH":
         _raise_parse_failure(
             EntsoeUnitValidationError,
             request,
             window,
-            issue=f"unexpected unit {unit}; expected EUR/MW/ISP",
+            issue=f"unexpected unit {unit}; expected EUR/MWh",
             final_outcome="unit_validation_failure",
             attempt_count=attempt_count,
             observed_start_utc=observed_start,
@@ -1135,17 +1199,7 @@ def _validate_units(
             observed_resolution=resolution,
             observed_unit=unit,
         )
-    conversion_ref = "a89-eur-per-mw-isp-to-eur-per-mw-hour"
-    conversion = MappingProxyType(
-        {
-            "conversion_ref": conversion_ref,
-            "source_unit": "EUR/MW/ISP",
-            "canonical_unit": "EUR/MW/h",
-            "factor": 0.25,
-            "formula": "EUR/MW/ISP divided by four-hour block duration",
-        }
-    )
-    return "EUR/MW/ISP", "EUR", "EUR/MW/h", conversion, conversion_ref
+    return "EUR/MWh", "EUR", "EUR/MWh", None, None
 
 
 def _validate_product(
@@ -1175,62 +1229,12 @@ def _validate_product(
         attempt_count=attempt_count,
         field_label="TimeSeries.mRID",
     )
-    if document_type == "A44":
-        if business_type != "A62":
-            _raise_parse_failure(
-                EntsoeProductValidationError,
-                request,
-                window,
-                issue=f"wrong day-ahead business product {business_type}; expected A62",
-                final_outcome="product_validation_failure",
-                attempt_count=attempt_count,
-                observed_start_utc=observed_start,
-                observed_end_utc=observed_end,
-                observed_resolution=resolution,
-                observed_unit=unit,
-            )
-        product = MappingProxyType(
-            {"business_type": business_type, "series_mrid": series_mrid}
-        )
-        return business_type, None, None, product
-
-    flow_direction = _required_text(
-        time_series,
-        "flowDirection.direction",
-        request=request,
-        window=window,
-        attempt_count=attempt_count,
-    )
-    market_agreement = _required_text(
-        time_series,
-        "marketAgreement.type",
-        request=request,
-        window=window,
-        attempt_count=attempt_count,
-    )
-    auction_type = _required_text(
-        time_series,
-        "auction.type",
-        request=request,
-        window=window,
-        attempt_count=attempt_count,
-    )
-    auction_category = _required_text(
-        time_series,
-        "auction.category",
-        request=request,
-        window=window,
-        attempt_count=attempt_count,
-    )
-    if business_type != "A95" or flow_direction != "A03":
+    if document_type != "A44" or business_type != "A62":
         _raise_parse_failure(
             EntsoeProductValidationError,
             request,
             window,
-            issue=(
-                "wrong FCR product; expected business type A95 and symmetric "
-                f"direction A03, observed {business_type}/{flow_direction}"
-            ),
+            issue=f"wrong day-ahead business product {business_type}; expected A62",
             final_outcome="product_validation_failure",
             attempt_count=attempt_count,
             observed_start_utc=observed_start,
@@ -1239,16 +1243,9 @@ def _validate_product(
             observed_unit=unit,
         )
     product = MappingProxyType(
-        {
-            "business_type": business_type,
-            "flow_direction": flow_direction,
-            "market_agreement_type": market_agreement,
-            "auction_type": auction_type,
-            "auction_category": auction_category,
-            "series_mrid": series_mrid,
-        }
+        {"business_type": business_type, "series_mrid": series_mrid}
     )
-    return business_type, flow_direction, market_agreement, product
+    return business_type, None, None, product
 
 
 def _validate_area(
@@ -1308,7 +1305,6 @@ def _value_text(
     value_name = {
         "A44": "price.amount",
         "A81": "quantity",
-        "A89": "procurement_Price.amount",
     }[document_type]
     return _required_text(
         point,
@@ -1348,7 +1344,7 @@ def _point_value(
             observed_resolution=resolution,
             observed_unit=unit,
         )
-    if document_type in ("A81", "A89") and value < 0:
+    if document_type == "A81" and value < 0:
         _raise_parse_failure(
             EntsoeValueValidationError,
             request,
@@ -1556,6 +1552,557 @@ def _expand_period_points(
     return expanded, interval_count, len(raw_points), resolution, curve_type
 
 
+def _parse_combined_a81_document(
+    root: ET.Element,
+    *,
+    namespace: str,
+    document_mrid: str,
+    revision: int,
+    created_at: datetime,
+    document_start: datetime,
+    document_end: datetime,
+    document_ref: str,
+    response_id: str,
+    archive_member: str | None,
+    request: EntsoeMarketDataRequest,
+    window: EntsoeQueryWindow,
+    attempt_count: int,
+) -> ParsedEntsoeDocument:
+    """Normalize the R3 17.1.B&C document into two aligned PT4H series."""
+
+    area_eic = _required_text(
+        root,
+        "area_Domain.mRID",
+        request=request,
+        window=window,
+        attempt_count=attempt_count,
+    )
+    if area_eic != FRANCE_AREA_EIC:
+        _raise_parse_failure(
+            EntsoeProductValidationError,
+            request,
+            window,
+            issue=f"wrong area; expected France {FRANCE_AREA_EIC}",
+            final_outcome="area_validation_failure",
+            attempt_count=attempt_count,
+        )
+
+    records: dict[
+        tuple[datetime, datetime], tuple[float, float, int, str]
+    ] = {}
+    product_identity: Mapping[str, object] | None = None
+    resolutions: set[str] = set()
+    exact_duplicates = 0
+    raw_change_points = 0
+
+    for time_series in _direct_children(root, "TimeSeries"):
+        periods = _direct_children(time_series, "Period")
+        if not periods:
+            _raise_parse_failure(
+                EntsoeEmptyResponseError,
+                request,
+                window,
+                issue="combined A81 time series contains no source periods",
+                final_outcome="empty_response",
+                attempt_count=attempt_count,
+            )
+        observed_start, observed_end = _parse_time_interval(
+            periods[0],
+            "timeInterval",
+            request=request,
+            window=window,
+            attempt_count=attempt_count,
+        )
+        observed_resolution = _required_text(
+            periods[0],
+            "resolution",
+            request=request,
+            window=window,
+            attempt_count=attempt_count,
+        )
+        quantity_unit = _required_text(
+            time_series,
+            "quantity_Measure_Unit.name",
+            request=request,
+            window=window,
+            attempt_count=attempt_count,
+        )
+        currency = _required_text(
+            time_series,
+            "currency_Unit.name",
+            request=request,
+            window=window,
+            attempt_count=attempt_count,
+        )
+        observed_unit = (
+            f"{currency}/MW" if quantity_unit == "MAW" else f"{currency}/MWh"
+        )
+        if quantity_unit != "MAW" or currency != "EUR":
+            _raise_parse_failure(
+                EntsoeUnitValidationError,
+                request,
+                window,
+                issue=(
+                    f"unexpected combined A81 unit {observed_unit}; "
+                    "expected MW and EUR/MW/ISP"
+                ),
+                final_outcome="unit_validation_failure",
+                attempt_count=attempt_count,
+                observed_start_utc=observed_start,
+                observed_end_utc=observed_end,
+                observed_resolution=observed_resolution,
+                observed_unit=observed_unit,
+            )
+
+        series_mrid = _required_text(
+            time_series,
+            "mRID",
+            request=request,
+            window=window,
+            attempt_count=attempt_count,
+            field_label="TimeSeries.mRID",
+        )
+        business_type = _required_text(
+            time_series,
+            "businessType",
+            request=request,
+            window=window,
+            attempt_count=attempt_count,
+        )
+        flow_direction = _required_text(
+            time_series,
+            "flowDirection.direction",
+            request=request,
+            window=window,
+            attempt_count=attempt_count,
+        )
+        market_agreement = _required_text(
+            time_series,
+            "type_MarketAgreement.type",
+            request=request,
+            window=window,
+            attempt_count=attempt_count,
+        )
+        market_product_element = _direct_child(
+            time_series,
+            "standard_MarketProduct.marketProductType",
+        )
+        market_product = (
+            market_product_element.text.strip()
+            if market_product_element is not None
+            and market_product_element.text is not None
+            and market_product_element.text.strip()
+            else None
+        )
+        psr_type = _required_text(
+            time_series,
+            "mktPSRType.psrType",
+            request=request,
+            window=window,
+            attempt_count=attempt_count,
+        )
+        if (
+            business_type != "B95"
+            or flow_direction != "A03"
+            or market_agreement != "A01"
+            or market_product not in (None, "A01")
+            or psr_type != "A03"
+        ):
+            _raise_parse_failure(
+                EntsoeProductValidationError,
+                request,
+                window,
+                issue=(
+                    "wrong combined FCR product; expected B95/A03/A01/"
+                    "optional-A01/A03 "
+                    f"and observed {business_type}/{flow_direction}/"
+                    f"{market_agreement}/{market_product}/{psr_type}"
+                ),
+                final_outcome="product_validation_failure",
+                attempt_count=attempt_count,
+                observed_start_utc=observed_start,
+                observed_end_utc=observed_end,
+                observed_resolution=observed_resolution,
+                observed_unit="MW",
+            )
+        candidate_product = MappingProxyType(
+            {
+                "business_type": business_type,
+                "flow_direction": flow_direction,
+                "market_agreement_type": market_agreement,
+                "market_product_type": market_product,
+                "psr_type": psr_type,
+                "series_mrid": series_mrid,
+            }
+        )
+        if product_identity is None:
+            product_identity = candidate_product
+        elif dict(product_identity) != dict(candidate_product):
+            _raise_parse_failure(
+                EntsoeProductValidationError,
+                request,
+                window,
+                issue="combined A81 time series have incompatible product identity",
+                final_outcome="product_validation_failure",
+                attempt_count=attempt_count,
+                observed_start_utc=observed_start,
+                observed_end_utc=observed_end,
+                observed_resolution=observed_resolution,
+                observed_unit="MW",
+            )
+
+        curve_type = _required_text(
+            time_series,
+            "curveType",
+            request=request,
+            window=window,
+            attempt_count=attempt_count,
+        )
+        if curve_type != "A03":
+            _raise_parse_failure(
+                EntsoeCurveValidationError,
+                request,
+                window,
+                issue=f"combined A81 curve type must be sparse A03, got {curve_type}",
+                final_outcome="curve_validation_failure",
+                attempt_count=attempt_count,
+                observed_start_utc=observed_start,
+                observed_end_utc=observed_end,
+                observed_resolution=observed_resolution,
+                observed_unit="MW",
+            )
+
+        for period in periods:
+            start, end = _parse_time_interval(
+                period,
+                "timeInterval",
+                request=request,
+                window=window,
+                attempt_count=attempt_count,
+            )
+            resolution = _required_text(
+                period,
+                "resolution",
+                request=request,
+                window=window,
+                attempt_count=attempt_count,
+            )
+            step = parse_iso8601_duration(resolution)
+            canonical_step = timedelta(hours=4)
+            interval_count_float = (end - start) / step
+            interval_count = int(interval_count_float)
+            isp_per_block_float = canonical_step / step
+            isp_per_block = int(isp_per_block_float)
+            if (
+                interval_count <= 0
+                or interval_count != interval_count_float
+                or isp_per_block <= 0
+                or isp_per_block != isp_per_block_float
+                or interval_count % isp_per_block != 0
+            ):
+                _raise_parse_failure(
+                    EntsoeResolutionValidationError,
+                    request,
+                    window,
+                    issue=(
+                        f"combined A81 resolution {resolution} cannot reconcile "
+                        "exactly to complete PT4H blocks"
+                    ),
+                    final_outcome="resolution_validation_failure",
+                    attempt_count=attempt_count,
+                    observed_start_utc=start,
+                    observed_end_utc=end,
+                    observed_resolution=resolution,
+                    observed_unit="MW",
+                )
+            resolutions.add(resolution)
+            values_by_position: dict[int, tuple[float, float]] = {}
+            for point in _direct_children(period, "Point"):
+                position_text = _required_text(
+                    point,
+                    "position",
+                    request=request,
+                    window=window,
+                    attempt_count=attempt_count,
+                )
+                try:
+                    position = int(position_text)
+                except ValueError:
+                    position = -1
+                if (
+                    position <= 0
+                    or str(position) != position_text
+                    or position > interval_count
+                ):
+                    _raise_parse_failure(
+                        EntsoeCurveValidationError,
+                        request,
+                        window,
+                        issue=f"invalid combined A81 position {position_text!r}",
+                        final_outcome="curve_validation_failure",
+                        attempt_count=attempt_count,
+                        observed_start_utc=start,
+                        observed_end_utc=end,
+                        observed_resolution=resolution,
+                        observed_unit="MW",
+                    )
+                quantity = _point_value(
+                    _required_text(
+                        point,
+                        "quantity",
+                        request=request,
+                        window=window,
+                        attempt_count=attempt_count,
+                    ),
+                    "A81",
+                    request=request,
+                    window=window,
+                    attempt_count=attempt_count,
+                    observed_start=start,
+                    observed_end=end,
+                    resolution=resolution,
+                    unit="MW",
+                )
+                price = _point_value(
+                    _required_text(
+                        point,
+                        "procurement_Price.amount",
+                        request=request,
+                        window=window,
+                        attempt_count=attempt_count,
+                    ),
+                    "A81",
+                    request=request,
+                    window=window,
+                    attempt_count=attempt_count,
+                    observed_start=start,
+                    observed_end=end,
+                    resolution=resolution,
+                    unit="EUR/MW/ISP",
+                )
+                existing_position = values_by_position.get(position)
+                if existing_position is not None and existing_position != (quantity, price):
+                    _raise_parse_failure(
+                        EntsoeDuplicateObservationError,
+                        request,
+                        window,
+                        issue=f"conflicting combined A81 change at position {position}",
+                        final_outcome="duplicate_validation_failure",
+                        attempt_count=attempt_count,
+                        observed_start_utc=start,
+                        observed_end_utc=end,
+                        observed_resolution=resolution,
+                        observed_unit="MW",
+                    )
+                values_by_position[position] = (quantity, price)
+            positions = sorted(values_by_position)
+            if not positions or positions[0] != 1:
+                _raise_parse_failure(
+                    EntsoeCurveValidationError,
+                    request,
+                    window,
+                    issue="combined A81 sparse curve must begin at position 1",
+                    final_outcome="curve_validation_failure",
+                    attempt_count=attempt_count,
+                    observed_start_utc=start,
+                    observed_end_utc=end,
+                    observed_resolution=resolution,
+                    observed_unit="MW",
+                )
+            raw_change_points += len(positions)
+            for index, position in enumerate(positions):
+                stop = positions[index + 1] if index + 1 < len(positions) else interval_count + 1
+                quantity, price = values_by_position[position]
+                for expanded_position in range(position, stop):
+                    interval_start = start + (expanded_position - 1) * step
+                    key = (interval_start, interval_start + step)
+                    value = (quantity, price, position, series_mrid)
+                    existing = records.get(key)
+                    if existing is not None:
+                        if existing == value:
+                            exact_duplicates += 1
+                            continue
+                        _raise_parse_failure(
+                            EntsoeDuplicateObservationError,
+                            request,
+                            window,
+                            issue="conflicting duplicate combined A81 ISP",
+                            final_outcome="duplicate_validation_failure",
+                            attempt_count=attempt_count,
+                            observed_start_utc=start,
+                            observed_end_utc=end,
+                            observed_resolution=resolution,
+                            observed_unit="MW",
+                        )
+                    records[key] = value
+
+    if product_identity is None or not records or len(resolutions) != 1:
+        _raise_parse_failure(
+            EntsoeResolutionValidationError,
+            request,
+            window,
+            issue="combined A81 requires one unambiguous ISP resolution and product",
+            final_outcome="resolution_validation_failure",
+            attempt_count=attempt_count,
+            observed_start_utc=document_start,
+            observed_end_utc=document_end,
+        )
+    source_resolution = next(iter(resolutions))
+    source_step = parse_iso8601_duration(source_resolution)
+    isp_hours = source_step.total_seconds() / 3600.0
+    price_factor = 1.0 / isp_hours
+    isp_per_block = int(timedelta(hours=4) / source_step)
+    ordered = sorted(records.items(), key=lambda item: item[0])
+    if (
+        ordered[0][0][0] > request.requested_start_utc
+        or ordered[-1][0][1] < request.requested_end_utc
+        or len(ordered) % isp_per_block != 0
+    ):
+        _raise_parse_failure(
+            EntsoeCoverageError,
+            request,
+            window,
+            issue="combined A81 ISPs do not completely cover PT4H requested blocks",
+            final_outcome="coverage_failure",
+            attempt_count=attempt_count,
+            observed_start_utc=ordered[0][0][0],
+            observed_end_utc=ordered[-1][0][1],
+            observed_resolution=source_resolution,
+            observed_unit="MW",
+        )
+    volume_observations: list[MarketObservation] = []
+    price_observations: list[MarketObservation] = []
+    conversion_ref = "a81-eur-per-mw-isp-to-eur-per-mw-hour"
+    for block_start in range(0, len(ordered), isp_per_block):
+        block = ordered[block_start : block_start + isp_per_block]
+        first_interval, first_value = block[0]
+        expected_start = first_interval[0]
+        quantities = {value[0] for _, value in block}
+        prices = {value[1] for _, value in block}
+        identities = {value[3] for _, value in block}
+        contiguous = all(
+            interval[0] == expected_start + index * source_step
+            and interval[1] == expected_start + (index + 1) * source_step
+            for index, (interval, _) in enumerate(block)
+        )
+        if (
+            len(block) != isp_per_block
+            or not contiguous
+            or len(quantities) != 1
+            or len(prices) != 1
+            or len(identities) != 1
+        ):
+            _raise_parse_failure(
+                EntsoeResolutionValidationError,
+                request,
+                window,
+                issue=(
+                    "combined A81 ISP values are not constant and cannot be "
+                    "reconciled to PT4H without inference"
+                ),
+                final_outcome="resolution_validation_failure",
+                attempt_count=attempt_count,
+                observed_start_utc=first_interval[0],
+                observed_end_utc=block[-1][0][1],
+                observed_resolution=source_resolution,
+                observed_unit="MW",
+            )
+        interval = CanonicalInterval.from_utc(first_interval[0], block[-1][0][1])
+        source_position = first_value[2]
+        volume_observations.append(
+            MarketObservation(
+                interval=interval,
+                value=first_value[0],
+                document_ref=document_ref,
+                source_position=source_position,
+                conversion_ref=None,
+            )
+        )
+        price_observations.append(
+            MarketObservation(
+                interval=interval,
+                value=first_value[1] * price_factor,
+                document_ref=document_ref,
+                source_position=source_position,
+                conversion_ref=conversion_ref,
+            )
+        )
+
+    diagnostics = MappingProxyType(
+        {
+            "curve_type": "A03",
+            "exact_duplicates_collapsed": exact_duplicates,
+            "expanded_change_points": raw_change_points,
+            "pt4h_reconciliation": "identical_complete_isps_only",
+        }
+    )
+    volume_series = MarketSeries(
+        series_id="fcr_contracted_volume",
+        semantic_version="fr-symmetric-fcr-volume-v1",
+        area_eic=FRANCE_AREA_EIC,
+        source_document_type="A81",
+        source_value_field="quantity",
+        source_resolution=source_resolution,
+        canonical_resolution="PT4H",
+        source_unit="MW",
+        canonical_unit="MW",
+        currency=None,
+        conversion=None,
+        observations=tuple(volume_observations),
+        diagnostics=diagnostics,
+    )
+    conversion = MappingProxyType(
+        {
+            "conversion_ref": conversion_ref,
+            "source_unit": "EUR/MW/ISP",
+            "canonical_unit": "EUR/MW/h",
+            "source_resolution": source_resolution,
+            "isp_duration_hours": isp_hours,
+            "factor": price_factor,
+            "formula": "source_value / ISP_duration_hours",
+        }
+    )
+    price_series = MarketSeries(
+        series_id="fcr_capacity_price",
+        semantic_version="fr-symmetric-fcr-capacity-price-v1",
+        area_eic=FRANCE_AREA_EIC,
+        source_document_type="A81",
+        source_value_field="procurement_Price.amount",
+        source_resolution=source_resolution,
+        canonical_resolution="PT4H",
+        source_unit="EUR/MW/ISP",
+        canonical_unit="EUR/MW/h",
+        currency="EUR",
+        conversion=conversion,
+        observations=tuple(price_observations),
+        diagnostics=diagnostics,
+    )
+    source_document = SourceDocumentEvidence(
+        document_ref=document_ref,
+        response_id=response_id,
+        namespace_uri=namespace,
+        root_document_type="Balancing_MarketDocument",
+        document_mrid=document_mrid,
+        revision_number=revision,
+        created_at_utc=_format_utc(created_at),
+        document_type="A81",
+        process_type="A52",
+        business_type="B95",
+        flow_direction="A03",
+        area_eic=FRANCE_AREA_EIC,
+        market_agreement_type="A01",
+        product_identity=product_identity,
+        document_period=CanonicalInterval.from_utc(document_start, document_end),
+        archive_member=archive_member,
+        status="selected",
+    )
+    return ParsedEntsoeDocument(
+        source_document=source_document,
+        series=volume_series,
+        additional_series=(price_series,),
+    )
+
+
 def parse_entsoe_document(
     body: bytes,
     *,
@@ -1563,8 +2110,9 @@ def parse_entsoe_document(
     window: EntsoeQueryWindow,
     response_id: str,
     attempt_count: int = 1,
+    archive_member: str | None = None,
 ) -> ParsedEntsoeDocument:
-    """Classify and normalize one bounded A44, A81, or A89 XML document."""
+    """Classify and normalize one bounded A44 or combined A81 XML document."""
 
     if not isinstance(body, bytes):
         raise TypeError("body must be bytes")
@@ -1573,6 +2121,8 @@ def parse_entsoe_document(
     if not isinstance(window, EntsoeQueryWindow):
         raise TypeError("window must be an EntsoeQueryWindow")
     response_id = _non_empty(response_id, field_name="response_id")
+    if archive_member is not None:
+        archive_member = _non_empty(archive_member, field_name="archive_member")
     if isinstance(attempt_count, bool) or not isinstance(attempt_count, int) or attempt_count <= 0:
         raise EntsoeRequestValidationError("attempt_count must be a positive integer")
     upper_body = body.upper()
@@ -1611,12 +2161,12 @@ def parse_entsoe_document(
     expected_root = (
         "Publication_MarketDocument"
         if window.document_type == "A44"
-        else "ReserveAllocationResult_MarketDocument"
+        else "Balancing_MarketDocument"
     )
     expected_namespace_fragment = (
         ":451-3:publicationdocument:"
         if window.document_type == "A44"
-        else ":451-7:reserveallocationresultdocument:"
+        else ":451-6:balancingdocument:"
     )
     if (
         root_name != expected_root
@@ -1698,7 +2248,7 @@ def parse_entsoe_document(
         window=window,
         attempt_count=attempt_count,
     )
-    expected_process = "A01" if window.document_type == "A44" else "A34"
+    expected_process = "A01" if window.document_type == "A44" else "A52"
     process_mismatch = (
         process_type != expected_process
         if window.document_type != "A44"
@@ -1719,7 +2269,28 @@ def parse_entsoe_document(
             observed_end_utc=document_end,
         )
 
-    document_ref = f"{response_id}:{document_mrid}:r{revision}"
+    member_ref = (
+        ""
+        if archive_member is None
+        else f":member-{hashlib.sha256(archive_member.encode()).hexdigest()[:12]}"
+    )
+    document_ref = f"{response_id}{member_ref}:{document_mrid}:r{revision}"
+    if document_type == "A81":
+        return _parse_combined_a81_document(
+            root,
+            namespace=namespace,
+            document_mrid=document_mrid,
+            revision=revision,
+            created_at=created_at,
+            document_start=document_start,
+            document_end=document_end,
+            document_ref=document_ref,
+            response_id=response_id,
+            archive_member=archive_member,
+            request=request,
+            window=window,
+            attempt_count=attempt_count,
+        )
     normalized_records: dict[
         tuple[datetime, datetime], tuple[float, int, str]
     ] = {}
@@ -1829,7 +2400,7 @@ def parse_entsoe_document(
                 observed_resolution=first_resolution,
                 observed_unit=candidate_source_unit,
             )
-        conversion_factor = 0.25 if document_type == "A89" else 1.0
+        conversion_factor = 1.0
         series_mrid = str(candidate_product["series_mrid"])
         for period in periods:
             expanded, _, raw_count, resolution, curve_type = _expand_period_points(
@@ -1937,11 +2508,7 @@ def parse_entsoe_document(
         ) in ordered_records
     )
     series_id = _DOCUMENT_SERIES[document_type]
-    semantic_version = {
-        "A44": "fr-day-ahead-price-v1",
-        "A81": "fr-symmetric-fcr-volume-v1",
-        "A89": "fr-symmetric-fcr-capacity-price-v1",
-    }[document_type]
+    semantic_version = "fr-day-ahead-price-v1"
     source_resolution: str | tuple[str, ...]
     if len(resolutions) == 1:
         source_resolution = next(iter(resolutions))
@@ -1955,6 +2522,7 @@ def parse_entsoe_document(
         semantic_version=semantic_version,
         area_eic=FRANCE_AREA_EIC,
         source_document_type=document_type,
+        source_value_field="price.amount",
         source_resolution=source_resolution,
         canonical_resolution="PT1H" if document_type == "A44" else "PT4H",
         source_unit=source_unit,
@@ -1986,6 +2554,7 @@ def parse_entsoe_document(
         market_agreement_type=market_agreement,
         product_identity=product_identity,
         document_period=CanonicalInterval.from_utc(document_start, document_end),
+        archive_member=archive_member,
         status="selected",
     )
     return ParsedEntsoeDocument(source_document=source_document, series=series)
@@ -2000,10 +2569,21 @@ def _with_document_status(
         replace(item, document_ref=source_document.document_ref)
         for item in parsed.series.observations
     )
+    additional_series = tuple(
+        replace(
+            series,
+            observations=tuple(
+                replace(item, document_ref=source_document.document_ref)
+                for item in series.observations
+            ),
+        )
+        for series in parsed.additional_series
+    )
     return replace(
         parsed,
         source_document=source_document,
         series=replace(parsed.series, observations=observations),
+        additional_series=additional_series,
     )
 
 
@@ -2086,7 +2666,7 @@ def _enclosing_local_day_bounds(
 def build_entsoe_query_windows(
     request: EntsoeMarketDataRequest,
 ) -> tuple[EntsoeQueryWindow, ...]:
-    """Build deterministic A44/A81/A89 windows enclosing local delivery days."""
+    """Build deterministic A44 and combined-A81 windows for local delivery days."""
 
     if not isinstance(request, EntsoeMarketDataRequest):
         raise TypeError("request must be an EntsoeMarketDataRequest")
@@ -2106,8 +2686,8 @@ def build_entsoe_query_windows(
                     f"{local_start_date.isoformat()}-{local_end_date.isoformat()}"
                 ),
                 document_type=document_type,
-                process_type="A01" if document_type == "A44" else "A34",
-                business_type=None if document_type == "A44" else "A95",
+                process_type="A01" if document_type == "A44" else "A52",
+                business_type=None if document_type == "A44" else "B95",
                 area_parameter=request.profile.area_eic,
                 start_utc=start,
                 end_utc=end,
@@ -2164,7 +2744,16 @@ def _raw_response_evidence(
     retention_policy: str,
 ) -> RawResponseEvidence:
     retained = retention_policy == "permitted_sidecar"
-    locator = f"sidecars/{window.document_type.lower()}-{digest}.xml" if retained else None
+    extension = "zip" if result.media_type in {
+        "application/zip",
+        "application/x-zip-compressed",
+        "multipart/x-zip",
+    } else "xml"
+    locator = (
+        f"sidecars/{window.document_type.lower()}-{digest}.{extension}"
+        if retained
+        else None
+    )
     return RawResponseEvidence(
         response_id=response_id,
         window_id=window.window_id,
@@ -2192,9 +2781,7 @@ def _common_actual_coverage(
         for parsed in documents
     }
     if len(coverages) != 1:
-        culprit = next(
-            item for item in documents if item.source_document.document_type == "A89"
-        )
+        culprit = documents[-1]
         window = next(
             item
             for item in build_entsoe_query_windows(request)
@@ -2204,7 +2791,7 @@ def _common_actual_coverage(
             EntsoeCoverageError,
             request,
             window,
-            issue="required A44/A81/A89 series have incompatible actual coverage",
+            issue="required A44 and combined A81 series have incompatible actual coverage",
             final_outcome="coverage_failure",
             attempt_count=1,
         )
@@ -2232,31 +2819,6 @@ def _validate_selected_profile_documents(
             final_outcome="missing_series",
             attempt_count=1,
         )
-    volume_product = dict(selected_by_type["A81"].source_document.product_identity)
-    price_product = dict(selected_by_type["A89"].source_document.product_identity)
-    if volume_product != price_product:
-        window = next(
-            item
-            for item in build_entsoe_query_windows(request)
-            if item.document_type == "A89"
-        )
-        parsed = selected_by_type["A89"]
-        _raise_parse_failure(
-            EntsoeProductValidationError,
-            request,
-            window,
-            issue="A81 volume and A89 capacity price product identity do not align",
-            final_outcome="product_validation_failure",
-            attempt_count=1,
-            observed_start_utc=parsed.series.observations[0].interval.start_utc,
-            observed_end_utc=parsed.series.observations[-1].interval.end_utc,
-            observed_resolution=(
-                parsed.series.source_resolution
-                if isinstance(parsed.series.source_resolution, str)
-                else None
-            ),
-            observed_unit=parsed.series.source_unit,
-        )
     return tuple(selected_by_type[item] for item in request.profile.required_document_types)
 
 
@@ -2277,7 +2839,11 @@ def _artifact_payload(
     raw_responses: tuple[RawResponseEvidence, ...],
     predecessor_artifact_fingerprint: str | None,
 ) -> dict[str, object]:
-    by_series = {item.series.series_id: item.series for item in selected}
+    by_series = {
+        series.series_id: series
+        for item in selected
+        for series in item.all_series
+    }
     source_documents = tuple(
         [item.source_document for item in selected]
         + [item.source_document for item in superseded]
@@ -2317,6 +2883,21 @@ def _artifact_payload(
             "raw_retention_policy": request.raw_retention_policy,
             "normalized_artifact_attribution": "ENTSO-E Transparency Platform",
             "normalization_version": request.normalization_version,
+            "series_redistribution": {
+                "day_ahead_price": {
+                    "status": "local_only_pending_primary_owner_permission",
+                    "source_document_type": "A44",
+                },
+                "fcr_contracted_volume": {
+                    "status": "cc-by-4.0",
+                    "source_document_type": "A81",
+                },
+                "fcr_capacity_price": {
+                    "status": "cc-by-4.0",
+                    "source_document_type": "A81",
+                },
+            },
+            "repository_publication": "blocked_while_any_series_is_local_only",
         },
     }
 
@@ -2345,14 +2926,35 @@ def _acquire_candidate(
         retrieved_at = datetime.now(UTC)
         digest = hashlib.sha256(result.body).hexdigest()
         response_id = f"response-{window.document_type.lower()}-{digest}"
-        parsed = parse_entsoe_document(
-            result.body,
-            request=request,
-            window=window,
-            response_id=response_id,
-            attempt_count=result.attempt_count,
-        )
-        parsed_documents.append(parsed)
+        try:
+            xml_members = extract_entsoe_xml_members(
+                result.body,
+                media_type=result.media_type,
+                max_uncompressed_bytes=DEFAULT_MAX_RESPONSE_BYTES,
+            )
+        except EntsoeArchiveValidationError as exc:
+            diagnostic = _parse_diagnostic(
+                request,
+                window,
+                final_outcome="archive_validation_failure",
+                detail=str(exc),
+                attempt_count=result.attempt_count,
+            )
+            raise EntsoeArchiveValidationError(
+                _failure_message(window, request, "unsafe or malformed ZIP response"),
+                diagnostic=diagnostic,
+            ) from None
+        for archive_member, xml_body in xml_members:
+            parsed_documents.append(
+                parse_entsoe_document(
+                    xml_body,
+                    request=request,
+                    window=window,
+                    response_id=response_id,
+                    attempt_count=result.attempt_count,
+                    archive_member=archive_member,
+                )
+            )
         query_evidence.append(
             _source_query_window(window, attempt_count=result.attempt_count)
         )

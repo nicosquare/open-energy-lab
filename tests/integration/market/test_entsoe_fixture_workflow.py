@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import io
 import importlib
 from pathlib import Path
 import socket
 from types import ModuleType
 from typing import Any
 import urllib.request
+import zipfile
 
 import pytest
 
@@ -26,7 +28,6 @@ FIXTURE_ROOT = Path(__file__).parents[2] / "fixtures" / "market" / "synthetic_en
 SUCCESS_DOCUMENTS = {
     "A44": "a44_success.xml",
     "A81": "a81_success.xml",
-    "A89": "a89_success.xml",
 }
 
 
@@ -57,6 +58,19 @@ def _fixture(name: str) -> bytes:
     return (FIXTURE_ROOT / name).read_bytes()
 
 
+def _response_for(document_type: str, fixture_name: str):
+    body = _fixture(fixture_name)
+    if document_type == "A44":
+        return _response(body=body)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(f"r3/{fixture_name}", body)
+    return _response(
+        body=buffer.getvalue(),
+        headers={"Content-Type": "application/zip"},
+    )
+
+
 class FixtureTransport:
     """Route token-separated semantic requests to authored XML documents."""
 
@@ -70,7 +84,7 @@ class FixtureTransport:
         assert isinstance(parameters, Mapping)
         document_type = parameters["documentType"]
         assert isinstance(document_type, str)
-        return _response(body=_fixture(self.documents[document_type]))
+        return _response_for(document_type, self.documents[document_type])
 
 
 def _fetch(
@@ -160,21 +174,26 @@ def test_fetch_validates_all_series_and_publishes_one_canonical_artifact(
         item.value for item in result.artifact.series["day_ahead_price"].observations
     ] == [475.0, -5.0, 540.0, 120.5]
     assert result.artifact.series["fcr_contracted_volume"].observations[0].value == 125.0
-    assert result.artifact.series["fcr_capacity_price"].observations[0].value == 10.0
-    assert len(result.artifact.query_windows) == 3
+    assert result.artifact.series["fcr_capacity_price"].observations[0].value == 17.5
+    assert len(result.artifact.query_windows) == 2
     assert all(
         window.start_utc == "2022-08-18T22:00:00Z"
         and window.end_utc == "2022-08-19T22:00:00Z"
         for window in result.artifact.query_windows
     )
-    assert len(result.artifact.raw_responses) == 3
-    assert len(result.artifact.source_documents) == 3
-    assert len(transport.calls) == 3
+    assert len(result.artifact.raw_responses) == 2
+    assert len(result.artifact.source_documents) == 2
+    assert len(transport.calls) == 2
     assert [call["parameters"]["documentType"] for call in transport.calls] == [
         "A44",
         "A81",
-        "A89",
     ]
+    assert result.artifact.series["fcr_contracted_volume"].source_document_type == "A81"
+    assert result.artifact.series["fcr_capacity_price"].source_document_type == "A81"
+    assert result.artifact.source_documents[1].archive_member == "r3/a81_success.xml"
+    redistribution = result.artifact.retention_and_license["series_redistribution"]
+    assert redistribution["day_ahead_price"]["status"].startswith("local_only")
+    assert redistribution["fcr_contracted_volume"]["status"] == "cc-by-4.0"
     assert all(call["api_token"] == SENTINEL_TOKEN for call in transport.calls)
     assert all(
         SENTINEL_TOKEN not in repr(call["parameters"]) for call in transport.calls
@@ -218,14 +237,21 @@ def test_published_artifact_reloads_offline_with_zero_transport_calls(
             "a81_wrong_product.xml",
             "EntsoeProductValidationError",
             "fcr_contracted_volume",
-            "PT4H",
+            "PT30M",
         ),
         (
-            "A89",
-            "a89_wrong_unit.xml",
+            "A81",
+            "a81_missing_price.xml",
+            "EntsoeSemanticValidationError",
+            "fcr_contracted_volume",
+            None,
+        ),
+        (
+            "A81",
+            "a81_wrong_unit.xml",
             "EntsoeUnitValidationError",
-            "fcr_capacity_price",
-            "PT4H",
+            "fcr_contracted_volume",
+            "PT30M",
         ),
     ],
 )
@@ -235,7 +261,7 @@ def test_fetch_validates_every_series_in_memory_before_publication(
     fixture_name: str,
     error_name: str,
     series: str,
-    resolution: str,
+    resolution: str | None,
 ) -> None:
     documents = dict(SUCCESS_DOCUMENTS)
     documents[document_type] = fixture_name
@@ -264,11 +290,11 @@ def test_permitted_raw_sidecars_are_written_before_and_verified_by_manifest(
         assert evidence.sidecar_locator is not None
         sidecar = tmp_path / evidence.sidecar_locator
         assert sidecar.is_file()
-        assert sidecar.read_bytes() in {
-            _fixture("a44_success.xml"),
-            _fixture("a81_success.xml"),
-            _fixture("a89_success.xml"),
-        }
+        if evidence.media_type == "application/zip":
+            with zipfile.ZipFile(sidecar) as archive:
+                assert archive.read("r3/a81_success.xml") == _fixture("a81_success.xml")
+        else:
+            assert sidecar.read_bytes() == _fixture("a44_success.xml")
 
     loaded = load_market_data_artifact(result.artifact_path, artifact_root=tmp_path)
     assert loaded.artifact_fingerprint == result.artifact.artifact_fingerprint

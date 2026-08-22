@@ -30,8 +30,9 @@ MARKET_PATH = FIXTURE_DIR / "france_2022-08-19_market_v1.json"
 ACTIVATION_PATH = FIXTURE_DIR / "france_2022-08-19_activation_v1.json"
 EXPECTED_PATH = FIXTURE_DIR / "france_2022-08-19_expected_replay_v1.json"
 BLOCKER = (
-    "the credentialed ENTSO-E A44/A81/A89 and normalized-fixture reuse gate "
-    "is recorded as blocked in tests/fixtures/market/README.md"
+    "the ENTSO-E A44 redistribution gate blocks publishing the otherwise "
+    "technically validated A44/combined-A81 reference fixture, as recorded in "
+    "tests/fixtures/market/README.md"
 )
 
 

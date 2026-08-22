@@ -8,8 +8,9 @@
 Add the first end-to-end French battery simulation that stacks a fixed
 day-ahead energy baseline with fixed symmetric Frequency Containment Reserve
 (FCR). A new `open_energy_lab.market` package will explicitly retrieve France
-day-ahead prices (`A44`), symmetric-FCR contracted volume (`A81`), and FCR
-capacity price (`A89`) from ENTSO-E, validate source and delivery semantics,
+day-ahead prices (`A44`) and the R3 combined contracted-reserve response
+(`A81`) containing both symmetric-FCR volume and capacity price, validate
+source and delivery semantics,
 and atomically publish an immutable source-independent JSON artifact without
 retaining or exposing the caller's token. A separate activation-artifact
 boundary will ingest a source-explicit 10-second trace. The simulator will
@@ -24,7 +25,7 @@ in UTC as `[2022-08-18T22:00:00Z, 2022-08-19T22:00:00Z)`. It was pre-screened
 against the cited robust-storage-bidding data for 24 hourly prices, six FCR
 blocks, and 8,640 gap-free RTE frequency observations. Fixture publication is
 conditional on a credentialed ENTSO-E completeness check proving compatible
-`A44`, `A81`, and `A89` coverage for that exact period. Failure of that gate
+`A44` and combined `A81` coverage for that exact period. Failure of that gate
 blocks the fixture; it does not authorize interpolation, synthetic patching,
 or an RTE price fallback.
 
@@ -39,7 +40,7 @@ required. Retrieval code remains isolated from package-root imports and from
 all offline simulation paths.
 **Storage/Data**: Human-inspectable, versioned JSON market, activation, and
 expected-result artifacts; SHA-256 fingerprints; optional separately managed
-raw XML sidecars only when recorded source terms permit them. Canonical
+raw XML or ZIP sidecars only when recorded source terms permit them. Canonical
 artifacts never embed raw source responses.
 **Testing**: Offline `pytest` unit and integration suites; synthetic ENTSO-E XML
 for parser, acknowledgement, retry, token-redaction, revision, DST, and atomic
@@ -76,7 +77,7 @@ Europe/Paris delivery metadata; no gap filling; source revision regression
 rejection; complete replay product blocks; charge-positive battery power;
 deterministic behavior and default absolute tolerance `1e-6`.
 **Scale/Scope**: France, one BESS, one selected or caller-bounded historical
-period, three required market series, one separate activation trace, hourly
+period, three required market series produced from two source requests, one separate activation trace, hourly
 energy, 15-minute checkpoints, four-hour symmetric FCR, and 10-second replay.
 Fixed schedules and deterministic heuristics only; no optimization.
 
@@ -212,6 +213,9 @@ tests/
 
 docs/migration/
 └── bess-stacked-services.md          # exact reference provenance and boundaries
+
+docs/architecture/
+└── entsoe-transparency-platform.md   # R3 endpoint, requests, parsing, and reuse policy
 ```
 
 **Structure Decision**: Add one source-independent `market` package rather
@@ -225,7 +229,7 @@ new mandatory CLI framework.
 
 Research outcomes are captured in [research.md](./research.md). They resolve:
 
-- the France ENTSO-E request profile and strict `A44`/`A81`/`A89` semantics
+- the France ENTSO-E request profile and strict `A44`/combined-`A81` R3 semantics
 - one-day local-delivery source windows, bounded retries, sanitized errors,
   raw digests, atomic publication, and revision-aware refresh
 - source-independent JSON structure, dual content/integrity fingerprints, and
@@ -280,7 +284,7 @@ The [data model](./data-model.md), [quickstart](./quickstart.md), and
    from the persistable request, builds HTTPS requests only inside the
    retrieval call, sanitizes all failures, enforces source-window response
    bounds, and applies the fixed three-attempt retry policy.
-3. Parse and normalize `A44`, `A81`, and `A89` XML by validated root/schema and
+3. Parse and normalize A44 XML and combined A81 XML/ZIP by validated root/schema and
    semantic fields; expand supported curve types; select current document
    revisions; reject acknowledgements, gaps, conflicts, wrong products,
    resolutions, units, areas, and DST coverage; then implement fetch and

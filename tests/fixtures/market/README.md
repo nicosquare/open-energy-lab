@@ -74,8 +74,8 @@ may be committed only after one explicitly selected credentialed workflow
 proves all of the following for that exact period:
 
 - complete compatible France A44 day-ahead price coverage;
-- complete compatible A81 symmetric-FCR contracted-volume coverage;
-- complete A89 capacity-price coverage aligned to the same FCR product;
+- complete compatible combined A81 symmetric-FCR contracted-volume and
+  procurement-price coverage from the same points and document;
 - accepted document identities, revisions, units, resolutions, and response
   digests; and
 - a documented attribution and legal basis for redistributing the normalized
@@ -115,28 +115,25 @@ documentation.
 
 ## 2026-08-22 Credentialed Market-Gate Record
 
-The ENTSO-E market-fixture gate remains **blocked** after an explicitly
-credentialed production execution. The token was read from the ignored `.env`
-file, passed separately to the transport, and absent from captured output,
-exceptions, paths, and written bytes. Network and authentication succeeded.
-The A44 response for UTC
-`[2022-08-18T22:00:00Z, 2022-08-19T22:00:00Z)` validated after preserving two
-current wire-profile details: Article 12.1(d) omits the response process field,
-and its exact hourly duration is spelled `PT60M` rather than canonical `PT1H`.
+The original pre-R3 A81 execution is retained as a superseded diagnostic. It
+authenticated and parsed A44, then received HTTP 400 because it used obsolete
+`A34/A95` assumptions and expected a separate A89 document. Review of the
+official Postman collection established the current 17.1.B&C profile:
+`A81/B95/A52/A01`, returned as a ZIP containing a
+`Balancing_MarketDocument` with both `quantity` and
+`procurement_Price.amount`.
 
-Acquisition then stopped at A81. The production API returned permanent HTTP
-400 on the first attempt, as required for a non-retryable client response. A
-sanitized finite parameter audit proved that the API recognizes and requires
-`BusinessType` and `Type_MarketAgreement.Type`, but rejected every official
-agreement code for the France control area, FCR business type A95, and selected
-period with acknowledgement code 999, “The provided parameters do not match
-the dataItem parameters or values.” A89 was not requested after the required
-A81 series failed. Four producer destinations were inspected and contained no
-manifest or sidecar.
+A token-safe probe and the corrected opt-in live gate for UTC
+`[2022-08-18T22:00:00Z, 2022-08-19T22:00:00Z)` returned one R3 XML member with
+six sparse PT30M changes covering the day. Each volume/price pair reconciles
+exactly to one PT4H block. The gate passed on 2026-08-22 with 24 A44 intervals
+and six aligned PT4H FCR blocks from the same A81 document. The token scan
+passed. Technical compatibility is recorded separately from publication
+rights; no token, raw response, or normalized production artifact is committed.
 
 The legal-reuse gate independently fails. The ENTSO-E list checked on
 2026-08-22 places contracted reserve amount and reserved-capacity price (the
-A81/A89 concepts, items 22 and 23) in its CC BY 4.0 free-reuse subset, but does
+two combined A81 measures, items 22 and 23) in its CC BY 4.0 free-reuse subset, but does
 not list Article 12.1(d) day-ahead prices (A44). The current Terms of Use require
 users to check that list and seek the Primary Owner's agreement where reuse may
 prejudice its rights. No A44 Primary Owner permission was supplied, so this
@@ -154,9 +151,10 @@ Consequently:
 - no partial market data, RTE price substitute, synthetic replacement, gap
   fill, interpolation, or alternate delivery period has been used.
 
-Resume the gate only after the specification identifies a currently compatible
-source contract for all three required series and documents permission to
-redistribute A44. A token alone no longer resolves either blocker.
+The technical source contract is now identified. Resume publication of the
+committed market and replay fixtures only after permission to redistribute A44
+or another reviewed legal basis is documented. A token alone does not resolve
+that publication blocker.
 
 ## Single-Owner Boundary
 

@@ -9,12 +9,12 @@ remain separate boundaries. Routine use is deterministic, fixture-backed, and
 offline.
 
 The synthetic/manual replay path is implemented and validated. The independent
-RTE activation gate passed for the selected delivery day. A credentialed
-market-gate execution on 2026-08-22 authenticated successfully and validated
-A44, then failed closed on a permanent A81 HTTP 400. A44 redistribution also
-lacks a documented basis under the current ENTSO-E free-reuse list. The market
-and expected-replay fixtures therefore remain absent, with no replacement data
-introduced. The authoritative gate record is in
+RTE activation gate passed for the selected delivery day. The earlier A81 HTTP
+400 was caused by obsolete query assumptions and is superseded by the current
+R3 A44/combined-A81 contract. Technical compatibility and publication rights
+are recorded separately. A44 redistribution still lacks a documented basis
+under the current ENTSO-E free-reuse list, so the market and expected-replay
+fixtures remain absent, with no replacement data introduced. The authoritative gate record is in
 `tests/fixtures/market/README.md`.
 
 ## Reference Evidence
@@ -57,15 +57,22 @@ appear in output, exceptions, paths, manifests, or sidecars. A44 validated
 after accepting the official response profile's absent process field and exact
 `PT60M` hourly spelling while preserving canonical `PT1H` output semantics.
 
-The next required request, A81 for France/A95, returned permanent HTTP 400.
-The transport correctly made one attempt. A sanitized audit across the finite
-official `Type_MarketAgreement.Type` code set confirmed that the API recognized
-the required parameter but returned acknowledgement 999 for every value. The
-opt-in live test reproduced the failure. A89 was not attempted after A81 made
-the atomic three-series artifact impossible, and no output file was published.
+The original A81 request used obsolete `A34/A95` assumptions and returned HTTP
+400. The official R3 Postman collection instead defines 17.1.B&C as
+`A81/B95/A52/A01`. The corrected response is a ZIP containing a
+`Balancing_MarketDocument` in namespace
+`urn:iec62325.351:tc57wg16:451-6:balancingdocument:4:4`; each point carries
+both `quantity` and `procurement_Price.amount`. A separate A89 request is not
+part of R3. The exact request, response safeguards, and normalization formula
+are documented in the
+[ENTSO-E Transparency Platform integration](../architecture/entsoe-transparency-platform.md).
+The corrected opt-in production gate passed on 2026-08-22 with 24 A44
+intervals and six aligned PT4H volume/price blocks sourced from the same A81
+document. Its token scan passed and its temporary artifact was not retained.
+This resolves technical compatibility only; A44 redistribution remains the
+reason the committed market and expected-replay fixtures are absent.
 ENTSO-E's archive notice records that legacy R2 data items were discontinued on
-11 December 2025, but the repository does not infer that notice alone as the
-specific server-side cause:
+11 December 2025:
 `https://transparencyplatform.zendesk.com/hc/en-us/articles/41986091964305-Archives-for-legacy-Transparency-Platform-publications`.
 
 ## Canonical Activation
@@ -105,7 +112,7 @@ fixture never reopens the external file.
 | Responsibility | Single owner | Boundary |
 | --- | --- | --- |
 | ENTSO-E retrieval and market-source normalization | `open_energy_lab.market.entsoe` | Explicit authenticated fetch/refresh only |
-| Canonical market-artifact validity and integrity | `open_energy_lab.market.artifact` | Immutable A44/A81/A89 manifest and offline load |
+| Canonical market-artifact validity and integrity | `open_energy_lab.market.artifact` | Immutable A44/combined-A81 manifest and offline load |
 | Canonical activation-artifact validity and integrity | `open_energy_lab.market.activation` | Source-independent import modes, exact tiling, fingerprints |
 | Deterministic fixed energy/FCR schedules | `open_energy_lab.control.stacked_service` | No activation lookahead and no optimization |
 | Battery-constrained physical delivery | `open_energy_lab.simulator.stacked_service` | Existing `apply_power_request`, attribution, aggregation |

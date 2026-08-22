@@ -29,7 +29,7 @@ def _assert_secret_absent(
 
 
 @pytest.mark.live_entsoe
-def test_live_france_a44_a81_a89_profile_is_currently_compatible(
+def test_live_france_a44_and_combined_a81_profile_is_currently_compatible(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
@@ -81,7 +81,14 @@ def test_live_france_a44_a81_a89_profile_is_currently_compatible(
     assert len(artifact.series["fcr_capacity_price"].observations) == 6
     assert {
         document.document_type for document in artifact.source_documents
-    } >= {"A44", "A81", "A89"}
+    } >= {"A44", "A81"}
+    assert {
+        observation.document_ref
+        for observation in artifact.series["fcr_contracted_volume"].observations
+    } == {
+        observation.document_ref
+        for observation in artifact.series["fcr_capacity_price"].observations
+    }
     assert all(
         evidence.retention_status == "digest_only"
         and evidence.sidecar_locator is None

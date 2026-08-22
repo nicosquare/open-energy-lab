@@ -32,10 +32,11 @@ Unknown schema versions fail before any consumer can use values.
 | `fcr_contracted_volume` | MW | PT4H | Finite and non-negative |
 | `fcr_capacity_price` | EUR/MW/h | PT4H | Finite and source-profile compatible |
 
-Every observation has an unambiguous canonical interval and selected source
-document reference. Intervals within a series are strictly ordered, unique,
-non-overlapping, and gap-free across the declared covered period. Required A81
-and A89 block intervals and product identities align exactly.
+Every observation has an unambiguous canonical interval, exact source-value
+field, and selected source document reference. Intervals within a series are
+strictly ordered, unique, non-overlapping, and gap-free across the declared
+covered period. Both FCR series have identical PT4H intervals and reference
+the same selected combined A81 document and product identity.
 
 ## Time Contract
 
@@ -106,4 +107,4 @@ Load must fail specifically for unknown version, malformed JSON, missing
 required field/series, non-finite value, fingerprint mismatch, unsafe/missing/
 mismatched sidecar, token sentinel in forbidden metadata, wrong France area,
 gap, overlap, conflicting duplicate, UTC/local mismatch, unit/resolution
-mismatch, A81/A89 product misalignment, or incomplete requested coverage.
+mismatch, split/legacy A89 FCR provenance, or incomplete requested coverage.

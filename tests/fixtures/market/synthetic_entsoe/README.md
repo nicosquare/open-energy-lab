@@ -8,14 +8,14 @@ market observation.
 
 The common success horizon is UTC
 `[2022-08-18T22:00:00Z, 2022-08-19T02:00:00Z)`, the first four hours of the
-Europe/Paris delivery day. `A44` contains four hourly prices while `A81` and
-`A89` each contain one aligned four-hour FCR block.
+Europe/Paris delivery day. `A44` contains four hourly prices while the combined
+R3 `A81` document contains aligned reserve quantity and procurement price.
 
 | Fixture | Contract exercised |
 | --- | --- |
 | `a44_success.xml` | Complete hourly France day-ahead prices, including a negative price |
-| `a81_success.xml` | Complete symmetric-FCR contracted volume |
-| `a89_success.xml` | Complete aligned symmetric-FCR capacity price |
+| `a81_success.xml` | Combined R3 A81 sparse PT30M quantity and procurement price, exactly reconcilable to PT4H |
+| `a89_success.xml` | Obsolete legacy-shaped document retained only as rejection/reference evidence |
 | `a44_variable_blocks.xml` | Unambiguous variable-sized-block expansion |
 | `a44_revision_1.xml` / `a44_revision_3.xml` | Comparable lower and higher document revisions |
 | `acknowledgement.xml` | ENTSO-E acknowledgement/error root classification |
@@ -24,7 +24,7 @@ Europe/Paris delivery day. `A44` contains four hourly prices while `A81` and
 | `a44_conflicting_duplicate.xml` | Repeated position with conflicting values |
 | `a44_gap.xml` | Missing position within declared coverage |
 | `a81_wrong_product.xml` | Non-symmetric reserve direction |
-| `a89_wrong_unit.xml` | Capacity price with an incompatible measure unit |
+| `a81_missing_price.xml` / `a81_wrong_unit.xml` | Missing combined measure and incompatible unit |
 | `a44_wrong_resolution.xml` | Day-ahead prices declared at PT30M |
 | `wrong_namespace.xml` | Data-shaped root outside the accepted namespace family |
 | `unsafe_doctype.xml` / `unsafe_entity.xml` | DTD and entity declarations rejected before parsing |

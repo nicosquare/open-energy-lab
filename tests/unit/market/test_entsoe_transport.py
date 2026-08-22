@@ -132,7 +132,7 @@ def test_request_and_france_profile_are_immutable_token_free_values() -> None:
     assert profile.profile_id == "fr-day-ahead-symmetric-fcr-v1"
     assert profile.area_eic == "10YFR-RTE------C"
     assert profile.market_timezone == "Europe/Paris"
-    assert profile.required_document_types == ("A44", "A81", "A89")
+    assert profile.required_document_types == ("A44", "A81")
     assert request.profile == profile
     assert "token" not in request.__dataclass_fields__
     assert "credential" not in request.__dataclass_fields__
@@ -180,15 +180,15 @@ def test_api_token_is_keyword_only_and_passed_separately_to_transport() -> None:
 def test_reserve_query_uses_required_daily_market_agreement_parameter() -> None:
     window = _window(
         document_type="A81",
-        process_type="A34",
-        business_type="A95",
+        process_type="A52",
+        business_type="B95",
         market_agreement_type="A01",
     )
 
     assert dict(window.request_parameters()) == {
         "documentType": "A81",
-        "processType": "A34",
-        "businessType": "A95",
+        "processType": "A52",
+        "businessType": "B95",
         "Type_MarketAgreement.Type": "A01",
         "controlArea_Domain": "10YFR-RTE------C",
         "periodStart": "202208182200",

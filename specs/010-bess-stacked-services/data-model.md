@@ -48,10 +48,10 @@ One source and series request attempted by the transport.
 | Field | Type | Rules |
 | --- | --- | --- |
 | `window_id` | string | Token-free deterministic ID |
-| `document_type` | enum | `A44`, `A81`, or `A89` |
+| `document_type` | enum | `A44` or combined `A81` |
 | `process_type` | string/null | Profile-required value when supported |
-| `business_type` | string/null | `A95` for FCR documents |
-| `market_agreement_type` | string/null | `A01` daily agreement for A81/A89 |
+| `business_type` | string/null | `B95` for combined contracted reserves |
+| `market_agreement_type` | string/null | `A01` for combined A81 |
 | `area_parameter` | string | Bidding-zone pair or control area, as appropriate |
 | `start_utc` / `end_utc` | aware instant | Enclosing local-day source window |
 | `attempt_count` | integer | Result metadata; 1 through 3 |
@@ -68,7 +68,7 @@ Evidence for one returned byte response.
 | `response_id` | string | Unique within artifact |
 | `window_id` | string | References `SourceQueryWindow` identity |
 | `retrieved_at_utc` | aware instant | Retrieval provenance |
-| `media_type` | string | Expected XML-compatible media type |
+| `media_type` | string | Bounded XML or ZIP response media type |
 | `byte_count` | integer | Positive and within configured bound |
 | `sha256` | string | 64 lowercase hexadecimal characters |
 | `retention_status` | enum | `digest_only` or `sidecar_retained` |
@@ -89,14 +89,15 @@ Parsed identity and revision of one source market document.
 | `document_mrid` | string | Non-empty source identity |
 | `revision_number` | integer | Non-negative source revision |
 | `created_at_utc` | aware instant | Source document timestamp |
-| `document_type` | enum | `A44`, `A81`, or `A89` |
-| `process_type` | string/null | Source-returned process; A44 may omit it, while A81/A89 require `A34` |
-| `business_type` | string/null | `A95` for required FCR series |
+| `document_type` | enum | `A44` or combined `A81` |
+| `process_type` | string/null | Source-returned process; A44 may omit it, while A81 requires `A52` |
+| `business_type` | string/null | `B95` for required FCR series |
 | `flow_direction` | string/null | `A03` for required symmetric FCR |
 | `area_eic` | string | Must match France profile |
 | `market_agreement_type` | string/null | Preserved and validated for reserve product |
-| `product_identity` | object | Tender/product/horizon fields needed to match A81/A89 |
+| `product_identity` | object | Market agreement/product, PSR, direction, and series identity from A81 |
 | `document_period` | `CanonicalInterval` | Source-declared coverage |
+| `archive_member` | string/null | Safe XML member path when the response was ZIP |
 | `status` | enum | `selected` or `superseded` |
 
 The comparable refresh revision key is the tuple of source name, endpoint
@@ -137,7 +138,8 @@ One complete required series.
 | `series_id` | enum | `day_ahead_price`, `fcr_contracted_volume`, `fcr_capacity_price` |
 | `semantic_version` | string | Version of product meaning |
 | `area_eic` | string | France only |
-| `source_document_type` | enum | Exact A44/A81/A89 mapping |
+| `source_document_type` | enum | A44 for energy; A81 for both FCR series |
+| `source_value_field` | string | Exact XML field: `price.amount`, `quantity`, or `procurement_Price.amount` |
 | `source_resolution` | ISO duration/list | Preserved from source documents |
 | `canonical_resolution` | ISO duration | `PT1H` for energy; `PT4H` for FCR profile |
 | `source_unit` | string | Exact source unit/settlement basis |
@@ -273,7 +275,7 @@ not realized battery power and not an optimization decision.
 | `interval` | UTC/local interval | Complete eligible four-hour product block |
 | `capacity_kw` | finite number | Non-negative |
 | `volume_observation_ref` | string | Compatible A81 interval |
-| `price_observation_ref` | string | Compatible A89 interval |
+| `price_observation_ref` | string | Compatible price interval from the same A81 document |
 
 ### FCRCapacitySchedule
 
