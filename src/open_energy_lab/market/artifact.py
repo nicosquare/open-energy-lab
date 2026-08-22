@@ -268,9 +268,10 @@ class SourceQueryWindow:
     start_utc: str
     end_utc: str
     attempt_count: int
+    market_agreement_type: str | None = None
 
     def to_dict(self) -> dict[str, object]:
-        return {
+        payload: dict[str, object] = {
             "window_id": self.window_id,
             "document_type": self.document_type,
             "process_type": self.process_type,
@@ -280,6 +281,9 @@ class SourceQueryWindow:
             "end_utc": self.end_utc,
             "attempt_count": self.attempt_count,
         }
+        if self.market_agreement_type is not None:
+            payload["market_agreement_type"] = self.market_agreement_type
+        return payload
 
 
 @dataclass(frozen=True, slots=True)
@@ -320,7 +324,7 @@ class SourceDocumentEvidence:
     revision_number: int
     created_at_utc: str
     document_type: str
-    process_type: str
+    process_type: str | None
     business_type: str | None
     flow_direction: str | None
     area_eic: str
@@ -647,6 +651,10 @@ def _query_window(payload: object, *, index: int) -> SourceQueryWindow:
         attempt_count=_positive_int(
             data["attempt_count"], field_name=f"query_windows[{index}].attempt_count"
         ),
+        market_agreement_type=_optional_string(
+            data.get("market_agreement_type"),
+            field_name=f"query_windows[{index}].market_agreement_type",
+        ),
     )
 
 
@@ -803,7 +811,7 @@ def _source_document(payload: object, *, index: int) -> SourceDocumentEvidence:
         document_type=_non_empty_string(
             data["document_type"], field_name=f"source_documents[{index}].document_type"
         ),
-        process_type=_non_empty_string(
+        process_type=_optional_string(
             data["process_type"], field_name=f"source_documents[{index}].process_type"
         ),
         business_type=_optional_string(

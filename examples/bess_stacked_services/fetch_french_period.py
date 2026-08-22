@@ -50,6 +50,14 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--end", type=_utc_instant, required=True)
     parser.add_argument("--destination", type=Path, required=True)
     parser.add_argument(
+        "--env-file",
+        type=Path,
+        help=(
+            "optional dotenv file used only when ENTSOE_API_TOKEN is not "
+            "already exported; only that key is read"
+        ),
+    )
+    parser.add_argument(
         "--current",
         type=Path,
         help="current immutable artifact path; required only for refresh",
@@ -71,6 +79,54 @@ def _parser() -> argparse.ArgumentParser:
         help="non-empty producer normalization version recorded in the artifact",
     )
     return parser
+
+
+def _token_from_env_file(path: Path) -> str:
+    """Read one token from a small, non-interpolating dotenv subset."""
+
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError) as exc:
+        raise ValueError(f"could not read dotenv file {path}") from exc
+
+    token: str | None = None
+    for line_number, raw_line in enumerate(lines, start=1):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line.removeprefix("export ").lstrip()
+        key, separator, raw_value = line.partition("=")
+        if not separator or key.strip() != "ENTSOE_API_TOKEN":
+            continue
+        if token is not None:
+            raise ValueError(
+                "dotenv file contains duplicate ENTSOE_API_TOKEN declarations"
+            )
+        value = raw_value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        elif value.startswith(("'", '"')) or value.endswith(("'", '"')):
+            raise ValueError(
+                "dotenv file has unmatched quotes for ENTSOE_API_TOKEN "
+                f"on line {line_number}"
+            )
+        token = value.strip()
+
+    if not token:
+        raise ValueError("dotenv file does not define a non-empty ENTSOE_API_TOKEN")
+    return token
+
+
+def _api_token(env_file: Path | None) -> str:
+    exported = os.environ.get("ENTSOE_API_TOKEN", "").strip()
+    if exported:
+        return exported
+    if env_file is None:
+        raise ValueError(
+            "acquisition requires ENTSOE_API_TOKEN in the environment or --env-file"
+        )
+    return _token_from_env_file(env_file)
 
 
 def _request_from_args(args: argparse.Namespace) -> EntsoeMarketDataRequest:
@@ -137,12 +193,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     # This is the only credential read. It occurs immediately before the
     # explicitly selected source operation and never enters the request value.
-    api_token = os.environ.get("ENTSOE_API_TOKEN", "").strip()
-    if not api_token:
-        print(
-            "acquisition requires ENTSOE_API_TOKEN in the environment",
-            file=sys.stderr,
-        )
+    try:
+        api_token = _api_token(args.env_file)
+    except ValueError as exc:
+        print(f"credential loading failed: {exc}", file=sys.stderr)
         return 2
 
     try:

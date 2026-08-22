@@ -113,21 +113,50 @@ checked on 2026-08-21, permits reuse of public data when the source is named.
 The pinned reference repository records an MIT license for its software and
 documentation.
 
-The ENTSO-E market-fixture gate is **blocked**. The explicit producer preflight
-on 2026-08-21 found no caller-provided `ENTSOE_API_TOKEN`, so no credentialed
-request was made and compatible complete France A44, A81, and A89 coverage,
-document revisions, response digests, and exact normalized-fixture reuse terms
-could not be proven for UTC
-`[2022-08-18T22:00:00Z, 2022-08-19T22:00:00Z)`. Consequently:
+## 2026-08-22 Credentialed Market-Gate Record
+
+The ENTSO-E market-fixture gate remains **blocked** after an explicitly
+credentialed production execution. The token was read from the ignored `.env`
+file, passed separately to the transport, and absent from captured output,
+exceptions, paths, and written bytes. Network and authentication succeeded.
+The A44 response for UTC
+`[2022-08-18T22:00:00Z, 2022-08-19T22:00:00Z)` validated after preserving two
+current wire-profile details: Article 12.1(d) omits the response process field,
+and its exact hourly duration is spelled `PT60M` rather than canonical `PT1H`.
+
+Acquisition then stopped at A81. The production API returned permanent HTTP
+400 on the first attempt, as required for a non-retryable client response. A
+sanitized finite parameter audit proved that the API recognizes and requires
+`BusinessType` and `Type_MarketAgreement.Type`, but rejected every official
+agreement code for the France control area, FCR business type A95, and selected
+period with acknowledgement code 999, “The provided parameters do not match
+the dataItem parameters or values.” A89 was not requested after the required
+A81 series failed. Four producer destinations were inspected and contained no
+manifest or sidecar.
+
+The legal-reuse gate independently fails. The ENTSO-E list checked on
+2026-08-22 places contracted reserve amount and reserved-capacity price (the
+A81/A89 concepts, items 22 and 23) in its CC BY 4.0 free-reuse subset, but does
+not list Article 12.1(d) day-ahead prices (A44). The current Terms of Use require
+users to check that list and seek the Primary Owner's agreement where reuse may
+prejudice its rights. No A44 Primary Owner permission was supplied, so this
+repository has no documented basis for redistributing a normalized A44
+fixture. Sources:
+
+- `https://transparencyplatform.zendesk.com/hc/en-us/articles/40921911218961-Legal-Terms-and-Conditions`
+- `https://transparencyplatform.zendesk.com/hc/article_attachments/40921869379729`
+- `https://transparencyplatform.zendesk.com/hc/en-us/articles/41986091964305-Archives-for-legacy-Transparency-Platform-publications`
+
+Consequently:
 
 - `france_2022-08-19_market_v1.json` is intentionally absent;
 - `france_2022-08-19_expected_replay_v1.json` cannot be produced; and
 - no partial market data, RTE price substitute, synthetic replacement, gap
   fill, interpolation, or alternate delivery period has been used.
 
-Resume the gate only with an explicitly supplied ENTSO-E token and re-check the
-then-current ENTSO-E open-data list and attribution terms for every selected
-series before publishing either missing fixture.
+Resume the gate only after the specification identifies a currently compatible
+source contract for all three required series and documents permission to
+redistribute A44. A token alone no longer resolves either blocker.
 
 ## Single-Owner Boundary
 

@@ -9,11 +9,13 @@ remain separate boundaries. Routine use is deterministic, fixture-backed, and
 offline.
 
 The synthetic/manual replay path is implemented and validated. The independent
-RTE activation gate passed for the selected delivery day. The real market and
-expected-replay fixtures remain blocked because the 2026-08-21 fixture
-production environment had no caller-provided `ENTSOE_API_TOKEN`; no A44/A81/A89
-request was attempted and no replacement data was introduced. The authoritative
-gate record is in `tests/fixtures/market/README.md`.
+RTE activation gate passed for the selected delivery day. A credentialed
+market-gate execution on 2026-08-22 authenticated successfully and validated
+A44, then failed closed on a permanent A81 HTTP 400. A44 redistribution also
+lacks a documented basis under the current ENTSO-E free-reuse list. The market
+and expected-replay fixtures therefore remain absent, with no replacement data
+introduced. The authoritative gate record is in
+`tests/fixtures/market/README.md`.
 
 ## Reference Evidence
 
@@ -37,10 +39,34 @@ RTE attribution is “Source: RTE Réseau de Transport d'Électricité.” The R
 Services Portal General Terms of Service, Article 9, checked on 2026-08-21,
 permits reuse of public data when the source is mentioned:
 `https://www.services-rte.com/en/general-terms-and-conditions-of-use.html`.
-ENTSO-E publishes a CC BY 4.0 open-data subset, but the exact applicability and
-attribution for all selected A44/A81/A89 documents must be rechecked during the
-credentialed gate before a normalized market fixture is committed:
-`https://transparencyplatform.zendesk.com/hc/en-us/articles/40921911218961-Legal-Terms-and-Conditions`.
+ENTSO-E publishes a CC BY 4.0 open-data subset. The list checked on 2026-08-22
+includes contracted reserve amount and price but not Article 12.1(d) day-ahead
+prices. The Terms of Use place the pre-reuse check on the data user and direct
+the user to seek the Primary Owner's agreement where rights may be prejudiced.
+No such A44 permission was supplied, so the normalized market fixture is not
+redistributed:
+`https://transparencyplatform.zendesk.com/hc/en-us/articles/40921911218961-Legal-Terms-and-Conditions`
+and
+`https://transparencyplatform.zendesk.com/hc/article_attachments/40921869379729`.
+
+## Credentialed ENTSO-E Gate
+
+The 2026-08-22 run used the explicit producer with a token loaded from the
+Git-ignored `.env` file. The token remained outside request values and did not
+appear in output, exceptions, paths, manifests, or sidecars. A44 validated
+after accepting the official response profile's absent process field and exact
+`PT60M` hourly spelling while preserving canonical `PT1H` output semantics.
+
+The next required request, A81 for France/A95, returned permanent HTTP 400.
+The transport correctly made one attempt. A sanitized audit across the finite
+official `Type_MarketAgreement.Type` code set confirmed that the API recognized
+the required parameter but returned acknowledgement 999 for every value. The
+opt-in live test reproduced the failure. A89 was not attempted after A81 made
+the atomic three-series artifact impossible, and no output file was published.
+ENTSO-E's archive notice records that legacy R2 data items were discontinued on
+11 December 2025, but the repository does not infer that notice alone as the
+specific server-side cause:
+`https://transparencyplatform.zendesk.com/hc/en-us/articles/41986091964305-Archives-for-legacy-Transparency-Platform-publications`.
 
 ## Canonical Activation
 

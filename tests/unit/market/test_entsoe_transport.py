@@ -177,6 +177,25 @@ def test_api_token_is_keyword_only_and_passed_separately_to_transport() -> None:
     assert SENTINEL_TOKEN not in repr(result)
 
 
+def test_reserve_query_uses_required_daily_market_agreement_parameter() -> None:
+    window = _window(
+        document_type="A81",
+        process_type="A34",
+        business_type="A95",
+        market_agreement_type="A01",
+    )
+
+    assert dict(window.request_parameters()) == {
+        "documentType": "A81",
+        "processType": "A34",
+        "businessType": "A95",
+        "Type_MarketAgreement.Type": "A01",
+        "controlArea_Domain": "10YFR-RTE------C",
+        "periodStart": "202208182200",
+        "periodEnd": "202208190200",
+    }
+
+
 @pytest.mark.parametrize("token", ["", "   "])
 def test_empty_authentication_fails_before_transport(token: str) -> None:
     authentication_error = _require("EntsoeAuthenticationError")

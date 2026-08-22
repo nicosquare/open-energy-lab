@@ -12,7 +12,7 @@ three market series in the same completed artifact:
 | Canonical series | Source document | Required semantics |
 | --- | --- | --- |
 | Day-ahead energy price | `A44` | France in/out bidding-zone domain, day-ahead process, `EUR/MWh` |
-| Symmetric FCR contracted volume | `A81` | France control area, contracted process `A34`, FCR business type `A95`, symmetric direction `A03`, `MW` |
+| Symmetric FCR contracted volume | `A81` | France control area, contracted process `A34`, daily market agreement `A01`, FCR business type `A95`, symmetric direction `A03`, `MW` |
 | Symmetric FCR capacity price | `A89` | Same contracted FCR product identity and delivery interval as A81, source price in currency/MW/ISP converted explicitly to `EUR/MW/h` |
 
 The query builder sends only the parameters supported for the applicable data
@@ -22,8 +22,9 @@ revision fields. A query parameter is not treated as proof that the response
 has the requested meaning.
 
 ENTSO-E's current material identifies `A81` and `A89` as contracted reserve
-volume and price documents, `A95` as FCR, `A34` as contracted, and `A03` as a
-symmetric direction. It also defines reserve volume per ISP and price as
+volume and price documents, `A95` as FCR, `A34` as contracted, `A01` as the
+daily market-agreement type required by this query, and `A03` as a symmetric
+direction. It also defines reserve volume per ISP and price as
 currency/MW/ISP. The FCR Cooperation describes the relevant product as a
 usually four-hour symmetric product, subject to daylight-saving shifts.
 
@@ -48,6 +49,8 @@ data.
 - [ENTSO-E request parameters and UTC/DST guidance](https://transparencyplatform.zendesk.com/hc/en-us/articles/15696716612372-Request-Parameters)
 - [ENTSO-E contracted reserve volume and price semantics](https://transparencyplatform.zendesk.com/hc/en-us/articles/12826309684756-Amount-and-Prices-Paid-of-Balancing-Reserves-Under-Contract-17-1-B-C)
 - [ENTSO-E flow-direction codes](https://transparencyplatform.zendesk.com/hc/en-us/articles/15857071081620-flowDirection-direction)
+- [ENTSO-E legal terms and open-data list](https://transparencyplatform.zendesk.com/hc/en-us/articles/40921911218961-Legal-Terms-and-Conditions)
+- [ENTSO-E legacy-publication archive notice](https://transparencyplatform.zendesk.com/hc/en-us/articles/41986091964305-Archives-for-legacy-Transparency-Platform-publications)
 - [ENTSO-E FCR product information](https://www.entsoe.eu/network_codes/eb/fcr/)
 
 ## Decision 2: Keep the token outside every persistable request object

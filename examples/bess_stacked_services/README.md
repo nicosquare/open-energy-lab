@@ -7,7 +7,8 @@ behavior belongs under `src/open_energy_lab`, not in these scripts.
 
 The consumers are implemented. The RTE activation fixture is validated and
 committed; the ENTSO-E market and derived expected-replay fixtures remain
-blocked by the credentialed gate recorded in `tests/fixtures/market/README.md`.
+blocked after the 2026-08-22 credentialed A81 compatibility failure and A44
+reuse review recorded in `tests/fixtures/market/README.md`.
 
 ## Consumer Map
 
@@ -28,6 +29,12 @@ and passes the token as a separate keyword-only operation argument. The token
 is never part of a request object, path, cache key, artifact, log, diagnostic,
 or fingerprint.
 
+Copy `.env.example` to the ignored `.env` file at the repository root and
+replace its placeholder, or export `ENTSOE_API_TOKEN` in the calling shell. The
+CLI's optional `--env-file` path reads only that key with no interpolation and
+does not mutate the process environment. An already-exported value takes
+precedence.
+
 The intended fetch invocation is:
 
 ```bash
@@ -35,7 +42,8 @@ uv run python examples/bess_stacked_services/fetch_french_period.py \
   --mode fetch \
   --start 2022-08-18T22:00:00Z \
   --end 2022-08-19T22:00:00Z \
-  --destination artifacts/market
+  --destination artifacts/market \
+  --env-file .env
 ```
 
 The caller supplies the credential through the dedicated environment variable
@@ -89,7 +97,8 @@ or fetch a replacement.
 At present the command exits with status 2 and identifies
 `france_2022-08-19_market_v1.json` and
 `france_2022-08-19_expected_replay_v1.json` as missing because the credentialed
-gate has not passed. That is the required behavior, not an installation error.
+technical and legal-reuse gates have not passed. That is the required behavior,
+not an installation error.
 
 ## Experimental-v1 Library Surface
 

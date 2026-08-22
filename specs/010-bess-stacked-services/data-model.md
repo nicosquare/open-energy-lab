@@ -51,6 +51,7 @@ One source and series request attempted by the transport.
 | `document_type` | enum | `A44`, `A81`, or `A89` |
 | `process_type` | string/null | Profile-required value when supported |
 | `business_type` | string/null | `A95` for FCR documents |
+| `market_agreement_type` | string/null | `A01` daily agreement for A81/A89 |
 | `area_parameter` | string | Bidding-zone pair or control area, as appropriate |
 | `start_utc` / `end_utc` | aware instant | Enclosing local-day source window |
 | `attempt_count` | integer | Result metadata; 1 through 3 |
@@ -89,7 +90,7 @@ Parsed identity and revision of one source market document.
 | `revision_number` | integer | Non-negative source revision |
 | `created_at_utc` | aware instant | Source document timestamp |
 | `document_type` | enum | `A44`, `A81`, or `A89` |
-| `process_type` | string | `A01` day-ahead or `A34` contracted, as applicable |
+| `process_type` | string/null | Source-returned process; A44 may omit it, while A81/A89 require `A34` |
 | `business_type` | string/null | `A95` for required FCR series |
 | `flow_direction` | string/null | `A03` for required symmetric FCR |
 | `area_eic` | string | Must match France profile |

@@ -178,6 +178,7 @@ class EntsoeQueryWindow:
     area_parameter: str
     start_utc: datetime
     end_utc: datetime
+    market_agreement_type: str | None = None
 
     def __post_init__(self) -> None:
         window_id = _non_empty(self.window_id, field_name="window_id")
@@ -194,6 +195,12 @@ class EntsoeQueryWindow:
         if self.business_type != expected_business:
             raise EntsoeRequestValidationError(
                 f"{self.document_type} business_type must be {expected_business!r}"
+            )
+        expected_agreement = None if self.document_type == "A44" else "A01"
+        if self.market_agreement_type != expected_agreement:
+            raise EntsoeRequestValidationError(
+                f"{self.document_type} market_agreement_type must be "
+                f"{expected_agreement!r}"
             )
         if self.area_parameter != FRANCE_AREA_EIC:
             raise EntsoeRequestValidationError(
@@ -216,12 +223,15 @@ class EntsoeQueryWindow:
 
         parameters = {
             "documentType": self.document_type,
-            "processType": self.process_type or "",
             "periodStart": self.start_utc.strftime("%Y%m%d%H%M"),
             "periodEnd": self.end_utc.strftime("%Y%m%d%H%M"),
         }
+        if self.process_type is not None:
+            parameters["processType"] = self.process_type
         if self.business_type is not None:
             parameters["businessType"] = self.business_type
+        if self.market_agreement_type is not None:
+            parameters["Type_MarketAgreement.Type"] = self.market_agreement_type
         if self.document_type == "A44":
             parameters["in_Domain"] = self.area_parameter
             parameters["out_Domain"] = self.area_parameter
@@ -1379,8 +1389,11 @@ def _expand_period_points(
         window=window,
         attempt_count=attempt_count,
     )
-    expected_resolution = "PT1H" if document_type == "A44" else "PT4H"
-    if resolution != expected_resolution:
+    accepted_resolutions = (
+        {"PT1H", "PT60M"} if document_type == "A44" else {"PT4H"}
+    )
+    if resolution not in accepted_resolutions:
+        expected_resolution = "PT1H/PT60M" if document_type == "A44" else "PT4H"
         _raise_parse_failure(
             EntsoeResolutionValidationError,
             request,
@@ -1657,12 +1670,13 @@ def parse_entsoe_document(
         window=window,
         attempt_count=attempt_count,
     )
-    process_type = _required_text(
-        root,
-        "process.processType",
-        request=request,
-        window=window,
-        attempt_count=attempt_count,
+    process_element = _direct_child(root, "process.processType")
+    process_type = (
+        process_element.text.strip()
+        if process_element is not None
+        and process_element.text is not None
+        and process_element.text.strip()
+        else None
     )
     created_at = _parse_source_timestamp(
         _required_text(
@@ -1685,7 +1699,12 @@ def parse_entsoe_document(
         attempt_count=attempt_count,
     )
     expected_process = "A01" if window.document_type == "A44" else "A34"
-    if document_type != window.document_type or process_type != expected_process:
+    process_mismatch = (
+        process_type != expected_process
+        if window.document_type != "A44"
+        else process_type not in (None, expected_process)
+    )
+    if document_type != window.document_type or process_mismatch:
         _raise_parse_failure(
             EntsoeSemanticValidationError,
             request,
@@ -2092,6 +2111,9 @@ def build_entsoe_query_windows(
                 area_parameter=request.profile.area_eic,
                 start_utc=start,
                 end_utc=end,
+                market_agreement_type=(
+                    None if document_type == "A44" else "A01"
+                ),
             )
         )
     return tuple(windows)
@@ -2111,6 +2133,7 @@ def _source_query_window(
         start_utc=_format_utc(window.start_utc),
         end_utc=_format_utc(window.end_utc),
         attempt_count=attempt_count,
+        market_agreement_type=window.market_agreement_type,
     )
 
 

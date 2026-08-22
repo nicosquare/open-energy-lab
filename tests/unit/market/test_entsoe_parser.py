@@ -68,6 +68,7 @@ def _window_for(document_type: str, start: datetime, end: datetime):
         business_type=None if document_type == "A44" else "A95",
         start_utc=start,
         end_utc=end,
+        market_agreement_type=None if document_type == "A44" else "A01",
     )
 
 
@@ -202,6 +203,29 @@ def test_a44_preserves_negative_day_ahead_prices_and_hourly_positions() -> None:
         120.5,
     ]
     assert [item.source_position for item in parsed.series.observations] == [1, 2, 3, 4]
+
+
+def test_a44_preserves_absent_source_process_while_query_remains_day_ahead() -> None:
+    body = _fixture("a44_success.xml").replace(
+        b"  <process.processType>A01</process.processType>\n",
+        b"",
+    )
+
+    parsed = _parse_bytes(body, document_type="A44")
+
+    assert parsed.source_document.process_type is None
+
+
+def test_a44_accepts_and_preserves_source_pt60m_as_canonical_pt1h() -> None:
+    body = _fixture("a44_success.xml").replace(
+        b"<resolution>PT1H</resolution>",
+        b"<resolution>PT60M</resolution>",
+    )
+
+    parsed = _parse_bytes(body, document_type="A44")
+
+    assert parsed.series.source_resolution == "PT60M"
+    assert parsed.series.canonical_resolution == "PT1H"
 
 
 def test_a81_and_a89_share_product_identity_and_normalize_capacity_price() -> None:

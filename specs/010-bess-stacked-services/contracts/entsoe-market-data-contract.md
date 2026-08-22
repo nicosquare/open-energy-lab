@@ -41,15 +41,25 @@ The v1 profile accepts only:
 
 - Area EIC `10YFR-RTE------C`
 - `A44` day-ahead price for the France bidding zone
-- `A81` contracted reserve volume with process `A34`, business type `A95`, and
-  symmetric direction `A03`
+- `A81` contracted reserve volume with process `A34`, daily market agreement
+  `A01`, business type `A95`, and symmetric direction `A03`
 - `A89` contracted reserve price matched to the same FCR product and intervals
 - Market timezone `Europe/Paris`
 - Canonical units `EUR/MWh`, `MW`, and `EUR/MW/h`
 
+A44 source documents may spell the exact hourly duration as either `PT1H` or
+`PT60M`; source evidence preserves the returned spelling and canonical output
+uses `PT1H`. This is duration equivalence, not resampling.
+
 Every source parameter and every returned semantic field are validated and
 preserved separately. Returned source semantics take precedence over an
 assumption based only on the request.
+
+The A44 query window records process `A01`, but Article 12.1(d) response
+documents are permitted to omit `process.processType`, as specified by the
+ENTSO-E extraction profile. That absence is preserved as null in source
+document evidence. If an A44 process is returned it must be `A01`; A81/A89
+response documents must return `A34`.
 
 ## Period Contract
 
@@ -99,7 +109,7 @@ wire URL or header/body material.
 - Reject DTD or entity declarations and over-bound input before parse.
 - Accept only validated ENTSO-E data root/namespace families for A44/A81/A89.
 - Classify acknowledgement/problem/empty responses explicitly.
-- Require document mRID, revision, created time, process, area, period,
+- Require document mRID, revision, created time, profile-applicable process, area, period,
   resolution, unit, series identity, and point values needed by the profile.
 - Support fixed-position and variable-sized-block curves only when their
   intervals expand unambiguously.
