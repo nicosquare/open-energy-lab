@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 import hashlib
 import math
@@ -18,7 +19,9 @@ from open_energy_lab.control.restoration_service import (
 )
 from open_energy_lab.market.restoration_activation import (
     AFRRActivationTrajectory,
+    MFRRActivationEvent,
     MFRRActivationKind,
+    MFRRActivationSequence,
     RestorationDirection,
     RestorationProduct,
 )
@@ -41,6 +44,14 @@ AFRR_REPLAY_REQUEST_SCHEMA_VERSION = "oel.restoration.afrr-replay-request.v1"
 AFRR_REPLAY_RESULT_SCHEMA_VERSION = "oel.restoration.afrr-replay-result.v1"
 AFRR_DIRECTIONAL_PERFORMANCE_SCHEMA_VERSION = (
     "oel.restoration.afrr-directional-performance.v1"
+)
+MFRR_REPLAY_REQUEST_SCHEMA_VERSION = "oel.restoration.mfrr-replay-request.v1"
+MFRR_REPLAY_RESULT_SCHEMA_VERSION = "oel.restoration.mfrr-replay-result.v1"
+MFRR_EVENT_PERFORMANCE_SCHEMA_VERSION = (
+    "oel.restoration.mfrr-event-performance.v1"
+)
+MFRR_AGGREGATE_PERFORMANCE_SCHEMA_VERSION = (
+    "oel.restoration.mfrr-aggregate-performance.v1"
 )
 DEFAULT_RESTORATION_REPLAY_TOLERANCE = 1e-6
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
@@ -741,7 +752,7 @@ def apply_restoration_battery_transition(
         physical_causes=physical,
         causes=all_causes,
         non_performance_duration_seconds=(
-            interval_seconds if undelivered_activation > normalized_tolerance else 0.0
+            interval_seconds if abs(tracking_error) > normalized_tolerance else 0.0
         ),
         sample_fingerprint="0" * 64,
     )
@@ -1331,12 +1342,723 @@ def replay_afrr(request: AFRRReplayRequest) -> AFRRReplayResult:
     )
 
 
+def _validate_mfrr_event_grid(
+    sequence: MFRRActivationSequence,
+    grid: RestorationIntegrationGrid,
+) -> None:
+    boundaries = {grid.period.start_utc, grid.period.end_utc}
+    boundaries.update(interval.start_utc for interval in grid.intervals)
+    boundaries.update(interval.end_utc for interval in grid.intervals)
+    segment_names = ("delay", "ramp_up", "hold", "ramp_down")
+    for event in sequence.events:
+        cursor = event.complete_interval.start_utc
+        if cursor not in boundaries:
+            raise RestorationReplayValidationError(
+                f"mFRR event {event.event_id} start is not a conserving grid boundary"
+            )
+        durations = (
+            event.activation_delay_seconds,
+            event.ramp_up_seconds,
+            event.hold_seconds,
+            event.ramp_down_seconds,
+        )
+        for segment_name, duration_seconds in zip(
+            segment_names,
+            durations,
+            strict=True,
+        ):
+            cursor += timedelta(seconds=duration_seconds)
+            if cursor not in boundaries:
+                raise RestorationReplayValidationError(
+                    f"mFRR event {event.event_id} {segment_name} segment boundary "
+                    "is not represented by the integration grid; expansion would "
+                    "not be boundary-conserving"
+                )
+        if cursor != event.complete_interval.end_utc:
+            raise RestorationReplayValidationError(
+                f"mFRR event {event.event_id} segment boundaries do not conserve "
+                "its complete interval"
+            )
+
+
+def _mfrr_event_for_interval(
+    sequence: MFRRActivationSequence,
+    interval: CanonicalInterval,
+) -> MFRRActivationEvent | None:
+    matches = tuple(
+        event
+        for event in sequence.events
+        if event.complete_interval.start_utc <= interval.start_utc
+        and event.complete_interval.end_utc >= interval.end_utc
+    )
+    if len(matches) > 1:
+        raise RestorationReplayValidationError(
+            "mFRR replay interval is covered by overlapping events"
+        )
+    return matches[0] if matches else None
+
+
+@dataclass(frozen=True, slots=True)
+class MFRRReplayRequest:
+    """Exact mFRR replay inputs bound to a validated shared request core."""
+
+    schema_version: str
+    request_id: str
+    semantics_version: str
+    battery: BatteryComponent
+    initial_state: BatteryState
+    capability: RestorationCapability
+    commitments: DirectionalCapacitySchedule
+    baseline: RestorationEnergyBaselineSchedule
+    activation_sequence: MFRRActivationSequence
+    integration_grid: RestorationIntegrationGrid
+    tolerance: float
+    input_fingerprints: Mapping[str, str]
+    core: RestorationReplayRequestCore
+    request_fingerprint: str
+
+
+def build_mfrr_replay_request(
+    *,
+    request_id: str,
+    semantics_version: str,
+    battery: BatteryComponent,
+    initial_state: BatteryState,
+    capability: RestorationCapability,
+    commitments: DirectionalCapacitySchedule,
+    baseline: RestorationEnergyBaselineSchedule,
+    activation_sequence: MFRRActivationSequence,
+    integration_grid: RestorationIntegrationGrid,
+    tolerance: float = DEFAULT_RESTORATION_REPLAY_TOLERANCE,
+) -> MFRRReplayRequest:
+    """Validate exact mFRR types, horizon, grid boundaries, and fingerprints."""
+
+    if type(activation_sequence) is not MFRRActivationSequence:
+        raise RestorationReplayValidationError(
+            "activation_sequence must be exactly an MFRRActivationSequence"
+        )
+    if not isinstance(integration_grid, RestorationIntegrationGrid):
+        raise RestorationReplayValidationError(
+            "integration_grid must be a RestorationIntegrationGrid"
+        )
+    if activation_sequence.period != integration_grid.period:
+        raise RestorationReplayValidationError(
+            "mFRR event-sequence period must align exactly with the integration grid"
+        )
+    _validate_mfrr_event_grid(activation_sequence, integration_grid)
+    fingerprints = MappingProxyType(
+        {
+            "activation": activation_sequence.sequence_fingerprint,
+            "baseline": getattr(baseline, "schedule_fingerprint", ""),
+            "capability": getattr(capability, "capability_fingerprint", ""),
+            "commitments": getattr(commitments, "schedule_fingerprint", ""),
+        }
+    )
+    core = build_restoration_replay_request_core(
+        request_id=request_id,
+        semantics_version=semantics_version,
+        product=RestorationProduct.MFRR,
+        activation_input_kind=RestorationReplayInputKind.MFRR_EVENT_SEQUENCE,
+        battery=battery,
+        initial_state=initial_state,
+        capability=capability,
+        commitments=commitments,
+        baseline=baseline,
+        integration_grid=integration_grid,
+        tolerance=tolerance,
+        input_fingerprints=fingerprints,
+    )
+    payload = {
+        "schema_version": MFRR_REPLAY_REQUEST_SCHEMA_VERSION,
+        "core_request_fingerprint": core.request_fingerprint,
+        "activation_sequence_fingerprint": activation_sequence.sequence_fingerprint,
+    }
+    return MFRRReplayRequest(
+        schema_version=MFRR_REPLAY_REQUEST_SCHEMA_VERSION,
+        request_id=core.request_id,
+        semantics_version=core.semantics_version,
+        battery=core.battery,
+        initial_state=core.initial_state,
+        capability=core.capability,
+        commitments=core.commitments,
+        baseline=core.baseline,
+        activation_sequence=activation_sequence,
+        integration_grid=core.integration_grid,
+        tolerance=core.tolerance,
+        input_fingerprints=core.input_fingerprints,
+        core=core,
+        request_fingerprint=_fingerprint(payload),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class MFRREventPerformance:
+    """Timing, energy, delivery, and non-performance for one exact mFRR event."""
+
+    schema_version: str
+    event_id: str
+    event_fingerprint: str
+    kind: MFRRActivationKind
+    direction: RestorationDirection
+    sample_count: int
+    requested_start_utc: str
+    requested_activation_start_utc: str
+    requested_completion_utc: str
+    actual_start_utc: str | None
+    actual_completion_utc: str | None
+    actual_response_delay_seconds: float | None
+    requested_duration_seconds: float
+    delivered_duration_seconds: float
+    requested_energy_kwh: float
+    delivered_energy_kwh: float
+    undelivered_energy_kwh: float
+    peak_requested_power_kw: float
+    peak_delivered_power_kw: float
+    maximum_achieved_ramp_kw_per_second: float
+    non_performance_duration_seconds: float
+    causes: tuple[str, ...]
+    performance_fingerprint: str
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "event_id": self.event_id,
+            "event_fingerprint": self.event_fingerprint,
+            "kind": self.kind.value,
+            "direction": self.direction.value,
+            "sample_count": self.sample_count,
+            "requested_start_utc": self.requested_start_utc,
+            "requested_activation_start_utc": self.requested_activation_start_utc,
+            "requested_completion_utc": self.requested_completion_utc,
+            "actual_start_utc": self.actual_start_utc,
+            "actual_completion_utc": self.actual_completion_utc,
+            "actual_response_delay_seconds": self.actual_response_delay_seconds,
+            "requested_duration_seconds": self.requested_duration_seconds,
+            "delivered_duration_seconds": self.delivered_duration_seconds,
+            "requested_energy_kwh": self.requested_energy_kwh,
+            "delivered_energy_kwh": self.delivered_energy_kwh,
+            "undelivered_energy_kwh": self.undelivered_energy_kwh,
+            "peak_requested_power_kw": self.peak_requested_power_kw,
+            "peak_delivered_power_kw": self.peak_delivered_power_kw,
+            "maximum_achieved_ramp_kw_per_second": (
+                self.maximum_achieved_ramp_kw_per_second
+            ),
+            "non_performance_duration_seconds": (
+                self.non_performance_duration_seconds
+            ),
+            "causes": list(self.causes),
+            "performance_fingerprint": self.performance_fingerprint,
+        }
+
+
+def _utc_boundary(value: object) -> str:
+    if not isinstance(value, datetime):
+        raise RestorationReplayValidationError("event boundary must be a datetime")
+    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _mfrr_event_performance(
+    *,
+    event: MFRRActivationEvent,
+    samples: tuple[RestorationReplaySample, ...],
+    tolerance: float,
+) -> MFRREventPerformance:
+    selected = tuple(sample for sample in samples if sample.event_id == event.event_id)
+    if not selected:
+        raise RestorationReplayValidationError(
+            f"mFRR event {event.event_id} has no expanded replay samples"
+        )
+    event_samples = tuple(
+        item
+        for item in selected
+        if item.interval.start_utc >= event.complete_interval.start_utc
+        and item.interval.end_utc <= event.complete_interval.end_utc
+    )
+    if (
+        not event_samples
+        or event_samples[0].interval.start_utc
+        != event.complete_interval.start_utc
+        or event_samples[-1].interval.end_utc
+        != event.complete_interval.end_utc
+    ):
+        raise RestorationReplayValidationError(
+            f"mFRR event {event.event_id} sample coverage is incomplete"
+        )
+    for previous, current in zip(selected, selected[1:]):
+        if current.interval.start_utc != previous.interval.end_utc:
+            raise RestorationReplayValidationError(
+                f"mFRR event {event.event_id} sample coverage has a gap"
+            )
+    requested = sum(item.requested_activation_energy_kwh for item in selected)
+    if abs(requested - event.requested_energy_kwh) > tolerance:
+        raise RestorationReplayValidationError(
+            f"mFRR event {event.event_id} expansion does not conserve requested energy"
+        )
+    delivered = sum(item.delivered_activation_energy_kwh for item in selected)
+    undelivered = sum(item.undelivered_activation_energy_kwh for item in selected)
+    if abs(requested - (delivered + undelivered)) > tolerance:
+        raise RestorationReplayValidationError(
+            f"mFRR event {event.event_id} delivery energy does not conserve"
+        )
+    active_samples = tuple(
+        item
+        for item in selected
+        if item.delivered_activation_energy_kwh > tolerance
+    )
+    actual_start = (
+        None if not active_samples else _utc_boundary(active_samples[0].interval.start_utc)
+    )
+    tail_samples = tuple(
+        item
+        for item in selected
+        if item.interval.start_utc >= event.complete_interval.end_utc
+    )
+    if not active_samples:
+        actual_completion = None
+    elif not tail_samples:
+        actual_completion = event.requested_completion_utc
+    else:
+        completion_candidates = tuple(
+            item
+            for item in samples
+            if item.interval.start_utc >= tail_samples[-1].interval.end_utc
+            and abs(item.delivered_balancing_power_kw) <= tolerance
+        )
+        actual_completion = (
+            None
+            if not completion_candidates
+            else _utc_boundary(completion_candidates[0].interval.start_utc)
+        )
+    actual_delay = None
+    if active_samples:
+        activation_start = event.complete_interval.start_utc
+        activation_start += timedelta(seconds=event.activation_delay_seconds)
+        actual_delay = max(
+            0.0,
+            (active_samples[0].interval.start_utc - activation_start).total_seconds(),
+        )
+    delivered_duration = sum(
+        (item.interval.end_utc - item.interval.start_utc).total_seconds()
+        for item in active_samples
+    )
+    if event.direction is RestorationDirection.UPWARD:
+        delivered_powers = [
+            max(0.0, -item.delivered_balancing_power_kw) for item in selected
+        ]
+    else:
+        delivered_powers = [
+            max(0.0, item.delivered_balancing_power_kw) for item in selected
+        ]
+    causes = _ordered_causes(
+        tuple(cause for item in selected for cause in item.causes)
+    )
+    payload = {
+        "schema_version": MFRR_EVENT_PERFORMANCE_SCHEMA_VERSION,
+        "event_id": event.event_id,
+        "event_fingerprint": event.event_fingerprint,
+        "kind": event.kind.value,
+        "direction": event.direction.value,
+        "sample_count": len(selected),
+        "requested_start_utc": event.requested_start_utc,
+        "requested_activation_start_utc": event.activation_start_utc,
+        "requested_completion_utc": event.requested_completion_utc,
+        "actual_start_utc": actual_start,
+        "actual_completion_utc": actual_completion,
+        "actual_response_delay_seconds": actual_delay,
+        "requested_duration_seconds": event.total_duration_seconds,
+        "delivered_duration_seconds": delivered_duration,
+        "requested_energy_kwh": requested,
+        "delivered_energy_kwh": delivered,
+        "undelivered_energy_kwh": undelivered,
+        "peak_requested_power_kw": event.requested_power_kw,
+        "peak_delivered_power_kw": max(delivered_powers, default=0.0),
+        "maximum_achieved_ramp_kw_per_second": max(
+            (item.achieved_ramp_kw_per_second for item in selected),
+            default=0.0,
+        ),
+        "non_performance_duration_seconds": sum(
+            item.non_performance_duration_seconds for item in selected
+        ),
+        "causes": list(causes),
+    }
+    return MFRREventPerformance(
+        schema_version=MFRR_EVENT_PERFORMANCE_SCHEMA_VERSION,
+        event_id=event.event_id,
+        event_fingerprint=event.event_fingerprint,
+        kind=event.kind,
+        direction=event.direction,
+        sample_count=len(selected),
+        requested_start_utc=event.requested_start_utc,
+        requested_activation_start_utc=event.activation_start_utc,
+        requested_completion_utc=event.requested_completion_utc,
+        actual_start_utc=actual_start,
+        actual_completion_utc=actual_completion,
+        actual_response_delay_seconds=actual_delay,
+        requested_duration_seconds=event.total_duration_seconds,
+        delivered_duration_seconds=delivered_duration,
+        requested_energy_kwh=requested,
+        delivered_energy_kwh=delivered,
+        undelivered_energy_kwh=undelivered,
+        peak_requested_power_kw=event.requested_power_kw,
+        peak_delivered_power_kw=max(delivered_powers, default=0.0),
+        maximum_achieved_ramp_kw_per_second=float(
+            payload["maximum_achieved_ramp_kw_per_second"]
+        ),
+        non_performance_duration_seconds=float(
+            payload["non_performance_duration_seconds"]
+        ),
+        causes=causes,
+        performance_fingerprint=_fingerprint(payload),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class MFRRPerformanceAggregate:
+    """One independently inspectable mFRR kind or direction aggregate."""
+
+    schema_version: str
+    aggregate_dimension: str
+    aggregate_value: str
+    event_count: int
+    sample_count: int
+    requested_energy_kwh: float
+    delivered_energy_kwh: float
+    undelivered_energy_kwh: float
+    non_performance_duration_seconds: float
+    causes: tuple[str, ...]
+    aggregate_fingerprint: str
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "aggregate_dimension": self.aggregate_dimension,
+            "aggregate_value": self.aggregate_value,
+            "event_count": self.event_count,
+            "sample_count": self.sample_count,
+            "requested_energy_kwh": self.requested_energy_kwh,
+            "delivered_energy_kwh": self.delivered_energy_kwh,
+            "undelivered_energy_kwh": self.undelivered_energy_kwh,
+            "non_performance_duration_seconds": (
+                self.non_performance_duration_seconds
+            ),
+            "causes": list(self.causes),
+            "aggregate_fingerprint": self.aggregate_fingerprint,
+        }
+
+
+def _mfrr_performance_aggregate(
+    *,
+    aggregate_dimension: str,
+    aggregate_value: str,
+    performances: Sequence[MFRREventPerformance],
+) -> MFRRPerformanceAggregate:
+    selected = tuple(performances)
+    causes = _ordered_causes(
+        tuple(cause for item in selected for cause in item.causes)
+    )
+    payload = {
+        "schema_version": MFRR_AGGREGATE_PERFORMANCE_SCHEMA_VERSION,
+        "aggregate_dimension": aggregate_dimension,
+        "aggregate_value": aggregate_value,
+        "event_count": len(selected),
+        "sample_count": sum(item.sample_count for item in selected),
+        "requested_energy_kwh": sum(
+            item.requested_energy_kwh for item in selected
+        ),
+        "delivered_energy_kwh": sum(
+            item.delivered_energy_kwh for item in selected
+        ),
+        "undelivered_energy_kwh": sum(
+            item.undelivered_energy_kwh for item in selected
+        ),
+        "non_performance_duration_seconds": sum(
+            item.non_performance_duration_seconds for item in selected
+        ),
+        "causes": list(causes),
+    }
+    return MFRRPerformanceAggregate(
+        schema_version=MFRR_AGGREGATE_PERFORMANCE_SCHEMA_VERSION,
+        aggregate_dimension=aggregate_dimension,
+        aggregate_value=aggregate_value,
+        event_count=int(payload["event_count"]),
+        sample_count=int(payload["sample_count"]),
+        requested_energy_kwh=float(payload["requested_energy_kwh"]),
+        delivered_energy_kwh=float(payload["delivered_energy_kwh"]),
+        undelivered_energy_kwh=float(payload["undelivered_energy_kwh"]),
+        non_performance_duration_seconds=float(
+            payload["non_performance_duration_seconds"]
+        ),
+        causes=causes,
+        aggregate_fingerprint=_fingerprint(payload),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class MFRRReplayResult:
+    """Immutable event trace with SA/DA, direction, and physical totals."""
+
+    schema_version: str
+    request: MFRRReplayRequest
+    request_fingerprint: str
+    activation_sequence_fingerprint: str
+    samples: tuple[RestorationReplaySample, ...]
+    event_performance: tuple[MFRREventPerformance, ...]
+    kind_performance: Mapping[MFRRActivationKind, MFRRPerformanceAggregate]
+    directional_performance: Mapping[
+        RestorationDirection, MFRRPerformanceAggregate
+    ]
+    totals: RestorationEnergyTotals
+    causes: tuple[str, ...]
+    input_fingerprints: Mapping[str, str]
+    core_result_fingerprint: str
+    result_fingerprint: str
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "request_fingerprint": self.request_fingerprint,
+            "activation_sequence_fingerprint": (
+                self.activation_sequence_fingerprint
+            ),
+            "samples": [sample.to_dict() for sample in self.samples],
+            "event_performance": [
+                item.to_dict() for item in self.event_performance
+            ],
+            "kind_performance": {
+                kind.value: self.kind_performance[kind].to_dict()
+                for kind in MFRRActivationKind
+            },
+            "directional_performance": {
+                direction.value: self.directional_performance[direction].to_dict()
+                for direction in RestorationDirection
+            },
+            "totals": self.totals.to_dict(),
+            "causes": list(self.causes),
+            "input_fingerprints": dict(self.input_fingerprints),
+            "core_result_fingerprint": self.core_result_fingerprint,
+            "result_fingerprint": self.result_fingerprint,
+        }
+
+
+def replay_mfrr(request: MFRRReplayRequest) -> MFRRReplayResult:
+    """Expand and replay boundary-conserving mFRR events deterministically."""
+
+    if type(request) is not MFRRReplayRequest:
+        raise RestorationReplayValidationError(
+            "request must be exactly an MFRRReplayRequest"
+        )
+    state = request.initial_state
+    previous_combined_power_kw = (
+        request.baseline.intervals[0].accepted_baseline_power_kw
+    )
+    samples: list[RestorationReplaySample] = []
+    tail_event: MFRRActivationEvent | None = None
+    for index, (baseline_interval, grid_interval) in enumerate(
+        zip(
+            request.baseline.intervals,
+            request.integration_grid.intervals,
+            strict=True,
+        )
+    ):
+        if baseline_interval.interval != grid_interval:
+            raise RestorationReplayValidationError(
+                f"mFRR replay inputs do not align at interval {index}"
+            )
+        event = _mfrr_event_for_interval(request.activation_sequence, grid_interval)
+        requested_power = (
+            0.0 if event is None else event.signed_average_power_kw(grid_interval)
+        )
+        baseline_power = baseline_interval.accepted_baseline_power_kw
+        upward = request.commitments.commitment_covering(
+            grid_interval, RestorationDirection.UPWARD
+        )
+        downward = request.commitments.commitment_covering(
+            grid_interval, RestorationDirection.DOWNWARD
+        )
+        interval_seconds = (
+            grid_interval.end_utc - grid_interval.start_utc
+        ).total_seconds()
+        decision = enforce_restoration_capability(
+            product=RestorationProduct.MFRR,
+            accepted_baseline_power_kw=baseline_power,
+            requested_balancing_power_kw=requested_power,
+            upward_commitment_kw=upward.committed_capacity_kw,
+            downward_commitment_kw=downward.committed_capacity_kw,
+            upward_headroom_kw=max(
+                0.0, request.battery.max_discharge_kw + baseline_power
+            ),
+            downward_headroom_kw=max(
+                0.0, request.battery.max_charge_kw - baseline_power
+            ),
+            previous_capability_combined_power_kw=previous_combined_power_kw,
+            interval_seconds=interval_seconds,
+            capability=request.capability,
+            actual_activation_delay_seconds=(
+                0.0 if event is None else event.activation_delay_seconds
+            ),
+            requested_duration_seconds=(
+                None if event is None else event.total_duration_seconds
+            ),
+        )
+        identity_event = event
+        if (
+            identity_event is None
+            and tail_event is not None
+            and abs(decision.capability_accepted_balancing_power_kw)
+            > request.tolerance
+        ):
+            identity_event = tail_event
+        sample = apply_restoration_battery_transition(
+            sample_index=index,
+            interval=grid_interval,
+            product=RestorationProduct.MFRR,
+            decision=decision,
+            battery=request.battery,
+            state=state,
+            tolerance=request.tolerance,
+            event_id=None if identity_event is None else identity_event.event_id,
+            mfrr_kind=None if identity_event is None else identity_event.kind,
+        )
+        samples.append(sample)
+        state = sample.state
+        previous_combined_power_kw = sample.delivered_combined_power_kw
+        if event is not None:
+            tail_event = event
+        elif identity_event is None:
+            tail_event = None
+    normalized_samples = tuple(samples)
+    core_result = build_restoration_replay_result_core(
+        request=request.core,
+        samples=normalized_samples,
+    )
+    event_performance = tuple(
+        _mfrr_event_performance(
+            event=event,
+            samples=normalized_samples,
+            tolerance=request.tolerance,
+        )
+        for event in request.activation_sequence.events
+    )
+    kind_performance = MappingProxyType(
+        {
+            kind: _mfrr_performance_aggregate(
+                aggregate_dimension="kind",
+                aggregate_value=kind.value,
+                performances=tuple(
+                    item for item in event_performance if item.kind is kind
+                ),
+            )
+            for kind in MFRRActivationKind
+        }
+    )
+    directional_performance = MappingProxyType(
+        {
+            direction: _mfrr_performance_aggregate(
+                aggregate_dimension="direction",
+                aggregate_value=direction.value,
+                performances=tuple(
+                    item
+                    for item in event_performance
+                    if item.direction is direction
+                ),
+            )
+            for direction in RestorationDirection
+        }
+    )
+    event_requested = sum(
+        item.requested_energy_kwh for item in event_performance
+    )
+    event_delivered = sum(
+        item.delivered_energy_kwh for item in event_performance
+    )
+    event_undelivered = sum(
+        item.undelivered_energy_kwh for item in event_performance
+    )
+    if (
+        abs(event_requested - core_result.totals.requested_activation_energy_kwh)
+        > request.tolerance
+        or abs(
+            event_delivered - core_result.totals.delivered_activation_energy_kwh
+        )
+        > request.tolerance
+        or abs(
+            event_undelivered
+            - core_result.totals.undelivered_activation_energy_kwh
+        )
+        > request.tolerance
+    ):
+        raise RestorationReplayValidationError(
+            "mFRR event and horizon activation energy do not conserve"
+        )
+    kind_requested = sum(
+        item.requested_energy_kwh for item in kind_performance.values()
+    )
+    direction_requested = sum(
+        item.requested_energy_kwh for item in directional_performance.values()
+    )
+    if (
+        abs(kind_requested - event_requested) > request.tolerance
+        or abs(direction_requested - event_requested) > request.tolerance
+    ):
+        raise RestorationReplayValidationError(
+            "mFRR kind/direction requested energy does not conserve"
+        )
+    payload = {
+        "schema_version": MFRR_REPLAY_RESULT_SCHEMA_VERSION,
+        "request_fingerprint": request.request_fingerprint,
+        "activation_sequence_fingerprint": (
+            request.activation_sequence.sequence_fingerprint
+        ),
+        "sample_fingerprints": [
+            sample.sample_fingerprint for sample in normalized_samples
+        ],
+        "event_performance_fingerprints": [
+            item.performance_fingerprint for item in event_performance
+        ],
+        "kind_performance_fingerprints": {
+            kind.value: kind_performance[kind].aggregate_fingerprint
+            for kind in MFRRActivationKind
+        },
+        "directional_performance_fingerprints": {
+            direction.value: directional_performance[
+                direction
+            ].aggregate_fingerprint
+            for direction in RestorationDirection
+        },
+        "totals_fingerprint": core_result.totals.totals_fingerprint,
+        "causes": list(core_result.causes),
+        "input_fingerprints": dict(request.input_fingerprints),
+        "core_result_fingerprint": core_result.result_fingerprint,
+    }
+    return MFRRReplayResult(
+        schema_version=MFRR_REPLAY_RESULT_SCHEMA_VERSION,
+        request=request,
+        request_fingerprint=request.request_fingerprint,
+        activation_sequence_fingerprint=(
+            request.activation_sequence.sequence_fingerprint
+        ),
+        samples=normalized_samples,
+        event_performance=event_performance,
+        kind_performance=kind_performance,
+        directional_performance=directional_performance,
+        totals=core_result.totals,
+        causes=core_result.causes,
+        input_fingerprints=request.input_fingerprints,
+        core_result_fingerprint=core_result.result_fingerprint,
+        result_fingerprint=_fingerprint(payload),
+    )
+
+
 __all__ = [
     "RESTORATION_REPLAY_CORE_SCHEMA_VERSION",
     "RESTORATION_REPLAY_SAMPLE_SCHEMA_VERSION",
     "AFRR_REPLAY_REQUEST_SCHEMA_VERSION",
     "AFRR_REPLAY_RESULT_SCHEMA_VERSION",
     "AFRR_DIRECTIONAL_PERFORMANCE_SCHEMA_VERSION",
+    "MFRR_REPLAY_REQUEST_SCHEMA_VERSION",
+    "MFRR_REPLAY_RESULT_SCHEMA_VERSION",
+    "MFRR_EVENT_PERFORMANCE_SCHEMA_VERSION",
+    "MFRR_AGGREGATE_PERFORMANCE_SCHEMA_VERSION",
     "DEFAULT_RESTORATION_REPLAY_TOLERANCE",
     "RESTORATION_CAUSE_ORDER",
     "RestorationReplayInputKind",
@@ -1350,6 +2072,10 @@ __all__ = [
     "AFRRReplayRequest",
     "AFRRDirectionalPerformance",
     "AFRRReplayResult",
+    "MFRRReplayRequest",
+    "MFRREventPerformance",
+    "MFRRPerformanceAggregate",
+    "MFRRReplayResult",
     "build_restoration_integration_grid",
     "build_restoration_replay_request_core",
     "enforce_restoration_capability",
@@ -1358,4 +2084,6 @@ __all__ = [
     "build_restoration_replay_result_core",
     "build_afrr_replay_request",
     "replay_afrr",
+    "build_mfrr_replay_request",
+    "replay_mfrr",
 ]

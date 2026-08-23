@@ -86,9 +86,14 @@ EXPECTED_EXPORTS = [
     "DerivedSimulationMapping",
     "AFRRActivationSample",
     "AFRRActivationTrajectory",
+    "MFRRActivationKind",
+    "MFRRActivationEvent",
+    "MFRRActivationSequence",
     "build_derived_simulation_mapping",
     "build_afrr_activation_trajectory",
     "build_afrr_trajectory_from_rte_requested_need",
+    "build_mfrr_activation_sequence",
+    "build_mfrr_sequence_from_rte_sa_requested_volume",
 ]
 
 
@@ -223,9 +228,14 @@ def test_every_documented_export_resolves_from_its_owned_module():
         "DerivedSimulationMapping",
         "AFRRActivationSample",
         "AFRRActivationTrajectory",
+        "MFRRActivationKind",
+        "MFRRActivationEvent",
+        "MFRRActivationSequence",
         "build_derived_simulation_mapping",
         "build_afrr_activation_trajectory",
         "build_afrr_trajectory_from_rte_requested_need",
+        "build_mfrr_activation_sequence",
+        "build_mfrr_sequence_from_rte_sa_requested_volume",
     }
 
     for name in EXPECTED_EXPORTS:

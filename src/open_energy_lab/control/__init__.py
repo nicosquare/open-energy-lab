@@ -33,6 +33,8 @@ if TYPE_CHECKING:
         AFRRBaselineMode,
         DirectionalCapacityCommitmentInterval,
         DirectionalCapacitySchedule,
+        MFRRBaselineConfig,
+        MFRRBaselineMode,
         RestorationBaselineBundle,
         RestorationCapability,
         RestorationControlValidationError,
@@ -41,6 +43,9 @@ if TYPE_CHECKING:
         build_afrr_baseline,
         build_afrr_baseline_config,
         build_afrr_directional_capacity_schedule,
+        build_mfrr_baseline,
+        build_mfrr_baseline_config,
+        build_mfrr_directional_capacity_schedule,
         build_restoration_capability,
     )
 
@@ -107,6 +112,8 @@ _EXPORT_MAP = {
     ),
     "AFRRBaselineMode": (".restoration_service", "AFRRBaselineMode"),
     "AFRRBaselineConfig": (".restoration_service", "AFRRBaselineConfig"),
+    "MFRRBaselineMode": (".restoration_service", "MFRRBaselineMode"),
+    "MFRRBaselineConfig": (".restoration_service", "MFRRBaselineConfig"),
     "RestorationBaselineBundle": (
         ".restoration_service",
         "RestorationBaselineBundle",
@@ -124,6 +131,15 @@ _EXPORT_MAP = {
         "build_afrr_baseline_config",
     ),
     "build_afrr_baseline": (".restoration_service", "build_afrr_baseline"),
+    "build_mfrr_directional_capacity_schedule": (
+        ".restoration_service",
+        "build_mfrr_directional_capacity_schedule",
+    ),
+    "build_mfrr_baseline_config": (
+        ".restoration_service",
+        "build_mfrr_baseline_config",
+    ),
+    "build_mfrr_baseline": (".restoration_service", "build_mfrr_baseline"),
 }
 
 __all__ = [
@@ -133,6 +149,8 @@ __all__ = [
     "BaselineScheduleBundle",
     "DirectionalCapacityCommitmentInterval",
     "DirectionalCapacitySchedule",
+    "MFRRBaselineConfig",
+    "MFRRBaselineMode",
     "PVSelfConsumptionConfig",
     "PVSelfConsumptionController",
     "PriceThresholdConfig",
@@ -151,6 +169,9 @@ __all__ = [
     "build_afrr_baseline_config",
     "build_afrr_directional_capacity_schedule",
     "build_arbitrage_only_baseline",
+    "build_mfrr_baseline",
+    "build_mfrr_baseline_config",
+    "build_mfrr_directional_capacity_schedule",
     "build_regulation_only_baseline",
     "build_restoration_capability",
     "build_stacked_heuristic_baseline",

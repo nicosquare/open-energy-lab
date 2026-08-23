@@ -22,6 +22,8 @@ EXPECTED_CONTROL_EXPORTS = [
     "BaselineScheduleBundle",
     "DirectionalCapacityCommitmentInterval",
     "DirectionalCapacitySchedule",
+    "MFRRBaselineConfig",
+    "MFRRBaselineMode",
     "PVSelfConsumptionConfig",
     "PVSelfConsumptionController",
     "PriceThresholdConfig",
@@ -40,6 +42,9 @@ EXPECTED_CONTROL_EXPORTS = [
     "build_afrr_baseline_config",
     "build_afrr_directional_capacity_schedule",
     "build_arbitrage_only_baseline",
+    "build_mfrr_baseline",
+    "build_mfrr_baseline_config",
+    "build_mfrr_directional_capacity_schedule",
     "build_regulation_only_baseline",
     "build_restoration_capability",
     "build_stacked_heuristic_baseline",
@@ -250,7 +255,7 @@ def test_feature_010_public_imports_resolve_from_owned_modules_without_optional_
     assert newly_loaded_optional_modules == set()
 
 
-def test_feature_011_afrr_public_imports_resolve_from_exact_owned_modules():
+def test_feature_011_restoration_public_imports_resolve_from_exact_owned_modules():
     before_import = set(sys.modules)
 
     market = importlib.import_module("open_energy_lab.market")
@@ -273,6 +278,15 @@ def test_feature_011_afrr_public_imports_resolve_from_exact_owned_modules():
         market.build_afrr_trajectory_from_rte_requested_need: (
             "open_energy_lab.market.restoration_activation"
         ),
+        market.MFRRActivationEvent: (
+            "open_energy_lab.market.restoration_activation"
+        ),
+        market.MFRRActivationSequence: (
+            "open_energy_lab.market.restoration_activation"
+        ),
+        market.build_mfrr_activation_sequence: (
+            "open_energy_lab.market.restoration_activation"
+        ),
         control.DirectionalCapacitySchedule: (
             "open_energy_lab.control.restoration_service"
         ),
@@ -285,6 +299,12 @@ def test_feature_011_afrr_public_imports_resolve_from_exact_owned_modules():
         control.build_afrr_baseline: (
             "open_energy_lab.control.restoration_service"
         ),
+        control.MFRRBaselineConfig: (
+            "open_energy_lab.control.restoration_service"
+        ),
+        control.build_mfrr_baseline: (
+            "open_energy_lab.control.restoration_service"
+        ),
         simulator.RestorationIntegrationGrid: (
             "open_energy_lab.simulator.restoration_service"
         ),
@@ -295,6 +315,18 @@ def test_feature_011_afrr_public_imports_resolve_from_exact_owned_modules():
             "open_energy_lab.simulator.restoration_service"
         ),
         simulator.replay_afrr: (
+            "open_energy_lab.simulator.restoration_service"
+        ),
+        simulator.MFRRReplayRequest: (
+            "open_energy_lab.simulator.restoration_service"
+        ),
+        simulator.MFRREventPerformance: (
+            "open_energy_lab.simulator.restoration_service"
+        ),
+        simulator.MFRRReplayResult: (
+            "open_energy_lab.simulator.restoration_service"
+        ),
+        simulator.replay_mfrr: (
             "open_energy_lab.simulator.restoration_service"
         ),
     }

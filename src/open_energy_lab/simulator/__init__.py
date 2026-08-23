@@ -77,13 +77,19 @@ if TYPE_CHECKING:
         AFRRDirectionalPerformance,
         AFRRReplayRequest,
         AFRRReplayResult,
+        MFRREventPerformance,
+        MFRRPerformanceAggregate,
+        MFRRReplayRequest,
+        MFRRReplayResult,
         RestorationEnergyTotals,
         RestorationIntegrationGrid,
         RestorationReplaySample,
         RestorationReplayValidationError,
         build_afrr_replay_request,
+        build_mfrr_replay_request,
         build_restoration_integration_grid,
         replay_afrr,
+        replay_mfrr,
     )
     from .weather import WeatherComponent
 
@@ -215,6 +221,16 @@ _EXPORT_MAP = {
         "AFRRDirectionalPerformance",
     ),
     "AFRRReplayResult": (".restoration_service", "AFRRReplayResult"),
+    "MFRRReplayRequest": (".restoration_service", "MFRRReplayRequest"),
+    "MFRREventPerformance": (
+        ".restoration_service",
+        "MFRREventPerformance",
+    ),
+    "MFRRPerformanceAggregate": (
+        ".restoration_service",
+        "MFRRPerformanceAggregate",
+    ),
+    "MFRRReplayResult": (".restoration_service", "MFRRReplayResult"),
     "build_restoration_integration_grid": (
         ".restoration_service",
         "build_restoration_integration_grid",
@@ -224,6 +240,11 @@ _EXPORT_MAP = {
         "build_afrr_replay_request",
     ),
     "replay_afrr": (".restoration_service", "replay_afrr"),
+    "build_mfrr_replay_request": (
+        ".restoration_service",
+        "build_mfrr_replay_request",
+    ),
+    "replay_mfrr": (".restoration_service", "replay_mfrr"),
 }
 
 __all__ = [
@@ -284,9 +305,15 @@ __all__ = [
     "AFRRReplayRequest",
     "AFRRDirectionalPerformance",
     "AFRRReplayResult",
+    "MFRRReplayRequest",
+    "MFRREventPerformance",
+    "MFRRPerformanceAggregate",
+    "MFRRReplayResult",
     "build_restoration_integration_grid",
     "build_afrr_replay_request",
     "replay_afrr",
+    "build_mfrr_replay_request",
+    "replay_mfrr",
 ]
 
 

@@ -80,6 +80,9 @@ if TYPE_CHECKING:
         AFRRActivationSample,
         AFRRActivationTrajectory,
         DerivedSimulationMapping,
+        MFRRActivationEvent,
+        MFRRActivationKind,
+        MFRRActivationSequence,
         RestorationActivationIntegrityError,
         RestorationActivationValidationError,
         RestorationDirection,
@@ -88,6 +91,8 @@ if TYPE_CHECKING:
         build_afrr_activation_trajectory,
         build_afrr_trajectory_from_rte_requested_need,
         build_derived_simulation_mapping,
+        build_mfrr_activation_sequence,
+        build_mfrr_sequence_from_rte_sa_requested_volume,
     )
     from .time import (
         FRANCE_MARKET_TIMEZONE,
@@ -288,6 +293,18 @@ _EXPORT_MAP = {
         "restoration_activation",
         "AFRRActivationTrajectory",
     ),
+    "MFRRActivationKind": (
+        "restoration_activation",
+        "MFRRActivationKind",
+    ),
+    "MFRRActivationEvent": (
+        "restoration_activation",
+        "MFRRActivationEvent",
+    ),
+    "MFRRActivationSequence": (
+        "restoration_activation",
+        "MFRRActivationSequence",
+    ),
     "build_derived_simulation_mapping": (
         "restoration_activation",
         "build_derived_simulation_mapping",
@@ -299,6 +316,14 @@ _EXPORT_MAP = {
     "build_afrr_trajectory_from_rte_requested_need": (
         "restoration_activation",
         "build_afrr_trajectory_from_rte_requested_need",
+    ),
+    "build_mfrr_activation_sequence": (
+        "restoration_activation",
+        "build_mfrr_activation_sequence",
+    ),
+    "build_mfrr_sequence_from_rte_sa_requested_volume": (
+        "restoration_activation",
+        "build_mfrr_sequence_from_rte_sa_requested_volume",
     ),
 }
 

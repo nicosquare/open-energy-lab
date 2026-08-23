@@ -109,9 +109,15 @@ def test_simulator_import_stays_lightweight() -> None:
         "AFRRReplayRequest",
         "AFRRDirectionalPerformance",
         "AFRRReplayResult",
+        "MFRRReplayRequest",
+        "MFRREventPerformance",
+        "MFRRPerformanceAggregate",
+        "MFRRReplayResult",
         "build_restoration_integration_grid",
         "build_afrr_replay_request",
         "replay_afrr",
+        "build_mfrr_replay_request",
+        "replay_mfrr",
     ]
     assert module.ArbitrageScenario.__module__ == "open_energy_lab.simulator.scenario"
     assert module.BatteryLoadPVScenario.__module__ == "open_energy_lab.simulator.scenario"
