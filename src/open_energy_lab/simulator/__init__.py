@@ -73,6 +73,18 @@ if TYPE_CHECKING:
         replay_stacked_services,
         replay_stacked_services_diagnostic,
     )
+    from .restoration_service import (
+        AFRRDirectionalPerformance,
+        AFRRReplayRequest,
+        AFRRReplayResult,
+        RestorationEnergyTotals,
+        RestorationIntegrationGrid,
+        RestorationReplaySample,
+        RestorationReplayValidationError,
+        build_afrr_replay_request,
+        build_restoration_integration_grid,
+        replay_afrr,
+    )
     from .weather import WeatherComponent
 
 
@@ -181,6 +193,37 @@ _EXPORT_MAP = {
     ),
     "SettlementBreakdown": (".fcr_settlement", "SettlementBreakdown"),
     "settle_stacked_services": (".fcr_settlement", "settle_stacked_services"),
+    "RestorationReplayValidationError": (
+        ".restoration_service",
+        "RestorationReplayValidationError",
+    ),
+    "RestorationIntegrationGrid": (
+        ".restoration_service",
+        "RestorationIntegrationGrid",
+    ),
+    "RestorationReplaySample": (
+        ".restoration_service",
+        "RestorationReplaySample",
+    ),
+    "RestorationEnergyTotals": (
+        ".restoration_service",
+        "RestorationEnergyTotals",
+    ),
+    "AFRRReplayRequest": (".restoration_service", "AFRRReplayRequest"),
+    "AFRRDirectionalPerformance": (
+        ".restoration_service",
+        "AFRRDirectionalPerformance",
+    ),
+    "AFRRReplayResult": (".restoration_service", "AFRRReplayResult"),
+    "build_restoration_integration_grid": (
+        ".restoration_service",
+        "build_restoration_integration_grid",
+    ),
+    "build_afrr_replay_request": (
+        ".restoration_service",
+        "build_afrr_replay_request",
+    ),
+    "replay_afrr": (".restoration_service", "replay_afrr"),
 }
 
 __all__ = [
@@ -234,6 +277,16 @@ __all__ = [
     "FCRSettlementValidationError",
     "SettlementBreakdown",
     "settle_stacked_services",
+    "RestorationReplayValidationError",
+    "RestorationIntegrationGrid",
+    "RestorationReplaySample",
+    "RestorationEnergyTotals",
+    "AFRRReplayRequest",
+    "AFRRDirectionalPerformance",
+    "AFRRReplayResult",
+    "build_restoration_integration_grid",
+    "build_afrr_replay_request",
+    "replay_afrr",
 ]
 
 

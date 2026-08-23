@@ -131,7 +131,7 @@ fingerprint within `1e-6`.
 - [X] T040 [P] [US2] Implement aFRR fixed directional schedule validation and no-lookahead baseline builders that reserve asymmetric power/energy headroom in `src/open_energy_lab/control/restoration_service.py`
 - [X] T041 [US2] Implement exact `AFRRReplayRequest` validation and charge-positive sample replay through the shared capability layer and unchanged `apply_power_request` in `src/open_energy_lab/simulator/restoration_service.py`
 - [X] T042 [US2] Implement aFRR per-sample/directional tracking, response, headroom, saturation duration, delivered/undelivered energy, conserved aggregates, diagnostics, and result fingerprints in `src/open_energy_lab/simulator/restoration_service.py`
-- [ ] T043 [US2] Publish lazy source-independent aFRR activation, control, and replay exports and exact module-owner assertions in `src/open_energy_lab/market/__init__.py`, `src/open_energy_lab/control/__init__.py`, `src/open_energy_lab/simulator/__init__.py`, and `tests/unit/test_import_contract.py`
+- [X] T043 [US2] Publish lazy source-independent aFRR activation, control, and replay exports and exact module-owner assertions in `src/open_energy_lab/market/__init__.py`, `src/open_energy_lab/control/__init__.py`, `src/open_energy_lab/simulator/__init__.py`, and `tests/unit/test_import_contract.py`
 
 **Checkpoint**: US2 is independently usable with synthetic canonical inputs,
 never accesses a source adapter, and reports complete physical performance.

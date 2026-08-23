@@ -78,6 +78,17 @@ EXPECTED_EXPORTS = [
     "load_restoration_market_artifact",
     "build_restoration_study_bundle",
     "load_restoration_study_bundle",
+    "RestorationProduct",
+    "RestorationDirection",
+    "RestorationSourceKind",
+    "RestorationActivationValidationError",
+    "RestorationActivationIntegrityError",
+    "DerivedSimulationMapping",
+    "AFRRActivationSample",
+    "AFRRActivationTrajectory",
+    "build_derived_simulation_mapping",
+    "build_afrr_activation_trajectory",
+    "build_afrr_trajectory_from_rte_requested_need",
 ]
 
 
@@ -86,6 +97,7 @@ def _fresh_market_root():
         "open_energy_lab.market.rte",
         "open_energy_lab.market.entsoe",
         "open_energy_lab.market.restoration_artifact",
+        "open_energy_lab.market.restoration_activation",
         "open_energy_lab.market.activation",
         "open_energy_lab.market.artifact",
         "open_energy_lab.market.time",
@@ -112,6 +124,14 @@ def test_market_root_defers_canonical_modules_until_symbol_access():
     assert "open_energy_lab.market.activation" not in sys.modules
     assert "open_energy_lab.market.entsoe" not in sys.modules
     assert "open_energy_lab.market.restoration_artifact" not in sys.modules
+    assert "open_energy_lab.market.restoration_activation" not in sys.modules
+    assert "open_energy_lab.market.rte" not in sys.modules
+
+    assert (
+        market.AFRRActivationTrajectory.__module__
+        == "open_energy_lab.market.restoration_activation"
+    )
+    assert "open_energy_lab.market.restoration_activation" in sys.modules
     assert "open_energy_lab.market.rte" not in sys.modules
 
     assert market.CanonicalInterval.__module__ == "open_energy_lab.market.time"
@@ -194,6 +214,19 @@ def test_every_documented_export_resolves_from_its_owned_module():
         "build_restoration_study_bundle",
         "load_restoration_study_bundle",
     }
+    restoration_activation_exports = {
+        "RestorationProduct",
+        "RestorationDirection",
+        "RestorationSourceKind",
+        "RestorationActivationValidationError",
+        "RestorationActivationIntegrityError",
+        "DerivedSimulationMapping",
+        "AFRRActivationSample",
+        "AFRRActivationTrajectory",
+        "build_derived_simulation_mapping",
+        "build_afrr_activation_trajectory",
+        "build_afrr_trajectory_from_rte_requested_need",
+    }
 
     for name in EXPECTED_EXPORTS:
         value = getattr(market, name)
@@ -205,6 +238,8 @@ def test_every_documented_export_resolves_from_its_owned_module():
                 if name in activation_exports
                 else "restoration_artifact"
                 if name in restoration_exports
+                else "restoration_activation"
+                if name in restoration_activation_exports
                 else "artifact"
             )
             assert value.__module__ == f"open_energy_lab.market.{owner}"

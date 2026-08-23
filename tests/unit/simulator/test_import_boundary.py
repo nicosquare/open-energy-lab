@@ -102,6 +102,16 @@ def test_simulator_import_stays_lightweight() -> None:
         "FCRSettlementValidationError",
         "SettlementBreakdown",
         "settle_stacked_services",
+        "RestorationReplayValidationError",
+        "RestorationIntegrationGrid",
+        "RestorationReplaySample",
+        "RestorationEnergyTotals",
+        "AFRRReplayRequest",
+        "AFRRDirectionalPerformance",
+        "AFRRReplayResult",
+        "build_restoration_integration_grid",
+        "build_afrr_replay_request",
+        "replay_afrr",
     ]
     assert module.ArbitrageScenario.__module__ == "open_energy_lab.simulator.scenario"
     assert module.BatteryLoadPVScenario.__module__ == "open_energy_lab.simulator.scenario"
@@ -179,6 +189,13 @@ def test_simulator_import_stays_lightweight() -> None:
         module.FCRPenaltyRule.__module__
         == "open_energy_lab.simulator.fcr_settlement"
     )
+    assert (
+        module.AFRRReplayRequest.__module__
+        == "open_energy_lab.simulator.restoration_service"
+    )
+    assert module.replay_afrr.__module__ == (
+        "open_energy_lab.simulator.restoration_service"
+    )
 
 
 def test_stacked_service_exports_remain_lazy_and_import_light() -> None:
@@ -191,6 +208,7 @@ def test_stacked_service_exports_remain_lazy_and_import_light() -> None:
 
         assert "open_energy_lab.simulator.stacked_service" not in sys.modules
         assert "open_energy_lab.simulator.fcr_settlement" not in sys.modules
+        assert "open_energy_lab.simulator.restoration_service" not in sys.modules
         assert module.StackedServiceReplayResult.__module__ == (
             "open_energy_lab.simulator.stacked_service"
         )
@@ -199,6 +217,11 @@ def test_stacked_service_exports_remain_lazy_and_import_light() -> None:
         assert module.SettlementBreakdown.__module__ == (
             "open_energy_lab.simulator.fcr_settlement"
         )
+        assert "open_energy_lab.simulator.restoration_service" not in sys.modules
+        assert module.AFRRReplayResult.__module__ == (
+            "open_energy_lab.simulator.restoration_service"
+        )
+        assert "open_energy_lab.simulator.restoration_service" in sys.modules
 
         optional_research_modules = {
             "citylearn",

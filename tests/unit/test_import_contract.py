@@ -16,19 +16,32 @@ OPTIONAL_RESEARCH_MODULES = {
 }
 
 EXPECTED_CONTROL_EXPORTS = [
+    "AFRRBaselineConfig",
+    "AFRRBaselineMode",
     "ArbitrageOnlyBaselineConfig",
     "BaselineScheduleBundle",
+    "DirectionalCapacityCommitmentInterval",
+    "DirectionalCapacitySchedule",
     "PVSelfConsumptionConfig",
     "PVSelfConsumptionController",
     "PriceThresholdConfig",
     "PriceThresholdController",
     "RegulationOnlyBaselineConfig",
+    "RestorationBaselineBundle",
+    "RestorationCapability",
+    "RestorationControlValidationError",
+    "RestorationEnergyBaselineInterval",
+    "RestorationEnergyBaselineSchedule",
     "SocGuardrailConfig",
     "SocGuardrailController",
     "StackedBaselineValidationError",
     "StackedHeuristicConfig",
+    "build_afrr_baseline",
+    "build_afrr_baseline_config",
+    "build_afrr_directional_capacity_schedule",
     "build_arbitrage_only_baseline",
     "build_regulation_only_baseline",
+    "build_restoration_capability",
     "build_stacked_heuristic_baseline",
 ]
 EXPECTED_VISUALIZATION_EXPORTS = [
@@ -234,6 +247,64 @@ def test_feature_010_public_imports_resolve_from_owned_modules_without_optional_
     newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & (
         set(sys.modules) - before_import
     )
+    assert newly_loaded_optional_modules == set()
+
+
+def test_feature_011_afrr_public_imports_resolve_from_exact_owned_modules():
+    before_import = set(sys.modules)
+
+    market = importlib.import_module("open_energy_lab.market")
+    control = importlib.import_module("open_energy_lab.control")
+    simulator = importlib.import_module("open_energy_lab.simulator")
+
+    expected_owners = {
+        market.RestorationProduct: (
+            "open_energy_lab.market.restoration_activation"
+        ),
+        market.AFRRActivationSample: (
+            "open_energy_lab.market.restoration_activation"
+        ),
+        market.AFRRActivationTrajectory: (
+            "open_energy_lab.market.restoration_activation"
+        ),
+        market.build_afrr_activation_trajectory: (
+            "open_energy_lab.market.restoration_activation"
+        ),
+        market.build_afrr_trajectory_from_rte_requested_need: (
+            "open_energy_lab.market.restoration_activation"
+        ),
+        control.DirectionalCapacitySchedule: (
+            "open_energy_lab.control.restoration_service"
+        ),
+        control.AFRRBaselineConfig: (
+            "open_energy_lab.control.restoration_service"
+        ),
+        control.RestorationBaselineBundle: (
+            "open_energy_lab.control.restoration_service"
+        ),
+        control.build_afrr_baseline: (
+            "open_energy_lab.control.restoration_service"
+        ),
+        simulator.RestorationIntegrationGrid: (
+            "open_energy_lab.simulator.restoration_service"
+        ),
+        simulator.AFRRReplayRequest: (
+            "open_energy_lab.simulator.restoration_service"
+        ),
+        simulator.AFRRReplayResult: (
+            "open_energy_lab.simulator.restoration_service"
+        ),
+        simulator.replay_afrr: (
+            "open_energy_lab.simulator.restoration_service"
+        ),
+    }
+    for exported, owner in expected_owners.items():
+        assert exported.__module__ == owner
+
+    newly_loaded = set(sys.modules) - before_import
+    assert "open_energy_lab.market.rte" not in newly_loaded
+    assert "open_energy_lab.market.entsoe" not in newly_loaded
+    newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & newly_loaded
     assert newly_loaded_optional_modules == set()
 
 

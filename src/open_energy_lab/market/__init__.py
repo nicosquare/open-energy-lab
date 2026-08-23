@@ -76,6 +76,19 @@ if TYPE_CHECKING:
         restoration_market_artifact_filename,
         write_restoration_market_artifact,
     )
+    from .restoration_activation import (
+        AFRRActivationSample,
+        AFRRActivationTrajectory,
+        DerivedSimulationMapping,
+        RestorationActivationIntegrityError,
+        RestorationActivationValidationError,
+        RestorationDirection,
+        RestorationProduct,
+        RestorationSourceKind,
+        build_afrr_activation_trajectory,
+        build_afrr_trajectory_from_rte_requested_need,
+        build_derived_simulation_mapping,
+    )
     from .time import (
         FRANCE_MARKET_TIMEZONE,
         HALF_OPEN_INTERVAL_CONVENTION,
@@ -245,6 +258,47 @@ _EXPORT_MAP = {
     "load_restoration_study_bundle": (
         "restoration_artifact",
         "load_restoration_study_bundle",
+    ),
+    "RestorationProduct": ("restoration_activation", "RestorationProduct"),
+    "RestorationDirection": (
+        "restoration_activation",
+        "RestorationDirection",
+    ),
+    "RestorationSourceKind": (
+        "restoration_activation",
+        "RestorationSourceKind",
+    ),
+    "RestorationActivationValidationError": (
+        "restoration_activation",
+        "RestorationActivationValidationError",
+    ),
+    "RestorationActivationIntegrityError": (
+        "restoration_activation",
+        "RestorationActivationIntegrityError",
+    ),
+    "DerivedSimulationMapping": (
+        "restoration_activation",
+        "DerivedSimulationMapping",
+    ),
+    "AFRRActivationSample": (
+        "restoration_activation",
+        "AFRRActivationSample",
+    ),
+    "AFRRActivationTrajectory": (
+        "restoration_activation",
+        "AFRRActivationTrajectory",
+    ),
+    "build_derived_simulation_mapping": (
+        "restoration_activation",
+        "build_derived_simulation_mapping",
+    ),
+    "build_afrr_activation_trajectory": (
+        "restoration_activation",
+        "build_afrr_activation_trajectory",
+    ),
+    "build_afrr_trajectory_from_rte_requested_need": (
+        "restoration_activation",
+        "build_afrr_trajectory_from_rte_requested_need",
     ),
 }
 

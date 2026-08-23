@@ -28,6 +28,21 @@ if TYPE_CHECKING:
         build_regulation_only_baseline,
         build_stacked_heuristic_baseline,
     )
+    from .restoration_service import (
+        AFRRBaselineConfig,
+        AFRRBaselineMode,
+        DirectionalCapacityCommitmentInterval,
+        DirectionalCapacitySchedule,
+        RestorationBaselineBundle,
+        RestorationCapability,
+        RestorationControlValidationError,
+        RestorationEnergyBaselineInterval,
+        RestorationEnergyBaselineSchedule,
+        build_afrr_baseline,
+        build_afrr_baseline_config,
+        build_afrr_directional_capacity_schedule,
+        build_restoration_capability,
+    )
 
 
 _EXPORT_MAP = {
@@ -66,22 +81,78 @@ _EXPORT_MAP = {
         ".stacked_service",
         "build_stacked_heuristic_baseline",
     ),
+    "RestorationControlValidationError": (
+        ".restoration_service",
+        "RestorationControlValidationError",
+    ),
+    "DirectionalCapacityCommitmentInterval": (
+        ".restoration_service",
+        "DirectionalCapacityCommitmentInterval",
+    ),
+    "DirectionalCapacitySchedule": (
+        ".restoration_service",
+        "DirectionalCapacitySchedule",
+    ),
+    "RestorationEnergyBaselineInterval": (
+        ".restoration_service",
+        "RestorationEnergyBaselineInterval",
+    ),
+    "RestorationEnergyBaselineSchedule": (
+        ".restoration_service",
+        "RestorationEnergyBaselineSchedule",
+    ),
+    "RestorationCapability": (
+        ".restoration_service",
+        "RestorationCapability",
+    ),
+    "AFRRBaselineMode": (".restoration_service", "AFRRBaselineMode"),
+    "AFRRBaselineConfig": (".restoration_service", "AFRRBaselineConfig"),
+    "RestorationBaselineBundle": (
+        ".restoration_service",
+        "RestorationBaselineBundle",
+    ),
+    "build_restoration_capability": (
+        ".restoration_service",
+        "build_restoration_capability",
+    ),
+    "build_afrr_directional_capacity_schedule": (
+        ".restoration_service",
+        "build_afrr_directional_capacity_schedule",
+    ),
+    "build_afrr_baseline_config": (
+        ".restoration_service",
+        "build_afrr_baseline_config",
+    ),
+    "build_afrr_baseline": (".restoration_service", "build_afrr_baseline"),
 }
 
 __all__ = [
+    "AFRRBaselineConfig",
+    "AFRRBaselineMode",
     "ArbitrageOnlyBaselineConfig",
     "BaselineScheduleBundle",
+    "DirectionalCapacityCommitmentInterval",
+    "DirectionalCapacitySchedule",
     "PVSelfConsumptionConfig",
     "PVSelfConsumptionController",
     "PriceThresholdConfig",
     "PriceThresholdController",
     "RegulationOnlyBaselineConfig",
+    "RestorationBaselineBundle",
+    "RestorationCapability",
+    "RestorationControlValidationError",
+    "RestorationEnergyBaselineInterval",
+    "RestorationEnergyBaselineSchedule",
     "SocGuardrailConfig",
     "SocGuardrailController",
     "StackedBaselineValidationError",
     "StackedHeuristicConfig",
+    "build_afrr_baseline",
+    "build_afrr_baseline_config",
+    "build_afrr_directional_capacity_schedule",
     "build_arbitrage_only_baseline",
     "build_regulation_only_baseline",
+    "build_restoration_capability",
     "build_stacked_heuristic_baseline",
 ]
 
