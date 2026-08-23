@@ -53,12 +53,39 @@ EXPECTED_EXPORTS = [
     "import_regulation_activation_trace",
     "load_regulation_activation_trace",
     "write_regulation_activation_trace",
+    "RESTORATION_MARKET_SCHEMA_VERSION",
+    "RESTORATION_STUDY_BUNDLE_SCHEMA_VERSION",
+    "SUPPORTED_RESTORATION_MARKET_SCHEMA_VERSIONS",
+    "SUPPORTED_RESTORATION_STUDY_BUNDLE_SCHEMA_VERSIONS",
+    "ObservationValueState",
+    "SeriesAvailability",
+    "RestorationDataSource",
+    "RawRetentionPolicy",
+    "RestorationArtifactValidationError",
+    "UnsupportedRestorationArtifactVersionError",
+    "RestorationArtifactIntegrityError",
+    "RestorationArtifactPublicationError",
+    "RestorationMarketObservation",
+    "RestorationMarketSeries",
+    "SourceRequestEvidence",
+    "RestorationMarketArtifact",
+    "RestorationStudyBundleRef",
+    "RestorationStudyBundle",
+    "build_restoration_market_artifact",
+    "canonical_restoration_json_bytes",
+    "restoration_market_artifact_filename",
+    "write_restoration_market_artifact",
+    "load_restoration_market_artifact",
+    "build_restoration_study_bundle",
+    "load_restoration_study_bundle",
 ]
 
 
 def _fresh_market_root():
     for module_name in (
+        "open_energy_lab.market.rte",
         "open_energy_lab.market.entsoe",
+        "open_energy_lab.market.restoration_artifact",
         "open_energy_lab.market.activation",
         "open_energy_lab.market.artifact",
         "open_energy_lab.market.time",
@@ -84,6 +111,8 @@ def test_market_root_defers_canonical_modules_until_symbol_access():
     assert "open_energy_lab.market.artifact" not in sys.modules
     assert "open_energy_lab.market.activation" not in sys.modules
     assert "open_energy_lab.market.entsoe" not in sys.modules
+    assert "open_energy_lab.market.restoration_artifact" not in sys.modules
+    assert "open_energy_lab.market.rte" not in sys.modules
 
     assert market.CanonicalInterval.__module__ == "open_energy_lab.market.time"
     assert "open_energy_lab.market.time" in sys.modules
@@ -99,6 +128,13 @@ def test_market_root_defers_canonical_modules_until_symbol_access():
         == "open_energy_lab.market.activation"
     )
     assert "open_energy_lab.market.activation" in sys.modules
+
+    assert (
+        market.RestorationMarketArtifact.__module__
+        == "open_energy_lab.market.restoration_artifact"
+    )
+    assert "open_energy_lab.market.restoration_artifact" in sys.modules
+    assert "open_energy_lab.market.rte" not in sys.modules
 
 
 def test_every_documented_export_resolves_from_its_owned_module():
@@ -131,6 +167,33 @@ def test_every_documented_export_resolves_from_its_owned_module():
         "load_regulation_activation_trace",
         "write_regulation_activation_trace",
     }
+    restoration_exports = {
+        "RESTORATION_MARKET_SCHEMA_VERSION",
+        "RESTORATION_STUDY_BUNDLE_SCHEMA_VERSION",
+        "SUPPORTED_RESTORATION_MARKET_SCHEMA_VERSIONS",
+        "SUPPORTED_RESTORATION_STUDY_BUNDLE_SCHEMA_VERSIONS",
+        "ObservationValueState",
+        "SeriesAvailability",
+        "RestorationDataSource",
+        "RawRetentionPolicy",
+        "RestorationArtifactValidationError",
+        "UnsupportedRestorationArtifactVersionError",
+        "RestorationArtifactIntegrityError",
+        "RestorationArtifactPublicationError",
+        "RestorationMarketObservation",
+        "RestorationMarketSeries",
+        "SourceRequestEvidence",
+        "RestorationMarketArtifact",
+        "RestorationStudyBundleRef",
+        "RestorationStudyBundle",
+        "build_restoration_market_artifact",
+        "canonical_restoration_json_bytes",
+        "restoration_market_artifact_filename",
+        "write_restoration_market_artifact",
+        "load_restoration_market_artifact",
+        "build_restoration_study_bundle",
+        "load_restoration_study_bundle",
+    }
 
     for name in EXPECTED_EXPORTS:
         value = getattr(market, name)
@@ -140,11 +203,14 @@ def test_every_documented_export_resolves_from_its_owned_module():
                 if name in time_exports
                 else "activation"
                 if name in activation_exports
+                else "restoration_artifact"
+                if name in restoration_exports
                 else "artifact"
             )
             assert value.__module__ == f"open_energy_lab.market.{owner}"
 
     assert "open_energy_lab.market.entsoe" not in sys.modules
+    assert "open_energy_lab.market.rte" not in sys.modules
 
 
 def test_unknown_market_root_attribute_fails_without_adapter_import():
@@ -153,3 +219,4 @@ def test_unknown_market_root_attribute_fails_without_adapter_import():
     with pytest.raises(AttributeError, match="no attribute 'unknown_contract'"):
         getattr(market, "unknown_contract")
     assert "open_energy_lab.market.entsoe" not in sys.modules
+    assert "open_energy_lab.market.rte" not in sys.modules
