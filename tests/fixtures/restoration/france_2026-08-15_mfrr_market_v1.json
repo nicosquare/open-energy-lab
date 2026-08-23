@@ -1,0 +1,1705 @@
+{
+  "artifact_fingerprint": "d2d4007fafe5138f0bfdc8d91ba232c435f9b4f7097a0cc519064011c624ca10",
+  "artifact_id": "rte-standard_mfrr_data-d1792acfc0801237",
+  "content_fingerprint": "57bff8041d4691e7cda82da53790b92228130007c2d2ba5986fc280e5f14c1a4",
+  "covered_period": {
+    "end_fold": 0,
+    "end_utc": "2026-08-15T10:30:00Z",
+    "end_utc_offset_seconds": 7200,
+    "interval_convention": "start-inclusive/end-exclusive",
+    "local_end": "2026-08-15T12:30:00+02:00",
+    "local_start": "2026-08-15T12:15:00+02:00",
+    "market_timezone": "Europe/Paris",
+    "start_fold": 0,
+    "start_utc": "2026-08-15T10:15:00Z",
+    "start_utc_offset_seconds": 7200
+  },
+  "predecessor_artifact_fingerprint": null,
+  "profile_id": "fr-rte-balancing-energy-v5.2-mfrr-v1",
+  "raw_retention": {
+    "policy": "DIGEST_ONLY",
+    "responses": {
+      "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3": {
+        "sidecar_locator": null,
+        "sidecar_sha256": null,
+        "status": "digest_only"
+      }
+    }
+  },
+  "redistribution_policy": {
+    "attribution": "RTE Balancing Energy API v5.2; normalized by Open Energy Lab",
+    "external_artifact_store": "prohibited",
+    "owner": "RTE",
+    "package_distribution": "prohibited",
+    "public_ci_artifact": "prohibited",
+    "public_mirror_or_fork": "prohibited",
+    "release_distribution": "prohibited",
+    "repository_publication": "prohibited",
+    "repository_storage": "permitted_private_restricted",
+    "visibility_change_action": "remove_or_reassess_before_change"
+  },
+  "request_evidence": [
+    {
+      "attempt_count": 1,
+      "end_utc": "2026-08-15T10:30:00Z",
+      "http_status_class": "2xx",
+      "raw_sha256": "ce9d3c3d694a78776e5bdb188239f9b2ed4b711e3c389d0e89c8a47e5391d1a1",
+      "request_id": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+      "resource": "standard_mfrr_data",
+      "response_bytes": 1315,
+      "response_media_type": "application/json",
+      "source_revision": null,
+      "start_utc": "2026-08-15T10:15:00Z"
+    }
+  ],
+  "request_identity": "d1792acfc0801237c5c4d6164ce37aa5d251dd353541ca14aa0e540d90c11532",
+  "requested_period": {
+    "end_fold": 0,
+    "end_utc": "2026-08-15T10:30:00Z",
+    "end_utc_offset_seconds": 7200,
+    "interval_convention": "start-inclusive/end-exclusive",
+    "local_end": "2026-08-15T12:30:00+02:00",
+    "local_start": "2026-08-15T12:15:00+02:00",
+    "market_timezone": "Europe/Paris",
+    "start_fold": 0,
+    "start_utc": "2026-08-15T10:15:00Z",
+    "start_utc_offset_seconds": 7200
+  },
+  "resource": "standard_mfrr_data",
+  "retrieved_at_utc": "2026-08-23T09:06:41.082659Z",
+  "schema_version": "oel.restoration.market.v1",
+  "series": [
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT_WITH_NULLS",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "UPWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "total_requested_volume_SA",
+          "source_row": 0,
+          "value": null,
+          "value_state": "SOURCE_NULL"
+        }
+      ],
+      "process": "scheduled_activation",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_sa_requested_volume_upward-v1",
+      "series_fingerprint": "f0ae0c0458e63c4f8267b9550ee2360919bec01890d3fc4ed14c7b4a4589eeab",
+      "series_id": "mfrr_sa_requested_volume_upward",
+      "source": "RTE",
+      "source_field": "total_requested_volume_SA",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT_WITH_NULLS",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "UPWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "total_satisfied_need_SA",
+          "source_row": 0,
+          "value": null,
+          "value_state": "SOURCE_NULL"
+        }
+      ],
+      "process": "scheduled_activation",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_sa_satisfied_need_upward-v1",
+      "series_fingerprint": "ae1354e90a1219e99a942cd6f81af5fb4bab9944519eca0aef32cc4d4bd41bf5",
+      "series_id": "mfrr_sa_satisfied_need_upward",
+      "source": "RTE",
+      "source_field": "total_satisfied_need_SA",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT_WITH_NULLS",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "UPWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "total_activated_volume_SA",
+          "source_row": 0,
+          "value": null,
+          "value_state": "SOURCE_NULL"
+        }
+      ],
+      "process": "scheduled_activation",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_sa_activated_volume_upward-v1",
+      "series_fingerprint": "a40f9937cc0014712b29e72f4494fa86398d41276a892a6ad0b136f651792c7d",
+      "series_id": "mfrr_sa_activated_volume_upward",
+      "source": "RTE",
+      "source_field": "total_activated_volume_SA",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT_WITH_NULLS",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "UPWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "total_requested_volume_DA",
+          "source_row": 0,
+          "value": null,
+          "value_state": "SOURCE_NULL"
+        }
+      ],
+      "process": "direct_activation",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_da_requested_volume_upward-v1",
+      "series_fingerprint": "4cf0346fd7f927af71550edd545954aaf447a85d921ae91781ec20a8d470df4e",
+      "series_id": "mfrr_da_requested_volume_upward",
+      "source": "RTE",
+      "source_field": "total_requested_volume_DA",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT_WITH_NULLS",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "UPWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "total_satisfied_need_DA",
+          "source_row": 0,
+          "value": null,
+          "value_state": "SOURCE_NULL"
+        }
+      ],
+      "process": "direct_activation",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_da_satisfied_need_upward-v1",
+      "series_fingerprint": "b2099705a7b128155d050d012e3591e767886283f34539efb5d030b8b12b61d0",
+      "series_id": "mfrr_da_satisfied_need_upward",
+      "source": "RTE",
+      "source_field": "total_satisfied_need_DA",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT_WITH_NULLS",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "UPWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "total_activated_volume_DA",
+          "source_row": 0,
+          "value": null,
+          "value_state": "SOURCE_NULL"
+        }
+      ],
+      "process": "direct_activation",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_da_activated_volume_upward-v1",
+      "series_fingerprint": "2e6e54e66f7318851d5544cee9ee0c412f3b783658cfed3d089d5e96a2596c7e",
+      "series_id": "mfrr_da_activated_volume_upward",
+      "source": "RTE",
+      "source_field": "total_activated_volume_DA",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "DOWNWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "total_requested_volume_SA",
+          "source_row": 1,
+          "value": 357.0,
+          "value_state": "VALUE"
+        }
+      ],
+      "process": "scheduled_activation",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_sa_requested_volume_downward-v1",
+      "series_fingerprint": "e07e40e4220b11ce16e91653cf1b588b7680e0e340aabee4aa5c61ee70205e28",
+      "series_id": "mfrr_sa_requested_volume_downward",
+      "source": "RTE",
+      "source_field": "total_requested_volume_SA",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "DOWNWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "total_satisfied_need_SA",
+          "source_row": 1,
+          "value": 300.0,
+          "value_state": "VALUE"
+        }
+      ],
+      "process": "scheduled_activation",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_sa_satisfied_need_downward-v1",
+      "series_fingerprint": "bf2c644c98508942bbc8310791697b6ab092e7693fccc2617b465a36f5fc5c04",
+      "series_id": "mfrr_sa_satisfied_need_downward",
+      "source": "RTE",
+      "source_field": "total_satisfied_need_SA",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT_WITH_NULLS",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "DOWNWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "total_activated_volume_SA",
+          "source_row": 1,
+          "value": null,
+          "value_state": "SOURCE_NULL"
+        }
+      ],
+      "process": "scheduled_activation",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_sa_activated_volume_downward-v1",
+      "series_fingerprint": "f12a7444611879bca79373d52d947706a02f67c6e25d85746476d5ee1ff4edce",
+      "series_id": "mfrr_sa_activated_volume_downward",
+      "source": "RTE",
+      "source_field": "total_activated_volume_SA",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT_WITH_NULLS",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "DOWNWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "total_requested_volume_DA",
+          "source_row": 1,
+          "value": null,
+          "value_state": "SOURCE_NULL"
+        }
+      ],
+      "process": "direct_activation",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_da_requested_volume_downward-v1",
+      "series_fingerprint": "176ebf3d9ae90ecbb6765a6db00dd6cf50fe3d833e6b5c079a327d45f880a5a1",
+      "series_id": "mfrr_da_requested_volume_downward",
+      "source": "RTE",
+      "source_field": "total_requested_volume_DA",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT_WITH_NULLS",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "DOWNWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "total_satisfied_need_DA",
+          "source_row": 1,
+          "value": null,
+          "value_state": "SOURCE_NULL"
+        }
+      ],
+      "process": "direct_activation",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_da_satisfied_need_downward-v1",
+      "series_fingerprint": "9ef49e5c5991a0f6a5b2898411cd0e52352c274014f87eeeec24b92eb8fa0c0a",
+      "series_id": "mfrr_da_satisfied_need_downward",
+      "source": "RTE",
+      "source_field": "total_satisfied_need_DA",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT_WITH_NULLS",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "DOWNWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "total_activated_volume_DA",
+          "source_row": 1,
+          "value": null,
+          "value_state": "SOURCE_NULL"
+        }
+      ],
+      "process": "direct_activation",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_da_activated_volume_downward-v1",
+      "series_fingerprint": "102fc9c321b2d83a16d86df165d8d93b229f3255fe3e1356175ead190c7d9417",
+      "series_id": "mfrr_da_activated_volume_downward",
+      "source": "RTE",
+      "source_field": "total_activated_volume_DA",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "EUR/MWh",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": "EUR",
+      "direction": "UPWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "clearing_price",
+          "source_row": 0,
+          "value": 64.83,
+          "value_state": "VALUE"
+        }
+      ],
+      "process": "manual_restoration_context",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_clearing_price_upward-v1",
+      "series_fingerprint": "4d3dd2fdcc015b787287d458887a2145129fe4632f083a21498132eeaa04c55d",
+      "series_id": "mfrr_clearing_price_upward",
+      "source": "RTE",
+      "source_field": "clearing_price",
+      "source_resolution": "PT15M",
+      "source_unit": "EUR/MWh",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT_WITH_NULLS",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "EUR/MWh",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": "EUR",
+      "direction": "UPWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "settlement_price_current",
+          "source_row": 0,
+          "value": null,
+          "value_state": "SOURCE_NULL"
+        }
+      ],
+      "process": "manual_restoration_context",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_settlement_price_current_upward-v1",
+      "series_fingerprint": "c2e1fa543f141b2c25355b8113a4cb3540e46ca38859f3089535300bedb5fb60",
+      "series_id": "mfrr_settlement_price_current_upward",
+      "source": "RTE",
+      "source_field": "settlement_price_current",
+      "source_resolution": "PT15M",
+      "source_unit": "EUR/MWh",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT_WITH_NULLS",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "EUR/MWh",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": "EUR",
+      "direction": "UPWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "settlement_price_previous",
+          "source_row": 0,
+          "value": null,
+          "value_state": "SOURCE_NULL"
+        }
+      ],
+      "process": "manual_restoration_context",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_settlement_price_previous_upward-v1",
+      "series_fingerprint": "aff1a9625e8431344bd69c4cef6444a7458c867e0eae055051712634056dda40",
+      "series_id": "mfrr_settlement_price_previous_upward",
+      "source": "RTE",
+      "source_field": "settlement_price_previous",
+      "source_resolution": "PT15M",
+      "source_unit": "EUR/MWh",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT_WITH_NULLS",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "UPWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "total_volume_submitted_offers",
+          "source_row": 0,
+          "value": null,
+          "value_state": "SOURCE_NULL"
+        }
+      ],
+      "process": "manual_restoration_context",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_submitted_offer_volume_upward-v1",
+      "series_fingerprint": "76072c0ed1ac356391727ee55ff6d9de2e15e4b33d47daa3dbb383943e816415",
+      "series_id": "mfrr_submitted_offer_volume_upward",
+      "source": "RTE",
+      "source_field": "total_volume_submitted_offers",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT_WITH_NULLS",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "UPWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "total_volume_filtered_offers",
+          "source_row": 0,
+          "value": null,
+          "value_state": "SOURCE_NULL"
+        }
+      ],
+      "process": "manual_restoration_context",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_filtered_offer_volume_upward-v1",
+      "series_fingerprint": "b9937c5ff31011c5d65193c930c9e93ff6fe67ea1d84e45e17f9399adfb8cdb1",
+      "series_id": "mfrr_filtered_offer_volume_upward",
+      "source": "RTE",
+      "source_field": "total_volume_filtered_offers",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "EUR/MWh",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": "EUR",
+      "direction": "DOWNWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "clearing_price",
+          "source_row": 1,
+          "value": 64.83,
+          "value_state": "VALUE"
+        }
+      ],
+      "process": "manual_restoration_context",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_clearing_price_downward-v1",
+      "series_fingerprint": "097e087db65485cad89fac352b8b227cf881813aeea79e80765e834fe5fbb16d",
+      "series_id": "mfrr_clearing_price_downward",
+      "source": "RTE",
+      "source_field": "clearing_price",
+      "source_resolution": "PT15M",
+      "source_unit": "EUR/MWh",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT_WITH_NULLS",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "EUR/MWh",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": "EUR",
+      "direction": "DOWNWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "settlement_price_current",
+          "source_row": 1,
+          "value": null,
+          "value_state": "SOURCE_NULL"
+        }
+      ],
+      "process": "manual_restoration_context",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_settlement_price_current_downward-v1",
+      "series_fingerprint": "fd7f2bf1ef6bec3c7ea3bd7f572a96a251f91e26d08bf5c009dd5f4bfca8ff4d",
+      "series_id": "mfrr_settlement_price_current_downward",
+      "source": "RTE",
+      "source_field": "settlement_price_current",
+      "source_resolution": "PT15M",
+      "source_unit": "EUR/MWh",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT_WITH_NULLS",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "EUR/MWh",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": "EUR",
+      "direction": "DOWNWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "settlement_price_previous",
+          "source_row": 1,
+          "value": null,
+          "value_state": "SOURCE_NULL"
+        }
+      ],
+      "process": "manual_restoration_context",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_settlement_price_previous_downward-v1",
+      "series_fingerprint": "4c9d477eb6664f2aea1cd62f8aa4e94590137fc9da1c6164345a14129914db17",
+      "series_id": "mfrr_settlement_price_previous_downward",
+      "source": "RTE",
+      "source_field": "settlement_price_previous",
+      "source_resolution": "PT15M",
+      "source_unit": "EUR/MWh",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT_WITH_NULLS",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "DOWNWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "total_volume_submitted_offers",
+          "source_row": 1,
+          "value": null,
+          "value_state": "SOURCE_NULL"
+        }
+      ],
+      "process": "manual_restoration_context",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_submitted_offer_volume_downward-v1",
+      "series_fingerprint": "6210c939400adc35d9fa5c4070ced6d40d81f42ae5078d000af02a023111a3fe",
+      "series_id": "mfrr_submitted_offer_volume_downward",
+      "source": "RTE",
+      "source_field": "total_volume_submitted_offers",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT_WITH_NULLS",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "DOWNWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "23022f3d959db68a236a2c18e8fb699ff9851a1e33cf86f9b44acbbf760a08f3",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-15T10:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-15T12:30:00+02:00",
+            "local_start": "2026-08-15T12:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-15T10:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "total_volume_filtered_offers",
+          "source_row": 1,
+          "value": null,
+          "value_state": "SOURCE_NULL"
+        }
+      ],
+      "process": "manual_restoration_context",
+      "product": "MFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-15T10:30:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-15T12:30:00+02:00",
+        "local_start": "2026-08-15T12:15:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-15T10:15:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_mfrr_data",
+      "semantic_version": "rte-v5.2-mfrr_filtered_offer_volume_downward-v1",
+      "series_fingerprint": "8d05b22939394eff2c0ee2ef2ab2630fac43fae19308e3b9ef7fe36b32407180",
+      "series_id": "mfrr_filtered_offer_volume_downward",
+      "source": "RTE",
+      "source_field": "total_volume_filtered_offers",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    }
+  ],
+  "series_manifest": {
+    "mfrr_clearing_price_downward": {
+      "availability": "PRESENT",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "097e087db65485cad89fac352b8b227cf881813aeea79e80765e834fe5fbb16d"
+    },
+    "mfrr_clearing_price_upward": {
+      "availability": "PRESENT",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "4d3dd2fdcc015b787287d458887a2145129fe4632f083a21498132eeaa04c55d"
+    },
+    "mfrr_da_activated_volume_downward": {
+      "availability": "PRESENT_WITH_NULLS",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "102fc9c321b2d83a16d86df165d8d93b229f3255fe3e1356175ead190c7d9417"
+    },
+    "mfrr_da_activated_volume_upward": {
+      "availability": "PRESENT_WITH_NULLS",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "2e6e54e66f7318851d5544cee9ee0c412f3b783658cfed3d089d5e96a2596c7e"
+    },
+    "mfrr_da_requested_volume_downward": {
+      "availability": "PRESENT_WITH_NULLS",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "176ebf3d9ae90ecbb6765a6db00dd6cf50fe3d833e6b5c079a327d45f880a5a1"
+    },
+    "mfrr_da_requested_volume_upward": {
+      "availability": "PRESENT_WITH_NULLS",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "4cf0346fd7f927af71550edd545954aaf447a85d921ae91781ec20a8d470df4e"
+    },
+    "mfrr_da_satisfied_need_downward": {
+      "availability": "PRESENT_WITH_NULLS",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "9ef49e5c5991a0f6a5b2898411cd0e52352c274014f87eeeec24b92eb8fa0c0a"
+    },
+    "mfrr_da_satisfied_need_upward": {
+      "availability": "PRESENT_WITH_NULLS",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "b2099705a7b128155d050d012e3591e767886283f34539efb5d030b8b12b61d0"
+    },
+    "mfrr_filtered_offer_volume_downward": {
+      "availability": "PRESENT_WITH_NULLS",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "8d05b22939394eff2c0ee2ef2ab2630fac43fae19308e3b9ef7fe36b32407180"
+    },
+    "mfrr_filtered_offer_volume_upward": {
+      "availability": "PRESENT_WITH_NULLS",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "b9937c5ff31011c5d65193c930c9e93ff6fe67ea1d84e45e17f9399adfb8cdb1"
+    },
+    "mfrr_sa_activated_volume_downward": {
+      "availability": "PRESENT_WITH_NULLS",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "f12a7444611879bca79373d52d947706a02f67c6e25d85746476d5ee1ff4edce"
+    },
+    "mfrr_sa_activated_volume_upward": {
+      "availability": "PRESENT_WITH_NULLS",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "a40f9937cc0014712b29e72f4494fa86398d41276a892a6ad0b136f651792c7d"
+    },
+    "mfrr_sa_requested_volume_downward": {
+      "availability": "PRESENT",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "e07e40e4220b11ce16e91653cf1b588b7680e0e340aabee4aa5c61ee70205e28"
+    },
+    "mfrr_sa_requested_volume_upward": {
+      "availability": "PRESENT_WITH_NULLS",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "f0ae0c0458e63c4f8267b9550ee2360919bec01890d3fc4ed14c7b4a4589eeab"
+    },
+    "mfrr_sa_satisfied_need_downward": {
+      "availability": "PRESENT",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "bf2c644c98508942bbc8310791697b6ab092e7693fccc2617b465a36f5fc5c04"
+    },
+    "mfrr_sa_satisfied_need_upward": {
+      "availability": "PRESENT_WITH_NULLS",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "ae1354e90a1219e99a942cd6f81af5fb4bab9944519eca0aef32cc4d4bd41bf5"
+    },
+    "mfrr_settlement_price_current_downward": {
+      "availability": "PRESENT_WITH_NULLS",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "fd7f2bf1ef6bec3c7ea3bd7f572a96a251f91e26d08bf5c009dd5f4bfca8ff4d"
+    },
+    "mfrr_settlement_price_current_upward": {
+      "availability": "PRESENT_WITH_NULLS",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "c2e1fa543f141b2c25355b8113a4cb3540e46ca38859f3089535300bedb5fb60"
+    },
+    "mfrr_settlement_price_previous_downward": {
+      "availability": "PRESENT_WITH_NULLS",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "4c9d477eb6664f2aea1cd62f8aa4e94590137fc9da1c6164345a14129914db17"
+    },
+    "mfrr_settlement_price_previous_upward": {
+      "availability": "PRESENT_WITH_NULLS",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "aff1a9625e8431344bd69c4cef6444a7458c867e0eae055051712634056dda40"
+    },
+    "mfrr_submitted_offer_volume_downward": {
+      "availability": "PRESENT_WITH_NULLS",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "6210c939400adc35d9fa5c4070ced6d40d81f42ae5078d000af02a023111a3fe"
+    },
+    "mfrr_submitted_offer_volume_upward": {
+      "availability": "PRESENT_WITH_NULLS",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "76072c0ed1ac356391727ee55ff6d9de2e15e4b33d47daa3dbb383943e816415"
+    }
+  },
+  "source": "RTE",
+  "source_version": "5.2"
+}

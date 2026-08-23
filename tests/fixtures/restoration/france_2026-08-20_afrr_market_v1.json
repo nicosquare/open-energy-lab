@@ -1,0 +1,1149 @@
+{
+  "artifact_fingerprint": "83f0c88e5c8d9c0f781305a9552596c3a03956588a75871e9f78e97415811516",
+  "artifact_id": "rte-standard_afrr_data-667ea76a648871d7",
+  "content_fingerprint": "9f44272301f164562d7552723054438253704c3f65618d2acf8e70755ffd1506",
+  "covered_period": {
+    "end_fold": 0,
+    "end_utc": "2026-08-20T01:00:00Z",
+    "end_utc_offset_seconds": 7200,
+    "interval_convention": "start-inclusive/end-exclusive",
+    "local_end": "2026-08-20T03:00:00+02:00",
+    "local_start": "2026-08-20T02:00:00+02:00",
+    "market_timezone": "Europe/Paris",
+    "start_fold": 0,
+    "start_utc": "2026-08-20T00:00:00Z",
+    "start_utc_offset_seconds": 7200
+  },
+  "predecessor_artifact_fingerprint": null,
+  "profile_id": "fr-rte-balancing-energy-v5.2-afrr-v1",
+  "raw_retention": {
+    "policy": "DIGEST_ONLY",
+    "responses": {
+      "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6": {
+        "sidecar_locator": null,
+        "sidecar_sha256": null,
+        "status": "digest_only"
+      }
+    }
+  },
+  "redistribution_policy": {
+    "attribution": "RTE Balancing Energy API v5.2; normalized by Open Energy Lab",
+    "external_artifact_store": "prohibited",
+    "owner": "RTE",
+    "package_distribution": "prohibited",
+    "public_ci_artifact": "prohibited",
+    "public_mirror_or_fork": "prohibited",
+    "release_distribution": "prohibited",
+    "repository_publication": "prohibited",
+    "repository_storage": "permitted_private_restricted",
+    "visibility_change_action": "remove_or_reassess_before_change"
+  },
+  "request_evidence": [
+    {
+      "attempt_count": 1,
+      "end_utc": "2026-08-20T01:00:00Z",
+      "http_status_class": "2xx",
+      "raw_sha256": "d2496d713c7f217ff76487db2aba0b7a49479861118bea61ca3c001fbbfe2eb3",
+      "request_id": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+      "resource": "standard_afrr_data",
+      "response_bytes": 1871,
+      "response_media_type": "application/json",
+      "source_revision": null,
+      "start_utc": "2026-08-20T00:00:00Z"
+    }
+  ],
+  "request_identity": "667ea76a648871d71426817d886924c5358472935c5d301ee9eb197279a91455",
+  "requested_period": {
+    "end_fold": 0,
+    "end_utc": "2026-08-20T01:00:00Z",
+    "end_utc_offset_seconds": 7200,
+    "interval_convention": "start-inclusive/end-exclusive",
+    "local_end": "2026-08-20T03:00:00+02:00",
+    "local_start": "2026-08-20T02:00:00+02:00",
+    "market_timezone": "Europe/Paris",
+    "start_fold": 0,
+    "start_utc": "2026-08-20T00:00:00Z",
+    "start_utc_offset_seconds": 7200
+  },
+  "resource": "standard_afrr_data",
+  "retrieved_at_utc": "2026-08-23T09:02:18.482403Z",
+  "schema_version": "oel.restoration.market.v1",
+  "series": [
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-20T01:00:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-20T03:00:00+02:00",
+        "local_start": "2026-08-20T02:00:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-20T00:00:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "UPWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:15:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:15:00+02:00",
+            "local_start": "2026-08-20T02:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "upward_afrr_requested_need",
+          "source_row": 3,
+          "value": 425.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:30:00+02:00",
+            "local_start": "2026-08-20T02:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "upward_afrr_requested_need",
+          "source_row": 2,
+          "value": 315.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:45:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:45:00+02:00",
+            "local_start": "2026-08-20T02:30:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:30:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "upward_afrr_requested_need",
+          "source_row": 1,
+          "value": 290.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T01:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T03:00:00+02:00",
+            "local_start": "2026-08-20T02:45:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:45:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "upward_afrr_requested_need",
+          "source_row": 0,
+          "value": 345.0,
+          "value_state": "VALUE"
+        }
+      ],
+      "process": "automatic_restoration",
+      "product": "AFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-20T01:00:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-20T03:00:00+02:00",
+        "local_start": "2026-08-20T02:00:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-20T00:00:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_afrr_data",
+      "semantic_version": "rte-v5.2-afrr_requested_need_upward-v1",
+      "series_fingerprint": "d50f1a5bf34eb0029782533bf9b249ce7d886917f11d6aba9ae458d4a144aeaf",
+      "series_id": "afrr_requested_need_upward",
+      "source": "RTE",
+      "source_field": "upward_afrr_requested_need",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-20T01:00:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-20T03:00:00+02:00",
+        "local_start": "2026-08-20T02:00:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-20T00:00:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "DOWNWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:15:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:15:00+02:00",
+            "local_start": "2026-08-20T02:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "downward_afrr_requested_need",
+          "source_row": 3,
+          "value": 0.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:30:00+02:00",
+            "local_start": "2026-08-20T02:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "downward_afrr_requested_need",
+          "source_row": 2,
+          "value": 0.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:45:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:45:00+02:00",
+            "local_start": "2026-08-20T02:30:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:30:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "downward_afrr_requested_need",
+          "source_row": 1,
+          "value": 0.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T01:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T03:00:00+02:00",
+            "local_start": "2026-08-20T02:45:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:45:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "downward_afrr_requested_need",
+          "source_row": 0,
+          "value": 0.0,
+          "value_state": "VALUE"
+        }
+      ],
+      "process": "automatic_restoration",
+      "product": "AFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-20T01:00:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-20T03:00:00+02:00",
+        "local_start": "2026-08-20T02:00:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-20T00:00:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_afrr_data",
+      "semantic_version": "rte-v5.2-afrr_requested_need_downward-v1",
+      "series_fingerprint": "3df6dd93852fa9cd46d3f9c41ed9d12d45af9eab4339174c119bdeee90a17176",
+      "series_id": "afrr_requested_need_downward",
+      "source": "RTE",
+      "source_field": "downward_afrr_requested_need",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-20T01:00:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-20T03:00:00+02:00",
+        "local_start": "2026-08-20T02:00:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-20T00:00:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "UPWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:15:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:15:00+02:00",
+            "local_start": "2026-08-20T02:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "upward_afrr_activated_volume_for_fr",
+          "source_row": 3,
+          "value": 135.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:30:00+02:00",
+            "local_start": "2026-08-20T02:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "upward_afrr_activated_volume_for_fr",
+          "source_row": 2,
+          "value": 160.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:45:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:45:00+02:00",
+            "local_start": "2026-08-20T02:30:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:30:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "upward_afrr_activated_volume_for_fr",
+          "source_row": 1,
+          "value": 276.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T01:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T03:00:00+02:00",
+            "local_start": "2026-08-20T02:45:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:45:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "upward_afrr_activated_volume_for_fr",
+          "source_row": 0,
+          "value": 265.0,
+          "value_state": "VALUE"
+        }
+      ],
+      "process": "automatic_restoration",
+      "product": "AFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-20T01:00:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-20T03:00:00+02:00",
+        "local_start": "2026-08-20T02:00:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-20T00:00:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_afrr_data",
+      "semantic_version": "rte-v5.2-afrr_activated_for_fr_upward-v1",
+      "series_fingerprint": "703109a2dfbe1133e1b664052dffdc924107636707cff1539b70cec804155818",
+      "series_id": "afrr_activated_for_fr_upward",
+      "source": "RTE",
+      "source_field": "upward_afrr_activated_volume_for_fr",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-20T01:00:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-20T03:00:00+02:00",
+        "local_start": "2026-08-20T02:00:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-20T00:00:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "DOWNWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:15:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:15:00+02:00",
+            "local_start": "2026-08-20T02:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "downward_afrr_activated_volume_for_fr",
+          "source_row": 3,
+          "value": 0.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:30:00+02:00",
+            "local_start": "2026-08-20T02:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "downward_afrr_activated_volume_for_fr",
+          "source_row": 2,
+          "value": 2.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:45:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:45:00+02:00",
+            "local_start": "2026-08-20T02:30:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:30:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "downward_afrr_activated_volume_for_fr",
+          "source_row": 1,
+          "value": 2.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T01:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T03:00:00+02:00",
+            "local_start": "2026-08-20T02:45:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:45:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "downward_afrr_activated_volume_for_fr",
+          "source_row": 0,
+          "value": 0.0,
+          "value_state": "VALUE"
+        }
+      ],
+      "process": "automatic_restoration",
+      "product": "AFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-20T01:00:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-20T03:00:00+02:00",
+        "local_start": "2026-08-20T02:00:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-20T00:00:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_afrr_data",
+      "semantic_version": "rte-v5.2-afrr_activated_for_fr_downward-v1",
+      "series_fingerprint": "b11aebd0bf97a84d8e77e92c87e67996e11add6fb34fe829b7ecd567fbeb7ff8",
+      "series_id": "afrr_activated_for_fr_downward",
+      "source": "RTE",
+      "source_field": "downward_afrr_activated_volume_for_fr",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-20T01:00:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-20T03:00:00+02:00",
+        "local_start": "2026-08-20T02:00:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-20T00:00:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "UPWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:15:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:15:00+02:00",
+            "local_start": "2026-08-20T02:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "upward_afrr_activated_volume_in_fr",
+          "source_row": 3,
+          "value": 65.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:30:00+02:00",
+            "local_start": "2026-08-20T02:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "upward_afrr_activated_volume_in_fr",
+          "source_row": 2,
+          "value": 46.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:45:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:45:00+02:00",
+            "local_start": "2026-08-20T02:30:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:30:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "upward_afrr_activated_volume_in_fr",
+          "source_row": 1,
+          "value": 65.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T01:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T03:00:00+02:00",
+            "local_start": "2026-08-20T02:45:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:45:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "upward_afrr_activated_volume_in_fr",
+          "source_row": 0,
+          "value": 167.0,
+          "value_state": "VALUE"
+        }
+      ],
+      "process": "automatic_restoration",
+      "product": "AFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-20T01:00:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-20T03:00:00+02:00",
+        "local_start": "2026-08-20T02:00:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-20T00:00:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_afrr_data",
+      "semantic_version": "rte-v5.2-afrr_activated_in_fr_upward-v1",
+      "series_fingerprint": "5dc9e5ad065b370b67b11cc00a47ab65f539648c1e0910a7495dca82dd67d0a7",
+      "series_id": "afrr_activated_in_fr_upward",
+      "source": "RTE",
+      "source_field": "upward_afrr_activated_volume_in_fr",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "MW",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-20T01:00:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-20T03:00:00+02:00",
+        "local_start": "2026-08-20T02:00:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-20T00:00:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": null,
+      "direction": "DOWNWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:15:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:15:00+02:00",
+            "local_start": "2026-08-20T02:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "downward_afrr_activated_volume_in_fr",
+          "source_row": 3,
+          "value": 0.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:30:00+02:00",
+            "local_start": "2026-08-20T02:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "downward_afrr_activated_volume_in_fr",
+          "source_row": 2,
+          "value": 0.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:45:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:45:00+02:00",
+            "local_start": "2026-08-20T02:30:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:30:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "downward_afrr_activated_volume_in_fr",
+          "source_row": 1,
+          "value": 1.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T01:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T03:00:00+02:00",
+            "local_start": "2026-08-20T02:45:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:45:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "downward_afrr_activated_volume_in_fr",
+          "source_row": 0,
+          "value": 0.0,
+          "value_state": "VALUE"
+        }
+      ],
+      "process": "automatic_restoration",
+      "product": "AFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-20T01:00:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-20T03:00:00+02:00",
+        "local_start": "2026-08-20T02:00:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-20T00:00:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_afrr_data",
+      "semantic_version": "rte-v5.2-afrr_activated_in_fr_downward-v1",
+      "series_fingerprint": "f02238d41445fdb6e05b408198032eef591ae2b6175f7017887b5a3bc762e66a",
+      "series_id": "afrr_activated_in_fr_downward",
+      "source": "RTE",
+      "source_field": "downward_afrr_activated_volume_in_fr",
+      "source_resolution": "PT15M",
+      "source_unit": "MW",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "EUR/MWh",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-20T01:00:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-20T03:00:00+02:00",
+        "local_start": "2026-08-20T02:00:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-20T00:00:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": "EUR",
+      "direction": "UPWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:15:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:15:00+02:00",
+            "local_start": "2026-08-20T02:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "upward_weighted_average_price_afrr_activated_for_fr",
+          "source_row": 3,
+          "value": 177.21,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:30:00+02:00",
+            "local_start": "2026-08-20T02:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "upward_weighted_average_price_afrr_activated_for_fr",
+          "source_row": 2,
+          "value": 169.73,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:45:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:45:00+02:00",
+            "local_start": "2026-08-20T02:30:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:30:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "upward_weighted_average_price_afrr_activated_for_fr",
+          "source_row": 1,
+          "value": 148.58,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T01:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T03:00:00+02:00",
+            "local_start": "2026-08-20T02:45:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:45:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "upward_weighted_average_price_afrr_activated_for_fr",
+          "source_row": 0,
+          "value": 188.85,
+          "value_state": "VALUE"
+        }
+      ],
+      "process": "automatic_restoration",
+      "product": "AFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-20T01:00:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-20T03:00:00+02:00",
+        "local_start": "2026-08-20T02:00:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-20T00:00:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_afrr_data",
+      "semantic_version": "rte-v5.2-afrr_weighted_average_price_upward-v1",
+      "series_fingerprint": "c860fe7b9d174e9f4b08cd964d50c966225b8056b8a6e4baae257c75adfdad6e",
+      "series_id": "afrr_weighted_average_price_upward",
+      "source": "RTE",
+      "source_field": "upward_weighted_average_price_afrr_activated_for_fr",
+      "source_resolution": "PT15M",
+      "source_unit": "EUR/MWh",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    },
+    {
+      "area": "France control/scheduling area",
+      "availability": "PRESENT",
+      "canonical_resolution": "PT15M",
+      "canonical_unit": "EUR/MWh",
+      "covered_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-20T01:00:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-20T03:00:00+02:00",
+        "local_start": "2026-08-20T02:00:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-20T00:00:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "currency": "EUR",
+      "direction": "DOWNWARD",
+      "observations": [
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:15:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:15:00+02:00",
+            "local_start": "2026-08-20T02:00:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:00:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "downward_weighted_average_price_afrr_activated_for_fr",
+          "source_row": 3,
+          "value": 206.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:30:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:30:00+02:00",
+            "local_start": "2026-08-20T02:15:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:15:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "downward_weighted_average_price_afrr_activated_for_fr",
+          "source_row": 2,
+          "value": 206.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T00:45:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T02:45:00+02:00",
+            "local_start": "2026-08-20T02:30:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:30:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "downward_weighted_average_price_afrr_activated_for_fr",
+          "source_row": 1,
+          "value": 206.0,
+          "value_state": "VALUE"
+        },
+        {
+          "conversion_ref": null,
+          "document_ref": "a9cdba377362903c542fae71c7571f8fe8a16f95a86d01564bc8740ed5cb4cd6",
+          "interval": {
+            "end_fold": 0,
+            "end_utc": "2026-08-20T01:00:00Z",
+            "end_utc_offset_seconds": 7200,
+            "interval_convention": "start-inclusive/end-exclusive",
+            "local_end": "2026-08-20T03:00:00+02:00",
+            "local_start": "2026-08-20T02:45:00+02:00",
+            "market_timezone": "Europe/Paris",
+            "start_fold": 0,
+            "start_utc": "2026-08-20T00:45:00Z",
+            "start_utc_offset_seconds": 7200
+          },
+          "source_field": "downward_weighted_average_price_afrr_activated_for_fr",
+          "source_row": 0,
+          "value": 206.0,
+          "value_state": "VALUE"
+        }
+      ],
+      "process": "automatic_restoration",
+      "product": "AFRR",
+      "requested_period": {
+        "end_fold": 0,
+        "end_utc": "2026-08-20T01:00:00Z",
+        "end_utc_offset_seconds": 7200,
+        "interval_convention": "start-inclusive/end-exclusive",
+        "local_end": "2026-08-20T03:00:00+02:00",
+        "local_start": "2026-08-20T02:00:00+02:00",
+        "market_timezone": "Europe/Paris",
+        "start_fold": 0,
+        "start_utc": "2026-08-20T00:00:00Z",
+        "start_utc_offset_seconds": 7200
+      },
+      "resource": "standard_afrr_data",
+      "semantic_version": "rte-v5.2-afrr_weighted_average_price_downward-v1",
+      "series_fingerprint": "d7b3c2c7ed1a71bf6510f43fd8d9237e3fa486ef4a17b68a9902b24965684e8d",
+      "series_id": "afrr_weighted_average_price_downward",
+      "source": "RTE",
+      "source_field": "downward_weighted_average_price_afrr_activated_for_fr",
+      "source_resolution": "PT15M",
+      "source_unit": "EUR/MWh",
+      "source_version": "5.2",
+      "transformations": [
+        "rte-v5.2-chronological-row-order"
+      ]
+    }
+  ],
+  "series_manifest": {
+    "afrr_activated_for_fr_downward": {
+      "availability": "PRESENT",
+      "requested": true,
+      "required": true,
+      "series_fingerprint": "b11aebd0bf97a84d8e77e92c87e67996e11add6fb34fe829b7ecd567fbeb7ff8"
+    },
+    "afrr_activated_for_fr_upward": {
+      "availability": "PRESENT",
+      "requested": true,
+      "required": true,
+      "series_fingerprint": "703109a2dfbe1133e1b664052dffdc924107636707cff1539b70cec804155818"
+    },
+    "afrr_activated_in_fr_downward": {
+      "availability": "PRESENT",
+      "requested": true,
+      "required": true,
+      "series_fingerprint": "f02238d41445fdb6e05b408198032eef591ae2b6175f7017887b5a3bc762e66a"
+    },
+    "afrr_activated_in_fr_upward": {
+      "availability": "PRESENT",
+      "requested": true,
+      "required": true,
+      "series_fingerprint": "5dc9e5ad065b370b67b11cc00a47ab65f539648c1e0910a7495dca82dd67d0a7"
+    },
+    "afrr_requested_need_downward": {
+      "availability": "PRESENT",
+      "requested": true,
+      "required": true,
+      "series_fingerprint": "3df6dd93852fa9cd46d3f9c41ed9d12d45af9eab4339174c119bdeee90a17176"
+    },
+    "afrr_requested_need_upward": {
+      "availability": "PRESENT",
+      "requested": true,
+      "required": true,
+      "series_fingerprint": "d50f1a5bf34eb0029782533bf9b249ce7d886917f11d6aba9ae458d4a144aeaf"
+    },
+    "afrr_weighted_average_price_downward": {
+      "availability": "PRESENT",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "d7b3c2c7ed1a71bf6510f43fd8d9237e3fa486ef4a17b68a9902b24965684e8d"
+    },
+    "afrr_weighted_average_price_upward": {
+      "availability": "PRESENT",
+      "requested": true,
+      "required": false,
+      "series_fingerprint": "c860fe7b9d174e9f4b08cd964d50c966225b8056b8a6e4baae257c75adfdad6e"
+    }
+  },
+  "source": "RTE",
+  "source_version": "5.2"
+}
