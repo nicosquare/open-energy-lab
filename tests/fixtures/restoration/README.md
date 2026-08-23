@@ -48,6 +48,16 @@ aFRR requested-need values and one mFRR SA requested-volume value reproduce the
 documented hand-checkable scenario inputs; all response bytes remain authored
 and are not production captures.
 
+`manual_afrr_v1.json` is a project-authored arithmetic oracle for Feature 011
+User Story 2. Its six deterministic cases separately publish nominal upward,
+downward, and zero tracking; ramp saturation; charge-power saturation;
+maximum-SOC/energy saturation; reserved downward-headroom saturation; and
+zero-activation baseline preservation. Every input is synthetic, every power
+value is an interval average under the charge-positive convention, and every
+expected terminal or activation energy is direct `kW * interval-hours`
+integration with absolute tolerance `1e-6`. The fixture is maintained by hand
+and changes only with a versioned activation, battery, or replay equation.
+
 ## Restricted Fixtures
 
 Every `france_*` file listed in `RESTRICTED_DATA.md` is derived from real market

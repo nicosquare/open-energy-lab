@@ -1,0 +1,524 @@
+{
+  "schema_version": "oel.fixture.manual-afrr.v1",
+  "fixture_id": "manual-afrr-physical-oracle-v1",
+  "provenance": {
+    "purpose": "Hand-calculable aFRR trajectory, replay, attribution, and conservation oracle",
+    "origin": "Authored by the Open Energy Lab project; not captured from RTE or any battery",
+    "generation_method": "Written and independently checked from interval-average power integration and the documented battery equations",
+    "source_contract": "Feature 011 restoration activation and replay contracts",
+    "units": "Power in kW, terminal energy in kWh, duration in seconds, SOC as a fraction",
+    "sign_convention": "Positive power charges the battery; negative power discharges it",
+    "sample_semantics": "interval_average_requested_bess_power_kw",
+    "default_absolute_tolerance": 1e-06,
+    "random_seed": null,
+    "network_required": false,
+    "operational_dispatch_evidence": false,
+    "license_and_redistribution": "Project-authored synthetic fixture; repository license applies",
+    "refresh_policy": "Change only when the versioned activation, battery, or replay equations change"
+  },
+  "cases": [
+    {
+      "case_id": "nominal-two-direction",
+      "purpose": "Exact upward, downward, and zero interval-average tracking",
+      "period": {
+        "start_utc": "2026-01-01T00:00:00Z",
+        "end_utc": "2026-01-01T01:00:00Z",
+        "resolution": "PT15M"
+      },
+      "battery": {
+        "name": "manual-afrr-nominal",
+        "capacity_kwh": 100.0,
+        "max_charge_kw": 20.0,
+        "max_discharge_kw": 20.0,
+        "charge_efficiency": 1.0,
+        "discharge_efficiency": 1.0,
+        "initial_soc": 0.5,
+        "min_soc": 0.1,
+        "max_soc": 0.9
+      },
+      "capability": {
+        "max_ramp_up_kw_per_second": 1.0,
+        "max_ramp_down_kw_per_second": 1.0,
+        "max_activation_delay_seconds": {"AFRR": 5.0, "MFRR": 300.0},
+        "min_supported_duration_seconds": {"AFRR": 1.0, "MFRR": 60.0},
+        "max_supported_duration_seconds": {"AFRR": 900.0, "MFRR": 3600.0}
+      },
+      "commitment": {"upward_kw": 20.0, "downward_kw": 20.0},
+      "baseline_power_kw": [0.0, 0.0, 0.0, 0.0],
+      "activation": {
+        "trajectory_id": "manual-afrr-nominal-v1",
+        "semantics_version": "afrr-interval-average-v1",
+        "source_kind": "SYNTHETIC",
+        "created_or_retrieved_at_utc": "2026-01-02T00:00:00Z",
+        "mapping_fingerprint": null,
+        "requested_balancing_power_kw": [-10.0, 8.0, 0.0, -6.0]
+      },
+      "expected_samples": [
+        {
+          "sample_index": 0,
+          "direction": "UPWARD",
+          "requested_balancing_power_kw": -10.0,
+          "capability_accepted_balancing_power_kw": -10.0,
+          "delivered_balancing_power_kw": -10.0,
+          "tracking_error_kw": 0.0,
+          "requested_activation_energy_kwh": 2.5,
+          "delivered_activation_energy_kwh": 2.5,
+          "undelivered_activation_energy_kwh": 0.0,
+          "charge_energy_kwh": 0.0,
+          "discharge_energy_kwh": 2.5,
+          "soc": 0.475,
+          "upward_power_headroom_kw": 10.0,
+          "downward_power_headroom_kw": 30.0,
+          "upward_energy_headroom_kwh": 37.5,
+          "downward_energy_headroom_kwh": 42.5,
+          "achieved_ramp_kw_per_second": 0.011111111111111112,
+          "causes": [],
+          "non_performance_duration_seconds": 0.0
+        },
+        {
+          "sample_index": 1,
+          "direction": "DOWNWARD",
+          "requested_balancing_power_kw": 8.0,
+          "capability_accepted_balancing_power_kw": 8.0,
+          "delivered_balancing_power_kw": 8.0,
+          "tracking_error_kw": 0.0,
+          "requested_activation_energy_kwh": 2.0,
+          "delivered_activation_energy_kwh": 2.0,
+          "undelivered_activation_energy_kwh": 0.0,
+          "charge_energy_kwh": 2.0,
+          "discharge_energy_kwh": 0.0,
+          "soc": 0.495,
+          "upward_power_headroom_kw": 28.0,
+          "downward_power_headroom_kw": 12.0,
+          "upward_energy_headroom_kwh": 39.5,
+          "downward_energy_headroom_kwh": 40.5,
+          "achieved_ramp_kw_per_second": 0.02,
+          "causes": [],
+          "non_performance_duration_seconds": 0.0
+        },
+        {
+          "sample_index": 2,
+          "direction": null,
+          "requested_balancing_power_kw": 0.0,
+          "capability_accepted_balancing_power_kw": 0.0,
+          "delivered_balancing_power_kw": 0.0,
+          "tracking_error_kw": 0.0,
+          "requested_activation_energy_kwh": 0.0,
+          "delivered_activation_energy_kwh": 0.0,
+          "undelivered_activation_energy_kwh": 0.0,
+          "charge_energy_kwh": 0.0,
+          "discharge_energy_kwh": 0.0,
+          "soc": 0.495,
+          "upward_power_headroom_kw": 20.0,
+          "downward_power_headroom_kw": 20.0,
+          "upward_energy_headroom_kwh": 39.5,
+          "downward_energy_headroom_kwh": 40.5,
+          "achieved_ramp_kw_per_second": 0.008888888888888889,
+          "causes": [],
+          "non_performance_duration_seconds": 0.0
+        },
+        {
+          "sample_index": 3,
+          "direction": "UPWARD",
+          "requested_balancing_power_kw": -6.0,
+          "capability_accepted_balancing_power_kw": -6.0,
+          "delivered_balancing_power_kw": -6.0,
+          "tracking_error_kw": 0.0,
+          "requested_activation_energy_kwh": 1.5,
+          "delivered_activation_energy_kwh": 1.5,
+          "undelivered_activation_energy_kwh": 0.0,
+          "charge_energy_kwh": 0.0,
+          "discharge_energy_kwh": 1.5,
+          "soc": 0.48,
+          "upward_power_headroom_kw": 14.0,
+          "downward_power_headroom_kw": 26.0,
+          "upward_energy_headroom_kwh": 38.0,
+          "downward_energy_headroom_kwh": 42.0,
+          "achieved_ramp_kw_per_second": 0.006666666666666667,
+          "causes": [],
+          "non_performance_duration_seconds": 0.0
+        }
+      ],
+      "expected_directional": {
+        "UPWARD": {
+          "sample_count": 2,
+          "requested_energy_kwh": 4.0,
+          "delivered_energy_kwh": 4.0,
+          "undelivered_energy_kwh": 0.0,
+          "non_performance_duration_seconds": 0.0
+        },
+        "DOWNWARD": {
+          "sample_count": 1,
+          "requested_energy_kwh": 2.0,
+          "delivered_energy_kwh": 2.0,
+          "undelivered_energy_kwh": 0.0,
+          "non_performance_duration_seconds": 0.0
+        }
+      },
+      "expected_totals": {
+        "charge_energy_kwh": 2.0,
+        "discharge_energy_kwh": 4.0,
+        "net_terminal_energy_kwh": -2.0,
+        "throughput_kwh": 6.0,
+        "requested_activation_energy_kwh": 6.0,
+        "delivered_activation_energy_kwh": 6.0,
+        "undelivered_activation_energy_kwh": 0.0,
+        "non_performance_duration_seconds": 0.0,
+        "final_soc": 0.48
+      }
+    },
+    {
+      "case_id": "ramp-limited-downward",
+      "purpose": "Automatic response is limited by a three-kW change per minute",
+      "period": {
+        "start_utc": "2026-01-01T01:00:00Z",
+        "end_utc": "2026-01-01T01:02:00Z",
+        "resolution": "PT1M"
+      },
+      "battery": {
+        "name": "manual-afrr-ramp",
+        "capacity_kwh": 100.0,
+        "max_charge_kw": 20.0,
+        "max_discharge_kw": 20.0,
+        "charge_efficiency": 1.0,
+        "discharge_efficiency": 1.0,
+        "initial_soc": 0.5,
+        "min_soc": 0.1,
+        "max_soc": 0.9
+      },
+      "capability": {
+        "max_ramp_up_kw_per_second": 0.05,
+        "max_ramp_down_kw_per_second": 0.05,
+        "max_activation_delay_seconds": {"AFRR": 5.0, "MFRR": 300.0},
+        "min_supported_duration_seconds": {"AFRR": 1.0, "MFRR": 60.0},
+        "max_supported_duration_seconds": {"AFRR": 900.0, "MFRR": 3600.0}
+      },
+      "commitment": {"upward_kw": 20.0, "downward_kw": 20.0},
+      "baseline_power_kw": [0.0, 0.0],
+      "activation": {
+        "trajectory_id": "manual-afrr-ramp-v1",
+        "semantics_version": "afrr-interval-average-v1",
+        "source_kind": "SYNTHETIC",
+        "created_or_retrieved_at_utc": "2026-01-02T00:01:00Z",
+        "mapping_fingerprint": null,
+        "requested_balancing_power_kw": [0.0, 10.0]
+      },
+      "expected_samples": [
+        {
+          "sample_index": 0,
+          "direction": null,
+          "requested_balancing_power_kw": 0.0,
+          "capability_accepted_balancing_power_kw": 0.0,
+          "delivered_balancing_power_kw": 0.0,
+          "tracking_error_kw": 0.0,
+          "requested_activation_energy_kwh": 0.0,
+          "delivered_activation_energy_kwh": 0.0,
+          "undelivered_activation_energy_kwh": 0.0,
+          "soc": 0.5,
+          "causes": [],
+          "non_performance_duration_seconds": 0.0
+        },
+        {
+          "sample_index": 1,
+          "direction": "DOWNWARD",
+          "requested_balancing_power_kw": 10.0,
+          "capability_accepted_balancing_power_kw": 3.0,
+          "delivered_balancing_power_kw": 3.0,
+          "tracking_error_kw": 7.0,
+          "requested_activation_energy_kwh": 0.16666666666666666,
+          "delivered_activation_energy_kwh": 0.05,
+          "undelivered_activation_energy_kwh": 0.11666666666666667,
+          "soc": 0.5005,
+          "causes": ["ramp_limit"],
+          "non_performance_duration_seconds": 60.0
+        }
+      ],
+      "expected_totals": {
+        "charge_energy_kwh": 0.05,
+        "discharge_energy_kwh": 0.0,
+        "net_terminal_energy_kwh": 0.05,
+        "throughput_kwh": 0.05,
+        "requested_activation_energy_kwh": 0.16666666666666666,
+        "delivered_activation_energy_kwh": 0.05,
+        "undelivered_activation_energy_kwh": 0.11666666666666667,
+        "non_performance_duration_seconds": 60.0,
+        "final_soc": 0.5005
+      }
+    },
+    {
+      "case_id": "charge-power-limited",
+      "purpose": "Battery charge power clips an otherwise accepted response",
+      "period": {
+        "start_utc": "2026-01-01T02:00:00Z",
+        "end_utc": "2026-01-01T02:15:00Z",
+        "resolution": "PT15M"
+      },
+      "battery": {
+        "name": "manual-afrr-power",
+        "capacity_kwh": 100.0,
+        "max_charge_kw": 20.0,
+        "max_discharge_kw": 20.0,
+        "charge_efficiency": 1.0,
+        "discharge_efficiency": 1.0,
+        "initial_soc": 0.5,
+        "min_soc": 0.1,
+        "max_soc": 0.9
+      },
+      "capability": {
+        "max_ramp_up_kw_per_second": 1.0,
+        "max_ramp_down_kw_per_second": 1.0,
+        "max_activation_delay_seconds": {"AFRR": 5.0, "MFRR": 300.0},
+        "min_supported_duration_seconds": {"AFRR": 1.0, "MFRR": 60.0},
+        "max_supported_duration_seconds": {"AFRR": 900.0, "MFRR": 3600.0}
+      },
+      "commitment": {"upward_kw": 40.0, "downward_kw": 40.0},
+      "capability_headroom_override": {"upward_kw": 40.0, "downward_kw": 40.0},
+      "baseline_power_kw": [0.0],
+      "activation": {
+        "trajectory_id": "manual-afrr-power-v1",
+        "semantics_version": "afrr-interval-average-v1",
+        "source_kind": "SYNTHETIC",
+        "created_or_retrieved_at_utc": "2026-01-02T00:02:00Z",
+        "mapping_fingerprint": null,
+        "requested_balancing_power_kw": [30.0]
+      },
+      "expected_samples": [
+        {
+          "sample_index": 0,
+          "direction": "DOWNWARD",
+          "requested_balancing_power_kw": 30.0,
+          "capability_accepted_balancing_power_kw": 30.0,
+          "delivered_balancing_power_kw": 20.0,
+          "tracking_error_kw": 10.0,
+          "requested_activation_energy_kwh": 7.5,
+          "delivered_activation_energy_kwh": 5.0,
+          "undelivered_activation_energy_kwh": 2.5,
+          "soc": 0.55,
+          "causes": ["charge_power_limit"],
+          "non_performance_duration_seconds": 900.0
+        }
+      ],
+      "expected_totals": {
+        "charge_energy_kwh": 5.0,
+        "discharge_energy_kwh": 0.0,
+        "net_terminal_energy_kwh": 5.0,
+        "throughput_kwh": 5.0,
+        "requested_activation_energy_kwh": 7.5,
+        "delivered_activation_energy_kwh": 5.0,
+        "undelivered_activation_energy_kwh": 2.5,
+        "non_performance_duration_seconds": 900.0,
+        "final_soc": 0.55
+      }
+    },
+    {
+      "case_id": "maximum-soc-limited",
+      "purpose": "Charge delivery stops at maximum SOC and reports energy headroom",
+      "period": {
+        "start_utc": "2026-01-01T03:00:00Z",
+        "end_utc": "2026-01-01T03:15:00Z",
+        "resolution": "PT15M"
+      },
+      "battery": {
+        "name": "manual-afrr-soc",
+        "capacity_kwh": 10.0,
+        "max_charge_kw": 20.0,
+        "max_discharge_kw": 20.0,
+        "charge_efficiency": 1.0,
+        "discharge_efficiency": 1.0,
+        "initial_soc": 0.89,
+        "min_soc": 0.1,
+        "max_soc": 0.9
+      },
+      "capability": {
+        "max_ramp_up_kw_per_second": 1.0,
+        "max_ramp_down_kw_per_second": 1.0,
+        "max_activation_delay_seconds": {"AFRR": 5.0, "MFRR": 300.0},
+        "min_supported_duration_seconds": {"AFRR": 1.0, "MFRR": 60.0},
+        "max_supported_duration_seconds": {"AFRR": 900.0, "MFRR": 3600.0}
+      },
+      "commitment": {"upward_kw": 20.0, "downward_kw": 20.0},
+      "baseline_power_kw": [0.0],
+      "activation": {
+        "trajectory_id": "manual-afrr-soc-v1",
+        "semantics_version": "afrr-interval-average-v1",
+        "source_kind": "SYNTHETIC",
+        "created_or_retrieved_at_utc": "2026-01-02T00:03:00Z",
+        "mapping_fingerprint": null,
+        "requested_balancing_power_kw": [10.0]
+      },
+      "expected_samples": [
+        {
+          "sample_index": 0,
+          "direction": "DOWNWARD",
+          "requested_balancing_power_kw": 10.0,
+          "capability_accepted_balancing_power_kw": 10.0,
+          "delivered_balancing_power_kw": 0.4,
+          "tracking_error_kw": 9.6,
+          "requested_activation_energy_kwh": 2.5,
+          "delivered_activation_energy_kwh": 0.1,
+          "undelivered_activation_energy_kwh": 2.4,
+          "soc": 0.9,
+          "causes": ["maximum_soc", "energy_headroom"],
+          "non_performance_duration_seconds": 900.0
+        }
+      ],
+      "expected_totals": {
+        "charge_energy_kwh": 0.1,
+        "discharge_energy_kwh": 0.0,
+        "net_terminal_energy_kwh": 0.1,
+        "throughput_kwh": 0.1,
+        "requested_activation_energy_kwh": 2.5,
+        "delivered_activation_energy_kwh": 0.1,
+        "undelivered_activation_energy_kwh": 2.4,
+        "non_performance_duration_seconds": 900.0,
+        "final_soc": 0.9
+      }
+    },
+    {
+      "case_id": "downward-headroom-limited",
+      "purpose": "Accepted energy power leaves only five kW of downward reserve headroom",
+      "period": {
+        "start_utc": "2026-01-01T04:00:00Z",
+        "end_utc": "2026-01-01T04:15:00Z",
+        "resolution": "PT15M"
+      },
+      "battery": {
+        "name": "manual-afrr-headroom",
+        "capacity_kwh": 100.0,
+        "max_charge_kw": 20.0,
+        "max_discharge_kw": 20.0,
+        "charge_efficiency": 1.0,
+        "discharge_efficiency": 1.0,
+        "initial_soc": 0.5,
+        "min_soc": 0.1,
+        "max_soc": 0.9
+      },
+      "capability": {
+        "max_ramp_up_kw_per_second": 1.0,
+        "max_ramp_down_kw_per_second": 1.0,
+        "max_activation_delay_seconds": {"AFRR": 5.0, "MFRR": 300.0},
+        "min_supported_duration_seconds": {"AFRR": 1.0, "MFRR": 60.0},
+        "max_supported_duration_seconds": {"AFRR": 900.0, "MFRR": 3600.0}
+      },
+      "commitment": {"upward_kw": 10.0, "downward_kw": 10.0},
+      "baseline_power_kw": [15.0],
+      "activation": {
+        "trajectory_id": "manual-afrr-headroom-v1",
+        "semantics_version": "afrr-interval-average-v1",
+        "source_kind": "SYNTHETIC",
+        "created_or_retrieved_at_utc": "2026-01-02T00:04:00Z",
+        "mapping_fingerprint": null,
+        "requested_balancing_power_kw": [10.0]
+      },
+      "expected_samples": [
+        {
+          "sample_index": 0,
+          "direction": "DOWNWARD",
+          "requested_balancing_power_kw": 10.0,
+          "capability_accepted_balancing_power_kw": 5.0,
+          "delivered_balancing_power_kw": 5.0,
+          "tracking_error_kw": 5.0,
+          "requested_activation_energy_kwh": 2.5,
+          "delivered_activation_energy_kwh": 1.25,
+          "undelivered_activation_energy_kwh": 1.25,
+          "soc": 0.55,
+          "causes": ["downward_headroom"],
+          "non_performance_duration_seconds": 900.0
+        }
+      ],
+      "expected_totals": {
+        "charge_energy_kwh": 5.0,
+        "discharge_energy_kwh": 0.0,
+        "net_terminal_energy_kwh": 5.0,
+        "throughput_kwh": 5.0,
+        "requested_activation_energy_kwh": 2.5,
+        "delivered_activation_energy_kwh": 1.25,
+        "undelivered_activation_energy_kwh": 1.25,
+        "non_performance_duration_seconds": 900.0,
+        "final_soc": 0.55
+      }
+    },
+    {
+      "case_id": "zero-activation-preserves-baseline",
+      "purpose": "Zero aFRR request leaves the accepted discharge baseline unchanged",
+      "period": {
+        "start_utc": "2026-01-01T05:00:00Z",
+        "end_utc": "2026-01-01T05:30:00Z",
+        "resolution": "PT15M"
+      },
+      "battery": {
+        "name": "manual-afrr-zero",
+        "capacity_kwh": 100.0,
+        "max_charge_kw": 20.0,
+        "max_discharge_kw": 20.0,
+        "charge_efficiency": 1.0,
+        "discharge_efficiency": 1.0,
+        "initial_soc": 0.5,
+        "min_soc": 0.1,
+        "max_soc": 0.9
+      },
+      "capability": {
+        "max_ramp_up_kw_per_second": 1.0,
+        "max_ramp_down_kw_per_second": 1.0,
+        "max_activation_delay_seconds": {"AFRR": 5.0, "MFRR": 300.0},
+        "min_supported_duration_seconds": {"AFRR": 1.0, "MFRR": 60.0},
+        "max_supported_duration_seconds": {"AFRR": 900.0, "MFRR": 3600.0}
+      },
+      "commitment": {"upward_kw": 5.0, "downward_kw": 5.0},
+      "baseline_power_kw": [-2.0, -2.0],
+      "activation": {
+        "trajectory_id": "manual-afrr-zero-v1",
+        "semantics_version": "afrr-interval-average-v1",
+        "source_kind": "SYNTHETIC",
+        "created_or_retrieved_at_utc": "2026-01-02T00:05:00Z",
+        "mapping_fingerprint": null,
+        "requested_balancing_power_kw": [0.0, 0.0]
+      },
+      "expected_samples": [
+        {
+          "sample_index": 0,
+          "direction": null,
+          "requested_balancing_power_kw": 0.0,
+          "capability_accepted_balancing_power_kw": 0.0,
+          "requested_combined_power_kw": -2.0,
+          "delivered_combined_power_kw": -2.0,
+          "delivered_balancing_power_kw": 0.0,
+          "tracking_error_kw": 0.0,
+          "requested_activation_energy_kwh": 0.0,
+          "delivered_activation_energy_kwh": 0.0,
+          "undelivered_activation_energy_kwh": 0.0,
+          "soc": 0.495,
+          "causes": [],
+          "non_performance_duration_seconds": 0.0
+        },
+        {
+          "sample_index": 1,
+          "direction": null,
+          "requested_balancing_power_kw": 0.0,
+          "capability_accepted_balancing_power_kw": 0.0,
+          "requested_combined_power_kw": -2.0,
+          "delivered_combined_power_kw": -2.0,
+          "delivered_balancing_power_kw": 0.0,
+          "tracking_error_kw": 0.0,
+          "requested_activation_energy_kwh": 0.0,
+          "delivered_activation_energy_kwh": 0.0,
+          "undelivered_activation_energy_kwh": 0.0,
+          "soc": 0.49,
+          "causes": [],
+          "non_performance_duration_seconds": 0.0
+        }
+      ],
+      "expected_totals": {
+        "charge_energy_kwh": 0.0,
+        "discharge_energy_kwh": 1.0,
+        "net_terminal_energy_kwh": -1.0,
+        "throughput_kwh": 1.0,
+        "requested_activation_energy_kwh": 0.0,
+        "delivered_activation_energy_kwh": 0.0,
+        "undelivered_activation_energy_kwh": 0.0,
+        "non_performance_duration_seconds": 0.0,
+        "final_soc": 0.49
+      }
+    }
+  ]
+}
