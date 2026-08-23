@@ -58,8 +58,8 @@ Tests should fail before the corresponding implementation when practical.
 - [X] T014 Implement shared activation product/direction/source-kind values and immutable fixed-fraction `DerivedSimulationMapping` creation-time validation/fingerprints in `src/open_energy_lab/market/restoration_activation.py`
 - [X] T015 [P] Add failing tests for asymmetric directional commitments, complete temporal coverage, restoration capability values, baseline headroom bounds, usable SOC/efficiency checks, and activation-input-free no-lookahead configs in `tests/unit/control/test_restoration_service.py`
 - [X] T016 Implement shared directional commitment schedules, restoration energy baselines, capability inputs, configuration fingerprints, and headroom validation in `src/open_energy_lab/control/restoration_service.py`
-- [ ] T017 [P] Add failing tests for exact aFRR/mFRR request discriminators, charge-positive shared samples, capability-versus-physical attribution, ordered causes, conserved energy, tolerance, and deterministic fingerprints in `tests/unit/simulator/test_restoration_service.py`
-- [ ] T018 Implement shared exact-product replay request/result primitives, integration-grid validation, capability enforcement helpers, battery-transition adapter, ordered diagnostics, and energy-conserving aggregation helpers in `src/open_energy_lab/simulator/restoration_service.py`
+- [X] T017 [P] Add failing tests for exact aFRR/mFRR request discriminators, charge-positive shared samples, capability-versus-physical attribution, ordered causes, conserved energy, tolerance, and deterministic fingerprints in `tests/unit/simulator/test_restoration_service.py`
+- [X] T018 Implement shared exact-product replay request/result primitives, integration-grid validation, capability enforcement helpers, battery-transition adapter, ordered diagnostics, and energy-conserving aggregation helpers in `src/open_energy_lab/simulator/restoration_service.py`
 
 **Checkpoint**: Source-independent artifacts, bundles, mappings, commitments,
 and replay primitives construct, serialize, and load offline without accepting
