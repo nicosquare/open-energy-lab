@@ -89,7 +89,7 @@ def test_request_identity_is_deterministic_and_covers_semantic_inputs() -> None:
 
     changed = _request(mode="REFRESH")
     assert changed.mode is RTEAcquisitionMode.REFRESH
-    assert changed.request_identity != baseline.request_identity
+    assert changed.request_identity == baseline.request_identity
 
     changed = _request(requested_end_utc=AFRR_END + timedelta(minutes=15))
     assert changed.request_identity != baseline.request_identity

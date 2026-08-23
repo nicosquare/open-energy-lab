@@ -14,6 +14,7 @@ from enum import Enum
 import hashlib
 import json
 import math
+from pathlib import Path
 import time
 from types import MappingProxyType
 from typing import Any
@@ -24,8 +25,11 @@ import urllib.request
 from .restoration_artifact import (
     ObservationValueState,
     RawRetentionPolicy,
+    RestorationMarketArtifact,
     SeriesAvailability,
+    build_restoration_market_artifact,
     canonical_restoration_json_bytes,
+    write_restoration_market_artifact,
 )
 from .time import CanonicalInterval
 
@@ -380,7 +384,11 @@ def build_rte_restoration_request(
         raw_retention_policy=retention,
         mode=acquisition_mode,
     )
-    identity = hashlib.sha256(canonical_restoration_json_bytes(payload)).hexdigest()
+    identity_payload = dict(payload)
+    identity_payload.pop("mode")
+    identity = hashlib.sha256(
+        canonical_restoration_json_bytes(identity_payload)
+    ).hexdigest()
     return RestorationMarketDataRequest(
         source="RTE",
         profile=profile,
@@ -1341,6 +1349,240 @@ def parse_rte_restoration_responses(
     )
 
 
+class RestorationRefreshStatus(str, Enum):
+    """Immutable refresh outcome."""
+
+    UNCHANGED = "UNCHANGED"
+    CHANGED = "CHANGED"
+
+
+@dataclass(frozen=True, slots=True)
+class RestorationFetchResult:
+    artifact: RestorationMarketArtifact
+    path: Path
+
+
+@dataclass(frozen=True, slots=True)
+class RestorationRefreshResult:
+    status: RestorationRefreshStatus
+    artifact: RestorationMarketArtifact
+    path: Path | None
+
+
+def _series_artifact_payload(series: RTEParsedSeries) -> dict[str, object]:
+    return {
+        "series_id": series.series_id,
+        "semantic_version": series.semantic_version,
+        "source": series.source,
+        "source_version": series.source_version,
+        "resource": series.resource,
+        "source_field": series.source_field,
+        "product": series.product,
+        "process": series.process,
+        "direction": series.direction,
+        "area": series.area,
+        "requested_period": series.requested_period.to_dict(),
+        "covered_period": series.covered_period.to_dict(),
+        "source_resolution": series.source_resolution,
+        "canonical_resolution": series.canonical_resolution,
+        "source_unit": series.source_unit,
+        "canonical_unit": series.canonical_unit,
+        "currency": series.currency,
+        "availability": series.availability.value,
+        "transformations": list(series.transformations),
+        "observations": [
+            {
+                "interval": observation.interval.to_dict(),
+                "value_state": observation.value_state.value,
+                "value": observation.value,
+                "source_row": observation.source_row,
+                "source_field": observation.source_field,
+                "document_ref": observation.document_ref,
+                "conversion_ref": observation.conversion_ref,
+            }
+            for observation in series.observations
+        ],
+    }
+
+
+def _restricted_rte_policy() -> dict[str, object]:
+    return {
+        "owner": "RTE",
+        "attribution": "RTE Balancing Energy API v5.2; normalized by Open Energy Lab",
+        "repository_storage": "permitted_private_restricted",
+        "repository_publication": "prohibited",
+        "package_distribution": "prohibited",
+        "release_distribution": "prohibited",
+        "public_ci_artifact": "prohibited",
+        "public_mirror_or_fork": "prohibited",
+        "external_artifact_store": "prohibited",
+        "visibility_change_action": "remove_or_reassess_before_change",
+    }
+
+
+def _artifact_from_responses(
+    request: RestorationMarketDataRequest,
+    responses: tuple[RTERawMarketResponse, ...],
+    *,
+    predecessor_artifact_fingerprint: str | None,
+) -> RestorationMarketArtifact:
+    parsed = parse_rte_restoration_responses(request, responses)
+    by_id = {series.series_id: series for series in parsed.series}
+    retrieved_at = max(response.retrieved_at_utc for response in responses)
+    payload = {
+        "schema_version": "oel.restoration.market.v1",
+        "artifact_id": f"rte-{request.resource_identity}-{request.request_identity[:16]}",
+        "source": "RTE",
+        "source_version": RTE_CATALOG_VERSION,
+        "profile_id": request.profile.profile_id,
+        "resource": request.resource_identity,
+        "request_identity": request.request_identity,
+        "requested_period": parsed.requested_period.to_dict(),
+        "covered_period": parsed.covered_period.to_dict(),
+        "retrieved_at_utc": retrieved_at,
+        "series_manifest": {
+            series_id: {
+                "requested": True,
+                "required": series_id in request.required_series_ids,
+                "availability": by_id[series_id].availability.value,
+            }
+            for series_id in request.requested_series_ids
+        },
+        "series": [_series_artifact_payload(series) for series in parsed.series],
+        "request_evidence": [
+            {
+                "request_id": response.request_id,
+                "resource": response.resource,
+                "start_utc": response.start_utc.isoformat().replace("+00:00", "Z"),
+                "end_utc": response.end_utc.isoformat().replace("+00:00", "Z"),
+                "attempt_count": response.attempt_count,
+                "http_status_class": "2xx",
+                "response_media_type": response.media_type,
+                "response_bytes": len(response.body),
+                "raw_sha256": response.raw_sha256,
+                "source_revision": response.source_revision,
+            }
+            for response in responses
+        ],
+        "raw_retention": {
+            "policy": request.raw_retention_policy.value,
+            "responses": {
+                response.request_id: {
+                    "status": "digest_only",
+                    "sidecar_locator": None,
+                    "sidecar_sha256": None,
+                }
+                for response in responses
+            },
+        },
+        "redistribution_policy": _restricted_rte_policy(),
+        "predecessor_artifact_fingerprint": predecessor_artifact_fingerprint,
+    }
+    return build_restoration_market_artifact(payload)
+
+
+def fetch_rte_restoration_data(
+    request: RestorationMarketDataRequest,
+    *,
+    client_id: str,
+    client_secret: str,
+    output_directory: str | Path,
+    auth_transport: Callable[[RTETransportRequest], RTEHTTPResponse] | None = None,
+    data_transport: Callable[[RTETransportRequest], RTEHTTPResponse] | None = None,
+    clock: Callable[[], datetime] | None = None,
+    sleeper: Callable[[float], None] | None = None,
+) -> RestorationFetchResult:
+    """Retrieve, normalize, validate, then atomically publish one artifact."""
+
+    if not isinstance(request, RestorationMarketDataRequest):
+        raise RTERequestValidationError(
+            "request must be a RestorationMarketDataRequest"
+        )
+    if request.mode is not RTEAcquisitionMode.FETCH:
+        raise RTERequestValidationError("fetch operation requires request mode FETCH")
+    responses = execute_rte_request(
+        request,
+        client_id=client_id,
+        client_secret=client_secret,
+        auth_transport=auth_transport,
+        data_transport=data_transport,
+        clock=clock,
+        sleeper=sleeper,
+    )
+    artifact = _artifact_from_responses(
+        request, responses, predecessor_artifact_fingerprint=None
+    )
+    path = write_restoration_market_artifact(
+        artifact, destination_dir=output_directory
+    )
+    return RestorationFetchResult(artifact=artifact, path=path)
+
+
+def refresh_rte_restoration_data(
+    current_artifact: RestorationMarketArtifact,
+    request: RestorationMarketDataRequest,
+    *,
+    client_id: str,
+    client_secret: str,
+    output_directory: str | Path,
+    auth_transport: Callable[[RTETransportRequest], RTEHTTPResponse] | None = None,
+    data_transport: Callable[[RTETransportRequest], RTEHTTPResponse] | None = None,
+    clock: Callable[[], datetime] | None = None,
+    sleeper: Callable[[float], None] | None = None,
+) -> RestorationRefreshResult:
+    """Publish one linked successor only when normalized content changed."""
+
+    if not isinstance(current_artifact, RestorationMarketArtifact):
+        raise RTERequestValidationError(
+            "current_artifact must be a RestorationMarketArtifact"
+        )
+    if not isinstance(request, RestorationMarketDataRequest):
+        raise RTERequestValidationError(
+            "request must be a RestorationMarketDataRequest"
+        )
+    if request.mode is not RTEAcquisitionMode.REFRESH:
+        raise RTERequestValidationError(
+            "refresh operation requires request mode REFRESH"
+        )
+    if (
+        current_artifact.source.value != "RTE"
+        or current_artifact.request_identity != request.request_identity
+        or current_artifact.profile_id != request.profile.profile_id
+        or current_artifact.resource != request.resource_identity
+    ):
+        raise RTERequestValidationError(
+            "refresh request identity/profile/resource does not match current artifact"
+        )
+    responses = execute_rte_request(
+        request,
+        client_id=client_id,
+        client_secret=client_secret,
+        auth_transport=auth_transport,
+        data_transport=data_transport,
+        clock=clock,
+        sleeper=sleeper,
+    )
+    candidate = _artifact_from_responses(
+        request,
+        responses,
+        predecessor_artifact_fingerprint=current_artifact.artifact_fingerprint,
+    )
+    if candidate.content_fingerprint == current_artifact.content_fingerprint:
+        return RestorationRefreshResult(
+            status=RestorationRefreshStatus.UNCHANGED,
+            artifact=current_artifact,
+            path=None,
+        )
+    path = write_restoration_market_artifact(
+        candidate, destination_dir=output_directory
+    )
+    return RestorationRefreshResult(
+        status=RestorationRefreshStatus.CHANGED,
+        artifact=candidate,
+        path=path,
+    )
+
+
 __all__ = [
     "RTE_CATALOG_VERSION",
     "RTE_API_PATH_VERSION",
@@ -1364,6 +1606,9 @@ __all__ = [
     "RTEParsedSeries",
     "RTENestedPriceEntry",
     "RTEParsedRestorationData",
+    "RestorationRefreshStatus",
+    "RestorationFetchResult",
+    "RestorationRefreshResult",
     "RTERestorationProfile",
     "RTE_AFRR_PROFILE",
     "RTE_MFRR_PROFILE",
@@ -1375,4 +1620,6 @@ __all__ = [
     "build_rte_query_windows",
     "execute_rte_request",
     "parse_rte_restoration_responses",
+    "fetch_rte_restoration_data",
+    "refresh_rte_restoration_data",
 ]

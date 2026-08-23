@@ -1421,8 +1421,13 @@ def _validate_selected_series_period(
     if coverage is None:
         coverage = getattr(artifact, "actual_covered_period", None)
     if not isinstance(coverage, CanonicalInterval):
-        raise RestorationArtifactValidationError(
-            f"selected series {series_id} has no canonical coverage metadata"
+        to_dict = getattr(coverage, "to_dict", None)
+        if not callable(to_dict):
+            raise RestorationArtifactValidationError(
+                f"selected series {series_id} has no canonical coverage metadata"
+            )
+        coverage = _interval(
+            to_dict(), field_name=f"selected series {series_id} coverage"
         )
     if (
         coverage.start_utc > study_period.start_utc
