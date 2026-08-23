@@ -98,7 +98,7 @@ the artifacts and an RTE/ENTSO-E study bundle offline.
 - [X] T030 [US1] Implement exact `standard_mfrr_data` JSON parsing with directional SA/DA requested, satisfied, locally activated, clearing/settlement price, nested price-entry, and missingness preservation in `src/open_energy_lab/market/rte.py`
 - [X] T031 [US1] Implement complete in-memory validation and atomic `fetch_rte_restoration_data` publication with market-response digests, per-series provenance, restricted-policy metadata, and no OAuth evidence in `src/open_energy_lab/market/rte.py`
 - [X] T032 [US1] Implement request-compatible immutable `refresh_rte_restoration_data` with unchanged/no-write, changed/one-successor, and failure/preserve-current outcomes in `src/open_energy_lab/market/rte.py`
-- [ ] T033 [US1] Implement the strict allowlisted dotenv reader and explicit RTE fetch/refresh CLI, reading credentials only inside the selected operation, in `examples/restoration_services/fetch_rte_period.py`
+- [X] T033 [US1] Implement the strict allowlisted dotenv reader and explicit RTE fetch/refresh CLI, reading credentials only inside the selected operation, in `examples/restoration_services/fetch_rte_period.py`
 
 **Checkpoint**: US1 passes entirely with authored fixtures and injected
 transports; the optional live check confirms current production compatibility
