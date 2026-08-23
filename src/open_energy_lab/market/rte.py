@@ -7,14 +7,19 @@ available only through explicit operation functions in this focused module.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
+import base64
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 import hashlib
+import json
 import math
+import time
 from types import MappingProxyType
 from typing import Any
-from urllib.parse import urlsplit
+import urllib.error
+from urllib.parse import urlencode, urlsplit
+import urllib.request
 
 from .restoration_artifact import (
     RawRetentionPolicy,
@@ -32,6 +37,8 @@ RTE_EXPECTED_RESOLUTION = "PT15M"
 RTE_MAX_CALLER_WINDOW = timedelta(days=31)
 RTE_MAX_SOURCE_WINDOW = timedelta(days=1)
 RTE_MAX_RESPONSE_BYTES = 10 * 1024 * 1024
+RTE_MAX_AUTH_RESPONSE_BYTES = 64 * 1024
+RTE_MAX_RETRY_AFTER_SECONDS = 30.0
 RTE_MARKET_TIMEZONE = "Europe/Paris"
 RTE_AREA = "France control/scheduling area"
 
@@ -85,6 +92,51 @@ class RTETransportError(RuntimeError):
 
 class RTEParseError(ValueError):
     """Sanitized RTE response semantic failure."""
+
+
+@dataclass(frozen=True, slots=True)
+class RTETransportRequest:
+    """Ephemeral HTTP request whose sensitive fields are excluded from repr."""
+
+    method: str
+    url: str
+    headers: Mapping[str, str] = field(repr=False)
+    body: bytes | None = field(default=None, repr=False)
+    maximum_response_bytes: int = RTE_MAX_RESPONSE_BYTES
+
+
+@dataclass(frozen=True, slots=True)
+class RTEHTTPResponse:
+    """Injected or stdlib transport response with bounded in-memory bytes."""
+
+    status: int
+    media_type: str
+    body: bytes = field(repr=False)
+    headers: Mapping[str, str] = field(default_factory=dict, repr=False)
+
+
+@dataclass(frozen=True, slots=True)
+class RTEOAuthSession:
+    """Operation-local OAuth value that cannot reveal its token in repr."""
+
+    access_token: str = field(repr=False)
+    expires_in_seconds: float | None = field(default=None, repr=False)
+
+
+@dataclass(frozen=True, slots=True)
+class RTERawMarketResponse:
+    """Bounded market bytes and sanitized evidence for one source window."""
+
+    request_id: str
+    resource: str
+    start_utc: datetime
+    end_utc: datetime
+    retrieved_at_utc: str
+    media_type: str
+    body: bytes = field(repr=False)
+    raw_sha256: str
+    attempt_count: int
+    source_revision: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -419,15 +471,305 @@ def execute_rte_request(
     *,
     client_id: str,
     client_secret: str,
-    auth_transport: Callable[..., object] | None = None,
-    data_transport: Callable[..., object] | None = None,
+    auth_transport: Callable[[RTETransportRequest], RTEHTTPResponse] | None = None,
+    data_transport: Callable[[RTETransportRequest], RTEHTTPResponse] | None = None,
     clock: Callable[[], datetime] | None = None,
     sleeper: Callable[[float], None] | None = None,
-) -> object:
-    """Execute an explicit credentialed request (transport implemented in T028)."""
+) -> tuple[RTERawMarketResponse, ...]:
+    """Authenticate in memory and retrieve all bounded source windows."""
 
-    del request, client_id, client_secret, auth_transport, data_transport, clock, sleeper
-    raise NotImplementedError("RTE OAuth transport is not implemented yet")
+    if not isinstance(request, RestorationMarketDataRequest):
+        raise RTERequestValidationError(
+            "request must be a RestorationMarketDataRequest"
+        )
+    if not isinstance(client_id, str) or not client_id:
+        raise RTEAuthenticationError("RTE authentication requires a client ID")
+    if not isinstance(client_secret, str) or not client_secret:
+        raise RTEAuthenticationError("RTE authentication requires a client secret")
+    selected_auth_transport = auth_transport or _stdlib_transport
+    selected_data_transport = data_transport or _stdlib_transport
+    selected_clock = clock or (lambda: datetime.now(UTC))
+    selected_sleeper = sleeper or time.sleep
+    session = _obtain_oauth_session(
+        client_id=client_id,
+        client_secret=client_secret,
+        transport=selected_auth_transport,
+    )
+    responses: list[RTERawMarketResponse] = []
+    for window in build_rte_query_windows(request):
+        response, attempt_count, session = _retrieve_window(
+            request=request,
+            window=window,
+            session=session,
+            client_id=client_id,
+            client_secret=client_secret,
+            auth_transport=selected_auth_transport,
+            data_transport=selected_data_transport,
+            sleeper=selected_sleeper,
+        )
+        retrieved = selected_clock()
+        if (
+            not isinstance(retrieved, datetime)
+            or retrieved.tzinfo is None
+            or retrieved.utcoffset() != timedelta(0)
+        ):
+            raise RTETransportError("acquisition clock must return an aware UTC time")
+        revision = _header(response.headers, "ETag") or _header(
+            response.headers, "Last-Modified"
+        )
+        responses.append(
+            RTERawMarketResponse(
+                request_id=window.request_id,
+                resource=window.resource,
+                start_utc=window.start_utc,
+                end_utc=window.end_utc,
+                retrieved_at_utc=retrieved.astimezone(UTC)
+                .isoformat()
+                .replace("+00:00", "Z"),
+                media_type=response.media_type,
+                body=response.body,
+                raw_sha256=hashlib.sha256(response.body).hexdigest(),
+                attempt_count=attempt_count,
+                source_revision=revision,
+            )
+        )
+    return tuple(responses)
+
+
+def _header(headers: Mapping[str, str], name: str) -> str | None:
+    target = name.casefold()
+    for key, value in headers.items():
+        if str(key).casefold() == target:
+            return str(value)
+    return None
+
+
+def _is_json_media_type(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    return value.split(";", 1)[0].strip().casefold() in {
+        "application/json",
+        "application/problem+json",
+    }
+
+
+def _validate_http_response(
+    response: object,
+    *,
+    maximum_bytes: int,
+    phase: str,
+) -> RTEHTTPResponse:
+    if not isinstance(response, RTEHTTPResponse):
+        raise RTETransportError(
+            f"RTE {phase} transport returned an invalid response type"
+        )
+    if isinstance(response.status, bool) or not isinstance(response.status, int):
+        raise RTETransportError(f"RTE {phase} transport returned an invalid status")
+    if not isinstance(response.body, bytes):
+        raise RTETransportError(f"RTE {phase} response body must be bytes")
+    if len(response.body) > maximum_bytes:
+        raise RTETransportError(
+            f"RTE {phase} response body exceeds the configured maximum bytes"
+        )
+    return response
+
+
+def _stdlib_transport(request: RTETransportRequest) -> RTEHTTPResponse:
+    """Perform one bounded synchronous HTTP call for explicit live operations."""
+
+    transport_request = urllib.request.Request(
+        request.url,
+        data=request.body,
+        headers=dict(request.headers),
+        method=request.method,
+    )
+    try:
+        with urllib.request.urlopen(transport_request, timeout=30.0) as response:
+            body = response.read(request.maximum_response_bytes + 1)
+            headers = {str(key): str(value) for key, value in response.headers.items()}
+            return RTEHTTPResponse(
+                status=int(response.status),
+                media_type=response.headers.get_content_type(),
+                body=body,
+                headers=headers,
+            )
+    except urllib.error.HTTPError as exc:
+        body = exc.read(request.maximum_response_bytes + 1)
+        headers = {str(key): str(value) for key, value in exc.headers.items()}
+        return RTEHTTPResponse(
+            status=int(exc.code),
+            media_type=exc.headers.get_content_type(),
+            body=body,
+            headers=headers,
+        )
+
+
+def _obtain_oauth_session(
+    *,
+    client_id: str,
+    client_secret: str,
+    transport: Callable[[RTETransportRequest], RTEHTTPResponse],
+) -> RTEOAuthSession:
+    basic = base64.b64encode(f"{client_id}:{client_secret}".encode("utf-8")).decode(
+        "ascii"
+    )
+    request = RTETransportRequest(
+        method="POST",
+        url=RTE_TOKEN_ENDPOINT,
+        headers=MappingProxyType(
+            {
+                "Authorization": f"Basic {basic}",
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Accept": "application/json",
+            }
+        ),
+        body=b"grant_type=client_credentials",
+        maximum_response_bytes=RTE_MAX_AUTH_RESPONSE_BYTES,
+    )
+    try:
+        response = _validate_http_response(
+            transport(request),
+            maximum_bytes=RTE_MAX_AUTH_RESPONSE_BYTES,
+            phase="authentication",
+        )
+    except RTETransportError as exc:
+        raise RTEAuthenticationError(
+            "RTE authentication failed after one attempt"
+        ) from exc
+    except Exception as exc:
+        raise RTEAuthenticationError(
+            "RTE authentication transport failed after one attempt"
+        ) from exc
+    if response.status != 200:
+        raise RTEAuthenticationError(
+            f"RTE authentication failed with status {response.status} after one attempt"
+        )
+    if not _is_json_media_type(response.media_type):
+        raise RTEAuthenticationError(
+            "RTE authentication returned an unsupported media type after one attempt"
+        )
+    try:
+        payload = json.loads(response.body)
+    except (json.JSONDecodeError, UnicodeDecodeError, TypeError, ValueError) as exc:
+        raise RTEAuthenticationError(
+            "RTE authentication returned malformed JSON after one attempt"
+        ) from exc
+    if not isinstance(payload, Mapping):
+        raise RTEAuthenticationError(
+            "RTE authentication returned an invalid schema after one attempt"
+        )
+    token = payload.get("access_token")
+    if not isinstance(token, str) or not token:
+        raise RTEAuthenticationError(
+            "RTE authentication response lacks an access token after one attempt"
+        )
+    expires_value = payload.get("expires_in")
+    expires = None
+    if isinstance(expires_value, (int, float)) and not isinstance(expires_value, bool):
+        expires_float = float(expires_value)
+        if math.isfinite(expires_float) and expires_float >= 0:
+            expires = expires_float
+    return RTEOAuthSession(access_token=token, expires_in_seconds=expires)
+
+
+def _data_url(request: RestorationMarketDataRequest, window: RTEQueryWindow) -> str:
+    query = urlencode(
+        {
+            "start_date": window.start_utc.isoformat().replace("+00:00", "Z"),
+            "end_date": window.end_utc.isoformat().replace("+00:00", "Z"),
+        }
+    )
+    return f"{request.source_endpoint}?{query}"
+
+
+def _retry_delay(response: RTEHTTPResponse | None, *, attempt: int) -> float:
+    if response is not None:
+        value = _header(response.headers, "Retry-After")
+        if value is not None:
+            try:
+                parsed = float(value)
+            except ValueError:
+                parsed = -1.0
+            if math.isfinite(parsed) and parsed >= 0:
+                return min(parsed, RTE_MAX_RETRY_AFTER_SECONDS)
+    return float(attempt)
+
+
+def _retrieve_window(
+    *,
+    request: RestorationMarketDataRequest,
+    window: RTEQueryWindow,
+    session: RTEOAuthSession,
+    client_id: str,
+    client_secret: str,
+    auth_transport: Callable[[RTETransportRequest], RTEHTTPResponse],
+    data_transport: Callable[[RTETransportRequest], RTEHTTPResponse],
+    sleeper: Callable[[float], None],
+) -> tuple[RTEHTTPResponse, int, RTEOAuthSession]:
+    renewed = False
+    active_session = session
+    for attempt in range(1, 4):
+        operation_request = RTETransportRequest(
+            method="GET",
+            url=_data_url(request, window),
+            headers=MappingProxyType(
+                {
+                    "Authorization": f"Bearer {active_session.access_token}",
+                    "Accept": "application/json",
+                }
+            ),
+            maximum_response_bytes=RTE_MAX_RESPONSE_BYTES,
+        )
+        response: RTEHTTPResponse | None = None
+        try:
+            response = _validate_http_response(
+                data_transport(operation_request),
+                maximum_bytes=RTE_MAX_RESPONSE_BYTES,
+                phase="market data",
+            )
+        except RTETransportError:
+            raise
+        except (TimeoutError, ConnectionError, OSError):
+            if attempt == 3:
+                raise RTETransportError(
+                    "RTE market data transport failed transiently after 3 attempts"
+                ) from None
+            sleeper(_retry_delay(None, attempt=attempt))
+            continue
+        except Exception:
+            raise RTETransportError(
+                "RTE market data transport failed permanently after one attempt"
+            ) from None
+        if response.status == 200:
+            if not _is_json_media_type(response.media_type):
+                raise RTETransportError(
+                    "RTE market data response media type must be JSON"
+                )
+            return response, attempt, active_session
+        if response.status == 401 and not renewed:
+            active_session = _obtain_oauth_session(
+                client_id=client_id,
+                client_secret=client_secret,
+                transport=auth_transport,
+            )
+            renewed = True
+            continue
+        transient = response.status in {408, 429} or 500 <= response.status <= 599
+        if transient:
+            if attempt == 3:
+                raise RTETransportError(
+                    f"RTE market data status {response.status} remained transient after 3 attempts"
+                )
+            sleeper(_retry_delay(response, attempt=attempt))
+            continue
+        if response.status in {401, 403}:
+            raise RTEAuthenticationError(
+                f"RTE market data authorization failed with status {response.status} after one attempt"
+            )
+        raise RTETransportError(
+            f"RTE market data returned permanent status {response.status} after one attempt"
+        )
+    raise RTETransportError("RTE market data transport exhausted 3 attempts")
 
 
 __all__ = [
@@ -438,11 +780,17 @@ __all__ = [
     "RTE_TOKEN_ENDPOINT",
     "RTE_EXPECTED_RESOLUTION",
     "RTE_MAX_RESPONSE_BYTES",
+    "RTE_MAX_AUTH_RESPONSE_BYTES",
+    "RTE_MAX_RETRY_AFTER_SECONDS",
     "RTEAcquisitionMode",
     "RTERequestValidationError",
     "RTEAuthenticationError",
     "RTETransportError",
     "RTEParseError",
+    "RTETransportRequest",
+    "RTEHTTPResponse",
+    "RTEOAuthSession",
+    "RTERawMarketResponse",
     "RTERestorationProfile",
     "RTE_AFRR_PROFILE",
     "RTE_MFRR_PROFILE",
