@@ -22,9 +22,12 @@ from urllib.parse import urlencode, urlsplit
 import urllib.request
 
 from .restoration_artifact import (
+    ObservationValueState,
     RawRetentionPolicy,
+    SeriesAvailability,
     canonical_restoration_json_bytes,
 )
+from .time import CanonicalInterval
 
 
 RTE_CATALOG_VERSION = "5.2"
@@ -772,6 +775,572 @@ def _retrieve_window(
     raise RTETransportError("RTE market data transport exhausted 3 attempts")
 
 
+@dataclass(frozen=True, slots=True)
+class RTEParsedObservation:
+    interval: CanonicalInterval
+    value_state: ObservationValueState
+    value: float | None
+    source_row: int
+    source_field: str
+    document_ref: str
+    conversion_ref: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RTEParsedSeries:
+    series_id: str
+    semantic_version: str
+    source: str
+    source_version: str
+    resource: str
+    source_field: str
+    product: str
+    process: str
+    direction: str
+    area: str
+    requested_period: CanonicalInterval
+    covered_period: CanonicalInterval
+    source_resolution: str
+    canonical_resolution: str
+    source_unit: str
+    canonical_unit: str
+    currency: str | None
+    availability: SeriesAvailability
+    transformations: tuple[str, ...]
+    observations: tuple[RTEParsedObservation, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class RTENestedPriceEntry:
+    interval: CanonicalInterval
+    direction: str
+    activation_type: str
+    requested_price: float
+    requested_volume: float
+    satisfied_need: float
+    source_row: int
+    source_entry: int
+
+
+@dataclass(frozen=True, slots=True)
+class RTEParsedRestorationData:
+    profile: RTERestorationProfile
+    requested_period: CanonicalInterval
+    covered_period: CanonicalInterval
+    series: tuple[RTEParsedSeries, ...]
+    nested_price_entries: tuple[RTENestedPriceEntry, ...]
+    transformations: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _ParsedRow:
+    interval: CanonicalInterval
+    source_row: int
+    document_ref: str
+    values: Mapping[str, object]
+    direction: str | None = None
+
+
+def _parse_error(message: str) -> RTEParseError:
+    return RTEParseError(f"RTE response semantic validation failed: {message}")
+
+
+def _response_json(raw: RTERawMarketResponse) -> Mapping[str, object]:
+    if hashlib.sha256(raw.body).hexdigest() != raw.raw_sha256:
+        raise _parse_error("raw response SHA-256 digest mismatch")
+    if not _is_json_media_type(raw.media_type):
+        raise _parse_error("response media type must be JSON")
+
+    def _reject_constant(value: str) -> object:
+        raise _parse_error(f"non-finite JSON number {value}")
+
+    try:
+        payload = json.loads(raw.body, parse_constant=_reject_constant)
+    except RTEParseError:
+        raise
+    except (json.JSONDecodeError, UnicodeDecodeError, TypeError, ValueError) as exc:
+        raise _parse_error("malformed JSON response") from exc
+    if not isinstance(payload, Mapping):
+        raise _parse_error("top-level JSON value must be an object")
+    return payload
+
+
+def _source_datetime(value: object, *, field_name: str) -> datetime:
+    if not isinstance(value, str) or not value:
+        raise _parse_error(f"{field_name} must be an ISO 8601 UTC timestamp")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise _parse_error(f"{field_name} must be an ISO 8601 UTC timestamp") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() != timedelta(0):
+        raise _parse_error(f"{field_name} must be an aware UTC timestamp")
+    return parsed.astimezone(UTC)
+
+
+def _source_number(value: object, *, field_name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise _parse_error(f"{field_name} must be a finite number")
+    normalized = float(value)
+    if not math.isfinite(normalized):
+        raise _parse_error(f"{field_name} must be a finite number")
+    return normalized
+
+
+def _value_state(
+    values: Mapping[str, object], *, field_name: str
+) -> tuple[ObservationValueState, float | None]:
+    if field_name not in values:
+        return ObservationValueState.FIELD_ABSENT, None
+    value = values[field_name]
+    if value is None:
+        return ObservationValueState.SOURCE_NULL, None
+    return ObservationValueState.VALUE, _source_number(value, field_name=field_name)
+
+
+def _root_for_response(
+    request: RestorationMarketDataRequest,
+    raw: RTERawMarketResponse,
+) -> tuple[Mapping[str, object], Sequence[object]]:
+    payload = _response_json(raw)
+    if set(payload) != {request.profile.root_field}:
+        raise _parse_error(
+            f"expected exact {request.profile.root_field} root object"
+        )
+    root = payload[request.profile.root_field]
+    if not isinstance(root, Mapping):
+        raise _parse_error(f"{request.profile.root_field} root must be an object")
+    root_start = _source_datetime(root.get("start_date"), field_name="root.start_date")
+    root_end = _source_datetime(root.get("end_date"), field_name="root.end_date")
+    if root_start != raw.start_utc or root_end != raw.end_utc:
+        raise _parse_error("root coverage does not match the requested source window")
+    if root.get("resolution") != request.profile.expected_resolution:
+        raise _parse_error(
+            f"root resolution must be {request.profile.expected_resolution}"
+        )
+    volume_unit = root.get("volume_unit", "MW")
+    price_unit = root.get("price_unit", "EUR/MWh")
+    if volume_unit != "MW" or price_unit != "EUR/MWh":
+        raise _parse_error("source units must be MW and EUR/MWh")
+    rows = root.get(request.profile.rows_field)
+    if isinstance(rows, (str, bytes)) or not isinstance(rows, Sequence):
+        raise _parse_error(f"{request.profile.rows_field} must be an array")
+    if not rows:
+        raise _parse_error(f"{request.profile.rows_field} is empty; coverage is absent")
+    return root, rows
+
+
+def _row_interval(
+    row: Mapping[str, object], *, row_index: int
+) -> CanonicalInterval:
+    start = _source_datetime(
+        row.get("start_date"), field_name=f"row[{row_index}].start_date"
+    )
+    end = _source_datetime(
+        row.get("end_date"), field_name=f"row[{row_index}].end_date"
+    )
+    if end - start != timedelta(minutes=15):
+        raise _parse_error(
+            f"row[{row_index}] duration must match PT15M resolution"
+        )
+    try:
+        return CanonicalInterval.from_utc(start, end)
+    except ValueError as exc:
+        raise _parse_error(f"row[{row_index}] interval is invalid") from exc
+
+
+def _validate_coverage(
+    rows: Sequence[_ParsedRow],
+    *,
+    start: datetime,
+    end: datetime,
+    label: str,
+) -> None:
+    ordered = sorted(rows, key=lambda item: item.interval.start_utc)
+    cursor = start
+    seen: set[tuple[datetime, datetime]] = set()
+    for row in ordered:
+        identity = (row.interval.start_utc, row.interval.end_utc)
+        if identity in seen:
+            raise _parse_error(f"{label} contains a duplicate or conflicting interval")
+        seen.add(identity)
+        if row.interval.start_utc < cursor:
+            raise _parse_error(f"{label} intervals overlap")
+        if row.interval.start_utc > cursor:
+            raise _parse_error(f"{label} coverage contains a gap")
+        cursor = row.interval.end_utc
+    if cursor != end:
+        raise _parse_error(f"{label} coverage is incomplete or contains a gap")
+
+
+_AFRR_FIELD_CONTRACT = {
+    "afrr_requested_need_upward": (
+        "upward_afrr_requested_need",
+        "UPWARD",
+        "MW",
+        None,
+    ),
+    "afrr_requested_need_downward": (
+        "downward_afrr_requested_need",
+        "DOWNWARD",
+        "MW",
+        None,
+    ),
+    "afrr_activated_for_fr_upward": (
+        "upward_afrr_activated_volume_for_fr",
+        "UPWARD",
+        "MW",
+        None,
+    ),
+    "afrr_activated_for_fr_downward": (
+        "downward_afrr_activated_volume_for_fr",
+        "DOWNWARD",
+        "MW",
+        None,
+    ),
+    "afrr_activated_in_fr_upward": (
+        "upward_afrr_activated_volume_in_fr",
+        "UPWARD",
+        "MW",
+        None,
+    ),
+    "afrr_activated_in_fr_downward": (
+        "downward_afrr_activated_volume_in_fr",
+        "DOWNWARD",
+        "MW",
+        None,
+    ),
+    "afrr_weighted_average_price_upward": (
+        "upward_weighted_average_price_afrr_activated_for_fr",
+        "UPWARD",
+        "EUR/MWh",
+        "EUR",
+    ),
+    "afrr_weighted_average_price_downward": (
+        "downward_weighted_average_price_afrr_activated_for_fr",
+        "DOWNWARD",
+        "EUR/MWh",
+        "EUR",
+    ),
+}
+
+
+def _parse_afrr_rows(
+    request: RestorationMarketDataRequest,
+    responses: Sequence[RTERawMarketResponse],
+) -> tuple[tuple[_ParsedRow, ...], tuple[RTENestedPriceEntry, ...]]:
+    required_fields = {
+        "start_date",
+        "end_date",
+        *(contract[0] for contract in _AFRR_FIELD_CONTRACT.values()),
+    }
+    parsed: list[_ParsedRow] = []
+    source_row_offset = 0
+    for raw in responses:
+        _, rows = _root_for_response(request, raw)
+        window_rows = []
+        for index, value in enumerate(rows):
+            if not isinstance(value, Mapping):
+                raise _parse_error(f"picasso row[{index}] must be an object")
+            missing = sorted(required_fields - set(value))
+            if missing:
+                raise _parse_error(
+                    f"picasso row[{index}] is missing field {missing[0]}"
+                )
+            interval = _row_interval(value, row_index=index)
+            for field_name in required_fields - {"start_date", "end_date"}:
+                _source_number(value[field_name], field_name=field_name)
+            window_rows.append(
+                _ParsedRow(
+                    interval=interval,
+                    source_row=source_row_offset + index,
+                    document_ref=raw.request_id,
+                    values=MappingProxyType(dict(value)),
+                )
+            )
+        _validate_coverage(
+            window_rows,
+            start=raw.start_utc,
+            end=raw.end_utc,
+            label="aFRR source window",
+        )
+        parsed.extend(window_rows)
+        source_row_offset += len(rows)
+    _validate_coverage(
+        parsed,
+        start=request.requested_start_utc,
+        end=request.requested_end_utc,
+        label="aFRR requested period",
+    )
+    return tuple(sorted(parsed, key=lambda item: item.interval.start_utc)), ()
+
+
+def _mfrr_contract(series_id: str) -> tuple[str, str, str, str, str | None]:
+    direction = "UPWARD" if series_id.endswith("_upward") else "DOWNWARD"
+    without_direction = series_id.removesuffix("_upward").removesuffix("_downward")
+    if without_direction.startswith("mfrr_sa_"):
+        meaning = without_direction.removeprefix("mfrr_sa_")
+        field_name = {
+            "requested_volume": "total_requested_volume_SA",
+            "satisfied_need": "total_satisfied_need_SA",
+            "activated_volume": "total_activated_volume_SA",
+        }[meaning]
+        return field_name, direction, "scheduled_activation", "MW", None
+    if without_direction.startswith("mfrr_da_"):
+        meaning = without_direction.removeprefix("mfrr_da_")
+        field_name = {
+            "requested_volume": "total_requested_volume_DA",
+            "satisfied_need": "total_satisfied_need_DA",
+            "activated_volume": "total_activated_volume_DA",
+        }[meaning]
+        return field_name, direction, "direct_activation", "MW", None
+    meaning = without_direction.removeprefix("mfrr_")
+    field_name = {
+        "clearing_price": "clearing_price",
+        "settlement_price_current": "settlement_price_current",
+        "settlement_price_previous": "settlement_price_previous",
+        "submitted_offer_volume": "total_volume_submitted_offers",
+        "filtered_offer_volume": "total_volume_filtered_offers",
+    }[meaning]
+    is_price = "price" in meaning
+    return (
+        field_name,
+        direction,
+        "manual_restoration_context",
+        "EUR/MWh" if is_price else "MW",
+        "EUR" if is_price else None,
+    )
+
+
+def _nested_entries(
+    row: Mapping[str, object],
+    *,
+    interval: CanonicalInterval,
+    direction: str,
+    source_row: int,
+) -> tuple[RTENestedPriceEntry, ...]:
+    values = row.get("requested_activated_volumes_by_prices")
+    if isinstance(values, (str, bytes)) or not isinstance(values, Sequence):
+        raise _parse_error("nested requested_activated_volumes_by_prices must be an array")
+    built = []
+    for index, value in enumerate(values):
+        if not isinstance(value, Mapping):
+            raise _parse_error("nested price entry must be an object")
+        required = {
+            "activation_type",
+            "requested_price",
+            "requested_volume",
+            "satisfied_need",
+        }
+        missing = sorted(required - set(value))
+        if missing:
+            raise _parse_error(f"nested price entry is missing {missing[0]}")
+        activation_type = value["activation_type"]
+        if activation_type not in {"SA", "DA"}:
+            raise _parse_error("nested price activation_type must be SA or DA")
+        built.append(
+            RTENestedPriceEntry(
+                interval=interval,
+                direction=direction,
+                activation_type=str(activation_type),
+                requested_price=_source_number(
+                    value["requested_price"], field_name="nested.requested_price"
+                ),
+                requested_volume=_source_number(
+                    value["requested_volume"], field_name="nested.requested_volume"
+                ),
+                satisfied_need=_source_number(
+                    value["satisfied_need"], field_name="nested.satisfied_need"
+                ),
+                source_row=source_row,
+                source_entry=index,
+            )
+        )
+    return tuple(built)
+
+
+def _parse_mfrr_rows(
+    request: RestorationMarketDataRequest,
+    responses: Sequence[RTERawMarketResponse],
+) -> tuple[tuple[_ParsedRow, ...], tuple[RTENestedPriceEntry, ...]]:
+    parsed: list[_ParsedRow] = []
+    nested: list[RTENestedPriceEntry] = []
+    source_row_offset = 0
+    for raw in responses:
+        _, rows = _root_for_response(request, raw)
+        window_rows: list[_ParsedRow] = []
+        for index, value in enumerate(rows):
+            if not isinstance(value, Mapping):
+                raise _parse_error(f"mari row[{index}] must be an object")
+            for field_name in (
+                "start_date",
+                "end_date",
+                "direction",
+                "requested_activated_volumes_by_prices",
+            ):
+                if field_name not in value:
+                    raise _parse_error(f"mari row[{index}] is missing {field_name}")
+            source_direction = value["direction"]
+            if source_direction not in {"upward", "downward"}:
+                raise _parse_error("mFRR direction must be upward or downward")
+            direction = str(source_direction).upper()
+            interval = _row_interval(value, row_index=index)
+            source_row = source_row_offset + index
+            parsed_row = _ParsedRow(
+                interval=interval,
+                source_row=source_row,
+                document_ref=raw.request_id,
+                values=MappingProxyType(dict(value)),
+                direction=direction,
+            )
+            window_rows.append(parsed_row)
+            nested.extend(
+                _nested_entries(
+                    value,
+                    interval=interval,
+                    direction=direction,
+                    source_row=source_row,
+                )
+            )
+        for direction in {item.direction for item in window_rows}:
+            selected = [item for item in window_rows if item.direction == direction]
+            _validate_coverage(
+                selected,
+                start=raw.start_utc,
+                end=raw.end_utc,
+                label=f"mFRR {direction} source window",
+            )
+        parsed.extend(window_rows)
+        source_row_offset += len(rows)
+    required_directions = {
+        "UPWARD" if series_id.endswith("_upward") else "DOWNWARD"
+        for series_id in request.requested_series_ids
+    }
+    for direction in required_directions:
+        selected = [item for item in parsed if item.direction == direction]
+        if not selected:
+            raise _parse_error(f"mFRR {direction} direction coverage is missing")
+        _validate_coverage(
+            selected,
+            start=request.requested_start_utc,
+            end=request.requested_end_utc,
+            label=f"mFRR {direction} requested period",
+        )
+    return (
+        tuple(sorted(parsed, key=lambda item: (item.interval.start_utc, item.direction or ""))),
+        tuple(nested),
+    )
+
+
+def _build_parsed_series(
+    request: RestorationMarketDataRequest,
+    rows: Sequence[_ParsedRow],
+) -> tuple[RTEParsedSeries, ...]:
+    period = CanonicalInterval.from_utc(
+        request.requested_start_utc, request.requested_end_utc
+    )
+    built = []
+    for series_id in request.requested_series_ids:
+        if request.profile is RTE_AFRR_PROFILE:
+            source_field, direction, unit, currency = _AFRR_FIELD_CONTRACT[series_id]
+            process = "automatic_restoration"
+            selected_rows = rows
+        else:
+            source_field, direction, process, unit, currency = _mfrr_contract(series_id)
+            selected_rows = [item for item in rows if item.direction == direction]
+        observations = []
+        for row in selected_rows:
+            state, value = _value_state(row.values, field_name=source_field)
+            observations.append(
+                RTEParsedObservation(
+                    interval=row.interval,
+                    value_state=state,
+                    value=value,
+                    source_row=row.source_row,
+                    source_field=source_field,
+                    document_ref=row.document_ref,
+                )
+            )
+        if not observations:
+            availability = SeriesAvailability.SOURCE_ABSENT
+        elif any(
+            item.value_state is not ObservationValueState.VALUE
+            for item in observations
+        ):
+            availability = SeriesAvailability.PRESENT_WITH_NULLS
+        else:
+            availability = SeriesAvailability.PRESENT
+        if series_id in request.required_series_ids and availability is not SeriesAvailability.PRESENT:
+            raise _parse_error(
+                f"required series {series_id} contains null or field-absent source values"
+            )
+        built.append(
+            RTEParsedSeries(
+                series_id=series_id,
+                semantic_version=f"rte-v5.2-{series_id}-v1",
+                source="RTE",
+                source_version=RTE_CATALOG_VERSION,
+                resource=request.resource_identity,
+                source_field=source_field,
+                product="AFRR" if request.profile is RTE_AFRR_PROFILE else "MFRR",
+                process=process,
+                direction=direction,
+                area=RTE_AREA,
+                requested_period=period,
+                covered_period=period,
+                source_resolution=RTE_EXPECTED_RESOLUTION,
+                canonical_resolution=RTE_EXPECTED_RESOLUTION,
+                source_unit=unit,
+                canonical_unit=unit,
+                currency=currency,
+                availability=availability,
+                transformations=("rte-v5.2-chronological-row-order",),
+                observations=tuple(observations),
+            )
+        )
+    return tuple(built)
+
+
+def parse_rte_restoration_responses(
+    request: RestorationMarketDataRequest,
+    responses: Sequence[RTERawMarketResponse],
+) -> RTEParsedRestorationData:
+    """Parse all source windows exactly without filling, netting, or interpolation."""
+
+    if not isinstance(request, RestorationMarketDataRequest):
+        raise RTEParseError("request must be a RestorationMarketDataRequest")
+    normalized = tuple(responses)
+    expected_windows = build_rte_query_windows(request)
+    if len(normalized) != len(expected_windows) or any(
+        not isinstance(item, RTERawMarketResponse) for item in normalized
+    ):
+        raise _parse_error("response windows are incomplete")
+    for index, (raw, window) in enumerate(zip(normalized, expected_windows, strict=True)):
+        if (
+            raw.request_id != window.request_id
+            or raw.resource != window.resource
+            or raw.start_utc != window.start_utc
+            or raw.end_utc != window.end_utc
+        ):
+            raise _parse_error(f"response window {index} identity is incompatible")
+    if request.profile is RTE_AFRR_PROFILE:
+        rows, nested = _parse_afrr_rows(request, normalized)
+    elif request.profile is RTE_MFRR_PROFILE:
+        rows, nested = _parse_mfrr_rows(request, normalized)
+    else:
+        raise _parse_error("request profile is not a closed RTE restoration profile")
+    period = CanonicalInterval.from_utc(
+        request.requested_start_utc, request.requested_end_utc
+    )
+    return RTEParsedRestorationData(
+        profile=request.profile,
+        requested_period=period,
+        covered_period=period,
+        series=_build_parsed_series(request, rows),
+        nested_price_entries=nested,
+        transformations=("rte-v5.2-chronological-row-order",),
+    )
+
+
 __all__ = [
     "RTE_CATALOG_VERSION",
     "RTE_API_PATH_VERSION",
@@ -791,6 +1360,10 @@ __all__ = [
     "RTEHTTPResponse",
     "RTEOAuthSession",
     "RTERawMarketResponse",
+    "RTEParsedObservation",
+    "RTEParsedSeries",
+    "RTENestedPriceEntry",
+    "RTEParsedRestorationData",
     "RTERestorationProfile",
     "RTE_AFRR_PROFILE",
     "RTE_MFRR_PROFILE",
@@ -801,4 +1374,5 @@ __all__ = [
     "build_rte_restoration_request",
     "build_rte_query_windows",
     "execute_rte_request",
+    "parse_rte_restoration_responses",
 ]
