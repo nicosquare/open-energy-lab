@@ -30,10 +30,10 @@ mFRR then remain separate independently testable product increments.
 **Purpose**: Establish Feature 011 test, fixture, example, and environment
 surfaces without changing `legacy/*` or adding a core dependency.
 
-- [ ] T001 [P] Register the opt-in `live_rte` pytest marker, add optional `nbclient` automated execution and `jupyterlab` interactive notebook dependencies, and add explicit Feature 011 restricted-fixture wheel/sdist exclusion placeholders without changing routine test selection or core dependencies in `pyproject.toml`
-- [ ] T002 [P] Create the synthetic/private fixture layout and document authored-versus-restricted handling in `tests/fixtures/restoration/README.md` and `tests/fixtures/restoration/RESTRICTED_DATA.md`
-- [ ] T003 [P] Create the acquisition, staging, offline replay, expected-result, and notebook consumer map in `examples/restoration_services/README.md`
-- [ ] T004 Verify the placeholder-only RTE/ENTSO-E variable template and ignored local dotenv policy, preserving caller secrets outside version control, in `.env.example`, `.gitignore`, and `tests/unit/market/test_rte_environment.py`
+- [X] T001 [P] Register the opt-in `live_rte` pytest marker, add optional `nbclient` automated execution and `jupyterlab` interactive notebook dependencies, and add explicit Feature 011 restricted-fixture wheel/sdist exclusion placeholders without changing routine test selection or core dependencies in `pyproject.toml`
+- [X] T002 [P] Create the synthetic/private fixture layout and document authored-versus-restricted handling in `tests/fixtures/restoration/README.md` and `tests/fixtures/restoration/RESTRICTED_DATA.md`
+- [X] T003 [P] Create the acquisition, staging, offline replay, expected-result, and notebook consumer map in `examples/restoration_services/README.md`
+- [X] T004 Verify the placeholder-only RTE/ENTSO-E variable template and ignored local dotenv policy, preserving caller secrets outside version control, in `.env.example`, `.gitignore`, and `tests/unit/market/test_rte_environment.py`
 
 ---
 
