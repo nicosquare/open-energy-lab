@@ -120,14 +120,14 @@ fingerprint within `1e-6`.
 ### Tests and Fixtures for User Story 2
 
 - [X] T034 [P] [US2] Encode the hand-calculable two-direction aFRR inputs and published expected samples/aggregates in `tests/fixtures/restoration/manual_afrr_v1.json`
-- [ ] T035 [P] [US2] Add failing tests for signed interval-average aFRR trajectories, exact coverage, direct energy integration, explicit `created_or_retrieved_at_utc` provenance, no interpolation/upsampling, opposing RTE-need rejection, fixed-fraction mapping, capacity rejection, and fingerprints in `tests/unit/market/test_afrr_activation.py`
+- [X] T035 [P] [US2] Add failing tests for signed interval-average aFRR trajectories, exact coverage, direct energy integration, explicit `created_or_retrieved_at_utc` provenance, no interpolation/upsampling, opposing RTE-need rejection, fixed-fraction mapping, capacity rejection, and fingerprints in `tests/unit/market/test_afrr_activation.py`
 - [ ] T036 [P] [US2] Add failing tests for aFRR directional commitments, zero/fixed/deterministic baselines, baseline bounds, temporal alignment, usable energy, capability checks, and activation lookahead prohibition in `tests/unit/control/test_afrr_restoration.py`
 - [ ] T037 [P] [US2] Add failing tests for aFRR request/delivery attribution, directional headroom, tracking error, response delay, ramp, power/SOC/energy saturation, zero activation, ordered causes, aggregation conservation, and determinism in `tests/unit/simulator/test_afrr_restoration.py`
 - [ ] T038 [US2] Add the failing end-to-end manual aFRR oracle and repeated-fingerprint assertions using `tests/fixtures/restoration/manual_afrr_v1.json` in `tests/integration/simulator/test_afrr_restoration_manual.py`
 
 ### Implementation for User Story 2
 
-- [ ] T039 [P] [US2] Implement immutable `AFRRActivationSample`/`AFRRActivationTrajectory`, explicit creation-or-retrieval provenance time included in identity, RTE-requested-need mapping, ambiguity rejection, exact integration, serialization, and fingerprints in `src/open_energy_lab/market/restoration_activation.py`
+- [X] T039 [P] [US2] Implement immutable `AFRRActivationSample`/`AFRRActivationTrajectory`, explicit creation-or-retrieval provenance time included in identity, RTE-requested-need mapping, ambiguity rejection, exact integration, serialization, and fingerprints in `src/open_energy_lab/market/restoration_activation.py`
 - [ ] T040 [P] [US2] Implement aFRR fixed directional schedule validation and no-lookahead baseline builders that reserve asymmetric power/energy headroom in `src/open_energy_lab/control/restoration_service.py`
 - [ ] T041 [US2] Implement exact `AFRRReplayRequest` validation and charge-positive sample replay through the shared capability layer and unchanged `apply_power_request` in `src/open_energy_lab/simulator/restoration_service.py`
 - [ ] T042 [US2] Implement aFRR per-sample/directional tracking, response, headroom, saturation duration, delivered/undelivered energy, conserved aggregates, diagnostics, and result fingerprints in `src/open_energy_lab/simulator/restoration_service.py`
