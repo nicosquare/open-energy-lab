@@ -58,6 +58,16 @@ expected terminal or activation energy is direct `kW * interval-hours`
 integration with absolute tolerance `1e-6`. The fixture is maintained by hand
 and changes only with a versioned activation, battery, or replay equation.
 
+`manual_mfrr_v1.json` is the corresponding project-authored event oracle for
+User Story 3. It publishes a rectangular upward scheduled activation, a
+downward direct activation with explicit delay and linear ramps, an empty
+zero-activation horizon, and one invalid scheduled/direct overlap. Requested
+event energy follows `power * (hold + 0.5*ramp_up + 0.5*ramp_down) / 3600`;
+native-grid interval averages conserve that analytic result within `1e-6`.
+The values are synthetic and are not evidence of an RTE-to-asset activation
+order. The fixture changes only with a versioned event-shape, overlap, battery,
+or replay equation.
+
 ## Restricted Fixtures
 
 Every `france_*` file listed in `RESTRICTED_DATA.md` is derived from real market

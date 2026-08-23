@@ -1,0 +1,317 @@
+{
+  "schema_version": "oel.fixture.manual-mfrr.v1",
+  "fixture_id": "manual-mfrr-event-replay-oracle-v1",
+  "provenance": {
+    "purpose": "Hand-calculable mFRR scheduled/direct event shape, timing, replay, overlap, and conservation oracle",
+    "origin": "Authored by the Open Energy Lab project; not captured from RTE or any battery",
+    "generation_method": "Written and independently checked from the delay/ramp/hold/ramp analytic profile and documented battery equations",
+    "source_contract": "Feature 011 restoration activation and replay contracts",
+    "units": "Power in kW, terminal energy in kWh, duration in seconds, SOC as a fraction",
+    "sign_convention": "Positive power charges the battery; negative power discharges it",
+    "default_absolute_tolerance": 1e-06,
+    "random_seed": null,
+    "network_required": false,
+    "operational_dispatch_evidence": false,
+    "license_and_redistribution": "Project-authored synthetic fixture; repository license applies",
+    "refresh_policy": "Change only when the versioned event-shape, overlap, battery, or replay equations change"
+  },
+  "valid_cases": [
+    {
+      "case_id": "upward-scheduled-rectangular",
+      "purpose": "One upward scheduled activation with exact rectangular energy",
+      "period": {
+        "start_utc": "2026-01-03T00:00:00Z",
+        "end_utc": "2026-01-03T00:15:00Z",
+        "resolution": "PT15M"
+      },
+      "battery": {
+        "name": "manual-mfrr-upward-sa",
+        "capacity_kwh": 100.0,
+        "max_charge_kw": 20.0,
+        "max_discharge_kw": 20.0,
+        "charge_efficiency": 1.0,
+        "discharge_efficiency": 1.0,
+        "initial_soc": 0.5,
+        "min_soc": 0.1,
+        "max_soc": 0.9
+      },
+      "capability": {
+        "max_ramp_up_kw_per_second": 1.0,
+        "max_ramp_down_kw_per_second": 1.0,
+        "max_activation_delay_seconds": {"AFRR": 5.0, "MFRR": 300.0},
+        "min_supported_duration_seconds": {"AFRR": 1.0, "MFRR": 60.0},
+        "max_supported_duration_seconds": {"AFRR": 900.0, "MFRR": 3600.0}
+      },
+      "commitment": {"upward_kw": 20.0, "downward_kw": 20.0},
+      "baseline_power_kw": [0.0],
+      "sequence": {
+        "sequence_id": "manual-mfrr-upward-sa-v1",
+        "semantics_version": "mfrr-delay-ramp-hold-v1",
+        "source_kind": "SYNTHETIC",
+        "created_or_retrieved_at_utc": "2026-01-04T00:00:00Z",
+        "events": [
+          {
+            "event_id": "upward-sa-001",
+            "kind": "SCHEDULED",
+            "direction": "UPWARD",
+            "requested_start_utc": "2026-01-03T00:00:00Z",
+            "activation_delay_seconds": 0.0,
+            "ramp_up_seconds": 0.0,
+            "hold_seconds": 900.0,
+            "ramp_down_seconds": 0.0,
+            "requested_power_kw": 12.0,
+            "source_kind": "SYNTHETIC",
+            "mapping_fingerprint": null,
+            "source_observation_refs": ["manual-mfrr:upward-sa-001"]
+          }
+        ]
+      },
+      "expected_samples": [
+        {
+          "sample_index": 0,
+          "event_id": "upward-sa-001",
+          "kind": "SCHEDULED",
+          "direction": "UPWARD",
+          "requested_balancing_power_kw": -12.0,
+          "delivered_balancing_power_kw": -12.0,
+          "requested_activation_energy_kwh": 3.0,
+          "delivered_activation_energy_kwh": 3.0,
+          "undelivered_activation_energy_kwh": 0.0,
+          "soc": 0.47,
+          "causes": [],
+          "non_performance_duration_seconds": 0.0
+        }
+      ],
+      "expected_events": [
+        {
+          "event_id": "upward-sa-001",
+          "kind": "SCHEDULED",
+          "direction": "UPWARD",
+          "requested_start_utc": "2026-01-03T00:00:00Z",
+          "actual_start_utc": "2026-01-03T00:00:00Z",
+          "requested_completion_utc": "2026-01-03T00:15:00Z",
+          "actual_completion_utc": "2026-01-03T00:15:00Z",
+          "requested_energy_kwh": 3.0,
+          "delivered_energy_kwh": 3.0,
+          "undelivered_energy_kwh": 0.0,
+          "maximum_achieved_ramp_kw_per_second": 0.013333333333333334,
+          "non_performance_duration_seconds": 0.0,
+          "causes": []
+        }
+      ],
+      "expected_totals": {
+        "charge_energy_kwh": 0.0,
+        "discharge_energy_kwh": 3.0,
+        "net_terminal_energy_kwh": -3.0,
+        "throughput_kwh": 3.0,
+        "requested_activation_energy_kwh": 3.0,
+        "delivered_activation_energy_kwh": 3.0,
+        "undelivered_activation_energy_kwh": 0.0,
+        "non_performance_duration_seconds": 0.0,
+        "final_soc": 0.47
+      }
+    },
+    {
+      "case_id": "downward-direct-delayed-ramped",
+      "purpose": "One downward direct event with one-minute delay, two-minute ramps, and three-minute hold",
+      "period": {
+        "start_utc": "2026-01-03T01:00:00Z",
+        "end_utc": "2026-01-03T01:08:00Z",
+        "resolution": "PT1M"
+      },
+      "battery": {
+        "name": "manual-mfrr-downward-da",
+        "capacity_kwh": 100.0,
+        "max_charge_kw": 20.0,
+        "max_discharge_kw": 20.0,
+        "charge_efficiency": 1.0,
+        "discharge_efficiency": 1.0,
+        "initial_soc": 0.5,
+        "min_soc": 0.1,
+        "max_soc": 0.9
+      },
+      "capability": {
+        "max_ramp_up_kw_per_second": 1.0,
+        "max_ramp_down_kw_per_second": 1.0,
+        "max_activation_delay_seconds": {"AFRR": 5.0, "MFRR": 300.0},
+        "min_supported_duration_seconds": {"AFRR": 1.0, "MFRR": 60.0},
+        "max_supported_duration_seconds": {"AFRR": 900.0, "MFRR": 3600.0}
+      },
+      "commitment": {"upward_kw": 20.0, "downward_kw": 20.0},
+      "baseline_power_kw": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+      "sequence": {
+        "sequence_id": "manual-mfrr-downward-da-v1",
+        "semantics_version": "mfrr-delay-ramp-hold-v1",
+        "source_kind": "SYNTHETIC",
+        "created_or_retrieved_at_utc": "2026-01-04T01:00:00Z",
+        "events": [
+          {
+            "event_id": "downward-da-001",
+            "kind": "DIRECT",
+            "direction": "DOWNWARD",
+            "requested_start_utc": "2026-01-03T01:00:00Z",
+            "activation_delay_seconds": 60.0,
+            "ramp_up_seconds": 120.0,
+            "hold_seconds": 180.0,
+            "ramp_down_seconds": 120.0,
+            "requested_power_kw": 10.0,
+            "source_kind": "SYNTHETIC",
+            "mapping_fingerprint": null,
+            "source_observation_refs": ["manual-mfrr:downward-da-001"]
+          }
+        ]
+      },
+      "expected_samples": [
+        {"sample_index": 0, "event_id": "downward-da-001", "kind": "DIRECT", "direction": "DOWNWARD", "requested_balancing_power_kw": 0.0, "delivered_balancing_power_kw": 0.0, "requested_activation_energy_kwh": 0.0, "delivered_activation_energy_kwh": 0.0, "undelivered_activation_energy_kwh": 0.0, "soc": 0.5, "causes": [], "non_performance_duration_seconds": 0.0},
+        {"sample_index": 1, "event_id": "downward-da-001", "kind": "DIRECT", "direction": "DOWNWARD", "requested_balancing_power_kw": 2.5, "delivered_balancing_power_kw": 2.5, "requested_activation_energy_kwh": 0.041666666666666664, "delivered_activation_energy_kwh": 0.041666666666666664, "undelivered_activation_energy_kwh": 0.0, "soc": 0.5004166666666666, "causes": [], "non_performance_duration_seconds": 0.0},
+        {"sample_index": 2, "event_id": "downward-da-001", "kind": "DIRECT", "direction": "DOWNWARD", "requested_balancing_power_kw": 7.5, "delivered_balancing_power_kw": 7.5, "requested_activation_energy_kwh": 0.125, "delivered_activation_energy_kwh": 0.125, "undelivered_activation_energy_kwh": 0.0, "soc": 0.5016666666666667, "causes": [], "non_performance_duration_seconds": 0.0},
+        {"sample_index": 3, "event_id": "downward-da-001", "kind": "DIRECT", "direction": "DOWNWARD", "requested_balancing_power_kw": 10.0, "delivered_balancing_power_kw": 10.0, "requested_activation_energy_kwh": 0.16666666666666666, "delivered_activation_energy_kwh": 0.16666666666666666, "undelivered_activation_energy_kwh": 0.0, "soc": 0.5033333333333333, "causes": [], "non_performance_duration_seconds": 0.0},
+        {"sample_index": 4, "event_id": "downward-da-001", "kind": "DIRECT", "direction": "DOWNWARD", "requested_balancing_power_kw": 10.0, "delivered_balancing_power_kw": 10.0, "requested_activation_energy_kwh": 0.16666666666666666, "delivered_activation_energy_kwh": 0.16666666666666666, "undelivered_activation_energy_kwh": 0.0, "soc": 0.505, "causes": [], "non_performance_duration_seconds": 0.0},
+        {"sample_index": 5, "event_id": "downward-da-001", "kind": "DIRECT", "direction": "DOWNWARD", "requested_balancing_power_kw": 10.0, "delivered_balancing_power_kw": 10.0, "requested_activation_energy_kwh": 0.16666666666666666, "delivered_activation_energy_kwh": 0.16666666666666666, "undelivered_activation_energy_kwh": 0.0, "soc": 0.5066666666666667, "causes": [], "non_performance_duration_seconds": 0.0},
+        {"sample_index": 6, "event_id": "downward-da-001", "kind": "DIRECT", "direction": "DOWNWARD", "requested_balancing_power_kw": 7.5, "delivered_balancing_power_kw": 7.5, "requested_activation_energy_kwh": 0.125, "delivered_activation_energy_kwh": 0.125, "undelivered_activation_energy_kwh": 0.0, "soc": 0.5079166666666667, "causes": [], "non_performance_duration_seconds": 0.0},
+        {"sample_index": 7, "event_id": "downward-da-001", "kind": "DIRECT", "direction": "DOWNWARD", "requested_balancing_power_kw": 2.5, "delivered_balancing_power_kw": 2.5, "requested_activation_energy_kwh": 0.041666666666666664, "delivered_activation_energy_kwh": 0.041666666666666664, "undelivered_activation_energy_kwh": 0.0, "soc": 0.5083333333333333, "causes": [], "non_performance_duration_seconds": 0.0}
+      ],
+      "expected_events": [
+        {
+          "event_id": "downward-da-001",
+          "kind": "DIRECT",
+          "direction": "DOWNWARD",
+          "requested_start_utc": "2026-01-03T01:00:00Z",
+          "actual_start_utc": "2026-01-03T01:01:00Z",
+          "requested_completion_utc": "2026-01-03T01:08:00Z",
+          "actual_completion_utc": "2026-01-03T01:08:00Z",
+          "requested_energy_kwh": 0.8333333333333334,
+          "delivered_energy_kwh": 0.8333333333333334,
+          "undelivered_energy_kwh": 0.0,
+          "maximum_achieved_ramp_kw_per_second": 0.08333333333333333,
+          "non_performance_duration_seconds": 0.0,
+          "causes": []
+        }
+      ],
+      "expected_totals": {
+        "charge_energy_kwh": 0.8333333333333334,
+        "discharge_energy_kwh": 0.0,
+        "net_terminal_energy_kwh": 0.8333333333333334,
+        "throughput_kwh": 0.8333333333333334,
+        "requested_activation_energy_kwh": 0.8333333333333334,
+        "delivered_activation_energy_kwh": 0.8333333333333334,
+        "undelivered_activation_energy_kwh": 0.0,
+        "non_performance_duration_seconds": 0.0,
+        "final_soc": 0.5083333333333333
+      }
+    },
+    {
+      "case_id": "zero-activation-preserves-baseline",
+      "purpose": "An empty event sequence leaves the accepted baseline unchanged",
+      "period": {
+        "start_utc": "2026-01-03T02:00:00Z",
+        "end_utc": "2026-01-03T02:15:00Z",
+        "resolution": "PT15M"
+      },
+      "battery": {
+        "name": "manual-mfrr-zero",
+        "capacity_kwh": 100.0,
+        "max_charge_kw": 20.0,
+        "max_discharge_kw": 20.0,
+        "charge_efficiency": 1.0,
+        "discharge_efficiency": 1.0,
+        "initial_soc": 0.5,
+        "min_soc": 0.1,
+        "max_soc": 0.9
+      },
+      "capability": {
+        "max_ramp_up_kw_per_second": 1.0,
+        "max_ramp_down_kw_per_second": 1.0,
+        "max_activation_delay_seconds": {"AFRR": 5.0, "MFRR": 300.0},
+        "min_supported_duration_seconds": {"AFRR": 1.0, "MFRR": 60.0},
+        "max_supported_duration_seconds": {"AFRR": 900.0, "MFRR": 3600.0}
+      },
+      "commitment": {"upward_kw": 5.0, "downward_kw": 5.0},
+      "baseline_power_kw": [-2.0],
+      "sequence": {
+        "sequence_id": "manual-mfrr-empty-v1",
+        "semantics_version": "mfrr-delay-ramp-hold-v1",
+        "source_kind": "SYNTHETIC",
+        "created_or_retrieved_at_utc": "2026-01-04T02:00:00Z",
+        "events": []
+      },
+      "expected_samples": [
+        {
+          "sample_index": 0,
+          "event_id": null,
+          "kind": null,
+          "direction": null,
+          "requested_balancing_power_kw": 0.0,
+          "requested_combined_power_kw": -2.0,
+          "delivered_combined_power_kw": -2.0,
+          "delivered_balancing_power_kw": 0.0,
+          "requested_activation_energy_kwh": 0.0,
+          "delivered_activation_energy_kwh": 0.0,
+          "undelivered_activation_energy_kwh": 0.0,
+          "soc": 0.495,
+          "causes": [],
+          "non_performance_duration_seconds": 0.0
+        }
+      ],
+      "expected_events": [],
+      "expected_totals": {
+        "charge_energy_kwh": 0.0,
+        "discharge_energy_kwh": 0.5,
+        "net_terminal_energy_kwh": -0.5,
+        "throughput_kwh": 0.5,
+        "requested_activation_energy_kwh": 0.0,
+        "delivered_activation_energy_kwh": 0.0,
+        "undelivered_activation_energy_kwh": 0.0,
+        "non_performance_duration_seconds": 0.0,
+        "final_soc": 0.495
+      }
+    }
+  ],
+  "invalid_cases": [
+    {
+      "case_id": "overlapping-scheduled-and-direct",
+      "purpose": "Reject every overlap irrespective of direction or scheduled/direct kind",
+      "period": {
+        "start_utc": "2026-01-03T03:00:00Z",
+        "end_utc": "2026-01-03T03:15:00Z"
+      },
+      "sequence": {
+        "sequence_id": "manual-mfrr-overlap-invalid-v1",
+        "semantics_version": "mfrr-delay-ramp-hold-v1",
+        "source_kind": "SYNTHETIC",
+        "created_or_retrieved_at_utc": "2026-01-04T03:00:00Z",
+        "events": [
+          {
+            "event_id": "overlap-sa",
+            "kind": "SCHEDULED",
+            "direction": "UPWARD",
+            "requested_start_utc": "2026-01-03T03:00:00Z",
+            "activation_delay_seconds": 0.0,
+            "ramp_up_seconds": 0.0,
+            "hold_seconds": 300.0,
+            "ramp_down_seconds": 0.0,
+            "requested_power_kw": 5.0,
+            "source_kind": "SYNTHETIC",
+            "mapping_fingerprint": null,
+            "source_observation_refs": ["manual-mfrr:overlap-sa"]
+          },
+          {
+            "event_id": "overlap-da",
+            "kind": "DIRECT",
+            "direction": "DOWNWARD",
+            "requested_start_utc": "2026-01-03T03:04:00Z",
+            "activation_delay_seconds": 0.0,
+            "ramp_up_seconds": 0.0,
+            "hold_seconds": 300.0,
+            "ramp_down_seconds": 0.0,
+            "requested_power_kw": 5.0,
+            "source_kind": "SYNTHETIC",
+            "mapping_fingerprint": null,
+            "source_observation_refs": ["manual-mfrr:overlap-da"]
+          }
+        ]
+      },
+      "expected_error": "overlap"
+    }
+  ]
+}

@@ -151,7 +151,7 @@ replay.
 
 ### Tests and Fixtures for User Story 3
 
-- [ ] T044 [P] [US3] Encode hand-calculable upward-SA, downward-DA, delayed/ramped, zero-activation, and overlapping-invalid mFRR inputs with expected event/sample results in `tests/fixtures/restoration/manual_mfrr_v1.json`
+- [X] T044 [P] [US3] Encode hand-calculable upward-SA, downward-DA, delayed/ramped, zero-activation, and overlapping-invalid mFRR inputs with expected event/sample results in `tests/fixtures/restoration/manual_mfrr_v1.json`
 - [ ] T045 [P] [US3] Add failing tests for exact SA/DA identities, direction-plus-magnitude inputs, delay/ramp/hold/ramp shapes, analytic event energy, complete horizon coverage, deterministic order, every overlap, sparse DA, and fingerprints in `tests/unit/market/test_mfrr_activation.py`
 - [ ] T046 [P] [US3] Add failing tests for mFRR directional commitments, product-specific fixed/deterministic baselines, activation-time/duration capability, headroom, temporal alignment, and no-lookahead behavior in `tests/unit/control/test_mfrr_restoration.py`
 - [ ] T047 [P] [US3] Add failing tests for event expansion, requested/actual starts/completions, SA/DA separation, ramp/timing/duration/power/SOC shortfalls, zero activation, event/aggregate energy conservation, and determinism in `tests/unit/simulator/test_mfrr_restoration.py`
