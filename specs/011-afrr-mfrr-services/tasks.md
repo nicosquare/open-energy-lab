@@ -278,7 +278,7 @@ offline validation across all stories.
 - [X] T092 Run the offline runner, synthetic oracle, real replay, and optional notebook-group commands from `specs/011-afrr-mfrr-services/quickstart.md` and align any stale command/path expectations in `examples/restoration_services/README.md`
 - [X] T093 Verify CPU-only package imports and scan for forbidden `from legacy`/`import legacy` references across `src/open_energy_lab/market/`, `src/open_energy_lab/control/`, `src/open_energy_lab/simulator/`, and their Feature 011 test directories
 - [X] T094 Document any optional live RTE/ENTSO-E, notebook runtime, or reference-benchmark check that could not run and why, without weakening offline acceptance, in `specs/011-afrr-mfrr-services/quickstart.md`
-- [ ] T095 Add deterministic bounded-scaling tests using counted observations, samples, and event segments to verify validation, replay, event expansion, aggregation, and fingerprinting visit inputs only a bounded constant number of times and retain linear-size results without introducing a wall-clock acceptance threshold in `tests/unit/simulator/test_restoration_scaling.py`
+- [X] T095 Add deterministic bounded-scaling tests using counted observations, samples, and event segments to verify validation, replay, event expansion, aggregation, and fingerprinting visit inputs only a bounded constant number of times and retain linear-size results without introducing a wall-clock acceptance threshold in `tests/unit/simulator/test_restoration_scaling.py`
 
 ---
 

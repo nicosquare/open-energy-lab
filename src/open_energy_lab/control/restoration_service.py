@@ -211,6 +211,75 @@ class DirectionalCapacitySchedule:
             )
         return matches[0]
 
+    def commitment_pairs_covering(
+        self,
+        intervals: Sequence[CanonicalInterval],
+    ) -> tuple[
+        tuple[
+            DirectionalCapacityCommitmentInterval,
+            DirectionalCapacityCommitmentInterval,
+        ],
+        ...,
+    ]:
+        """Resolve chronological intervals with one linear cursor per direction."""
+
+        targets = tuple(intervals)
+        if any(not isinstance(item, CanonicalInterval) for item in targets):
+            raise RestorationControlValidationError(
+                "covered intervals must be CanonicalInterval values"
+            )
+        for previous, current in zip(targets, targets[1:]):
+            if current.start_utc < previous.end_utc:
+                raise RestorationControlValidationError(
+                    "covered intervals must be chronological and non-overlapping"
+                )
+
+        directional = {
+            direction: self.intervals_for(direction)
+            for direction in RestorationDirection
+        }
+        cursors = {direction: 0 for direction in RestorationDirection}
+        resolved: list[
+            tuple[
+                DirectionalCapacityCommitmentInterval,
+                DirectionalCapacityCommitmentInterval,
+            ]
+        ] = []
+        for target in targets:
+            pair: dict[
+                RestorationDirection,
+                DirectionalCapacityCommitmentInterval,
+            ] = {}
+            for direction in RestorationDirection:
+                candidates = directional[direction]
+                cursor = cursors[direction]
+                while (
+                    cursor < len(candidates)
+                    and candidates[cursor].interval.end_utc <= target.start_utc
+                ):
+                    cursor += 1
+                cursors[direction] = cursor
+                if cursor >= len(candidates):
+                    raise RestorationControlValidationError(
+                        f"no unique {direction.value} commitment covers baseline interval"
+                    )
+                candidate = candidates[cursor]
+                if not (
+                    candidate.interval.start_utc <= target.start_utc
+                    and candidate.interval.end_utc >= target.end_utc
+                ):
+                    raise RestorationControlValidationError(
+                        f"no unique {direction.value} commitment covers baseline interval"
+                    )
+                pair[direction] = candidate
+            resolved.append(
+                (
+                    pair[RestorationDirection.UPWARD],
+                    pair[RestorationDirection.DOWNWARD],
+                )
+            )
+        return tuple(resolved)
+
     def to_dict(self) -> dict[str, object]:
         return {
             "schedule_id": self.schedule_id,
@@ -605,13 +674,13 @@ def _validate_headroom_and_energy(
         if required_duration_seconds is None
         else required_duration_seconds
     )
-    for index, baseline_interval in enumerate(baseline.intervals):
-        upward = commitments.commitment_covering(
-            baseline_interval.interval, RestorationDirection.UPWARD
-        )
-        downward = commitments.commitment_covering(
-            baseline_interval.interval, RestorationDirection.DOWNWARD
-        )
+    commitment_pairs = commitments.commitment_pairs_covering(
+        tuple(item.interval for item in baseline.intervals)
+    )
+    for index, (baseline_interval, commitment_pair) in enumerate(
+        zip(baseline.intervals, commitment_pairs, strict=True)
+    ):
+        upward, downward = commitment_pair
         power = baseline_interval.accepted_baseline_power_kw
         maximum_charge_baseline = (
             battery.max_charge_kw - downward.committed_capacity_kw
@@ -982,13 +1051,11 @@ def build_afrr_baseline_config(
     ]
     upward_reachable = capability.max_ramp_down_kw_per_second * activation_delay
     downward_reachable = capability.max_ramp_up_kw_per_second * activation_delay
-    for index, interval in enumerate(grid):
-        upward = commitments.commitment_covering(
-            interval, RestorationDirection.UPWARD
-        )
-        downward = commitments.commitment_covering(
-            interval, RestorationDirection.DOWNWARD
-        )
+    commitment_pairs = commitments.commitment_pairs_covering(grid)
+    for index, (interval, commitment_pair) in enumerate(
+        zip(grid, commitment_pairs, strict=True)
+    ):
+        upward, downward = commitment_pair
         if upward.committed_capacity_kw > battery.max_discharge_kw + normalized_tolerance:
             raise RestorationControlValidationError(
                 f"UPWARD commitment at interval {index} exceeds battery discharge power"
@@ -1051,6 +1118,11 @@ def build_afrr_baseline(config: AFRRBaselineConfig) -> RestorationBaselineBundle
             "config must be exactly an AFRRBaselineConfig"
         )
     powers: list[float] = []
+    commitment_pairs = (
+        config.commitments.commitment_pairs_covering(config.grid_intervals)
+        if config.mode is AFRRBaselineMode.DETERMINISTIC_HEADROOM
+        else ()
+    )
     for index, interval in enumerate(config.grid_intervals):
         if config.mode is AFRRBaselineMode.ZERO:
             power = 0.0
@@ -1058,12 +1130,7 @@ def build_afrr_baseline(config: AFRRBaselineConfig) -> RestorationBaselineBundle
             assert config.fixed_power_kw is not None
             power = config.fixed_power_kw[index]
         else:
-            upward = config.commitments.commitment_covering(
-                interval, RestorationDirection.UPWARD
-            )
-            downward = config.commitments.commitment_covering(
-                interval, RestorationDirection.DOWNWARD
-            )
+            upward, downward = commitment_pairs[index]
             lower = -config.battery.max_discharge_kw + upward.committed_capacity_kw
             upper = config.battery.max_charge_kw - downward.committed_capacity_kw
             if lower > upper + config.tolerance:
@@ -1306,13 +1373,11 @@ def build_mfrr_baseline_config(
     ]
     upward_reachable = capability.max_ramp_down_kw_per_second * activation_delay
     downward_reachable = capability.max_ramp_up_kw_per_second * activation_delay
-    for index, interval in enumerate(grid):
-        upward = commitments.commitment_covering(
-            interval, RestorationDirection.UPWARD
-        )
-        downward = commitments.commitment_covering(
-            interval, RestorationDirection.DOWNWARD
-        )
+    commitment_pairs = commitments.commitment_pairs_covering(grid)
+    for index, (interval, commitment_pair) in enumerate(
+        zip(grid, commitment_pairs, strict=True)
+    ):
+        upward, downward = commitment_pair
         if upward.committed_capacity_kw > battery.max_discharge_kw + normalized_tolerance:
             raise RestorationControlValidationError(
                 f"UPWARD commitment at interval {index} exceeds battery discharge power"
@@ -1377,6 +1442,11 @@ def build_mfrr_baseline(config: MFRRBaselineConfig) -> RestorationBaselineBundle
             "config must be exactly an MFRRBaselineConfig"
         )
     powers: list[float] = []
+    commitment_pairs = (
+        config.commitments.commitment_pairs_covering(config.grid_intervals)
+        if config.mode is MFRRBaselineMode.DETERMINISTIC_HEADROOM
+        else ()
+    )
     for index, interval in enumerate(config.grid_intervals):
         if config.mode is MFRRBaselineMode.ZERO:
             power = 0.0
@@ -1384,12 +1454,7 @@ def build_mfrr_baseline(config: MFRRBaselineConfig) -> RestorationBaselineBundle
             assert config.fixed_power_kw is not None
             power = config.fixed_power_kw[index]
         else:
-            upward = config.commitments.commitment_covering(
-                interval, RestorationDirection.UPWARD
-            )
-            downward = config.commitments.commitment_covering(
-                interval, RestorationDirection.DOWNWARD
-            )
+            upward, downward = commitment_pairs[index]
             lower = -config.battery.max_discharge_kw + upward.committed_capacity_kw
             upper = config.battery.max_charge_kw - downward.committed_capacity_kw
             if lower > upper + config.tolerance:

@@ -1206,11 +1206,20 @@ def replay_afrr(request: AFRRReplayRequest) -> AFRRReplayResult:
         request.baseline.intervals[0].accepted_baseline_power_kw
     )
     samples: list[RestorationReplaySample] = []
-    for index, (activation_sample, baseline_interval, grid_interval) in enumerate(
+    commitment_pairs = request.commitments.commitment_pairs_covering(
+        request.integration_grid.intervals
+    )
+    for index, (
+        activation_sample,
+        baseline_interval,
+        grid_interval,
+        commitment_pair,
+    ) in enumerate(
         zip(
             request.activation_trajectory.samples,
             request.baseline.intervals,
             request.integration_grid.intervals,
+            commitment_pairs,
             strict=True,
         )
     ):
@@ -1222,12 +1231,7 @@ def replay_afrr(request: AFRRReplayRequest) -> AFRRReplayResult:
                 f"aFRR replay inputs do not align at interval {index}"
             )
         baseline_power = baseline_interval.accepted_baseline_power_kw
-        upward = request.commitments.commitment_covering(
-            grid_interval, RestorationDirection.UPWARD
-        )
-        downward = request.commitments.commitment_covering(
-            grid_interval, RestorationDirection.DOWNWARD
-        )
+        upward, downward = commitment_pair
         interval_seconds = (
             grid_interval.end_utc - grid_interval.start_utc
         ).total_seconds()
@@ -1381,21 +1385,40 @@ def _validate_mfrr_event_grid(
             )
 
 
-def _mfrr_event_for_interval(
-    sequence: MFRRActivationSequence,
-    interval: CanonicalInterval,
-) -> MFRRActivationEvent | None:
-    matches = tuple(
-        event
-        for event in sequence.events
-        if event.complete_interval.start_utc <= interval.start_utc
-        and event.complete_interval.end_utc >= interval.end_utc
-    )
-    if len(matches) > 1:
-        raise RestorationReplayValidationError(
-            "mFRR replay interval is covered by overlapping events"
-        )
-    return matches[0] if matches else None
+def _mfrr_events_by_interval(
+    *,
+    events: Sequence[MFRRActivationEvent],
+    intervals: Sequence[CanonicalInterval],
+) -> tuple[MFRRActivationEvent | None, ...]:
+    """Expand ordered, non-overlapping events with one forward cursor."""
+
+    normalized_events = tuple(events)
+    event_index = 0
+    expanded: list[MFRRActivationEvent | None] = []
+    for interval in intervals:
+        while (
+            event_index < len(normalized_events)
+            and normalized_events[event_index].complete_interval.end_utc
+            <= interval.start_utc
+        ):
+            event_index += 1
+        if event_index >= len(normalized_events):
+            expanded.append(None)
+            continue
+        candidate = normalized_events[event_index]
+        if candidate.complete_interval.start_utc >= interval.end_utc:
+            expanded.append(None)
+            continue
+        if not (
+            candidate.complete_interval.start_utc <= interval.start_utc
+            and candidate.complete_interval.end_utc >= interval.end_utc
+        ):
+            raise RestorationReplayValidationError(
+                f"mFRR event {candidate.event_id} only partially covers a replay "
+                "interval; expansion is not boundary-conserving"
+            )
+        expanded.append(candidate)
+    return tuple(expanded)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1560,10 +1583,11 @@ def _utc_boundary(value: object) -> str:
 def _mfrr_event_performance(
     *,
     event: MFRRActivationEvent,
-    samples: tuple[RestorationReplaySample, ...],
+    indexed_samples: Sequence[tuple[int, RestorationReplaySample]],
+    next_zero_at_or_after: Sequence[RestorationReplaySample | None],
     tolerance: float,
 ) -> MFRREventPerformance:
-    selected = tuple(sample for sample in samples if sample.event_id == event.event_id)
+    selected = tuple(sample for _, sample in indexed_samples)
     if not selected:
         raise RestorationReplayValidationError(
             f"mFRR event {event.event_id} has no expanded replay samples"
@@ -1609,8 +1633,8 @@ def _mfrr_event_performance(
         None if not active_samples else _utc_boundary(active_samples[0].interval.start_utc)
     )
     tail_samples = tuple(
-        item
-        for item in selected
+        (sample_index, item)
+        for sample_index, item in indexed_samples
         if item.interval.start_utc >= event.complete_interval.end_utc
     )
     if not active_samples:
@@ -1618,16 +1642,16 @@ def _mfrr_event_performance(
     elif not tail_samples:
         actual_completion = event.requested_completion_utc
     else:
-        completion_candidates = tuple(
-            item
-            for item in samples
-            if item.interval.start_utc >= tail_samples[-1].interval.end_utc
-            and abs(item.delivered_balancing_power_kw) <= tolerance
+        next_index = tail_samples[-1][0] + 1
+        completion_candidate = (
+            None
+            if next_index >= len(next_zero_at_or_after)
+            else next_zero_at_or_after[next_index]
         )
         actual_completion = (
             None
-            if not completion_candidates
-            else _utc_boundary(completion_candidates[0].interval.start_utc)
+            if completion_candidate is None
+            else _utc_boundary(completion_candidate.interval.start_utc)
         )
     actual_delay = None
     if active_samples:
@@ -1709,6 +1733,34 @@ def _mfrr_event_performance(
         ),
         causes=causes,
         performance_fingerprint=_fingerprint(payload),
+    )
+
+
+def _index_mfrr_replay_samples(
+    samples: Sequence[RestorationReplaySample],
+    *,
+    tolerance: float,
+) -> tuple[
+    dict[str, tuple[tuple[int, RestorationReplaySample], ...]],
+    tuple[RestorationReplaySample | None, ...],
+]:
+    """Index event-owned samples and later zero-delivery boundaries linearly."""
+
+    grouped: dict[str, list[tuple[int, RestorationReplaySample]]] = {}
+    for index, sample in enumerate(samples):
+        if sample.event_id is not None:
+            grouped.setdefault(sample.event_id, []).append((index, sample))
+
+    next_zero: list[RestorationReplaySample | None] = [None] * (len(samples) + 1)
+    candidate: RestorationReplaySample | None = None
+    for index in range(len(samples) - 1, -1, -1):
+        sample = samples[index]
+        if abs(sample.delivered_balancing_power_kw) <= tolerance:
+            candidate = sample
+        next_zero[index] = candidate
+    return (
+        {event_id: tuple(values) for event_id, values in grouped.items()},
+        tuple(next_zero),
     )
 
 
@@ -1853,10 +1905,25 @@ def replay_mfrr(request: MFRRReplayRequest) -> MFRRReplayResult:
     )
     samples: list[RestorationReplaySample] = []
     tail_event: MFRRActivationEvent | None = None
-    for index, (baseline_interval, grid_interval) in enumerate(
+    events = tuple(request.activation_sequence.events)
+    expanded_events = _mfrr_events_by_interval(
+        events=events,
+        intervals=request.integration_grid.intervals,
+    )
+    commitment_pairs = request.commitments.commitment_pairs_covering(
+        request.integration_grid.intervals
+    )
+    for index, (
+        baseline_interval,
+        grid_interval,
+        event,
+        commitment_pair,
+    ) in enumerate(
         zip(
             request.baseline.intervals,
             request.integration_grid.intervals,
+            expanded_events,
+            commitment_pairs,
             strict=True,
         )
     ):
@@ -1864,17 +1931,11 @@ def replay_mfrr(request: MFRRReplayRequest) -> MFRRReplayResult:
             raise RestorationReplayValidationError(
                 f"mFRR replay inputs do not align at interval {index}"
             )
-        event = _mfrr_event_for_interval(request.activation_sequence, grid_interval)
         requested_power = (
             0.0 if event is None else event.signed_average_power_kw(grid_interval)
         )
         baseline_power = baseline_interval.accepted_baseline_power_kw
-        upward = request.commitments.commitment_covering(
-            grid_interval, RestorationDirection.UPWARD
-        )
-        downward = request.commitments.commitment_covering(
-            grid_interval, RestorationDirection.DOWNWARD
-        )
+        upward, downward = commitment_pair
         interval_seconds = (
             grid_interval.end_utc - grid_interval.start_utc
         ).total_seconds()
@@ -1931,13 +1992,18 @@ def replay_mfrr(request: MFRRReplayRequest) -> MFRRReplayResult:
         request=request.core,
         samples=normalized_samples,
     )
+    indexed_event_samples, next_zero_at_or_after = _index_mfrr_replay_samples(
+        normalized_samples,
+        tolerance=request.tolerance,
+    )
     event_performance = tuple(
         _mfrr_event_performance(
             event=event,
-            samples=normalized_samples,
+            indexed_samples=indexed_event_samples.get(event.event_id, ()),
+            next_zero_at_or_after=next_zero_at_or_after,
             tolerance=request.tolerance,
         )
-        for event in request.activation_sequence.events
+        for event in events
     )
     kind_performance = MappingProxyType(
         {
