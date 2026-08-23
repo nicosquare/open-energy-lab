@@ -163,6 +163,36 @@ and token. Code, request documentation, provenance schemas, and synthetic
 fixtures remain redistributable independently of the restricted real-data
 fixtures.
 
+## Feature 011 Complementary Composition
+
+Feature 011 does not add an ENTSO-E aFRR or mFRR acquisition profile. RTE
+Balancing Energy 5.2 remains the primary verified source for the restoration
+observations. The only supported first-release ENTSO-E composition is an
+already acquired Feature 010 artifact whose profile is exactly
+`fr-day-ahead-symmetric-fcr-v1`.
+
+A restoration study may select only that artifact's A44 `day_ahead_price`
+series, and only when the series covers the study interval under the same UTC
+half-open convention. The selection records the Feature 010 artifact identity,
+artifact fingerprint, exact `day_ahead_price` series fingerprint, requested
+coverage, and redistribution policy in a `RestorationStudyBundle`. The bundle
+references observations; it does not copy, merge, rename, resample, or
+reinterpret them. The RTE artifact remains an independent one-source artifact.
+
+The A44 series continues to use Feature 010's unchanged fetch, immutable
+refresh, and zero-network offline lifecycle documented above. Feature 011 does
+not issue a substitute ENTSO-E request, widen the closed A44/A81 schema, or
+create a new restoration fetch profile. If the caller has no existing
+time-compatible Feature 010 artifact, the composition branch reports that no
+compatible profile was selected and proceeds without ENTSO-E data. ENTSO-E is
+never an automatic fallback for an absent, null, incompatible, or failed RTE
+series, and matching timestamps alone never establish matching semantics.
+
+The selected A44 price retains its original ownership and redistribution
+status. In particular, composing it into a study does not convert restricted
+EPEX SPOT-derived values into publicly redistributable data. The bundle adopts
+the strictest policy of its referenced artifacts.
+
 ## Official References
 
 - [Official ENTSO-E Postman collection](https://documenter.getpostman.com/view/7009892/2s93JtP3F6)
