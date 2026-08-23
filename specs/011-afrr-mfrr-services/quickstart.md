@@ -145,6 +145,30 @@ uv run pytest tests/unit/control/test_stacked_service.py tests/unit/simulator/te
 
 Existing FCR fixture bytes and reference results must remain unchanged.
 
+### Recorded Feature 010 reference benchmark
+
+On 2026-08-23, the explicitly selected unchanged benchmark passed on the
+Feature 010 implementation at repository revision
+`d1858029e88de89279ba8603ecc3c6d48ef86767`. The working tree contained only
+additive Feature 011 compatibility tests and documentation; no Feature 010
+library or fixture was modified. The environment was Linux 6.8.0-124-generic
+x86_64, CPython 3.14.6, an Intel Xeon Gold 5218R at 2.10 GHz, 80 visible CPUs,
+and approximately 503 GiB RAM. The warm-up plus five measured offline
+load/validate/replay/settlement/fingerprint comparisons passed; measured
+seconds were:
+
+```text
+[1.0403134394437075, 0.9855765728279948, 0.9061796641908586,
+ 0.9232495678588748, 0.8764851749874651]
+```
+
+Every run remained below the unchanged 10-second Feature 010 threshold, and
+the test blocked networking. The managed execution sandbox exposed a read-only
+default uv cache, so this run set
+`UV_CACHE_DIR=/tmp/open-energy-lab-uv-cache`; that environment-only cache
+location change did not alter dependencies, correctness checks, fixtures, or
+the benchmark threshold.
+
 ## Explicit Live RTE Fetch
 
 Copy the safe variable-name template and place values only in ignored `.env`:

@@ -254,12 +254,12 @@ reference comparisons unchanged, compare all three stored FCR fixtures
 byte-for-byte, then pass each FCR/aFRR/mFRR activation input to the wrong replay
 profile and verify rejection before dispatch.
 
-- [ ] T082 [P] [US6] Add public-symbol, exact-type, constructor, serialization, and module-owner snapshots for Feature 010 market/control/simulator contracts in `tests/integration/simulator/test_restoration_fcr_public_compatibility.py`
-- [ ] T083 [P] [US6] Add exhaustive FCR/aFRR/mFRR trajectory/event/commitment/result cross-substitution rejection cases in `tests/integration/simulator/test_restoration_product_separation.py`
-- [ ] T084 [P] [US6] Add byte-stability assertions for the Feature 010 market, activation, and expected-replay fixtures plus unchanged recorded fingerprints in `tests/integration/simulator/test_restoration_fcr_fixture_compatibility.py`
-- [ ] T085 [US6] Run the unchanged Feature 010 manual, compatibility, generation, real-replay, notebook, market, control, and settlement suites and fix only additive Feature 011 code when regressions are exposed in `src/open_energy_lab/market/`, `src/open_energy_lab/control/`, and `src/open_energy_lab/simulator/`
-- [ ] T086 [US6] Run the explicitly selected unchanged Feature 010 reference benchmark and record any environment-only limitation without weakening correctness in `specs/011-afrr-mfrr-services/quickstart.md`
-- [ ] T087 [US6] Verify package-root lazy imports and zero `legacy/*`, notebook, source-adapter, credential, solver, GPU/SLURM, or experiment-tracker leakage from offline surfaces in `tests/unit/test_lazy_dependency_boundaries.py`, `tests/unit/test_import_contract.py`, and `tests/unit/test_no_legacy_imports.py`
+- [X] T082 [P] [US6] Add public-symbol, exact-type, constructor, serialization, and module-owner snapshots for Feature 010 market/control/simulator contracts in `tests/integration/simulator/test_restoration_fcr_public_compatibility.py`
+- [X] T083 [P] [US6] Add exhaustive FCR/aFRR/mFRR trajectory/event/commitment/result cross-substitution rejection cases in `tests/integration/simulator/test_restoration_product_separation.py`
+- [X] T084 [P] [US6] Add byte-stability assertions for the Feature 010 market, activation, and expected-replay fixtures plus unchanged recorded fingerprints in `tests/integration/simulator/test_restoration_fcr_fixture_compatibility.py`
+- [X] T085 [US6] Run the unchanged Feature 010 manual, compatibility, generation, real-replay, notebook, market, control, and settlement suites and fix only additive Feature 011 code when regressions are exposed in `src/open_energy_lab/market/`, `src/open_energy_lab/control/`, and `src/open_energy_lab/simulator/`
+- [X] T086 [US6] Run the explicitly selected unchanged Feature 010 reference benchmark and record any environment-only limitation without weakening correctness in `specs/011-afrr-mfrr-services/quickstart.md`
+- [X] T087 [US6] Verify package-root lazy imports and zero `legacy/*`, notebook, source-adapter, credential, solver, GPU/SLURM, or experiment-tracker leakage from offline surfaces in `tests/unit/test_lazy_dependency_boundaries.py`, `tests/unit/test_import_contract.py`, and `tests/unit/test_no_legacy_imports.py`
 
 **Checkpoint**: All Feature 010 behavior remains byte/API compatible and every
 reserve identity boundary is enforced before replay.
