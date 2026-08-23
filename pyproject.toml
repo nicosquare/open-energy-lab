@@ -25,7 +25,9 @@ dev = [
 ]
 notebook = [
     "ipykernel",
+    "jupyterlab",
     "matplotlib",
+    "nbclient",
     "seaborn",
 ]
 
