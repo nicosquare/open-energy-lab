@@ -65,8 +65,27 @@ service capabilities remain outside the routine environment and import path.
 - [Environment assumptions](docs/migration/environment-assumptions.md)
 - [TPM planning migration note](docs/migration/tpm-planning.md)
 - [Tracked TPM planning examples](examples/tpm_planning/README.md)
+- [French aFRR/mFRR architecture and source contract](docs/architecture/rte-balancing-energy.md)
+- [French aFRR/mFRR migration and ownership note](docs/migration/afrr-mfrr-services.md)
+- [Offline restoration-services working example](examples/restoration_services/README.md)
 - [Fixture provenance rules](tests/fixtures/README.md)
 - [Active Spec Kit plan](specs/001-library-foundation/plan.md)
+
+## French Restoration-Services Research Slice
+
+Feature 011 adds source-independent aFRR and mFRR research contracts under
+[`src/open_energy_lab/market`](src/open_energy_lab/market),
+[`src/open_energy_lab/control`](src/open_energy_lab/control), and
+[`src/open_energy_lab/simulator`](src/open_energy_lab/simulator). Read the
+[Feature 011 design](specs/011-afrr-mfrr-services/plan.md) before extending the
+slice, and use the
+[offline example and notebook guide](examples/restoration_services/README.md)
+to reproduce the bounded demonstrations.
+
+This is a deterministic research replay, not a production dispatch service or
+bidding optimizer. Public RTE values remain French control-area aggregates;
+any battery activation shown by the example is explicitly labelled as a
+derived simulation scenario.
 
 ## Local Checks
 

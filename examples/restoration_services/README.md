@@ -45,6 +45,21 @@ It must reproduce result-set fingerprint
 and notebook-display fingerprint
 `88ab88e3859e4fe81555651468bcc9e4c474db43feee11ecd1eef6b18568e976`.
 
+Run the synthetic physical/settlement oracles and the restricted zero-network
+real-data replay separately:
+
+```bash
+uv run pytest tests/integration/simulator/test_afrr_restoration_manual.py -q
+uv run pytest tests/integration/simulator/test_mfrr_restoration_manual.py -q
+uv run pytest tests/integration/simulator/test_restoration_settlement_manual.py -q
+uv run pytest tests/integration/simulator/test_restoration_real_replays.py -q
+```
+
+The first three commands prove hand-calculable product behavior. The final
+command reloads only the fixed private normalized artifacts and reproduces both
+recorded scenario, replay, settlement, and fingerprint contracts without a
+credential or socket.
+
 Install the optional notebook group and either open the source interactively or
 execute its offline acceptance test:
 

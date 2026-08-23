@@ -271,13 +271,13 @@ reserve identity boundary is enforced before replay.
 **Purpose**: Close documentation, security, packaging, determinism, and full
 offline validation across all stories.
 
-- [ ] T088 [P] Add Feature 011 source/design/example links without implying production dispatch or optimization in `README.md`, `docs/architecture/README.md`, and `docs/migration/README.md`
-- [ ] T089 [P] Run credential/token sentinel scans over source, tests, fixtures, docs, examples, notebook JSON, filenames, captured diagnostics, and generated artifacts and add any missing assertions in `tests/unit/market/test_rte_environment.py`
-- [ ] T090 Run wheel and sdist builds, inspect their complete file lists for restricted fixtures, and record the reproducible commands and expected exclusions in `specs/011-afrr-mfrr-services/quickstart.md`
-- [ ] T091 Run the full offline market, control, simulator, restoration integration, import-boundary, policy, and Feature 010 regression commands from `specs/011-afrr-mfrr-services/plan.md` and resolve all failures in the files named by those failures
-- [ ] T092 Run the offline runner, synthetic oracle, real replay, and optional notebook-group commands from `specs/011-afrr-mfrr-services/quickstart.md` and align any stale command/path expectations in `examples/restoration_services/README.md`
-- [ ] T093 Verify CPU-only package imports and scan for forbidden `from legacy`/`import legacy` references across `src/open_energy_lab/market/`, `src/open_energy_lab/control/`, `src/open_energy_lab/simulator/`, and their Feature 011 test directories
-- [ ] T094 Document any optional live RTE/ENTSO-E, notebook runtime, or reference-benchmark check that could not run and why, without weakening offline acceptance, in `specs/011-afrr-mfrr-services/quickstart.md`
+- [X] T088 [P] Add Feature 011 source/design/example links without implying production dispatch or optimization in `README.md`, `docs/architecture/README.md`, and `docs/migration/README.md`
+- [X] T089 [P] Run credential/token sentinel scans over source, tests, fixtures, docs, examples, notebook JSON, filenames, captured diagnostics, and generated artifacts and add any missing assertions in `tests/unit/market/test_rte_environment.py`
+- [X] T090 Run wheel and sdist builds, inspect their complete file lists for restricted fixtures, and record the reproducible commands and expected exclusions in `specs/011-afrr-mfrr-services/quickstart.md`
+- [X] T091 Run the full offline market, control, simulator, restoration integration, import-boundary, policy, and Feature 010 regression commands from `specs/011-afrr-mfrr-services/plan.md` and resolve all failures in the files named by those failures
+- [X] T092 Run the offline runner, synthetic oracle, real replay, and optional notebook-group commands from `specs/011-afrr-mfrr-services/quickstart.md` and align any stale command/path expectations in `examples/restoration_services/README.md`
+- [X] T093 Verify CPU-only package imports and scan for forbidden `from legacy`/`import legacy` references across `src/open_energy_lab/market/`, `src/open_energy_lab/control/`, `src/open_energy_lab/simulator/`, and their Feature 011 test directories
+- [X] T094 Document any optional live RTE/ENTSO-E, notebook runtime, or reference-benchmark check that could not run and why, without weakening offline acceptance, in `specs/011-afrr-mfrr-services/quickstart.md`
 - [ ] T095 Add deterministic bounded-scaling tests using counted observations, samples, and event segments to verify validation, replay, event expansion, aggregation, and fingerprinting visit inputs only a bounded constant number of times and retain linear-size results without introducing a wall-clock acceptance threshold in `tests/unit/simulator/test_restoration_scaling.py`
 
 ---

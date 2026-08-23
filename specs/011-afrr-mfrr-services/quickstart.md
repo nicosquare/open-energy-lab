@@ -124,6 +124,17 @@ including zero activation, ramp/timing, capacity, headroom, power, SOC, and
 overlap rejection. The third independently proves settlement, penalties, and
 degradation. Together they remain within absolute tolerance `1e-6`.
 
+Verify the bounded restricted real-data demonstrations independently from the
+synthetic oracles:
+
+```bash
+uv run pytest tests/integration/simulator/test_restoration_real_replays.py -q
+```
+
+This test blocks networking, loads only normalized private fixtures, and
+reproduces the recorded source, mapping, replay, settlement, and result-set
+fingerprints for both products.
+
 ## Routine Offline Validation
 
 ```bash
@@ -136,6 +147,53 @@ uv run python -c "import open_energy_lab; import open_energy_lab.market; import 
 
 Routine validation must pass with credential variables unset and sockets
 blocked.
+
+## Build and Inspect Distributions
+
+Build both archives into a fresh external directory, print their complete
+member lists, and fail if any restricted real-data fixture is present:
+
+```bash
+OEL_DIST_DIR="$(mktemp -d /tmp/open-energy-lab-dist.XXXXXX)"
+export OEL_DIST_DIR
+uv build --out-dir "$OEL_DIST_DIR"
+uv run python - <<'PY'
+from pathlib import Path
+import os
+import tarfile
+import zipfile
+
+directory = Path(os.environ["OEL_DIST_DIR"])
+wheel = next(directory.glob("*.whl"))
+sdist = next(directory.glob("*.tar.gz"))
+restricted = {
+    "france_2022-08-19_market_v1.json",
+    "france_2022-08-19_activation_v1.json",
+    "france_2022-08-19_expected_replay_v1.json",
+    "france_2026-08-20_afrr_market_v1.json",
+    "france_2026-08-20_afrr_scenario_v1.json",
+    "france_2026-08-15_mfrr_market_v1.json",
+    "france_2026-08-15_mfrr_scenario_v1.json",
+    "france_restoration_expected_results_v1.json",
+}
+with zipfile.ZipFile(wheel) as archive:
+    wheel_members = sorted(archive.namelist())
+with tarfile.open(sdist, "r:gz") as archive:
+    sdist_members = sorted(member.name for member in archive.getmembers())
+for archive, members in ((wheel, wheel_members), (sdist, sdist_members)):
+    print(f"{archive.name}: {len(members)} members")
+    print("\n".join(members))
+    leaked = [name for name in members if Path(name).name in restricted]
+    assert leaked == [], f"restricted members in {archive.name}: {leaked}"
+PY
+```
+
+The expected result is zero occurrences of all eight restricted Feature 010
+and Feature 011 filenames in both archives. Generated `artifacts/` content and
+private dotenv files are also excluded; `.env.example` is the only dotenv
+template allowed in the sdist. On 2026-08-23, both wheel and sdist built
+successfully and complete member enumeration found no restricted fixture,
+generated artifact, or private dotenv member.
 
 ## Feature 010 Compatibility Gate
 
@@ -230,6 +288,18 @@ uv run pytest tests/integration/market/test_rte_live.py -m live_rte -q
 
 This is an explicit source-compatibility check, not routine correctness
 validation. It skips with a clear message when credentials are unavailable.
+
+### Final optional-check record (2026-08-23)
+
+| Optional check | Final implementation status | Environment-only note |
+|---|---|---|
+| Live RTE compatibility | Not re-run as part of the final offline gate | Requires an explicit current production-network operation and credential handoff. The governed, previously acquired reference artifacts and parser/transport fixtures remain the acceptance evidence; no live result substitutes for them. |
+| Live ENTSO-E compatibility | Not re-run as part of the final offline gate | Feature 011 adds no new ENTSO-E restoration profile. Existing Feature 010 source compatibility and the fingerprint-only A44 composition contract remain separate from restoration correctness. |
+| Offline notebook runtime | Passed: `1 passed` | The managed sandbox initially prohibited the local loopback sockets Jupyter needs to start a kernel. The same check passed outside that socket sandbox while its injected in-kernel guards still prohibited external networking and credential reads. |
+| Feature 010 reference benchmark | Passed: `1 passed, 1 deselected` | The default uv cache was read-only, so a temporary uv cache was used. Five measured runs remained between 0.876 and 1.040 seconds under the unchanged 10-second threshold. |
+
+No required offline check was skipped or weakened because an optional live
+source was not selected.
 
 ## Restricted Reference Staging
 
