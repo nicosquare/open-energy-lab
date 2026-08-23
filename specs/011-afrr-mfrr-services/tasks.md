@@ -183,19 +183,19 @@ price and verify physical replay remains available with no partial total.
 
 ### Tests and Fixtures for User Story 4
 
-- [ ] T054 [P] [US4] Add failing tests for immutable directional capacity/activation prices, units, currency, period coverage, eligibility, penalty rules, degradation rules, unconfigured statuses, and fingerprints in `tests/unit/simulator/test_restoration_settlement_rules.py`
-- [ ] T055 [P] [US4] Add failing tests proving missing/null/ambiguous/wrong-product/wrong-direction/wrong-unit/uncovered required prices make the whole settlement and net result unavailable while retaining physical replay in `tests/unit/simulator/test_restoration_settlement_availability.py`
-- [ ] T056 [P] [US4] Add failing tests for source-fingerprinted RTE weighted-average/clearing/settlement area-price mappings, direction/interval compatibility, `scenario_proxy` labels, and rejection of asset-invoice claims in `tests/unit/simulator/test_restoration_price_proxy.py`
-- [ ] T057 [US4] Add hand-calculable aFRR and mFRR settlement integration cases covering both directions, SA/DA price identity, zero activation, penalties, throughput, degradation, unavailable totals, and exact reconciliation in `tests/integration/simulator/test_restoration_settlement_manual.py`
+- [X] T054 [P] [US4] Add failing tests for immutable directional capacity/activation prices, units, currency, period coverage, eligibility, penalty rules, degradation rules, unconfigured statuses, and fingerprints in `tests/unit/simulator/test_restoration_settlement_rules.py`
+- [X] T055 [P] [US4] Add failing tests proving missing/null/ambiguous/wrong-product/wrong-direction/wrong-unit/uncovered required prices make the whole settlement and net result unavailable while retaining physical replay in `tests/unit/simulator/test_restoration_settlement_availability.py`
+- [X] T056 [P] [US4] Add failing tests for source-fingerprinted RTE weighted-average/clearing/settlement area-price mappings, direction/interval compatibility, `scenario_proxy` labels, and rejection of asset-invoice claims in `tests/unit/simulator/test_restoration_price_proxy.py`
+- [X] T057 [US4] Add hand-calculable aFRR and mFRR settlement integration cases covering both directions, SA/DA price identity, zero activation, penalties, throughput, degradation, unavailable totals, and exact reconciliation in `tests/integration/simulator/test_restoration_settlement_manual.py`
 
 ### Implementation for User Story 4
 
-- [ ] T058 [US4] Implement directional price, area-price proxy, penalty, degradation, component-status, and settlement result entities with validation/fingerprints in `src/open_energy_lab/simulator/restoration_settlement.py`
-- [ ] T059 [US4] Implement atomic settlement-availability validation and source/field/period diagnostics without substituting zero or emitting partial totals in `src/open_energy_lab/simulator/restoration_settlement.py`
-- [ ] T060 [US4] Implement baseline day-ahead, eligible directional capacity, delivered directional activation-energy, and SA/DA-compatible revenue calculations with exact kW/MW and kWh/MWh conversions in `src/open_energy_lab/simulator/restoration_settlement.py`
-- [ ] T061 [US4] Implement explicit non-performance penalty and battery-terminal throughput degradation-proxy calculations with zero/unconfigured behavior in `src/open_energy_lab/simulator/restoration_settlement.py`
-- [ ] T062 [US4] Implement product-specific gross/net reconciliation, omission of unselected product fields, zero-activation behavior, canonical serialization, and deterministic settlement fingerprints in `src/open_energy_lab/simulator/restoration_settlement.py`
-- [ ] T063 [US4] Publish lazy restoration settlement exports and import-boundary coverage without changing FCR settlement exports in `src/open_energy_lab/simulator/__init__.py` and `tests/unit/simulator/test_import_boundary.py`
+- [X] T058 [US4] Implement directional price, area-price proxy, penalty, degradation, component-status, and settlement result entities with validation/fingerprints in `src/open_energy_lab/simulator/restoration_settlement.py`
+- [X] T059 [US4] Implement atomic settlement-availability validation and source/field/period diagnostics without substituting zero or emitting partial totals in `src/open_energy_lab/simulator/restoration_settlement.py`
+- [X] T060 [US4] Implement baseline day-ahead, eligible directional capacity, delivered directional activation-energy, and SA/DA-compatible revenue calculations with exact kW/MW and kWh/MWh conversions in `src/open_energy_lab/simulator/restoration_settlement.py`
+- [X] T061 [US4] Implement explicit non-performance penalty and battery-terminal throughput degradation-proxy calculations with zero/unconfigured behavior in `src/open_energy_lab/simulator/restoration_settlement.py`
+- [X] T062 [US4] Implement product-specific gross/net reconciliation, omission of unselected product fields, zero-activation behavior, canonical serialization, and deterministic settlement fingerprints in `src/open_energy_lab/simulator/restoration_settlement.py`
+- [X] T063 [US4] Publish lazy restoration settlement exports and import-boundary coverage without changing FCR settlement exports in `src/open_energy_lab/simulator/__init__.py` and `tests/unit/simulator/test_import_boundary.py`
 
 **Checkpoint**: US4 settles either product from synthetic replay results and
 never hides a missing price or collapses the economics into one opaque total.

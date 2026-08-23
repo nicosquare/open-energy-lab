@@ -329,6 +329,18 @@ def test_feature_011_restoration_public_imports_resolve_from_exact_owned_modules
         simulator.replay_mfrr: (
             "open_energy_lab.simulator.restoration_service"
         ),
+        simulator.RestorationSettlement: (
+            "open_energy_lab.simulator.restoration_settlement"
+        ),
+        simulator.AFRRRestorationSettlement: (
+            "open_energy_lab.simulator.restoration_settlement"
+        ),
+        simulator.MFRRRestorationSettlement: (
+            "open_energy_lab.simulator.restoration_settlement"
+        ),
+        simulator.settle_restoration_services: (
+            "open_energy_lab.simulator.restoration_settlement"
+        ),
     }
     for exported, owner in expected_owners.items():
         assert exported.__module__ == owner
