@@ -243,8 +243,9 @@ Source contract: oel.restoration.reference-results.v1 / fr-restoration-reference
 Periods: exact aFRR hour and mFRR quarter recorded above
 Generation command: generate_reference_results.py with private acknowledgement
 Input scenario fingerprints: fea97fb2e9596e907a7204df9466c355d0ce2493c8c846e85a69093eadcfd9cb; 028b0067c9173c4998d47616d138e395f682f676e1a9d012a1e32769cee6a172
-Result-set fingerprint: 92f043191f161bce49ef71425ca02055d721a81ad3a6fd0d8084fee7bd65730e
-File SHA-256: 7cee2a58ddb3075ca50e44c62431bbafc281cefd686a02c0f25c32e69755fe34
+Result-set fingerprint: abe68d7130db368245ca41d972dd41ec5a544ba4ef25d208c93377b3e440586f
+Notebook-display fingerprint: 88ab88e3859e4fe81555651468bcc9e4c474db43feee11ecd1eef6b18568e976
+File SHA-256: 277a3d7c429bc108e42a5ed659d7d954ccc67c30c7d7e67e90083e381044e135
 Expected aFRR invariant: 343.75 kWh requested=delivered, zero undelivered, terminal SOC 0.3190789473684211, gross EUR 59.2551625, degradation EUR 6.875, net EUR 52.3801625
 Expected mFRR invariant: 89.25 kWh requested=delivered, zero undelivered, terminal SOC 0.54239375, gross EUR 5.7860775, degradation EUR 1.785, net EUR 4.0010775
 Transformation history: deterministic replay; delivered-energy settlement; area prices labelled scenario_proxy; unconfigured penalty; 0.02 EUR/kWh throughput comparison proxy

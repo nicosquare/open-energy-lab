@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 import hashlib
 import json
 import os
@@ -79,6 +80,7 @@ from open_energy_lab.simulator.scenario import BatteryComponent
 
 REFERENCE_SCENARIO_SCHEMA_VERSION = "oel.restoration.reference-scenario.v1"
 REFERENCE_RESULTS_SCHEMA_VERSION = "oel.restoration.reference-results.v1"
+REFERENCE_DISPLAY_SCHEMA_VERSION = "oel.restoration.notebook-display.v1"
 REFERENCE_SEMANTICS_VERSION = "fr-restoration-reference-v1"
 ASSET_ALLOCATION_FRACTION = 0.001
 ABSOLUTE_TOLERANCE = 1e-6
@@ -936,6 +938,443 @@ def build_reference_case(scenario: ReferenceScenario) -> ReferenceCase:
     )
 
 
+def _reference_display_payload(
+    cases: Sequence[ReferenceCase],
+) -> dict[str, object]:
+    """Build the exact source-only notebook table/plot contract."""
+
+    by_product = {
+        case.scenario.commitments.product.value: case for case in cases
+    }
+    if set(by_product) != {"AFRR", "MFRR"}:
+        raise ReferenceResultGenerationError(
+            "notebook display requires exactly one aFRR and one mFRR case"
+        )
+
+    provenance_rows: list[dict[str, object]] = []
+    market_rows: dict[str, list[dict[str, object]]] = {
+        "AFRR": [],
+        "MFRR": [],
+    }
+    commitment_rows: list[dict[str, object]] = []
+    activation_rows: list[dict[str, object]] = []
+    physical_rows: list[dict[str, object]] = []
+    performance_rows: list[dict[str, object]] = []
+    energy_rows: list[dict[str, object]] = []
+    settlement_rows: list[dict[str, object]] = []
+
+    for product in ("AFRR", "MFRR"):
+        case = by_product[product]
+        scenario = case.scenario
+        market = scenario.market
+        replay_payload = case.replay.to_dict()
+        settlement_payload = case.settlement.to_dict()
+        provenance_rows.append(
+            {
+                "product": product,
+                "source": market.source.value,
+                "source_version": market.source_version,
+                "profile_id": market.profile_id,
+                "resource": market.resource,
+                "requested_start_utc": (
+                    market.requested_period.start_utc.isoformat().replace(
+                        "+00:00", "Z"
+                    )
+                ),
+                "requested_end_utc": (
+                    market.requested_period.end_utc.isoformat().replace(
+                        "+00:00", "Z"
+                    )
+                ),
+                "market_timezone": market.requested_period.market_timezone,
+                "artifact_fingerprint": market.artifact_fingerprint,
+                "content_fingerprint": market.content_fingerprint,
+                "mapping_fingerprint": scenario.mapping.mapping_fingerprint,
+                "scenario_fingerprint": scenario.scenario_fingerprint,
+                "output_label": "derived_simulation",
+                "redistribution": market.redistribution_policy[
+                    "repository_publication"
+                ],
+            }
+        )
+        for series in sorted(market.series, key=lambda item: item.series_id):
+            for observation in series.observations:
+                market_rows[product].append(
+                    {
+                        "product": product,
+                        "source": series.source.value,
+                        "source_version": series.source_version,
+                        "profile_id": market.profile_id,
+                        "resource": series.resource,
+                        "series_id": series.series_id,
+                        "source_field": series.source_field,
+                        "process": series.process,
+                        "direction": series.direction,
+                        "unit": series.canonical_unit,
+                        "resolution": series.canonical_resolution,
+                        "start_utc": observation.interval.start_utc.isoformat().replace(
+                            "+00:00", "Z"
+                        ),
+                        "end_utc": observation.interval.end_utc.isoformat().replace(
+                            "+00:00", "Z"
+                        ),
+                        "value_state": observation.value_state.value,
+                        "value": observation.value,
+                        "series_fingerprint": series.series_fingerprint,
+                        "artifact_fingerprint": market.artifact_fingerprint,
+                        "transformation": ";".join(series.transformations),
+                        "identity": "observed_area_aggregate",
+                        "redistribution": market.redistribution_policy[
+                            "repository_publication"
+                        ],
+                    }
+                )
+
+        commitments_payload = scenario.payload["commitments"]
+        if not isinstance(commitments_payload, Mapping):
+            raise ReferenceResultGenerationError(
+                "reference commitments display payload is invalid"
+            )
+        intervals = commitments_payload.get("intervals")
+        if isinstance(intervals, (str, bytes)) or not isinstance(intervals, Sequence):
+            raise ReferenceResultGenerationError(
+                "reference commitment intervals display payload is invalid"
+            )
+        for interval in intervals:
+            if not isinstance(interval, Mapping):
+                raise ReferenceResultGenerationError(
+                    "reference commitment display row is invalid"
+                )
+            commitment_rows.append(
+                {
+                    "product": product,
+                    "direction": interval["direction"],
+                    "committed_capacity_kw": interval["committed_capacity_kw"],
+                    "eligible": interval["eligibility"],
+                    "accepted_baseline_power_kw": 0.0,
+                    "source_or_assumption_ref": interval[
+                        "source_or_assumption_ref"
+                    ],
+                    "commitment_fingerprint": (
+                        scenario.commitments.schedule_fingerprint
+                    ),
+                }
+            )
+
+        activation_payload = scenario.payload[
+            "activation_trajectory" if product == "AFRR" else "activation_sequence"
+        ]
+        if not isinstance(activation_payload, Mapping):
+            raise ReferenceResultGenerationError(
+                "reference activation display payload is invalid"
+            )
+        if product == "AFRR":
+            samples = activation_payload.get("samples")
+            if isinstance(samples, (str, bytes)) or not isinstance(samples, Sequence):
+                raise ReferenceResultGenerationError(
+                    "aFRR display samples are invalid"
+                )
+            for sample in samples:
+                if not isinstance(sample, Mapping):
+                    raise ReferenceResultGenerationError(
+                        "aFRR display sample is invalid"
+                    )
+                interval = sample["interval"]
+                assert isinstance(interval, Mapping)
+                requested_power = float(sample["requested_balancing_power_kw"])
+                activation_rows.append(
+                    {
+                        "product": product,
+                        "kind": "AUTOMATIC",
+                        "direction": (
+                            "UPWARD"
+                            if requested_power < 0
+                            else "DOWNWARD" if requested_power > 0 else "ZERO"
+                        ),
+                        "start_utc": interval["start_utc"],
+                        "end_utc": interval["end_utc"],
+                        "duration_seconds": 900.0,
+                        "requested_balancing_power_kw": requested_power,
+                        "source_kind": activation_payload["source_kind"],
+                        "output_label": "derived_simulation",
+                        "activation_fingerprint": (
+                            scenario.activation.trajectory_fingerprint
+                        ),
+                    }
+                )
+        else:
+            events = activation_payload.get("events")
+            if isinstance(events, (str, bytes)) or not isinstance(events, Sequence):
+                raise ReferenceResultGenerationError(
+                    "mFRR display events are invalid"
+                )
+            for event in events:
+                if not isinstance(event, Mapping):
+                    raise ReferenceResultGenerationError(
+                        "mFRR display event is invalid"
+                    )
+                requested_start = datetime.fromisoformat(
+                    str(event["requested_start_utc"]).replace("Z", "+00:00")
+                ).astimezone(UTC)
+                requested_duration = sum(
+                    float(event[field])
+                    for field in (
+                        "activation_delay_seconds",
+                        "ramp_up_seconds",
+                        "hold_seconds",
+                        "ramp_down_seconds",
+                    )
+                )
+                requested_end = requested_start + timedelta(
+                    seconds=requested_duration
+                )
+                activation_rows.append(
+                    {
+                        "product": product,
+                        "kind": event["kind"],
+                        "direction": event["direction"],
+                        "start_utc": event["requested_start_utc"],
+                        "end_utc": requested_end.isoformat().replace(
+                            "+00:00", "Z"
+                        ),
+                        "duration_seconds": requested_duration,
+                        "requested_balancing_power_kw": event[
+                            "requested_power_kw"
+                        ],
+                        "source_kind": event["source_kind"],
+                        "output_label": "derived_simulation",
+                        "activation_fingerprint": (
+                            scenario.activation.sequence_fingerprint
+                        ),
+                    }
+                )
+
+        samples_payload = replay_payload["samples"]
+        assert isinstance(samples_payload, list)
+        for sample in samples_payload:
+            assert isinstance(sample, Mapping)
+            state = sample["state"]
+            interval = sample["interval"]
+            assert isinstance(state, Mapping)
+            assert isinstance(interval, Mapping)
+            physical_rows.append(
+                {
+                    "product": product,
+                    "start_utc": interval["start_utc"],
+                    "end_utc": interval["end_utc"],
+                    "accepted_baseline_power_kw": sample[
+                        "accepted_baseline_power_kw"
+                    ],
+                    "requested_balancing_power_kw": sample[
+                        "requested_balancing_power_kw"
+                    ],
+                    "delivered_balancing_power_kw": sample[
+                        "delivered_balancing_power_kw"
+                    ],
+                    "requested_combined_power_kw": sample[
+                        "requested_combined_power_kw"
+                    ],
+                    "delivered_combined_power_kw": sample[
+                        "delivered_combined_power_kw"
+                    ],
+                    "soc": state["soc"],
+                    "upward_power_headroom_kw": sample[
+                        "upward_power_headroom_kw"
+                    ],
+                    "downward_power_headroom_kw": sample[
+                        "downward_power_headroom_kw"
+                    ],
+                    "upward_energy_headroom_kwh": sample[
+                        "upward_energy_headroom_kwh"
+                    ],
+                    "downward_energy_headroom_kwh": sample[
+                        "downward_energy_headroom_kwh"
+                    ],
+                    "tracking_error_kw": sample["tracking_error_kw"],
+                    "absolute_tracking_error_kw": sample[
+                        "absolute_tracking_error_kw"
+                    ],
+                    "response_delay_seconds": sample["response_delay_seconds"],
+                    "achieved_ramp_kw_per_second": sample[
+                        "achieved_ramp_kw_per_second"
+                    ],
+                    "non_performance_duration_seconds": sample[
+                        "non_performance_duration_seconds"
+                    ],
+                    "causes": list(sample["causes"]),
+                    "charge_energy_kwh": sample["charge_energy_kwh"],
+                    "discharge_energy_kwh": sample["discharge_energy_kwh"],
+                    "net_terminal_energy_kwh": sample[
+                        "net_terminal_energy_kwh"
+                    ],
+                    "requested_activation_energy_kwh": sample[
+                        "requested_activation_energy_kwh"
+                    ],
+                    "delivered_activation_energy_kwh": sample[
+                        "delivered_activation_energy_kwh"
+                    ],
+                    "undelivered_activation_energy_kwh": sample[
+                        "undelivered_activation_energy_kwh"
+                    ],
+                }
+            )
+
+        directional = replay_payload["directional_performance"]
+        assert isinstance(directional, Mapping)
+        for direction, values in directional.items():
+            assert isinstance(values, Mapping)
+            performance_rows.append(
+                {
+                    "product": product,
+                    "dimension": "direction",
+                    "value": direction,
+                    "requested_energy_kwh": values["requested_energy_kwh"],
+                    "delivered_energy_kwh": values["delivered_energy_kwh"],
+                    "undelivered_energy_kwh": values["undelivered_energy_kwh"],
+                    "non_performance_duration_seconds": values[
+                        "non_performance_duration_seconds"
+                    ],
+                    "causes": list(values["causes"]),
+                }
+            )
+        if product == "MFRR":
+            kind_performance = replay_payload["kind_performance"]
+            assert isinstance(kind_performance, Mapping)
+            for kind, values in kind_performance.items():
+                assert isinstance(values, Mapping)
+                performance_rows.append(
+                    {
+                        "product": product,
+                        "dimension": "kind",
+                        "value": kind,
+                        "requested_energy_kwh": values[
+                            "requested_energy_kwh"
+                        ],
+                        "delivered_energy_kwh": values[
+                            "delivered_energy_kwh"
+                        ],
+                        "undelivered_energy_kwh": values[
+                            "undelivered_energy_kwh"
+                        ],
+                        "non_performance_duration_seconds": values[
+                            "non_performance_duration_seconds"
+                        ],
+                        "causes": list(values["causes"]),
+                    }
+                )
+
+        totals = replay_payload["totals"]
+        assert isinstance(totals, Mapping)
+        energy_rows.append(
+            {
+                "product": product,
+                "charge_energy_kwh": totals["charge_energy_kwh"],
+                "discharge_energy_kwh": totals["discharge_energy_kwh"],
+                "net_terminal_energy_kwh": totals["net_terminal_energy_kwh"],
+                "requested_activation_energy_kwh": totals[
+                    "requested_activation_energy_kwh"
+                ],
+                "delivered_activation_energy_kwh": totals[
+                    "delivered_activation_energy_kwh"
+                ],
+                "undelivered_activation_energy_kwh": totals[
+                    "undelivered_activation_energy_kwh"
+                ],
+                "throughput_kwh": totals["throughput_kwh"],
+                "terminal_soc": samples_payload[-1]["state"]["soc"],
+            }
+        )
+        settlement_rows.append(
+            {
+                "product": product,
+                "availability": settlement_payload["availability"],
+                "day_ahead_energy_revenue_eur": settlement_payload[
+                    "day_ahead_energy_revenue_eur"
+                ],
+                "upward_capacity_revenue_eur": settlement_payload[
+                    "upward_capacity_revenue_eur"
+                ],
+                "downward_capacity_revenue_eur": settlement_payload[
+                    "downward_capacity_revenue_eur"
+                ],
+                "upward_activation_revenue_eur": settlement_payload[
+                    "upward_activation_revenue_eur"
+                ],
+                "downward_activation_revenue_eur": settlement_payload[
+                    "downward_activation_revenue_eur"
+                ],
+                "non_performance_penalty_eur": settlement_payload[
+                    "non_performance_penalty_eur"
+                ],
+                "degradation_cost_eur": settlement_payload[
+                    "degradation_cost_eur"
+                ],
+                "gross_revenue_eur": settlement_payload["gross_revenue_eur"],
+                "net_result_eur": settlement_payload["net_result_eur"],
+                "price_label": settlement_payload["price_mapping_labels"][0],
+                "settlement_fingerprint": settlement_payload[
+                    "settlement_fingerprint"
+                ],
+            }
+        )
+
+    afrr_case = by_product["AFRR"]
+    mfrr_case = by_product["MFRR"]
+    reproducibility_rows = [
+        {"input": "semantics_version", "fingerprint_or_value": REFERENCE_SEMANTICS_VERSION},
+        {"input": "absolute_tolerance", "fingerprint_or_value": ABSOLUTE_TOLERANCE},
+        {"input": "allocation_fraction", "fingerprint_or_value": ASSET_ALLOCATION_FRACTION},
+        {"input": "afrr_market", "fingerprint_or_value": afrr_case.scenario.market.artifact_fingerprint},
+        {"input": "mfrr_market", "fingerprint_or_value": mfrr_case.scenario.market.artifact_fingerprint},
+        {"input": "afrr_mapping", "fingerprint_or_value": afrr_case.scenario.mapping.mapping_fingerprint},
+        {"input": "mfrr_mapping", "fingerprint_or_value": mfrr_case.scenario.mapping.mapping_fingerprint},
+        {"input": "afrr_commitment", "fingerprint_or_value": afrr_case.scenario.commitments.schedule_fingerprint},
+        {"input": "mfrr_commitment", "fingerprint_or_value": mfrr_case.scenario.commitments.schedule_fingerprint},
+        {"input": "capability", "fingerprint_or_value": afrr_case.scenario.capability.capability_fingerprint},
+        {"input": "afrr_activation", "fingerprint_or_value": afrr_case.payload["activation_fingerprint"]},
+        {"input": "mfrr_activation", "fingerprint_or_value": mfrr_case.payload["activation_fingerprint"]},
+        {"input": "afrr_replay", "fingerprint_or_value": afrr_case.replay.result_fingerprint},
+        {"input": "mfrr_replay", "fingerprint_or_value": mfrr_case.replay.result_fingerprint},
+        {"input": "afrr_settlement", "fingerprint_or_value": afrr_case.settlement.settlement_fingerprint},
+        {"input": "mfrr_settlement", "fingerprint_or_value": mfrr_case.settlement.settlement_fingerprint},
+    ]
+    payload: dict[str, object] = {
+        "schema_version": REFERENCE_DISPLAY_SCHEMA_VERSION,
+        "provenance_rows": provenance_rows,
+        "afrr_market_rows": market_rows["AFRR"],
+        "mfrr_market_rows": market_rows["MFRR"],
+        "commitment_rows": commitment_rows,
+        "activation_rows": activation_rows,
+        "physical_rows": physical_rows,
+        "performance_rows": performance_rows,
+        "energy_rows": energy_rows,
+        "settlement_rows": settlement_rows,
+        "reproducibility_rows": reproducibility_rows,
+    }
+    payload["notebook_display_fingerprint"] = _fingerprint(payload)
+    return payload
+
+
+def build_reference_display_payload(
+    fixture_directory: Path = _FIXTURE_DIRECTORY,
+) -> dict[str, object]:
+    """Load, replay, and return the exact deterministic notebook display data."""
+
+    scenarios = (
+        load_reference_scenario(
+            fixture_directory / AFRR_SCENARIO_FILENAME,
+            fixture_directory=fixture_directory,
+        ),
+        load_reference_scenario(
+            fixture_directory / MFRR_SCENARIO_FILENAME,
+            fixture_directory=fixture_directory,
+        ),
+    )
+    return _reference_display_payload(
+        tuple(build_reference_case(scenario) for scenario in scenarios)
+    )
+
+
 def build_reference_results_payload(
     fixture_directory: Path = _FIXTURE_DIRECTORY,
 ) -> dict[str, object]:
@@ -949,9 +1388,14 @@ def build_reference_results_payload(
     )
     afrr_case = build_reference_case(afrr)
     mfrr_case = build_reference_case(mfrr)
+    display_payload = _reference_display_payload((afrr_case, mfrr_case))
     payload: dict[str, object] = {
         "schema_version": REFERENCE_RESULTS_SCHEMA_VERSION,
         "semantics_version": REFERENCE_SEMANTICS_VERSION,
+        "notebook_display_schema_version": REFERENCE_DISPLAY_SCHEMA_VERSION,
+        "notebook_display_fingerprint": display_payload[
+            "notebook_display_fingerprint"
+        ],
         "cases": {
             "AFRR": dict(afrr_case.payload),
             "MFRR": dict(mfrr_case.payload),
@@ -1019,6 +1463,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"mfrr_scenario={mfrr}")
     print(f"expected_results={expected}")
     print(f"result_set_fingerprint={result['result_set_fingerprint']}")
+    print(
+        "notebook_display_fingerprint="
+        f"{result['notebook_display_fingerprint']}"
+    )
     print("output_label=derived_simulation")
     print("activation_price_label=scenario_proxy")
     print("repository_publication=prohibited")

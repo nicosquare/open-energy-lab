@@ -200,7 +200,7 @@ def test_real_result_generation_is_two_run_and_fixture_byte_stable() -> None:
 
     assert first == second == recorded
     assert first["result_set_fingerprint"] == (
-        "92f043191f161bce49ef71425ca02055d721a81ad3a6fd0d8084fee7bd65730e"
+        "abe68d7130db368245ca41d972dd41ec5a544ba4ef25d208c93377b3e440586f"
     )
     assert json.dumps(first, allow_nan=False, sort_keys=True) == json.dumps(
         second, allow_nan=False, sort_keys=True
@@ -218,7 +218,10 @@ def test_offline_runner_publishes_concise_audit_tables(capsys) -> None:
 
     audit = build_offline_audit(FIXTURES)
     assert audit["result_set_fingerprint"] == (
-        "92f043191f161bce49ef71425ca02055d721a81ad3a6fd0d8084fee7bd65730e"
+        "abe68d7130db368245ca41d972dd41ec5a544ba4ef25d208c93377b3e440586f"
+    )
+    assert audit["notebook_display_fingerprint"] == (
+        "88ab88e3859e4fe81555651468bcc9e4c474db43feee11ecd1eef6b18568e976"
     )
     assert {row["product"] for row in audit["cases"]} == {"AFRR", "MFRR"}
     assert all(row["scenario_label"] == "derived_simulation" for row in audit["cases"])
@@ -232,3 +235,4 @@ def test_offline_runner_publishes_concise_audit_tables(capsys) -> None:
     assert "derived_simulation" in output
     assert "scenario_proxy" in output
     assert "DIRECT source status: source-null; no event fabricated" in output
+    assert "notebook_display_fingerprint=88ab88e" in output

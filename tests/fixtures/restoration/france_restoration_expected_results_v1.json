@@ -538,6 +538,8 @@
       "source_market_content_fingerprint": "57bff8041d4691e7cda82da53790b92228130007c2d2ba5986fc280e5f14c1a4"
     }
   },
+  "notebook_display_fingerprint": "88ab88e3859e4fe81555651468bcc9e4c474db43feee11ecd1eef6b18568e976",
+  "notebook_display_schema_version": "oel.restoration.notebook-display.v1",
   "reproducibility": {
     "credentials_required": false,
     "deterministic_finite_json": true,
@@ -554,7 +556,7 @@
     "repository_storage": "permitted_private_restricted",
     "visibility_change_action": "remove_or_reassess_before_change"
   },
-  "result_set_fingerprint": "92f043191f161bce49ef71425ca02055d721a81ad3a6fd0d8084fee7bd65730e",
+  "result_set_fingerprint": "abe68d7130db368245ca41d972dd41ec5a544ba4ef25d208c93377b3e440586f",
   "schema_version": "oel.restoration.reference-results.v1",
   "semantics_version": "fr-restoration-reference-v1"
 }

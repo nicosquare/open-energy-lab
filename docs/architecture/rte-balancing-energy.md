@@ -263,6 +263,13 @@ documentation, schemas, and project-authored synthetic fixtures remain
 redistributable independently. The exact governed files and fingerprints are
 listed in [Restricted French reference fixtures](../migration/restricted-reference-fixtures.md).
 
+For completeness, the fail-closed evidence vocabulary is exact: field absent,
+source JSON null, and numeric zero remain different; area observations are not
+commands addressed to the reference battery; `repository_publication` is
+prohibited; packages, releases, public CI artifacts, public forks or mirrors
+are prohibited destinations; source bodies are digest-only; and transport uses
+at most three total attempts for an eligible transient failure.
+
 ## Verified Reference Evidence
 
 The explicit production acquisition on 2026-08-23 produced:

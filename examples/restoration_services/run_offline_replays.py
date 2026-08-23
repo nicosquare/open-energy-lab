@@ -126,6 +126,9 @@ def build_offline_audit(
         )
     return {
         "result_set_fingerprint": rebuilt["result_set_fingerprint"],
+        "notebook_display_fingerprint": rebuilt[
+            "notebook_display_fingerprint"
+        ],
         "cases": rows,
     }
 
@@ -205,6 +208,10 @@ def run_offline_replays(
     else:
         print(f"DIRECT source status: {direct_status}")
     print(f"result_set_fingerprint={audit['result_set_fingerprint']}")
+    print(
+        "notebook_display_fingerprint="
+        f"{audit['notebook_display_fingerprint']}"
+    )
     print("Interpretation: area-derived simulation, not observed battery dispatch.")
     print("Settlement prices: scenario proxies, not an asset invoice.")
     return 0

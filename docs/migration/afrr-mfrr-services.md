@@ -66,6 +66,9 @@ or activated energy. The implementation does not vary it by interval, normalize
 the source curve, or clip a mapped request. A request above the compatible
 commitment fails scenario construction.
 
+In short: the allocation is fixed for the complete scenario and no request is
+clipped.
+
 For aFRR, separate upward and downward **requested need** series are the only
 real-data drivers. Simultaneous nonzero directions fail as ambiguous. The four
 upward French-area needs `425`, `315`, `290`, and `345 MW` map to signed BESS

@@ -179,6 +179,8 @@ coverage, and redistribution policy in a `RestorationStudyBundle`. The bundle
 references observations; it does not copy, merge, rename, resample, or
 reinterpret them. The RTE artifact remains an independent one-source artifact.
 
+The bundle does not copy, merge, rename, resample, or reinterpret source rows.
+
 The A44 series continues to use Feature 010's unchanged fetch, immutable
 refresh, and zero-network offline lifecycle documented above. Feature 011 does
 not issue a substitute ENTSO-E request, widen the closed A44/A81 schema, or

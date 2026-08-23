@@ -51,7 +51,7 @@ normalized observations.
 | `france_2026-08-15_mfrr_market_v1.json` | artifact `d2d4007fafe5138f0bfdc8d91ba232c435f9b4f7097a0cc519064011c624ca10`; content `57bff8041d4691e7cda82da53790b92228130007c2d2ba5986fc280e5f14c1a4` | `76c5ad31f677a83b7a70d7bb629a4bfa9636b66d2a065302750fdfb8039cec91` |
 | `france_2026-08-20_afrr_scenario_v1.json` | scenario `fea97fb2e9596e907a7204df9466c355d0ce2493c8c846e85a69093eadcfd9cb`; mapping `d1fc944a2f45e1032f7c9c6cafc76b212fd6d4b54576ae1eb58adbe0853a5178` | `b21a9bd4f56fe6fe324ce0e4c93b566b525102f404925301b877f12a8ef9a62c` |
 | `france_2026-08-15_mfrr_scenario_v1.json` | scenario `028b0067c9173c4998d47616d138e395f682f676e1a9d012a1e32769cee6a172`; mapping `24275dcf84e098521315995a2c2cda63cf46257ff46c91325ac5cfaadba52f0b` | `8881bb013e8649c8dc86c5c73848dea8611cbce2146c12ced5b6940163169489` |
-| `france_restoration_expected_results_v1.json` | result set `92f043191f161bce49ef71425ca02055d721a81ad3a6fd0d8084fee7bd65730e` | `7cee2a58ddb3075ca50e44c62431bbafc281cefd686a02c0f25c32e69755fe34` |
+| `france_restoration_expected_results_v1.json` | result set `abe68d7130db368245ca41d972dd41ec5a544ba4ef25d208c93377b3e440586f`; notebook display `88ab88e3859e4fe81555651468bcc9e4c474db43feee11ecd1eef6b18568e976` | `277a3d7c429bc108e42a5ed659d7d954ccc67c30c7d7e67e90083e381044e135` |
 
 Raw RTE response bytes are not committed. The aFRR artifact retains digest
 `d2496d713c7f217ff76487db2aba0b7a49479861118bea61ca3c001fbbfe2eb3`

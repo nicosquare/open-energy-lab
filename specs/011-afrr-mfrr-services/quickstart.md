@@ -56,6 +56,10 @@ Expected behavior:
 - reports aFRR and mFRR separately
 - labels RTE price use as an area-price scenario proxy
 - does not expose FCR or the unselected restoration product as zero fields
+- prints result-set fingerprint
+  `abe68d7130db368245ca41d972dd41ec5a544ba4ef25d208c93377b3e440586f`
+  and notebook-display fingerprint
+  `88ab88e3859e4fe81555651468bcc9e4c474db43feee11ecd1eef6b18568e976`
 
 ## Inspect the Reference Inputs
 
@@ -96,6 +100,16 @@ tables for:
 
 Saved source has empty outputs and `RUN_LIVE_QUERY = False`. Figure export is
 off by default and may target only an ignored local output directory.
+
+After interactive exploration, clear all execution state before reviewing a
+source change:
+
+```bash
+uv run --group notebook jupyter nbconvert \
+  --clear-output --inplace \
+  examples/restoration_services/restoration_services_walkthrough.ipynb
+uv run pytest tests/unit/simulator/test_restoration_services_notebook.py -q
+```
 
 ## Verify the Synthetic Oracles
 
@@ -149,7 +163,8 @@ uv run python examples/restoration_services/fetch_rte_period.py \
   --resource standard_afrr_data \
   --start-utc 2026-08-20T00:00:00Z \
   --end-utc 2026-08-20T01:00:00Z \
-  --output-dir .artifacts/restoration
+  --output-dir artifacts/restoration/reference-acquisition/afrr \
+  --env-file .env
 ```
 
 Fetch the selected mFRR quarter:
@@ -159,7 +174,8 @@ uv run python examples/restoration_services/fetch_rte_period.py \
   --resource standard_mfrr_data \
   --start-utc 2026-08-15T10:15:00Z \
   --end-utc 2026-08-15T10:30:00Z \
-  --output-dir .artifacts/restoration
+  --output-dir artifacts/restoration/reference-acquisition/mfrr \
+  --env-file .env
 ```
 
 The operation obtains a short-lived token at runtime. The request description,
@@ -173,8 +189,9 @@ uv run python examples/restoration_services/fetch_rte_period.py \
   --resource standard_afrr_data \
   --start-utc 2026-08-20T00:00:00Z \
   --end-utc 2026-08-20T01:00:00Z \
-  --refresh-from .artifacts/restoration/CURRENT_ARTIFACT.json \
-  --output-dir .artifacts/restoration
+  --refresh-from artifacts/restoration/reference-acquisition/afrr/CURRENT_ARTIFACT.json \
+  --output-dir artifacts/restoration/reference-acquisition/afrr \
+  --env-file .env
 ```
 
 Unchanged normalized content writes no file. Changed valid content creates one
@@ -196,8 +213,9 @@ Only authorized collaborators may run:
 
 ```bash
 uv run python examples/restoration_services/stage_private_reference_data.py \
-  --afrr-artifact .artifacts/restoration/AFRR_ARTIFACT.json \
-  --mfrr-artifact .artifacts/restoration/MFRR_ARTIFACT.json
+  --afrr-artifact artifacts/restoration/reference-acquisition/afrr/AFRR_ARTIFACT.json \
+  --mfrr-artifact artifacts/restoration/reference-acquisition/mfrr/MFRR_ARTIFACT.json \
+  --acknowledge-private-restricted-repository
 ```
 
 The script verifies exact profiles, periods, fields, fresh SHA-256 response
@@ -209,6 +227,17 @@ package, release, mirror, CI-artifact, or external store target.
 
 The fixtures must be removed or relicensed before repository visibility changes
 from private. Private repository access does not grant redistribution rights.
+
+Regenerate or verify the deterministic scenario/result files only from the
+fixed staged markets:
+
+```bash
+uv run python examples/restoration_services/generate_reference_results.py \
+  --acknowledge-private-restricted-repository
+```
+
+Identical bytes are reused; a conflicting immutable file fails closed. The
+command performs no credential or network access.
 
 ## Optional ENTSO-E Composition
 
@@ -233,3 +262,19 @@ gap, mFRR overlap, artifact integrity, or restricted-distribution failure.
 If physical inputs are valid but a declared required price is missing or
 ambiguous, replay remains available and settlement/total are unavailable. No
 price or missing component is silently replaced with zero.
+
+Expected CLI failures return nonzero and identify a sanitized contract boundary:
+
+```bash
+# Fails before authentication: bounds are not PT15M aligned.
+uv run python examples/restoration_services/fetch_rte_period.py \
+  --resource standard_afrr_data \
+  --start-utc 2026-08-20T00:01:00Z \
+  --end-utc 2026-08-20T01:00:00Z \
+  --output-dir artifacts/restoration/invalid
+
+# Fails before staging: private restricted storage was not acknowledged.
+uv run python examples/restoration_services/stage_private_reference_data.py \
+  --afrr-artifact artifacts/restoration/reference-acquisition/afrr/AFRR_ARTIFACT.json \
+  --mfrr-artifact artifacts/restoration/reference-acquisition/mfrr/MFRR_ARTIFACT.json
+```
