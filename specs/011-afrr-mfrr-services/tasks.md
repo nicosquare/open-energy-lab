@@ -153,14 +153,14 @@ replay.
 
 - [X] T044 [P] [US3] Encode hand-calculable upward-SA, downward-DA, delayed/ramped, zero-activation, and overlapping-invalid mFRR inputs with expected event/sample results in `tests/fixtures/restoration/manual_mfrr_v1.json`
 - [X] T045 [P] [US3] Add failing tests for exact SA/DA identities, direction-plus-magnitude inputs, delay/ramp/hold/ramp shapes, analytic event energy, complete horizon coverage, deterministic order, every overlap, sparse DA, and fingerprints in `tests/unit/market/test_mfrr_activation.py`
-- [ ] T046 [P] [US3] Add failing tests for mFRR directional commitments, product-specific fixed/deterministic baselines, activation-time/duration capability, headroom, temporal alignment, and no-lookahead behavior in `tests/unit/control/test_mfrr_restoration.py`
+- [X] T046 [P] [US3] Add failing tests for mFRR directional commitments, product-specific fixed/deterministic baselines, activation-time/duration capability, headroom, temporal alignment, and no-lookahead behavior in `tests/unit/control/test_mfrr_restoration.py`
 - [ ] T047 [P] [US3] Add failing tests for event expansion, requested/actual starts/completions, SA/DA separation, ramp/timing/duration/power/SOC shortfalls, zero activation, event/aggregate energy conservation, and determinism in `tests/unit/simulator/test_mfrr_restoration.py`
 - [ ] T048 [US3] Add the failing end-to-end manual mFRR oracle, overlap rejection, and FCR/aFRR/mFRR exact-type substitution assertions using `tests/fixtures/restoration/manual_mfrr_v1.json` in `tests/integration/simulator/test_mfrr_restoration_manual.py`
 
 ### Implementation for User Story 3
 
 - [X] T049 [P] [US3] Implement immutable `MFRRActivationEvent`/`MFRRActivationSequence`, analytic piecewise energy, SA/DA identity, overlap validation, RTE-SA requested-volume mapping, serialization, and fingerprints in `src/open_energy_lab/market/restoration_activation.py`
-- [ ] T050 [P] [US3] Implement mFRR fixed directional schedule validation and product-specific no-lookahead baseline builders with activation-time/duration and asymmetric headroom checks in `src/open_energy_lab/control/restoration_service.py`
+- [X] T050 [P] [US3] Implement mFRR fixed directional schedule validation and product-specific no-lookahead baseline builders with activation-time/duration and asymmetric headroom checks in `src/open_energy_lab/control/restoration_service.py`
 - [ ] T051 [US3] Implement exact `MFRRReplayRequest` validation, boundary-conserving event expansion, capability enforcement, and unchanged battery-transition replay in `src/open_energy_lab/simulator/restoration_service.py`
 - [ ] T052 [US3] Implement per-event SA/DA performance, requested/actual timing, requested/delivered/undelivered energy, ramp/duration causes, aggregate conservation, diagnostics, and result fingerprints in `src/open_energy_lab/simulator/restoration_service.py`
 - [ ] T053 [US3] Publish lazy source-independent mFRR activation/control/replay exports and exact module-owner assertions in `src/open_energy_lab/market/__init__.py`, `src/open_energy_lab/control/__init__.py`, `src/open_energy_lab/simulator/__init__.py`, and `tests/unit/test_import_contract.py`
