@@ -188,12 +188,11 @@ RTE_MFRR_PROFILE = RTERestorationProfile(
     market_timezone=RTE_MARKET_TIMEZONE,
     expected_resolution=RTE_EXPECTED_RESOLUTION,
     series_ids=_MFRR_SERIES_IDS,
-    required_series_ids=tuple(
-        series_id
-        for series_id in _MFRR_SERIES_IDS
-        if "_sa_requested_volume_" in series_id
-        or "_sa_satisfied_need_" in series_id
-    ),
+    # mFRR is directionally sparse: the source retains both directional rows,
+    # but either row may legitimately contain null SA/DA values.  A bounded
+    # study that needs a non-null driver validates that selected field after
+    # acquisition rather than redefining source-null as missing coverage.
+    required_series_ids=(),
 )
 RTE_PROFILES = MappingProxyType(
     {
@@ -822,10 +821,14 @@ class RTEParsedSeries:
 class RTENestedPriceEntry:
     interval: CanonicalInterval
     direction: str
-    activation_type: str
-    requested_price: float
-    requested_volume: float
-    satisfied_need: float
+    activation_type: str | None
+    activation_type_state: ObservationValueState
+    requested_price: float | str | None
+    requested_price_state: ObservationValueState
+    requested_volume: float | None
+    requested_volume_state: ObservationValueState
+    satisfied_need: float | None
+    satisfied_need_state: ObservationValueState
     source_row: int
     source_entry: int
 
@@ -875,19 +878,24 @@ def _response_json(raw: RTERawMarketResponse) -> Mapping[str, object]:
 
 def _source_datetime(value: object, *, field_name: str) -> datetime:
     if not isinstance(value, str) or not value:
-        raise _parse_error(f"{field_name} must be an ISO 8601 UTC timestamp")
+        raise _parse_error(f"{field_name} must be an aware ISO 8601 timestamp")
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError as exc:
-        raise _parse_error(f"{field_name} must be an ISO 8601 UTC timestamp") from exc
-    if parsed.tzinfo is None or parsed.utcoffset() != timedelta(0):
-        raise _parse_error(f"{field_name} must be an aware UTC timestamp")
+        raise _parse_error(f"{field_name} must be an aware ISO 8601 timestamp") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise _parse_error(f"{field_name} must include an explicit UTC offset")
     return parsed.astimezone(UTC)
 
 
 def _source_number(value: object, *, field_name: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise _parse_error(f"{field_name} must be a finite number")
+        observed = repr(value)[:80] if isinstance(value, (str, type(None))) else (
+            f"<{type(value).__name__}>"
+        )
+        raise _parse_error(
+            f"{field_name} must be a finite number; observed sanitized value {observed}"
+        )
     normalized = float(value)
     if not math.isfinite(normalized):
         raise _parse_error(f"{field_name} must be a finite number")
@@ -1130,6 +1138,33 @@ def _nested_entries(
     if isinstance(values, (str, bytes)) or not isinstance(values, Sequence):
         raise _parse_error("nested requested_activated_volumes_by_prices must be an array")
     built = []
+
+    def optional_number(
+        raw_value: object, *, field_name: str
+    ) -> tuple[ObservationValueState, float | None]:
+        if raw_value is None:
+            return ObservationValueState.SOURCE_NULL, None
+        return ObservationValueState.VALUE, _source_number(
+            raw_value, field_name=field_name
+        )
+
+    def optional_requested_price(
+        raw_value: object,
+    ) -> tuple[ObservationValueState, float | str | None]:
+        if raw_value is None:
+            return ObservationValueState.SOURCE_NULL, None
+        if raw_value == "ATP":
+            return ObservationValueState.VALUE, "ATP"
+        if isinstance(raw_value, bool) or not isinstance(raw_value, (int, float)):
+            observed = repr(raw_value)[:80]
+            raise _parse_error(
+                "nested.requested_price must be finite numeric price evidence, "
+                f"the ATP source meaning code, or null; observed {observed}"
+            )
+        return ObservationValueState.VALUE, _source_number(
+            raw_value, field_name="nested.requested_price"
+        )
+
     for index, value in enumerate(values):
         if not isinstance(value, Mapping):
             raise _parse_error("nested price entry must be an object")
@@ -1142,23 +1177,48 @@ def _nested_entries(
         missing = sorted(required - set(value))
         if missing:
             raise _parse_error(f"nested price entry is missing {missing[0]}")
-        activation_type = value["activation_type"]
-        if activation_type not in {"SA", "DA"}:
-            raise _parse_error("nested price activation_type must be SA or DA")
+        source_activation_type = value["activation_type"]
+        if source_activation_type is None:
+            activation_type = None
+            activation_type_state = ObservationValueState.SOURCE_NULL
+        elif isinstance(source_activation_type, str) and (
+            source_activation_type.casefold() in {"sa", "da"}
+        ):
+            activation_type = source_activation_type.upper()
+            activation_type_state = ObservationValueState.VALUE
+        else:
+            observed = (
+                repr(source_activation_type)
+                if isinstance(
+                    source_activation_type, (str, int, float, bool, type(None))
+                )
+                else f"<{type(source_activation_type).__name__}>"
+            )
+            raise _parse_error(
+                "nested price activation_type must be SA, DA, or source null; "
+                f"observed sanitized value {observed}"
+            )
+        requested_price_state, requested_price = optional_requested_price(
+            value["requested_price"]
+        )
+        requested_volume_state, requested_volume = optional_number(
+            value["requested_volume"], field_name="nested.requested_volume"
+        )
+        satisfied_need_state, satisfied_need = optional_number(
+            value["satisfied_need"], field_name="nested.satisfied_need"
+        )
         built.append(
             RTENestedPriceEntry(
                 interval=interval,
                 direction=direction,
-                activation_type=str(activation_type),
-                requested_price=_source_number(
-                    value["requested_price"], field_name="nested.requested_price"
-                ),
-                requested_volume=_source_number(
-                    value["requested_volume"], field_name="nested.requested_volume"
-                ),
-                satisfied_need=_source_number(
-                    value["satisfied_need"], field_name="nested.satisfied_need"
-                ),
+                activation_type=activation_type,
+                activation_type_state=activation_type_state,
+                requested_price=requested_price,
+                requested_price_state=requested_price_state,
+                requested_volume=requested_volume,
+                requested_volume_state=requested_volume_state,
+                satisfied_need=satisfied_need,
+                satisfied_need_state=satisfied_need_state,
                 source_row=source_row,
                 source_entry=index,
             )
@@ -1188,9 +1248,22 @@ def _parse_mfrr_rows(
                 if field_name not in value:
                     raise _parse_error(f"mari row[{index}] is missing {field_name}")
             source_direction = value["direction"]
-            if source_direction not in {"upward", "downward"}:
-                raise _parse_error("mFRR direction must be upward or downward")
-            direction = str(source_direction).upper()
+            normalized_direction = (
+                source_direction.casefold()
+                if isinstance(source_direction, str)
+                else None
+            )
+            if normalized_direction not in {"upward", "downward"}:
+                observed = (
+                    repr(source_direction)
+                    if isinstance(source_direction, (str, int, float, bool, type(None)))
+                    else f"<{type(source_direction).__name__}>"
+                )
+                raise _parse_error(
+                    "mFRR direction must be upward or downward; "
+                    f"observed sanitized value {observed}"
+                )
+            direction = normalized_direction.upper()
             interval = _row_interval(value, row_index=index)
             source_row = source_row_offset + index
             parsed_row = _ParsedRow(

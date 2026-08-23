@@ -56,6 +56,7 @@ def test_closed_profiles_pin_catalog_path_root_resolution_and_series_contracts()
     assert RTE_MFRR_PROFILE.rows_field == "mari_mesures"
     assert "mfrr_sa_requested_volume_downward" in RTE_MFRR_PROFILE.series_ids
     assert "mfrr_da_requested_volume_downward" in RTE_MFRR_PROFILE.series_ids
+    assert RTE_MFRR_PROFILE.required_series_ids == ()
     assert RTE_AFRR_PROFILE.series_ids != RTE_MFRR_PROFILE.series_ids
 
     with pytest.raises((FrozenInstanceError, AttributeError)):

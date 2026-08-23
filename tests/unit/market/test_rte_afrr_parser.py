@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 import hashlib
 import json
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -93,6 +94,28 @@ def test_afrr_numeric_zero_remains_a_present_value() -> None:
 
     assert [item.value for item in downward.observations] == [0.0] * 4
     assert all(item.value_state is ObservationValueState.VALUE for item in downward.observations)
+
+
+def test_afrr_accepts_aware_source_offsets_and_normalizes_them_to_utc() -> None:
+    payload = json.loads(_fixture("afrr_success.json"))
+    paris = ZoneInfo("Europe/Paris")
+
+    def localize(value: str) -> str:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(
+            paris
+        ).isoformat()
+
+    root = payload["picasso"]
+    root["start_date"] = localize(root["start_date"])
+    root["end_date"] = localize(root["end_date"])
+    for row in root["picasso_mesures"]:
+        row["start_date"] = localize(row["start_date"])
+        row["end_date"] = localize(row["end_date"])
+
+    parsed = _parse(json.dumps(payload).encode())
+
+    assert parsed.covered_period.start_utc == datetime(2026, 8, 20, 0, 0, tzinfo=UTC)
+    assert parsed.covered_period.end_utc == datetime(2026, 8, 20, 1, 0, tzinfo=UTC)
 
 
 @pytest.mark.parametrize(

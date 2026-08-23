@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 import hashlib
 import json
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -105,11 +106,50 @@ def test_mfrr_nested_price_entries_remain_typed_directional_context() -> None:
 
     assert entry.direction == "DOWNWARD"
     assert entry.activation_type == "SA"
+    assert entry.activation_type_state is ObservationValueState.VALUE
     assert entry.requested_price == 90.0
+    assert entry.requested_price_state is ObservationValueState.VALUE
     assert entry.requested_volume == 357.0
+    assert entry.requested_volume_state is ObservationValueState.VALUE
     assert entry.satisfied_need == 340.0
+    assert entry.satisfied_need_state is ObservationValueState.VALUE
     assert entry.source_row == 0
     assert entry.interval.start_utc == START
+
+
+def test_mfrr_preserves_null_nested_fields_without_inferring_or_imputing() -> None:
+    payload = json.loads(_fixture("mfrr_success.json"))
+    nested = payload["mari"]["mari_mesures"][0][
+        "requested_activated_volumes_by_prices"
+    ][0]
+    nested["activation_type"] = None
+    nested["requested_price"] = None
+    nested["requested_volume"] = None
+    nested["satisfied_need"] = None
+
+    parsed = _parse(json.dumps(payload).encode())
+
+    entry = parsed.nested_price_entries[0]
+    assert entry.activation_type is None
+    assert entry.activation_type_state is ObservationValueState.SOURCE_NULL
+    assert entry.requested_price is None
+    assert entry.requested_price_state is ObservationValueState.SOURCE_NULL
+    assert entry.requested_volume is None
+    assert entry.requested_volume_state is ObservationValueState.SOURCE_NULL
+    assert entry.satisfied_need is None
+    assert entry.satisfied_need_state is ObservationValueState.SOURCE_NULL
+
+
+def test_mfrr_preserves_atp_requested_price_meaning_as_a_source_code() -> None:
+    payload = json.loads(_fixture("mfrr_success.json"))
+    payload["mari"]["mari_mesures"][0]["requested_activated_volumes_by_prices"][
+        0
+    ]["requested_price"] = "ATP"
+
+    entry = _parse(json.dumps(payload).encode()).nested_price_entries[0]
+
+    assert entry.requested_price == "ATP"
+    assert entry.requested_price_state is ObservationValueState.VALUE
 
 
 def test_mfrr_preserves_field_absent_source_null_and_numeric_zero() -> None:
@@ -152,6 +192,43 @@ def test_sparse_null_da_fields_do_not_create_an_activation_event() -> None:
     assert da.observations[0].value_state is ObservationValueState.SOURCE_NULL
 
 
+def test_mfrr_accepts_aware_source_offsets_and_normalizes_them_to_utc() -> None:
+    payload = json.loads(_fixture("mfrr_success.json"))
+    paris = ZoneInfo("Europe/Paris")
+
+    def localize(value: str) -> str:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(
+            paris
+        ).isoformat()
+
+    root = payload["mari"]
+    root["start_date"] = localize(root["start_date"])
+    root["end_date"] = localize(root["end_date"])
+    for row in root["mari_mesures"]:
+        row["start_date"] = localize(row["start_date"])
+        row["end_date"] = localize(row["end_date"])
+
+    parsed = _parse(json.dumps(payload).encode())
+
+    assert parsed.covered_period.start_utc == START
+    assert parsed.covered_period.end_utc == END
+
+
+def test_mfrr_accepts_source_direction_case_without_changing_identity() -> None:
+    payload = json.loads(_fixture("mfrr_success.json"))
+    for row in payload["mari"]["mari_mesures"]:
+        row["direction"] = row["direction"].upper()
+
+    parsed = _parse(json.dumps(payload).encode())
+
+    directions = {
+        item.direction
+        for item in parsed.series
+        if item.series_id.startswith("mfrr_sa_requested_volume_")
+    }
+    assert directions == {"UPWARD", "DOWNWARD"}
+
+
 def test_mfrr_rejects_unknown_direction_and_malformed_nested_price_entries() -> None:
     with pytest.raises(RTEParseError, match="direction|upward|downward"):
         _parse(_fixture("mfrr_wrong_direction.json"))
@@ -161,6 +238,20 @@ def test_mfrr_rejects_unknown_direction_and_malformed_nested_price_entries() -> 
         "requested_volume"
     ]
     with pytest.raises(RTEParseError, match="requested_volume|nested|price"):
+        _parse(json.dumps(payload).encode())
+
+    payload = json.loads(_fixture("mfrr_success.json"))
+    payload["mari"]["mari_mesures"][0]["requested_activated_volumes_by_prices"][
+        0
+    ]["activation_type"] = "UNKNOWN"
+    with pytest.raises(RTEParseError, match="activation_type|SA|DA"):
+        _parse(json.dumps(payload).encode())
+
+    payload = json.loads(_fixture("mfrr_success.json"))
+    payload["mari"]["mari_mesures"][0]["requested_activated_volumes_by_prices"][
+        0
+    ]["requested_price"] = "UNSUPPORTED"
+    with pytest.raises(RTEParseError, match="requested_price|ATP|number"):
         _parse(json.dumps(payload).encode())
 
 
