@@ -17,6 +17,7 @@ from open_energy_lab.control.restoration_service import (
     RestorationEnergyBaselineSchedule,
 )
 from open_energy_lab.market.restoration_activation import (
+    AFRRActivationTrajectory,
     MFRRActivationKind,
     RestorationDirection,
     RestorationProduct,
@@ -36,6 +37,11 @@ from .scenario import BatteryComponent
 
 RESTORATION_REPLAY_CORE_SCHEMA_VERSION = "oel.restoration.replay-core.v1"
 RESTORATION_REPLAY_SAMPLE_SCHEMA_VERSION = "oel.restoration.replay-sample.v1"
+AFRR_REPLAY_REQUEST_SCHEMA_VERSION = "oel.restoration.afrr-replay-request.v1"
+AFRR_REPLAY_RESULT_SCHEMA_VERSION = "oel.restoration.afrr-replay-result.v1"
+AFRR_DIRECTIONAL_PERFORMANCE_SCHEMA_VERSION = (
+    "oel.restoration.afrr-directional-performance.v1"
+)
 DEFAULT_RESTORATION_REPLAY_TOLERANCE = 1e-6
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
@@ -882,9 +888,455 @@ def build_restoration_replay_result_core(
     )
 
 
+@dataclass(frozen=True, slots=True)
+class AFRRReplayRequest:
+    """Exact aFRR replay inputs bound to a validated shared request core."""
+
+    schema_version: str
+    request_id: str
+    semantics_version: str
+    battery: BatteryComponent
+    initial_state: BatteryState
+    capability: RestorationCapability
+    commitments: DirectionalCapacitySchedule
+    baseline: RestorationEnergyBaselineSchedule
+    activation_trajectory: AFRRActivationTrajectory
+    integration_grid: RestorationIntegrationGrid
+    tolerance: float
+    input_fingerprints: Mapping[str, str]
+    core: RestorationReplayRequestCore
+    request_fingerprint: str
+
+
+def build_afrr_replay_request(
+    *,
+    request_id: str,
+    semantics_version: str,
+    battery: BatteryComponent,
+    initial_state: BatteryState,
+    capability: RestorationCapability,
+    commitments: DirectionalCapacitySchedule,
+    baseline: RestorationEnergyBaselineSchedule,
+    activation_trajectory: AFRRActivationTrajectory,
+    integration_grid: RestorationIntegrationGrid,
+    tolerance: float = DEFAULT_RESTORATION_REPLAY_TOLERANCE,
+) -> AFRRReplayRequest:
+    """Validate exact product types, alignment, and fingerprints before replay."""
+
+    if type(activation_trajectory) is not AFRRActivationTrajectory:
+        raise RestorationReplayValidationError(
+            "activation_trajectory must be exactly an AFRRActivationTrajectory"
+        )
+    if not isinstance(integration_grid, RestorationIntegrationGrid):
+        raise RestorationReplayValidationError(
+            "integration_grid must be a RestorationIntegrationGrid"
+        )
+    if activation_trajectory.period != integration_grid.period:
+        raise RestorationReplayValidationError(
+            "aFRR trajectory period must align exactly with the integration grid"
+        )
+    if activation_trajectory.resolution != integration_grid.resolution:
+        raise RestorationReplayValidationError(
+            "aFRR trajectory resolution must align exactly with the integration grid"
+        )
+    if len(activation_trajectory.samples) != len(integration_grid.intervals) or any(
+        sample.interval != interval
+        for sample, interval in zip(
+            activation_trajectory.samples,
+            integration_grid.intervals,
+            strict=True,
+        )
+    ):
+        raise RestorationReplayValidationError(
+            "aFRR trajectory samples must align exactly with the native integration grid"
+        )
+    fingerprints = MappingProxyType(
+        {
+            "activation": activation_trajectory.trajectory_fingerprint,
+            "baseline": getattr(baseline, "schedule_fingerprint", ""),
+            "capability": getattr(capability, "capability_fingerprint", ""),
+            "commitments": getattr(commitments, "schedule_fingerprint", ""),
+        }
+    )
+    core = build_restoration_replay_request_core(
+        request_id=request_id,
+        semantics_version=semantics_version,
+        product=RestorationProduct.AFRR,
+        activation_input_kind=RestorationReplayInputKind.AFRR_TRAJECTORY,
+        battery=battery,
+        initial_state=initial_state,
+        capability=capability,
+        commitments=commitments,
+        baseline=baseline,
+        integration_grid=integration_grid,
+        tolerance=tolerance,
+        input_fingerprints=fingerprints,
+    )
+    payload = {
+        "schema_version": AFRR_REPLAY_REQUEST_SCHEMA_VERSION,
+        "core_request_fingerprint": core.request_fingerprint,
+        "activation_trajectory_fingerprint": (
+            activation_trajectory.trajectory_fingerprint
+        ),
+    }
+    return AFRRReplayRequest(
+        schema_version=AFRR_REPLAY_REQUEST_SCHEMA_VERSION,
+        request_id=core.request_id,
+        semantics_version=core.semantics_version,
+        battery=core.battery,
+        initial_state=core.initial_state,
+        capability=core.capability,
+        commitments=core.commitments,
+        baseline=core.baseline,
+        activation_trajectory=activation_trajectory,
+        integration_grid=core.integration_grid,
+        tolerance=core.tolerance,
+        input_fingerprints=core.input_fingerprints,
+        core=core,
+        request_fingerprint=_fingerprint(payload),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class AFRRDirectionalPerformance:
+    """One direction's conserved tracking and non-performance aggregates."""
+
+    schema_version: str
+    direction: RestorationDirection
+    sample_count: int
+    requested_energy_kwh: float
+    delivered_energy_kwh: float
+    undelivered_energy_kwh: float
+    absolute_tracking_error_energy_kwh: float
+    peak_requested_power_kw: float
+    peak_delivered_power_kw: float
+    maximum_response_delay_seconds: float
+    maximum_achieved_ramp_kw_per_second: float
+    non_performance_duration_seconds: float
+    causes: tuple[str, ...]
+    performance_fingerprint: str
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "direction": self.direction.value,
+            "sample_count": self.sample_count,
+            "requested_energy_kwh": self.requested_energy_kwh,
+            "delivered_energy_kwh": self.delivered_energy_kwh,
+            "undelivered_energy_kwh": self.undelivered_energy_kwh,
+            "absolute_tracking_error_energy_kwh": (
+                self.absolute_tracking_error_energy_kwh
+            ),
+            "peak_requested_power_kw": self.peak_requested_power_kw,
+            "peak_delivered_power_kw": self.peak_delivered_power_kw,
+            "maximum_response_delay_seconds": self.maximum_response_delay_seconds,
+            "maximum_achieved_ramp_kw_per_second": (
+                self.maximum_achieved_ramp_kw_per_second
+            ),
+            "non_performance_duration_seconds": (
+                self.non_performance_duration_seconds
+            ),
+            "causes": list(self.causes),
+            "performance_fingerprint": self.performance_fingerprint,
+        }
+
+
+def _afrr_directional_performance(
+    *,
+    direction: RestorationDirection,
+    activation: AFRRActivationTrajectory,
+    samples: tuple[RestorationReplaySample, ...],
+) -> AFRRDirectionalPerformance:
+    selected = [
+        (activation_sample, replay_sample)
+        for activation_sample, replay_sample in zip(
+            activation.samples, samples, strict=True
+        )
+        if activation_sample.direction is direction
+    ]
+    requested = sum(
+        replay_sample.requested_activation_energy_kwh
+        for _, replay_sample in selected
+    )
+    delivered = sum(
+        replay_sample.delivered_activation_energy_kwh
+        for _, replay_sample in selected
+    )
+    undelivered = sum(
+        replay_sample.undelivered_activation_energy_kwh
+        for _, replay_sample in selected
+    )
+    tracking_error_energy = sum(
+        replay_sample.absolute_tracking_error_kw
+        * (
+            replay_sample.interval.end_utc - replay_sample.interval.start_utc
+        ).total_seconds()
+        / 3600.0
+        for _, replay_sample in selected
+    )
+    requested_powers = [
+        abs(replay_sample.requested_balancing_power_kw)
+        for _, replay_sample in selected
+    ]
+    delivered_powers = [
+        (
+            max(0.0, -replay_sample.delivered_balancing_power_kw)
+            if direction is RestorationDirection.UPWARD
+            else max(0.0, replay_sample.delivered_balancing_power_kw)
+        )
+        for _, replay_sample in selected
+    ]
+    causes = _ordered_causes(
+        tuple(
+            cause
+            for _, replay_sample in selected
+            for cause in replay_sample.causes
+        )
+    )
+    payload = {
+        "schema_version": AFRR_DIRECTIONAL_PERFORMANCE_SCHEMA_VERSION,
+        "direction": direction.value,
+        "sample_count": len(selected),
+        "requested_energy_kwh": requested,
+        "delivered_energy_kwh": delivered,
+        "undelivered_energy_kwh": undelivered,
+        "absolute_tracking_error_energy_kwh": tracking_error_energy,
+        "peak_requested_power_kw": max(requested_powers, default=0.0),
+        "peak_delivered_power_kw": max(delivered_powers, default=0.0),
+        "maximum_response_delay_seconds": max(
+            (sample.response_delay_seconds for _, sample in selected), default=0.0
+        ),
+        "maximum_achieved_ramp_kw_per_second": max(
+            (sample.achieved_ramp_kw_per_second for _, sample in selected),
+            default=0.0,
+        ),
+        "non_performance_duration_seconds": sum(
+            sample.non_performance_duration_seconds for _, sample in selected
+        ),
+        "causes": list(causes),
+    }
+    return AFRRDirectionalPerformance(
+        schema_version=AFRR_DIRECTIONAL_PERFORMANCE_SCHEMA_VERSION,
+        direction=direction,
+        sample_count=int(payload["sample_count"]),
+        requested_energy_kwh=requested,
+        delivered_energy_kwh=delivered,
+        undelivered_energy_kwh=undelivered,
+        absolute_tracking_error_energy_kwh=tracking_error_energy,
+        peak_requested_power_kw=float(payload["peak_requested_power_kw"]),
+        peak_delivered_power_kw=float(payload["peak_delivered_power_kw"]),
+        maximum_response_delay_seconds=float(
+            payload["maximum_response_delay_seconds"]
+        ),
+        maximum_achieved_ramp_kw_per_second=float(
+            payload["maximum_achieved_ramp_kw_per_second"]
+        ),
+        non_performance_duration_seconds=float(
+            payload["non_performance_duration_seconds"]
+        ),
+        causes=causes,
+        performance_fingerprint=_fingerprint(payload),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class AFRRReplayResult:
+    """Immutable aFRR trace, directional performance, and physical totals."""
+
+    schema_version: str
+    request: AFRRReplayRequest
+    request_fingerprint: str
+    activation_trajectory_fingerprint: str
+    samples: tuple[RestorationReplaySample, ...]
+    directional_performance: Mapping[
+        RestorationDirection, AFRRDirectionalPerformance
+    ]
+    totals: RestorationEnergyTotals
+    causes: tuple[str, ...]
+    input_fingerprints: Mapping[str, str]
+    core_result_fingerprint: str
+    result_fingerprint: str
+
+    def to_dict(self) -> dict[str, object]:
+        serialized_samples = []
+        for sample in self.samples:
+            payload = sample.to_dict()
+            payload.pop("event_id")
+            payload.pop("mfrr_kind")
+            serialized_samples.append(payload)
+        return {
+            "schema_version": self.schema_version,
+            "request_fingerprint": self.request_fingerprint,
+            "activation_trajectory_fingerprint": (
+                self.activation_trajectory_fingerprint
+            ),
+            "samples": serialized_samples,
+            "directional_performance": {
+                direction.value: self.directional_performance[direction].to_dict()
+                for direction in RestorationDirection
+            },
+            "totals": self.totals.to_dict(),
+            "causes": list(self.causes),
+            "input_fingerprints": dict(self.input_fingerprints),
+            "core_result_fingerprint": self.core_result_fingerprint,
+            "result_fingerprint": self.result_fingerprint,
+        }
+
+
+def replay_afrr(request: AFRRReplayRequest) -> AFRRReplayResult:
+    """Replay native interval-average aFRR requests without resampling."""
+
+    if type(request) is not AFRRReplayRequest:
+        raise RestorationReplayValidationError(
+            "request must be exactly an AFRRReplayRequest"
+        )
+    state = request.initial_state
+    previous_combined_power_kw = (
+        request.baseline.intervals[0].accepted_baseline_power_kw
+    )
+    samples: list[RestorationReplaySample] = []
+    for index, (activation_sample, baseline_interval, grid_interval) in enumerate(
+        zip(
+            request.activation_trajectory.samples,
+            request.baseline.intervals,
+            request.integration_grid.intervals,
+            strict=True,
+        )
+    ):
+        if (
+            activation_sample.interval != grid_interval
+            or baseline_interval.interval != grid_interval
+        ):
+            raise RestorationReplayValidationError(
+                f"aFRR replay inputs do not align at interval {index}"
+            )
+        baseline_power = baseline_interval.accepted_baseline_power_kw
+        upward = request.commitments.commitment_covering(
+            grid_interval, RestorationDirection.UPWARD
+        )
+        downward = request.commitments.commitment_covering(
+            grid_interval, RestorationDirection.DOWNWARD
+        )
+        interval_seconds = (
+            grid_interval.end_utc - grid_interval.start_utc
+        ).total_seconds()
+        decision = enforce_restoration_capability(
+            product=RestorationProduct.AFRR,
+            accepted_baseline_power_kw=baseline_power,
+            requested_balancing_power_kw=(
+                activation_sample.requested_balancing_power_kw
+            ),
+            upward_commitment_kw=upward.committed_capacity_kw,
+            downward_commitment_kw=downward.committed_capacity_kw,
+            upward_headroom_kw=max(
+                0.0, request.battery.max_discharge_kw + baseline_power
+            ),
+            downward_headroom_kw=max(
+                0.0, request.battery.max_charge_kw - baseline_power
+            ),
+            previous_capability_combined_power_kw=previous_combined_power_kw,
+            interval_seconds=interval_seconds,
+            capability=request.capability,
+            actual_activation_delay_seconds=0.0,
+            requested_duration_seconds=interval_seconds,
+        )
+        sample = apply_restoration_battery_transition(
+            sample_index=index,
+            interval=grid_interval,
+            product=RestorationProduct.AFRR,
+            decision=decision,
+            battery=request.battery,
+            state=state,
+            tolerance=request.tolerance,
+        )
+        samples.append(sample)
+        state = sample.state
+        previous_combined_power_kw = sample.delivered_combined_power_kw
+    normalized_samples = tuple(samples)
+    core_result = build_restoration_replay_result_core(
+        request=request.core,
+        samples=normalized_samples,
+    )
+    directional = MappingProxyType(
+        {
+            direction: _afrr_directional_performance(
+                direction=direction,
+                activation=request.activation_trajectory,
+                samples=normalized_samples,
+            )
+            for direction in RestorationDirection
+        }
+    )
+    directional_requested = sum(
+        performance.requested_energy_kwh for performance in directional.values()
+    )
+    directional_delivered = sum(
+        performance.delivered_energy_kwh for performance in directional.values()
+    )
+    directional_undelivered = sum(
+        performance.undelivered_energy_kwh for performance in directional.values()
+    )
+    if (
+        abs(
+            directional_requested
+            - core_result.totals.requested_activation_energy_kwh
+        )
+        > request.tolerance
+        or abs(
+            directional_delivered
+            - core_result.totals.delivered_activation_energy_kwh
+        )
+        > request.tolerance
+        or abs(
+            directional_undelivered
+            - core_result.totals.undelivered_activation_energy_kwh
+        )
+        > request.tolerance
+    ):
+        raise RestorationReplayValidationError(
+            "aFRR directional and horizon activation energy do not conserve"
+        )
+    payload = {
+        "schema_version": AFRR_REPLAY_RESULT_SCHEMA_VERSION,
+        "request_fingerprint": request.request_fingerprint,
+        "activation_trajectory_fingerprint": (
+            request.activation_trajectory.trajectory_fingerprint
+        ),
+        "sample_fingerprints": [
+            sample.sample_fingerprint for sample in normalized_samples
+        ],
+        "directional_performance_fingerprints": {
+            direction.value: directional[direction].performance_fingerprint
+            for direction in RestorationDirection
+        },
+        "totals_fingerprint": core_result.totals.totals_fingerprint,
+        "causes": list(core_result.causes),
+        "input_fingerprints": dict(request.input_fingerprints),
+        "core_result_fingerprint": core_result.result_fingerprint,
+    }
+    return AFRRReplayResult(
+        schema_version=AFRR_REPLAY_RESULT_SCHEMA_VERSION,
+        request=request,
+        request_fingerprint=request.request_fingerprint,
+        activation_trajectory_fingerprint=(
+            request.activation_trajectory.trajectory_fingerprint
+        ),
+        samples=normalized_samples,
+        directional_performance=directional,
+        totals=core_result.totals,
+        causes=core_result.causes,
+        input_fingerprints=request.input_fingerprints,
+        core_result_fingerprint=core_result.result_fingerprint,
+        result_fingerprint=_fingerprint(payload),
+    )
+
+
 __all__ = [
     "RESTORATION_REPLAY_CORE_SCHEMA_VERSION",
     "RESTORATION_REPLAY_SAMPLE_SCHEMA_VERSION",
+    "AFRR_REPLAY_REQUEST_SCHEMA_VERSION",
+    "AFRR_REPLAY_RESULT_SCHEMA_VERSION",
+    "AFRR_DIRECTIONAL_PERFORMANCE_SCHEMA_VERSION",
     "DEFAULT_RESTORATION_REPLAY_TOLERANCE",
     "RESTORATION_CAUSE_ORDER",
     "RestorationReplayInputKind",
@@ -895,10 +1347,15 @@ __all__ = [
     "RestorationReplaySample",
     "RestorationEnergyTotals",
     "RestorationReplayResultCore",
+    "AFRRReplayRequest",
+    "AFRRDirectionalPerformance",
+    "AFRRReplayResult",
     "build_restoration_integration_grid",
     "build_restoration_replay_request_core",
     "enforce_restoration_capability",
     "apply_restoration_battery_transition",
     "aggregate_restoration_samples",
     "build_restoration_replay_result_core",
+    "build_afrr_replay_request",
+    "replay_afrr",
 ]
