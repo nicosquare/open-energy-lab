@@ -642,14 +642,14 @@ def _obtain_oauth_session(
             maximum_bytes=RTE_MAX_AUTH_RESPONSE_BYTES,
             phase="authentication",
         )
-    except RTETransportError as exc:
+    except RTETransportError:
         raise RTEAuthenticationError(
             "RTE authentication failed after one attempt"
-        ) from exc
-    except Exception as exc:
+        ) from None
+    except Exception:
         raise RTEAuthenticationError(
             "RTE authentication transport failed after one attempt"
-        ) from exc
+        ) from None
     if response.status != 200:
         raise RTEAuthenticationError(
             f"RTE authentication failed with status {response.status} after one attempt"
