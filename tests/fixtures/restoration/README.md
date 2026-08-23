@@ -40,6 +40,14 @@ Synthetic cases preserve source-null, field-absent, and numeric-zero states as
 different values. They may imitate the documented RTE JSON shape but must never
 be described as a captured production response.
 
+The authored `synthetic_rte/` matrix contains successful aFRR and mFRR shapes
+plus malformed-root, empty, null/missing/zero, gap, overlap, conflicting
+duplicate, wrong-resolution, wrong-direction, wrong-unit, oversized,
+authentication, rate-limit, transient, and permanent response cases. The four
+aFRR requested-need values and one mFRR SA requested-volume value reproduce the
+documented hand-checkable scenario inputs; all response bytes remain authored
+and are not production captures.
+
 ## Restricted Fixtures
 
 Every `france_*` file listed in `RESTRICTED_DATA.md` is derived from real market

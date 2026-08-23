@@ -1,0 +1,44 @@
+{
+  "mari": {
+    "end_date": "2026-08-15T10:30:00Z",
+    "mari_mesures": [
+      {
+        "clearing_price": 91.5,
+        "direction": "downward",
+        "end_date": "2026-08-15T10:30:00Z",
+        "requested_activated_volumes_by_prices": [{"activation_type": "SA", "requested_price": 90.0, "requested_volume": 357.0, "satisfied_need": 340.0}],
+        "settlement_price_current": null,
+        "settlement_price_previous": 89.25,
+        "start_date": "2026-08-15T10:15:00Z",
+        "total_activated_volume_DA": null,
+        "total_activated_volume_SA": 300.0,
+        "total_requested_volume_DA": null,
+        "total_requested_volume_SA": 357.0,
+        "total_satisfied_need_DA": null,
+        "total_satisfied_need_SA": 340.0,
+        "total_volume_filtered_offers": 25.0,
+        "total_volume_submitted_offers": 500.0
+      },
+      {
+        "clearing_price": 0.0,
+        "direction": "upward",
+        "end_date": "2026-08-15T10:30:00Z",
+        "requested_activated_volumes_by_prices": [],
+        "settlement_price_current": 0.0,
+        "start_date": "2026-08-15T10:15:00Z",
+        "total_activated_volume_DA": 0.0,
+        "total_activated_volume_SA": 0.0,
+        "total_requested_volume_DA": 0.0,
+        "total_requested_volume_SA": 0.0,
+        "total_satisfied_need_DA": 0.0,
+        "total_satisfied_need_SA": 0.0,
+        "total_volume_filtered_offers": 0.0,
+        "total_volume_submitted_offers": 0.0
+      }
+    ],
+    "price_unit": "EUR/MWh",
+    "resolution": "PT15M",
+    "start_date": "2026-08-15T10:15:00Z",
+    "volume_unit": "MW"
+  }
+}

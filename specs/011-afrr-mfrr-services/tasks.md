@@ -81,7 +81,7 @@ the artifacts and an RTE/ENTSO-E study bundle offline.
 
 ### Tests and Fixtures for User Story 1
 
-- [ ] T019 [P] [US1] Create authored aFRR/mFRR success payloads plus malformed root, empty, missing/null/zero, gap, overlap, duplicate/conflict, wrong-resolution, wrong-direction, wrong-unit, oversized, authentication, rate-limit, and transient/permanent response fixtures in `tests/fixtures/restoration/synthetic_rte/`
+- [X] T019 [P] [US1] Create authored aFRR/mFRR success payloads plus malformed root, empty, missing/null/zero, gap, overlap, duplicate/conflict, wrong-resolution, wrong-direction, wrong-unit, oversized, authentication, rate-limit, and transient/permanent response fixtures in `tests/fixtures/restoration/synthetic_rte/`
 - [ ] T020 [P] [US1] Add failing tests for token-free closed RTE v5.2 profiles/requests, HTTPS endpoints, bounded UTC periods, keyword-only credentials, sanitized diagnostics, and request identities in `tests/unit/market/test_rte_request.py`
 - [ ] T021 [P] [US1] Add failing tests for injected OAuth/data transports, bounded bodies, Basic/bearer confinement, token renewal, allowed transient classes, valid `Retry-After`, exactly three total transient attempts, and one permanent/auth attempt in `tests/unit/market/test_rte_transport.py`
 - [ ] T022 [US1] Add failing aFRR parser tests using `tests/fixtures/restoration/synthetic_rte/` for the `picasso` root, exact ten fields, chronological four-row PT15M coverage, field meanings/units, transformations, duplicates, ambiguity, and source diagnostics in `tests/unit/market/test_rte_afrr_parser.py`
