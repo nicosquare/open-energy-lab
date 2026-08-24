@@ -154,6 +154,7 @@ def test_feature_011_offline_roots_and_symbols_load_no_adapters_credentials_or_r
         adapter_modules = {
             "open_energy_lab.market.rte",
             "open_energy_lab.market.entsoe",
+            "open_energy_lab.market.entsoe_restoration",
         }
 
         class GuardedEnvironment(dict):

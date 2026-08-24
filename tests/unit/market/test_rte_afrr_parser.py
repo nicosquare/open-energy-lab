@@ -16,6 +16,7 @@ from open_energy_lab.market.rte import (
     RTEParseError,
     RTERawMarketResponse,
     build_rte_query_windows,
+    build_rte_restoration_artifact_from_responses,
     parse_rte_restoration_responses,
 )
 from tests.unit.market.test_rte_request import _request
@@ -94,6 +95,22 @@ def test_afrr_numeric_zero_remains_a_present_value() -> None:
 
     assert [item.value for item in downward.observations] == [0.0] * 4
     assert all(item.value_state is ObservationValueState.VALUE for item in downward.observations)
+
+
+def test_afrr_responses_can_be_normalized_to_an_in_memory_artifact() -> None:
+    request = _request()
+
+    artifact = build_rte_restoration_artifact_from_responses(
+        request,
+        (_raw(_fixture("afrr_success.json")),),
+    )
+
+    assert artifact.resource == "standard_afrr_data"
+    assert artifact.profile_id == request.profile.profile_id
+    assert len(artifact.series) == 8
+    assert len(artifact.artifact_fingerprint) == 64
+    assert len(artifact.content_fingerprint) == 64
+    assert artifact.raw_retention["policy"] == "DIGEST_ONLY"
 
 
 def test_afrr_accepts_aware_source_offsets_and_normalizes_them_to_utc() -> None:

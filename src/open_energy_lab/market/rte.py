@@ -1554,6 +1554,33 @@ def _artifact_from_responses(
     return build_restoration_market_artifact(payload)
 
 
+def build_rte_restoration_artifact_from_responses(
+    request: RestorationMarketDataRequest,
+    responses: Sequence[RTERawMarketResponse],
+) -> RestorationMarketArtifact:
+    """Normalize validated RTE responses into an in-memory immutable artifact.
+
+    This operation performs no network or filesystem IO.  It supports explicit
+    interactive acquisition consumers that need the same artifact semantics as
+    :func:`fetch_rte_restoration_data` without publishing the artifact.
+    """
+
+    if not isinstance(request, RestorationMarketDataRequest):
+        raise RTERequestValidationError(
+            "request must be a RestorationMarketDataRequest"
+        )
+    normalized = tuple(responses)
+    if any(not isinstance(item, RTERawMarketResponse) for item in normalized):
+        raise RTERequestValidationError(
+            "responses must contain only RTERawMarketResponse values"
+        )
+    return _artifact_from_responses(
+        request,
+        normalized,
+        predecessor_artifact_fingerprint=None,
+    )
+
+
 def fetch_rte_restoration_data(
     request: RestorationMarketDataRequest,
     *,
@@ -1582,9 +1609,7 @@ def fetch_rte_restoration_data(
         clock=clock,
         sleeper=sleeper,
     )
-    artifact = _artifact_from_responses(
-        request, responses, predecessor_artifact_fingerprint=None
-    )
+    artifact = build_rte_restoration_artifact_from_responses(request, responses)
     path = write_restoration_market_artifact(
         artifact, destination_dir=output_directory
     )
@@ -1693,6 +1718,7 @@ __all__ = [
     "build_rte_query_windows",
     "execute_rte_request",
     "parse_rte_restoration_responses",
+    "build_rte_restoration_artifact_from_responses",
     "fetch_rte_restoration_data",
     "refresh_rte_restoration_data",
 ]

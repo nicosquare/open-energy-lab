@@ -85,7 +85,10 @@ assert len(reproducibility_table) >= 10
 assert len(generated_figures) >= 7
 assert all(figure.axes for figure in generated_figures.values())
 assert live_rte_table.empty
-assert live_entsoe_selection == "no compatible profile was selected"
+assert live_replay_table.empty
+assert live_settlement_table.empty
+assert live_pipeline_result is None
+assert live_entsoe_selection == "not requested; using declared zero day-ahead price"
 """.strip(),
         cell_id="test-offline-assertions",
     )

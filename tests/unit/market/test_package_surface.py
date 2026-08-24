@@ -98,6 +98,7 @@ EXPECTED_EXPORTS = [
 RELOADED_MARKET_MODULES = (
     "open_energy_lab.market.rte",
     "open_energy_lab.market.entsoe",
+    "open_energy_lab.market.entsoe_restoration",
     "open_energy_lab.market.restoration_artifact",
     "open_energy_lab.market.restoration_activation",
     "open_energy_lab.market.activation",
@@ -278,6 +279,7 @@ def test_every_documented_export_resolves_from_its_owned_module():
             assert value.__module__ == f"open_energy_lab.market.{owner}"
 
     assert "open_energy_lab.market.entsoe" not in sys.modules
+    assert "open_energy_lab.market.entsoe_restoration" not in sys.modules
     assert "open_energy_lab.market.rte" not in sys.modules
 
 
@@ -287,4 +289,5 @@ def test_unknown_market_root_attribute_fails_without_adapter_import():
     with pytest.raises(AttributeError, match="no attribute 'unknown_contract'"):
         getattr(market, "unknown_contract")
     assert "open_energy_lab.market.entsoe" not in sys.modules
+    assert "open_energy_lab.market.entsoe_restoration" not in sys.modules
     assert "open_energy_lab.market.rte" not in sys.modules

@@ -14,22 +14,32 @@ EXPECTED_CELL_IDS = (
     "title-and-safety",
     "plain-language-products",
     "source-and-evidence-boundary",
+    "offline-evidence-introduction",
     "offline-setup",
     "load-offline-cases",
     "provenance-table",
+    "observed-market-data-guide",
     "market-tables",
+    "afrr-observed-case",
     "plot-afrr-market",
+    "mfrr-observed-case",
     "plot-mfrr-market",
     "mapping-and-commitments",
     "activation-tables",
+    "control-and-replay-explanation",
     "plot-requested-delivered-power",
+    "performance-reading-guide",
     "physical-performance-tables",
+    "soc-and-headroom-explanation",
     "plot-soc-headroom",
     "plot-tracking-performance",
+    "energy-throughput-explanation",
     "energy-throughput-table",
     "plot-energy-throughput",
+    "settlement-explanation",
     "settlement-table",
     "plot-settlement",
+    "reproducibility-explanation",
     "reproducibility-audit",
     "optional-export",
     "live-query-explanation",
@@ -103,6 +113,39 @@ def test_notebook_explains_products_evidence_and_conclusion_limits() -> None:
     assert missing == []
 
 
+def test_notebook_frames_observation_assumption_simulation_and_interpretation() -> None:
+    markdown = _source(cell_type="markdown").lower()
+    required_markdown = (
+        "demonstration question",
+        "the evidence chain",
+        "observed market data",
+        "explicit study assumptions",
+        "open energy lab",
+        "interpretable outputs",
+        "rte balancing energy api 5.2",
+        "entso-e transparency platform",
+        "optional context",
+        "assumed / derived",
+        "simulated",
+        "not a price-threshold controller",
+        "source null",
+        "not zero",
+        "settlement is shown component by component",
+        "entso-e is not used in the fixed offline calculation",
+    )
+    assert [term for term in required_markdown if term not in markdown] == []
+
+    code = _source(cell_type="code")
+    required_code = (
+        "assumption_table",
+        'generated_figures["evidence_chain"]',
+        'label="DERIVED — requested balancing"',
+        'label="SIMULATED — delivered balancing"',
+        'axis.fill_between(',
+    )
+    assert [term for term in required_code if term not in code] == []
+
+
 def test_notebook_reuses_offline_cases_and_displays_the_full_audit_surface() -> None:
     code = _source(cell_type="code")
     required_code = (
@@ -173,21 +216,24 @@ def test_notebook_export_is_explicit_disabled_and_restricted() -> None:
     assert missing == []
 
 
-def test_live_rte_and_existing_profile_entsoe_branch_are_guarded() -> None:
+def test_live_rte_and_native_pt15m_entsoe_branch_are_guarded() -> None:
     live_code = _cell_source("live-rte-and-entsoe-query")
     tree = ast.parse(live_code)
     required = (
         "RUN_LIVE_QUERY = False",
         "RUN_LIVE_ENTSOE_QUERY = False",
         "LIVE_QUERY_PARAMETERS",
+        "LIVE_SCENARIO_PARAMETERS",
         "LIVE_ENTSOE_ARTIFACT_PATH = None",
         "LIVE_PERSIST_NORMALIZED_ARTIFACT = False",
         'LIVE_ENV_FILE = REPO_ROOT / ".env"',
         "raw_responses = ()",
         'raw_retention_policy="DIGEST_ONLY"',
         "day_ahead_price",
-        "series_fingerprint",
-        "no compatible profile was selected",
+        "live_pipeline_result",
+        "live_replay_table",
+        "live_settlement_table",
+        "in_memory_live_query",
     )
     missing = [term for term in required if term not in live_code]
     assert missing == []
@@ -207,8 +253,12 @@ def test_live_rte_and_existing_profile_entsoe_branch_are_guarded() -> None:
     }
     assert {
         "examples.restoration_services.fetch_rte_period",
+        "examples.restoration_services.live_pipeline",
+        "examples.bess_stacked_services.fetch_french_period",
         "open_energy_lab.market.rte",
         "open_energy_lab.market.artifact",
+        "open_energy_lab.market.entsoe",
+        "open_energy_lab.market.entsoe_restoration",
     } <= guarded_imports
 
     guarded_calls = {
@@ -220,9 +270,12 @@ def test_live_rte_and_existing_profile_entsoe_branch_are_guarded() -> None:
         "_rte_credentials",
         "build_rte_restoration_request",
         "execute_rte_request",
-        "parse_rte_restoration_responses",
+        "build_rte_restoration_artifact_from_responses",
+        "run_live_restoration_pipeline",
+        "fetch_entsoe_quarter_hour_day_ahead",
         "load_market_data_artifact",
     } <= guarded_calls
+    assert "no compatible profile was selected" not in live_code
 
     other_code = "\n".join(
         "".join(cell.get("source", ()))
@@ -253,13 +306,15 @@ def test_live_section_documents_parameters_lifecycle_and_no_persistence() -> Non
         "short-lived oauth",
         "raw responses remain in memory only",
         "no raw response is written",
-        "existing feature 010 `fr-day-ahead-symmetric-fcr-v1` lifecycle",
-        "time-compatible a44 `day_ahead_price`",
-        "selected by series fingerprint",
-        "not an automatic fallback",
-        "no compatible profile was selected",
+        "`fr-day-ahead-quarter-hour-v2`",
+        "native `pt15m`",
+        "without interpolation",
+        "matches rte's pt15m intervals exactly",
+        "whole live pipeline",
+        "source-separated artifact in memory",
+        "existing hourly feature 010 artifacts remain valid",
+        "never used as an afrr/mfrr activation command or automatic fallback",
         "live availability is not required for offline results",
     )
     missing = [term for term in required if term not in source]
     assert missing == []
-
