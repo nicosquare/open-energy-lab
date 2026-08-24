@@ -52,6 +52,10 @@ MAX_ARCHIVE_MEMBERS = 16
 MAX_TRANSPORT_ATTEMPTS = 3
 MAX_RETRY_AFTER_SECONDS = 120
 EXPECTED_FRANCE_CONTRACT = "France A44/combined-A81 ENTSO-E R3 market-data contract v1"
+FRANCE_QUARTER_HOUR_DAY_AHEAD_PROFILE_ID = "fr-day-ahead-quarter-hour-v2"
+EXPECTED_FRANCE_QUARTER_HOUR_DAY_AHEAD_CONTRACT = (
+    "France A44 native-PT15M ENTSO-E day-ahead contract v2"
+)
 
 _DOCUMENT_SERIES = {
     "A44": "day_ahead_price",
@@ -108,6 +112,32 @@ class FranceEntsoeProfile:
             )
 
 
+@dataclass(frozen=True, slots=True)
+class FranceQuarterHourDayAheadProfile:
+    """Additive A44-only profile for native quarter-hour day-ahead prices."""
+
+    profile_id: str = FRANCE_QUARTER_HOUR_DAY_AHEAD_PROFILE_ID
+    area_eic: str = FRANCE_AREA_EIC
+    market_timezone: str = FRANCE_MARKET_TIMEZONE
+    required_document_types: tuple[str, ...] = ("A44",)
+
+    def __post_init__(self) -> None:
+        if self.profile_id != FRANCE_QUARTER_HOUR_DAY_AHEAD_PROFILE_ID:
+            raise EntsoeRequestValidationError(
+                f"profile_id must be {FRANCE_QUARTER_HOUR_DAY_AHEAD_PROFILE_ID}"
+            )
+        if self.area_eic != FRANCE_AREA_EIC:
+            raise EntsoeRequestValidationError(f"area_eic must be {FRANCE_AREA_EIC}")
+        if self.market_timezone != FRANCE_MARKET_TIMEZONE:
+            raise EntsoeRequestValidationError(
+                f"market_timezone must be {FRANCE_MARKET_TIMEZONE}"
+            )
+        if self.required_document_types != ("A44",):
+            raise EntsoeRequestValidationError(
+                "required_document_types must be exactly A44"
+            )
+
+
 def _validate_https_endpoint(value: object) -> str:
     endpoint = _non_empty(value, field_name="source_endpoint")
     parsed = urllib.parse.urlsplit(endpoint)
@@ -135,7 +165,9 @@ class EntsoeMarketDataRequest:
     source_endpoint: str
     raw_retention_policy: str
     normalization_version: str
-    profile: FranceEntsoeProfile = field(default_factory=FranceEntsoeProfile)
+    profile: FranceEntsoeProfile | FranceQuarterHourDayAheadProfile = field(
+        default_factory=FranceEntsoeProfile
+    )
 
     def __post_init__(self) -> None:
         start = _require_utc_datetime(
@@ -159,10 +191,23 @@ class EntsoeMarketDataRequest:
             self.normalization_version,
             field_name="normalization_version",
         )
-        if not isinstance(self.profile, FranceEntsoeProfile):
+        if not isinstance(
+            self.profile,
+            (FranceEntsoeProfile, FranceQuarterHourDayAheadProfile),
+        ):
             raise EntsoeRequestValidationError(
-                "profile must be the closed FranceEntsoeProfile"
+                "profile must be a validated France ENTSO-E profile"
             )
+        if isinstance(self.profile, FranceQuarterHourDayAheadProfile):
+            for field_name, value in (
+                ("requested_start_utc", start),
+                ("requested_end_utc", end),
+            ):
+                if value.minute % 15 or value.second or value.microsecond:
+                    raise EntsoeRequestValidationError(
+                        f"{field_name} must align exactly to a PT15M boundary "
+                        "for the quarter-hour day-ahead profile"
+                    )
         object.__setattr__(self, "requested_start_utc", start)
         object.__setattr__(self, "requested_end_utc", end)
         object.__setattr__(self, "source_endpoint", endpoint)
@@ -463,6 +508,12 @@ class EntsoeTransportResult:
     diagnostics: tuple[EntsoeDiagnostic, ...]
 
 
+def _expected_contract(request: EntsoeMarketDataRequest) -> str:
+    if isinstance(request.profile, FranceQuarterHourDayAheadProfile):
+        return EXPECTED_FRANCE_QUARTER_HOUR_DAY_AHEAD_CONTRACT
+    return EXPECTED_FRANCE_CONTRACT
+
+
 def _diagnostic(
     request: EntsoeMarketDataRequest,
     window: EntsoeQueryWindow,
@@ -483,7 +534,7 @@ def _diagnostic(
         requested_start_utc=_format_utc(request.requested_start_utc),
         requested_end_utc=_format_utc(request.requested_end_utc),
         expected_profile=request.profile.profile_id,
-        expected_contract=EXPECTED_FRANCE_CONTRACT,
+        expected_contract=_expected_contract(request),
         final_outcome=final_outcome,
         attempt=attempt,
         status_code=status_code,
@@ -942,7 +993,7 @@ def _parse_diagnostic(
         requested_start_utc=_format_utc(request.requested_start_utc),
         requested_end_utc=_format_utc(request.requested_end_utc),
         expected_profile=request.profile.profile_id,
-        expected_contract=EXPECTED_FRANCE_CONTRACT,
+        expected_contract=_expected_contract(request),
         final_outcome=final_outcome,
         attempt=attempt_count,
         failure_class="source_validation",
@@ -1385,11 +1436,18 @@ def _expand_period_points(
         window=window,
         attempt_count=attempt_count,
     )
-    accepted_resolutions = (
-        {"PT1H", "PT60M"} if document_type == "A44" else {"PT4H"}
-    )
+    if document_type == "A44" and isinstance(
+        request.profile, FranceQuarterHourDayAheadProfile
+    ):
+        accepted_resolutions = {"PT15M"}
+        expected_resolution = "PT15M"
+    elif document_type == "A44":
+        accepted_resolutions = {"PT1H", "PT60M"}
+        expected_resolution = "PT1H/PT60M"
+    else:
+        accepted_resolutions = {"PT4H"}
+        expected_resolution = "PT4H"
     if resolution not in accepted_resolutions:
-        expected_resolution = "PT1H/PT60M" if document_type == "A44" else "PT4H"
         _raise_parse_failure(
             EntsoeResolutionValidationError,
             request,
@@ -2307,6 +2365,7 @@ def parse_entsoe_document(
     canonical_unit: str | None = None
     conversion: Mapping[str, object] | None = None
     conversion_ref: str | None = None
+    source_series_mrids: set[str] = set()
 
     for time_series in time_series_items:
         _validate_area(
@@ -2372,6 +2431,8 @@ def parse_entsoe_document(
             resolution=first_resolution,
             unit=candidate_source_unit,
         )
+        candidate_series_mrid = str(candidate_product["series_mrid"])
+        source_series_mrids.add(candidate_series_mrid)
         if source_unit is None:
             source_unit = candidate_source_unit
             currency = candidate_currency
@@ -2384,9 +2445,12 @@ def parse_entsoe_document(
             product_identity = candidate_product
         elif (
             source_unit != candidate_source_unit
-            or product_identity != candidate_product
             or business_type != candidate_business
             or flow_direction != candidate_direction
+            or (
+                not isinstance(request.profile, FranceQuarterHourDayAheadProfile)
+                and product_identity != candidate_product
+            )
         ):
             _raise_parse_failure(
                 EntsoeProductValidationError,
@@ -2401,7 +2465,7 @@ def parse_entsoe_document(
                 observed_unit=candidate_source_unit,
             )
         conversion_factor = 1.0
-        series_mrid = str(candidate_product["series_mrid"])
+        series_mrid = candidate_series_mrid
         for period in periods:
             expanded, _, raw_count, resolution, curve_type = _expand_period_points(
                 period,
@@ -2422,7 +2486,12 @@ def parse_entsoe_document(
                 existing = normalized_records.get(key)
                 if existing is not None:
                     existing_value, _, existing_identity = existing
-                    if existing_value == value and existing_identity == series_mrid:
+                    if existing_value == value and (
+                        existing_identity == series_mrid
+                        or isinstance(
+                            request.profile, FranceQuarterHourDayAheadProfile
+                        )
+                    ):
                         exact_duplicates += 1
                         continue
                     _raise_parse_failure(
@@ -2445,6 +2514,13 @@ def parse_entsoe_document(
     assert source_unit is not None
     assert canonical_unit is not None
     assert product_identity is not None
+    if isinstance(request.profile, FranceQuarterHourDayAheadProfile):
+        product_identity = MappingProxyType(
+            {
+                "business_type": business_type,
+                "series_mrids": tuple(sorted(source_series_mrids)),
+            }
+        )
     ordered_records = sorted(normalized_records.items(), key=lambda item: item[0])
     if not ordered_records:
         _raise_parse_failure(
@@ -2524,7 +2600,12 @@ def parse_entsoe_document(
         source_document_type=document_type,
         source_value_field="price.amount",
         source_resolution=source_resolution,
-        canonical_resolution="PT1H" if document_type == "A44" else "PT4H",
+        canonical_resolution=(
+            "PT15M"
+            if document_type == "A44"
+            and isinstance(request.profile, FranceQuarterHourDayAheadProfile)
+            else "PT1H" if document_type == "A44" else "PT4H"
+        ),
         source_unit=source_unit,
         canonical_unit=canonical_unit,
         currency=currency,
@@ -3112,6 +3193,13 @@ def fetch_entsoe_market_data(
 ) -> MarketDataFetchResult:
     """Explicitly acquire, validate, and atomically publish all France series."""
 
+    if not isinstance(request.profile, FranceEntsoeProfile):
+        raise EntsoeRequestValidationError(
+            "fetch_entsoe_market_data is reserved for the closed Feature 010 "
+            "A44/A81 profile; use the restoration quarter-hour A44 acquisition "
+            "operation for fr-day-ahead-quarter-hour-v2"
+        )
+
     candidate = _acquire_candidate(
         request,
         api_token=api_token,
@@ -3222,6 +3310,12 @@ def refresh_entsoe_market_data(
     transport: EntsoeTransport | None = None,
 ) -> MarketDataRefreshResult:
     """Refresh one lineage without overwriting or mutating its current artifact."""
+
+    if not isinstance(request.profile, FranceEntsoeProfile):
+        raise EntsoeRequestValidationError(
+            "refresh_entsoe_market_data is reserved for the closed Feature 010 "
+            "A44/A81 profile"
+        )
 
     if not isinstance(current_artifact, MarketDataArtifact):
         raise TypeError("current_artifact must be a MarketDataArtifact")

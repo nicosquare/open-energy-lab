@@ -49,6 +49,51 @@ if TYPE_CHECKING:
         market_data_artifact_filename,
         write_market_data_artifact,
     )
+    from .restoration_artifact import (
+        RESTORATION_MARKET_SCHEMA_VERSION,
+        RESTORATION_STUDY_BUNDLE_SCHEMA_VERSION,
+        SUPPORTED_RESTORATION_MARKET_SCHEMA_VERSIONS,
+        SUPPORTED_RESTORATION_STUDY_BUNDLE_SCHEMA_VERSIONS,
+        ObservationValueState,
+        RawRetentionPolicy,
+        RestorationArtifactIntegrityError,
+        RestorationArtifactPublicationError,
+        RestorationArtifactValidationError,
+        RestorationDataSource,
+        RestorationMarketArtifact,
+        RestorationMarketObservation,
+        RestorationMarketSeries,
+        RestorationStudyBundle,
+        RestorationStudyBundleRef,
+        SeriesAvailability,
+        SourceRequestEvidence,
+        UnsupportedRestorationArtifactVersionError,
+        build_restoration_market_artifact,
+        build_restoration_study_bundle,
+        canonical_restoration_json_bytes,
+        load_restoration_market_artifact,
+        load_restoration_study_bundle,
+        restoration_market_artifact_filename,
+        write_restoration_market_artifact,
+    )
+    from .restoration_activation import (
+        AFRRActivationSample,
+        AFRRActivationTrajectory,
+        DerivedSimulationMapping,
+        MFRRActivationEvent,
+        MFRRActivationKind,
+        MFRRActivationSequence,
+        RestorationActivationIntegrityError,
+        RestorationActivationValidationError,
+        RestorationDirection,
+        RestorationProduct,
+        RestorationSourceKind,
+        build_afrr_activation_trajectory,
+        build_afrr_trajectory_from_rte_requested_need,
+        build_derived_simulation_mapping,
+        build_mfrr_activation_sequence,
+        build_mfrr_sequence_from_rte_sa_requested_volume,
+    )
     from .time import (
         FRANCE_MARKET_TIMEZONE,
         HALF_OPEN_INTERVAL_CONVENTION,
@@ -133,6 +178,152 @@ _EXPORT_MAP = {
     "write_regulation_activation_trace": (
         "activation",
         "write_regulation_activation_trace",
+    ),
+    "RESTORATION_MARKET_SCHEMA_VERSION": (
+        "restoration_artifact",
+        "RESTORATION_MARKET_SCHEMA_VERSION",
+    ),
+    "RESTORATION_STUDY_BUNDLE_SCHEMA_VERSION": (
+        "restoration_artifact",
+        "RESTORATION_STUDY_BUNDLE_SCHEMA_VERSION",
+    ),
+    "SUPPORTED_RESTORATION_MARKET_SCHEMA_VERSIONS": (
+        "restoration_artifact",
+        "SUPPORTED_RESTORATION_MARKET_SCHEMA_VERSIONS",
+    ),
+    "SUPPORTED_RESTORATION_STUDY_BUNDLE_SCHEMA_VERSIONS": (
+        "restoration_artifact",
+        "SUPPORTED_RESTORATION_STUDY_BUNDLE_SCHEMA_VERSIONS",
+    ),
+    "ObservationValueState": ("restoration_artifact", "ObservationValueState"),
+    "SeriesAvailability": ("restoration_artifact", "SeriesAvailability"),
+    "RestorationDataSource": ("restoration_artifact", "RestorationDataSource"),
+    "RawRetentionPolicy": ("restoration_artifact", "RawRetentionPolicy"),
+    "RestorationArtifactValidationError": (
+        "restoration_artifact",
+        "RestorationArtifactValidationError",
+    ),
+    "UnsupportedRestorationArtifactVersionError": (
+        "restoration_artifact",
+        "UnsupportedRestorationArtifactVersionError",
+    ),
+    "RestorationArtifactIntegrityError": (
+        "restoration_artifact",
+        "RestorationArtifactIntegrityError",
+    ),
+    "RestorationArtifactPublicationError": (
+        "restoration_artifact",
+        "RestorationArtifactPublicationError",
+    ),
+    "RestorationMarketObservation": (
+        "restoration_artifact",
+        "RestorationMarketObservation",
+    ),
+    "RestorationMarketSeries": (
+        "restoration_artifact",
+        "RestorationMarketSeries",
+    ),
+    "SourceRequestEvidence": ("restoration_artifact", "SourceRequestEvidence"),
+    "RestorationMarketArtifact": (
+        "restoration_artifact",
+        "RestorationMarketArtifact",
+    ),
+    "RestorationStudyBundleRef": (
+        "restoration_artifact",
+        "RestorationStudyBundleRef",
+    ),
+    "RestorationStudyBundle": (
+        "restoration_artifact",
+        "RestorationStudyBundle",
+    ),
+    "build_restoration_market_artifact": (
+        "restoration_artifact",
+        "build_restoration_market_artifact",
+    ),
+    "canonical_restoration_json_bytes": (
+        "restoration_artifact",
+        "canonical_restoration_json_bytes",
+    ),
+    "restoration_market_artifact_filename": (
+        "restoration_artifact",
+        "restoration_market_artifact_filename",
+    ),
+    "write_restoration_market_artifact": (
+        "restoration_artifact",
+        "write_restoration_market_artifact",
+    ),
+    "load_restoration_market_artifact": (
+        "restoration_artifact",
+        "load_restoration_market_artifact",
+    ),
+    "build_restoration_study_bundle": (
+        "restoration_artifact",
+        "build_restoration_study_bundle",
+    ),
+    "load_restoration_study_bundle": (
+        "restoration_artifact",
+        "load_restoration_study_bundle",
+    ),
+    "RestorationProduct": ("restoration_activation", "RestorationProduct"),
+    "RestorationDirection": (
+        "restoration_activation",
+        "RestorationDirection",
+    ),
+    "RestorationSourceKind": (
+        "restoration_activation",
+        "RestorationSourceKind",
+    ),
+    "RestorationActivationValidationError": (
+        "restoration_activation",
+        "RestorationActivationValidationError",
+    ),
+    "RestorationActivationIntegrityError": (
+        "restoration_activation",
+        "RestorationActivationIntegrityError",
+    ),
+    "DerivedSimulationMapping": (
+        "restoration_activation",
+        "DerivedSimulationMapping",
+    ),
+    "AFRRActivationSample": (
+        "restoration_activation",
+        "AFRRActivationSample",
+    ),
+    "AFRRActivationTrajectory": (
+        "restoration_activation",
+        "AFRRActivationTrajectory",
+    ),
+    "MFRRActivationKind": (
+        "restoration_activation",
+        "MFRRActivationKind",
+    ),
+    "MFRRActivationEvent": (
+        "restoration_activation",
+        "MFRRActivationEvent",
+    ),
+    "MFRRActivationSequence": (
+        "restoration_activation",
+        "MFRRActivationSequence",
+    ),
+    "build_derived_simulation_mapping": (
+        "restoration_activation",
+        "build_derived_simulation_mapping",
+    ),
+    "build_afrr_activation_trajectory": (
+        "restoration_activation",
+        "build_afrr_activation_trajectory",
+    ),
+    "build_afrr_trajectory_from_rte_requested_need": (
+        "restoration_activation",
+        "build_afrr_trajectory_from_rte_requested_need",
+    ),
+    "build_mfrr_activation_sequence": (
+        "restoration_activation",
+        "build_mfrr_activation_sequence",
+    ),
+    "build_mfrr_sequence_from_rte_sa_requested_volume": (
+        "restoration_activation",
+        "build_mfrr_sequence_from_rte_sa_requested_volume",
     ),
 }
 

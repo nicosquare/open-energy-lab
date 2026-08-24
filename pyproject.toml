@@ -25,18 +25,32 @@ dev = [
 ]
 notebook = [
     "ipykernel",
+    "jupyterlab",
     "matplotlib",
+    "nbclient",
     "seaborn",
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/open_energy_lab"]
+exclude = [
+    "/tests/fixtures/restoration/france_2026-08-20_afrr_market_v1.json",
+    "/tests/fixtures/restoration/france_2026-08-20_afrr_scenario_v1.json",
+    "/tests/fixtures/restoration/france_2026-08-15_mfrr_market_v1.json",
+    "/tests/fixtures/restoration/france_2026-08-15_mfrr_scenario_v1.json",
+    "/tests/fixtures/restoration/france_restoration_expected_results_v1.json",
+]
 
 [tool.hatch.build.targets.sdist]
 exclude = [
     "/tests/fixtures/market/france_2022-08-19_market_v1.json",
     "/tests/fixtures/market/france_2022-08-19_activation_v1.json",
     "/tests/fixtures/market/france_2022-08-19_expected_replay_v1.json",
+    "/tests/fixtures/restoration/france_2026-08-20_afrr_market_v1.json",
+    "/tests/fixtures/restoration/france_2026-08-20_afrr_scenario_v1.json",
+    "/tests/fixtures/restoration/france_2026-08-15_mfrr_market_v1.json",
+    "/tests/fixtures/restoration/france_2026-08-15_mfrr_scenario_v1.json",
+    "/tests/fixtures/restoration/france_restoration_expected_results_v1.json",
 ]
 
 [tool.pytest.ini_options]
@@ -45,5 +59,6 @@ pythonpath = [".", "src"]
 addopts = "-ra"
 markers = [
     "live_entsoe: explicitly selected credentialed ENTSO-E compatibility checks (excluded from routine offline validation)",
+    "live_rte: explicitly selected credentialed RTE compatibility checks (excluded from routine offline validation)",
     "reference_benchmark: explicitly selected reference-host performance checks (excluded from routine correctness validation)",
 ]

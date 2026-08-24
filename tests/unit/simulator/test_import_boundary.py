@@ -102,6 +102,43 @@ def test_simulator_import_stays_lightweight() -> None:
         "FCRSettlementValidationError",
         "SettlementBreakdown",
         "settle_stacked_services",
+        "RestorationSettlementValidationError",
+        "SettlementAvailability",
+        "SettlementComponentStatus",
+        "SettlementPriceState",
+        "DayAheadEnergyPrice",
+        "DirectionalCapacityPrice",
+        "AreaPriceProxyMapping",
+        "DirectionalActivationPrice",
+        "RestorationPenaltyRule",
+        "ThroughputDegradationRule",
+        "RestorationSettlementDiagnostic",
+        "RestorationSettlement",
+        "AFRRRestorationSettlement",
+        "MFRRRestorationSettlement",
+        "build_day_ahead_energy_price",
+        "build_directional_capacity_price",
+        "build_area_price_proxy_mapping",
+        "build_directional_activation_price",
+        "build_restoration_penalty_rule",
+        "build_throughput_degradation_rule",
+        "settle_restoration_services",
+        "RestorationReplayValidationError",
+        "RestorationIntegrationGrid",
+        "RestorationReplaySample",
+        "RestorationEnergyTotals",
+        "AFRRReplayRequest",
+        "AFRRDirectionalPerformance",
+        "AFRRReplayResult",
+        "MFRRReplayRequest",
+        "MFRREventPerformance",
+        "MFRRPerformanceAggregate",
+        "MFRRReplayResult",
+        "build_restoration_integration_grid",
+        "build_afrr_replay_request",
+        "replay_afrr",
+        "build_mfrr_replay_request",
+        "replay_mfrr",
     ]
     assert module.ArbitrageScenario.__module__ == "open_energy_lab.simulator.scenario"
     assert module.BatteryLoadPVScenario.__module__ == "open_energy_lab.simulator.scenario"
@@ -179,6 +216,19 @@ def test_simulator_import_stays_lightweight() -> None:
         module.FCRPenaltyRule.__module__
         == "open_energy_lab.simulator.fcr_settlement"
     )
+    assert (
+        module.AFRRReplayRequest.__module__
+        == "open_energy_lab.simulator.restoration_service"
+    )
+    assert module.replay_afrr.__module__ == (
+        "open_energy_lab.simulator.restoration_service"
+    )
+    assert module.RestorationSettlement.__module__ == (
+        "open_energy_lab.simulator.restoration_settlement"
+    )
+    assert module.settle_restoration_services.__module__ == (
+        "open_energy_lab.simulator.restoration_settlement"
+    )
 
 
 def test_stacked_service_exports_remain_lazy_and_import_light() -> None:
@@ -191,6 +241,8 @@ def test_stacked_service_exports_remain_lazy_and_import_light() -> None:
 
         assert "open_energy_lab.simulator.stacked_service" not in sys.modules
         assert "open_energy_lab.simulator.fcr_settlement" not in sys.modules
+        assert "open_energy_lab.simulator.restoration_service" not in sys.modules
+        assert "open_energy_lab.simulator.restoration_settlement" not in sys.modules
         assert module.StackedServiceReplayResult.__module__ == (
             "open_energy_lab.simulator.stacked_service"
         )
@@ -199,6 +251,17 @@ def test_stacked_service_exports_remain_lazy_and_import_light() -> None:
         assert module.SettlementBreakdown.__module__ == (
             "open_energy_lab.simulator.fcr_settlement"
         )
+        assert "open_energy_lab.simulator.restoration_service" not in sys.modules
+        assert "open_energy_lab.simulator.restoration_settlement" not in sys.modules
+        assert module.AFRRReplayResult.__module__ == (
+            "open_energy_lab.simulator.restoration_service"
+        )
+        assert "open_energy_lab.simulator.restoration_service" in sys.modules
+        assert "open_energy_lab.simulator.restoration_settlement" not in sys.modules
+        assert module.RestorationSettlement.__module__ == (
+            "open_energy_lab.simulator.restoration_settlement"
+        )
+        assert "open_energy_lab.simulator.restoration_settlement" in sys.modules
 
         optional_research_modules = {
             "citylearn",

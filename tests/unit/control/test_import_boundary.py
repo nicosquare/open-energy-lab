@@ -24,19 +24,37 @@ OPTIONAL_RESEARCH_MODULES = {
 }
 
 EXPECTED_ROOT_EXPORTS = [
+    "AFRRBaselineConfig",
+    "AFRRBaselineMode",
     "ArbitrageOnlyBaselineConfig",
     "BaselineScheduleBundle",
+    "DirectionalCapacityCommitmentInterval",
+    "DirectionalCapacitySchedule",
+    "MFRRBaselineConfig",
+    "MFRRBaselineMode",
     "PVSelfConsumptionConfig",
     "PVSelfConsumptionController",
     "PriceThresholdConfig",
     "PriceThresholdController",
     "RegulationOnlyBaselineConfig",
+    "RestorationBaselineBundle",
+    "RestorationCapability",
+    "RestorationControlValidationError",
+    "RestorationEnergyBaselineInterval",
+    "RestorationEnergyBaselineSchedule",
     "SocGuardrailConfig",
     "SocGuardrailController",
     "StackedBaselineValidationError",
     "StackedHeuristicConfig",
+    "build_afrr_baseline",
+    "build_afrr_baseline_config",
+    "build_afrr_directional_capacity_schedule",
     "build_arbitrage_only_baseline",
+    "build_mfrr_baseline",
+    "build_mfrr_baseline_config",
+    "build_mfrr_directional_capacity_schedule",
     "build_regulation_only_baseline",
+    "build_restoration_capability",
     "build_stacked_heuristic_baseline",
 ]
 
@@ -88,6 +106,7 @@ def test_control_root_import_defers_controller_submodule_loading() -> None:
         assert "open_energy_lab.control.soc_guardrail" not in sys.modules
         assert "open_energy_lab.control.pv_self_consumption" not in sys.modules
         assert "open_energy_lab.control.stacked_service" not in sys.modules
+        assert "open_energy_lab.control.restoration_service" not in sys.modules
 
         getattr(module, "PriceThresholdConfig")
         getattr(module, "PriceThresholdController")
@@ -97,6 +116,10 @@ def test_control_root_import_defers_controller_submodule_loading() -> None:
         assert "open_energy_lab.control.soc_guardrail" not in sys.modules
         assert "open_energy_lab.control.pv_self_consumption" not in sys.modules
         assert "open_energy_lab.control.stacked_service" not in sys.modules
+        assert "open_energy_lab.control.restoration_service" not in sys.modules
+
+        getattr(module, "AFRRBaselineConfig")
+        assert "open_energy_lab.control.restoration_service" in sys.modules
         """
     )
 
@@ -118,6 +141,43 @@ def test_control_root_import_defers_controller_submodule_loading() -> None:
         ("build_arbitrage_only_baseline", "open_energy_lab.control.stacked_service"),
         ("build_regulation_only_baseline", "open_energy_lab.control.stacked_service"),
         ("build_stacked_heuristic_baseline", "open_energy_lab.control.stacked_service"),
+        (
+            "RestorationControlValidationError",
+            "open_energy_lab.control.restoration_service",
+        ),
+        (
+            "DirectionalCapacityCommitmentInterval",
+            "open_energy_lab.control.restoration_service",
+        ),
+        ("DirectionalCapacitySchedule", "open_energy_lab.control.restoration_service"),
+        (
+            "RestorationEnergyBaselineInterval",
+            "open_energy_lab.control.restoration_service",
+        ),
+        (
+            "RestorationEnergyBaselineSchedule",
+            "open_energy_lab.control.restoration_service",
+        ),
+        ("RestorationCapability", "open_energy_lab.control.restoration_service"),
+        ("AFRRBaselineMode", "open_energy_lab.control.restoration_service"),
+        ("AFRRBaselineConfig", "open_energy_lab.control.restoration_service"),
+        (
+            "RestorationBaselineBundle",
+            "open_energy_lab.control.restoration_service",
+        ),
+        (
+            "build_restoration_capability",
+            "open_energy_lab.control.restoration_service",
+        ),
+        (
+            "build_afrr_directional_capacity_schedule",
+            "open_energy_lab.control.restoration_service",
+        ),
+        (
+            "build_afrr_baseline_config",
+            "open_energy_lab.control.restoration_service",
+        ),
+        ("build_afrr_baseline", "open_energy_lab.control.restoration_service"),
     ),
 )
 def test_control_root_exports_resolve_from_expected_modules(
@@ -164,6 +224,24 @@ def test_control_root_exports_resolve_from_expected_modules(
                 "build_arbitrage_only_baseline",
                 "build_regulation_only_baseline",
                 "build_stacked_heuristic_baseline",
+            ),
+        ),
+        (
+            "open_energy_lab.control.restoration_service",
+            (
+                "RestorationControlValidationError",
+                "DirectionalCapacityCommitmentInterval",
+                "DirectionalCapacitySchedule",
+                "RestorationEnergyBaselineInterval",
+                "RestorationEnergyBaselineSchedule",
+                "RestorationCapability",
+                "AFRRBaselineMode",
+                "AFRRBaselineConfig",
+                "RestorationBaselineBundle",
+                "build_restoration_capability",
+                "build_afrr_directional_capacity_schedule",
+                "build_afrr_baseline_config",
+                "build_afrr_baseline",
             ),
         ),
     ),

@@ -154,14 +154,73 @@ def test_restricted_fixture_policy_is_exact_and_fail_closed() -> None:
 
 def test_restricted_real_fixtures_are_excluded_from_distributions() -> None:
     configuration = tomllib.loads(Path("pyproject.toml").read_text("utf-8"))
-    exclusions = set(
+    sdist_exclusions = set(
         configuration["tool"]["hatch"]["build"]["targets"]["sdist"][
             "exclude"
         ]
     )
-    expected = {
+    wheel_exclusions = set(
+        configuration["tool"]["hatch"]["build"]["targets"]["wheel"][
+            "exclude"
+        ]
+    )
+    feature_010 = {
         "/tests/fixtures/market/france_2022-08-19_market_v1.json",
         "/tests/fixtures/market/france_2022-08-19_activation_v1.json",
         "/tests/fixtures/market/france_2022-08-19_expected_replay_v1.json",
     }
-    assert expected <= exclusions
+    feature_011 = {
+        "/tests/fixtures/restoration/france_2026-08-20_afrr_market_v1.json",
+        "/tests/fixtures/restoration/france_2026-08-20_afrr_scenario_v1.json",
+        "/tests/fixtures/restoration/france_2026-08-15_mfrr_market_v1.json",
+        "/tests/fixtures/restoration/france_2026-08-15_mfrr_scenario_v1.json",
+        "/tests/fixtures/restoration/france_restoration_expected_results_v1.json",
+    }
+    assert feature_010 | feature_011 <= sdist_exclusions
+    assert feature_011 <= wheel_exclusions
+
+
+def test_feature_011_restricted_paths_are_absent_from_upload_manifests() -> None:
+    fixture_names = {
+        "france_2026-08-20_afrr_market_v1.json",
+        "france_2026-08-20_afrr_scenario_v1.json",
+        "france_2026-08-15_mfrr_market_v1.json",
+        "france_2026-08-15_mfrr_scenario_v1.json",
+        "france_restoration_expected_results_v1.json",
+    }
+    manifest_roots = (
+        Path(".github/workflows"),
+        Path(".github/actions"),
+        Path("release"),
+        Path("releases"),
+        Path("mirrors"),
+        Path("external-artifacts"),
+    )
+    checked: list[Path] = []
+    for root in manifest_roots:
+        if not root.exists():
+            continue
+        for path in root.rglob("*"):
+            if not path.is_file():
+                continue
+            try:
+                content = path.read_text(encoding="utf-8")
+            except UnicodeError:
+                continue
+            checked.append(path)
+            matches = sorted(name for name in fixture_names if name in content)
+            assert matches == [], (
+                f"restricted Feature 011 paths appear in upload/release manifest "
+                f"{path}: {matches}"
+            )
+
+    assert Path(".github/workflows/ci.yml") in checked
+    policy = _read_text(Path("tests/fixtures/restoration/RESTRICTED_DATA.md"))
+    for required in (
+        "package_distribution: prohibited",
+        "release_distribution: prohibited",
+        "public_ci_artifact: prohibited",
+        "public_mirror_or_fork: prohibited",
+        "external_artifact_store: prohibited",
+    ):
+        assert required in policy

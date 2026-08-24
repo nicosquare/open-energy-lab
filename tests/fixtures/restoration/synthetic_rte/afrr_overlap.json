@@ -1,0 +1,10 @@
+{
+  "picasso": {
+    "end_date":"2026-08-20T01:00:00Z",
+    "picasso_mesures":[
+      {"downward_afrr_activated_volume_for_fr":0.0,"downward_afrr_activated_volume_in_fr":0.0,"downward_afrr_requested_need":0.0,"downward_weighted_average_price_afrr_activated_for_fr":0.0,"end_date":"2026-08-20T00:20:00Z","start_date":"2026-08-20T00:00:00Z","upward_afrr_activated_volume_for_fr":10.0,"upward_afrr_activated_volume_in_fr":10.0,"upward_afrr_requested_need":10.0,"upward_weighted_average_price_afrr_activated_for_fr":100.0},
+      {"downward_afrr_activated_volume_for_fr":0.0,"downward_afrr_activated_volume_in_fr":0.0,"downward_afrr_requested_need":0.0,"downward_weighted_average_price_afrr_activated_for_fr":0.0,"end_date":"2026-08-20T00:30:00Z","start_date":"2026-08-20T00:15:00Z","upward_afrr_activated_volume_for_fr":10.0,"upward_afrr_activated_volume_in_fr":10.0,"upward_afrr_requested_need":10.0,"upward_weighted_average_price_afrr_activated_for_fr":100.0}
+    ],
+    "price_unit":"EUR/MWh","resolution":"PT15M","start_date":"2026-08-20T00:00:00Z","volume_unit":"MW"
+  }
+}

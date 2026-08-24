@@ -9,6 +9,8 @@ import sys
 import textwrap
 from pathlib import Path
 
+import pytest
+
 
 MARKET_PACKAGE = "open_energy_lab.market"
 PLANNED_MARKET_SUBMODULES = (
@@ -21,6 +23,16 @@ SOURCE_INDEPENDENT_SUBMODULES = (
     "open_energy_lab.market.time",
     "open_energy_lab.market.artifact",
     "open_energy_lab.market.activation",
+)
+RELOADED_MARKET_MODULES = (
+    "open_energy_lab.market.rte",
+    "open_energy_lab.market.entsoe",
+    "open_energy_lab.market.restoration_artifact",
+    "open_energy_lab.market.restoration_activation",
+    "open_energy_lab.market.activation",
+    "open_energy_lab.market.artifact",
+    "open_energy_lab.market.time",
+    MARKET_PACKAGE,
 )
 
 FORBIDDEN_IMPORT_ROOTS = {
@@ -73,6 +85,28 @@ def _run_isolated_python(source: str) -> None:
     )
 
 
+@pytest.fixture(autouse=True)
+def _restore_market_module_identity_after_in_process_reload():
+    """Keep fresh-import assertions from invalidating collected class objects."""
+
+    before = {
+        name: sys.modules[name]
+        for name in RELOADED_MARKET_MODULES
+        if name in sys.modules
+    }
+    root = sys.modules.get("open_energy_lab")
+    root_market = getattr(root, "market", None) if root is not None else None
+    yield
+    for name in RELOADED_MARKET_MODULES:
+        sys.modules.pop(name, None)
+    sys.modules.update(before)
+    if root is not None:
+        if root_market is None:
+            root.__dict__.pop("market", None)
+        else:
+            root.market = root_market
+
+
 def test_market_package_root_is_a_regular_source_tree_package() -> None:
     module_spec = importlib.util.find_spec(MARKET_PACKAGE)
     assert module_spec is not None
@@ -90,7 +124,7 @@ def test_market_package_root_is_a_regular_source_tree_package() -> None:
 
 
 def test_market_root_import_defers_every_feature_submodule() -> None:
-    for module_name in (MARKET_PACKAGE, *PLANNED_MARKET_SUBMODULES):
+    for module_name in RELOADED_MARKET_MODULES:
         sys.modules.pop(module_name, None)
 
     module = importlib.import_module(MARKET_PACKAGE)

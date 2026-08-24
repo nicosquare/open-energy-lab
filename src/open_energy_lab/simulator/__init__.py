@@ -73,6 +73,47 @@ if TYPE_CHECKING:
         replay_stacked_services,
         replay_stacked_services_diagnostic,
     )
+    from .restoration_service import (
+        AFRRDirectionalPerformance,
+        AFRRReplayRequest,
+        AFRRReplayResult,
+        MFRREventPerformance,
+        MFRRPerformanceAggregate,
+        MFRRReplayRequest,
+        MFRRReplayResult,
+        RestorationEnergyTotals,
+        RestorationIntegrationGrid,
+        RestorationReplaySample,
+        RestorationReplayValidationError,
+        build_afrr_replay_request,
+        build_mfrr_replay_request,
+        build_restoration_integration_grid,
+        replay_afrr,
+        replay_mfrr,
+    )
+    from .restoration_settlement import (
+        AFRRRestorationSettlement,
+        AreaPriceProxyMapping,
+        DayAheadEnergyPrice,
+        DirectionalActivationPrice,
+        DirectionalCapacityPrice,
+        MFRRRestorationSettlement,
+        RestorationPenaltyRule,
+        RestorationSettlement,
+        RestorationSettlementDiagnostic,
+        RestorationSettlementValidationError,
+        SettlementAvailability,
+        SettlementComponentStatus,
+        SettlementPriceState,
+        ThroughputDegradationRule,
+        build_area_price_proxy_mapping,
+        build_day_ahead_energy_price,
+        build_directional_activation_price,
+        build_directional_capacity_price,
+        build_restoration_penalty_rule,
+        build_throughput_degradation_rule,
+        settle_restoration_services,
+    )
     from .weather import WeatherComponent
 
 
@@ -181,6 +222,136 @@ _EXPORT_MAP = {
     ),
     "SettlementBreakdown": (".fcr_settlement", "SettlementBreakdown"),
     "settle_stacked_services": (".fcr_settlement", "settle_stacked_services"),
+    "RestorationSettlementValidationError": (
+        ".restoration_settlement",
+        "RestorationSettlementValidationError",
+    ),
+    "SettlementAvailability": (
+        ".restoration_settlement",
+        "SettlementAvailability",
+    ),
+    "SettlementComponentStatus": (
+        ".restoration_settlement",
+        "SettlementComponentStatus",
+    ),
+    "SettlementPriceState": (
+        ".restoration_settlement",
+        "SettlementPriceState",
+    ),
+    "DayAheadEnergyPrice": (
+        ".restoration_settlement",
+        "DayAheadEnergyPrice",
+    ),
+    "DirectionalCapacityPrice": (
+        ".restoration_settlement",
+        "DirectionalCapacityPrice",
+    ),
+    "AreaPriceProxyMapping": (
+        ".restoration_settlement",
+        "AreaPriceProxyMapping",
+    ),
+    "DirectionalActivationPrice": (
+        ".restoration_settlement",
+        "DirectionalActivationPrice",
+    ),
+    "RestorationPenaltyRule": (
+        ".restoration_settlement",
+        "RestorationPenaltyRule",
+    ),
+    "ThroughputDegradationRule": (
+        ".restoration_settlement",
+        "ThroughputDegradationRule",
+    ),
+    "RestorationSettlementDiagnostic": (
+        ".restoration_settlement",
+        "RestorationSettlementDiagnostic",
+    ),
+    "RestorationSettlement": (
+        ".restoration_settlement",
+        "RestorationSettlement",
+    ),
+    "AFRRRestorationSettlement": (
+        ".restoration_settlement",
+        "AFRRRestorationSettlement",
+    ),
+    "MFRRRestorationSettlement": (
+        ".restoration_settlement",
+        "MFRRRestorationSettlement",
+    ),
+    "build_day_ahead_energy_price": (
+        ".restoration_settlement",
+        "build_day_ahead_energy_price",
+    ),
+    "build_directional_capacity_price": (
+        ".restoration_settlement",
+        "build_directional_capacity_price",
+    ),
+    "build_area_price_proxy_mapping": (
+        ".restoration_settlement",
+        "build_area_price_proxy_mapping",
+    ),
+    "build_directional_activation_price": (
+        ".restoration_settlement",
+        "build_directional_activation_price",
+    ),
+    "build_restoration_penalty_rule": (
+        ".restoration_settlement",
+        "build_restoration_penalty_rule",
+    ),
+    "build_throughput_degradation_rule": (
+        ".restoration_settlement",
+        "build_throughput_degradation_rule",
+    ),
+    "settle_restoration_services": (
+        ".restoration_settlement",
+        "settle_restoration_services",
+    ),
+    "RestorationReplayValidationError": (
+        ".restoration_service",
+        "RestorationReplayValidationError",
+    ),
+    "RestorationIntegrationGrid": (
+        ".restoration_service",
+        "RestorationIntegrationGrid",
+    ),
+    "RestorationReplaySample": (
+        ".restoration_service",
+        "RestorationReplaySample",
+    ),
+    "RestorationEnergyTotals": (
+        ".restoration_service",
+        "RestorationEnergyTotals",
+    ),
+    "AFRRReplayRequest": (".restoration_service", "AFRRReplayRequest"),
+    "AFRRDirectionalPerformance": (
+        ".restoration_service",
+        "AFRRDirectionalPerformance",
+    ),
+    "AFRRReplayResult": (".restoration_service", "AFRRReplayResult"),
+    "MFRRReplayRequest": (".restoration_service", "MFRRReplayRequest"),
+    "MFRREventPerformance": (
+        ".restoration_service",
+        "MFRREventPerformance",
+    ),
+    "MFRRPerformanceAggregate": (
+        ".restoration_service",
+        "MFRRPerformanceAggregate",
+    ),
+    "MFRRReplayResult": (".restoration_service", "MFRRReplayResult"),
+    "build_restoration_integration_grid": (
+        ".restoration_service",
+        "build_restoration_integration_grid",
+    ),
+    "build_afrr_replay_request": (
+        ".restoration_service",
+        "build_afrr_replay_request",
+    ),
+    "replay_afrr": (".restoration_service", "replay_afrr"),
+    "build_mfrr_replay_request": (
+        ".restoration_service",
+        "build_mfrr_replay_request",
+    ),
+    "replay_mfrr": (".restoration_service", "replay_mfrr"),
 }
 
 __all__ = [
@@ -234,6 +405,43 @@ __all__ = [
     "FCRSettlementValidationError",
     "SettlementBreakdown",
     "settle_stacked_services",
+    "RestorationSettlementValidationError",
+    "SettlementAvailability",
+    "SettlementComponentStatus",
+    "SettlementPriceState",
+    "DayAheadEnergyPrice",
+    "DirectionalCapacityPrice",
+    "AreaPriceProxyMapping",
+    "DirectionalActivationPrice",
+    "RestorationPenaltyRule",
+    "ThroughputDegradationRule",
+    "RestorationSettlementDiagnostic",
+    "RestorationSettlement",
+    "AFRRRestorationSettlement",
+    "MFRRRestorationSettlement",
+    "build_day_ahead_energy_price",
+    "build_directional_capacity_price",
+    "build_area_price_proxy_mapping",
+    "build_directional_activation_price",
+    "build_restoration_penalty_rule",
+    "build_throughput_degradation_rule",
+    "settle_restoration_services",
+    "RestorationReplayValidationError",
+    "RestorationIntegrationGrid",
+    "RestorationReplaySample",
+    "RestorationEnergyTotals",
+    "AFRRReplayRequest",
+    "AFRRDirectionalPerformance",
+    "AFRRReplayResult",
+    "MFRRReplayRequest",
+    "MFRREventPerformance",
+    "MFRRPerformanceAggregate",
+    "MFRRReplayResult",
+    "build_restoration_integration_grid",
+    "build_afrr_replay_request",
+    "replay_afrr",
+    "build_mfrr_replay_request",
+    "replay_mfrr",
 ]
 
 

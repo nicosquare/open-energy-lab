@@ -1,5 +1,7 @@
 import importlib
+import subprocess
 import sys
+import textwrap
 from pathlib import Path
 
 
@@ -16,19 +18,37 @@ OPTIONAL_RESEARCH_MODULES = {
 }
 
 EXPECTED_CONTROL_EXPORTS = [
+    "AFRRBaselineConfig",
+    "AFRRBaselineMode",
     "ArbitrageOnlyBaselineConfig",
     "BaselineScheduleBundle",
+    "DirectionalCapacityCommitmentInterval",
+    "DirectionalCapacitySchedule",
+    "MFRRBaselineConfig",
+    "MFRRBaselineMode",
     "PVSelfConsumptionConfig",
     "PVSelfConsumptionController",
     "PriceThresholdConfig",
     "PriceThresholdController",
     "RegulationOnlyBaselineConfig",
+    "RestorationBaselineBundle",
+    "RestorationCapability",
+    "RestorationControlValidationError",
+    "RestorationEnergyBaselineInterval",
+    "RestorationEnergyBaselineSchedule",
     "SocGuardrailConfig",
     "SocGuardrailController",
     "StackedBaselineValidationError",
     "StackedHeuristicConfig",
+    "build_afrr_baseline",
+    "build_afrr_baseline_config",
+    "build_afrr_directional_capacity_schedule",
     "build_arbitrage_only_baseline",
+    "build_mfrr_baseline",
+    "build_mfrr_baseline_config",
+    "build_mfrr_directional_capacity_schedule",
     "build_regulation_only_baseline",
+    "build_restoration_capability",
     "build_stacked_heuristic_baseline",
 ]
 EXPECTED_VISUALIZATION_EXPORTS = [
@@ -235,6 +255,178 @@ def test_feature_010_public_imports_resolve_from_owned_modules_without_optional_
         set(sys.modules) - before_import
     )
     assert newly_loaded_optional_modules == set()
+
+
+def test_feature_011_restoration_public_imports_resolve_from_exact_owned_modules():
+    before_import = set(sys.modules)
+
+    market = importlib.import_module("open_energy_lab.market")
+    control = importlib.import_module("open_energy_lab.control")
+    simulator = importlib.import_module("open_energy_lab.simulator")
+
+    expected_owners = {
+        market.RestorationProduct: (
+            "open_energy_lab.market.restoration_activation"
+        ),
+        market.AFRRActivationSample: (
+            "open_energy_lab.market.restoration_activation"
+        ),
+        market.AFRRActivationTrajectory: (
+            "open_energy_lab.market.restoration_activation"
+        ),
+        market.build_afrr_activation_trajectory: (
+            "open_energy_lab.market.restoration_activation"
+        ),
+        market.build_afrr_trajectory_from_rte_requested_need: (
+            "open_energy_lab.market.restoration_activation"
+        ),
+        market.MFRRActivationEvent: (
+            "open_energy_lab.market.restoration_activation"
+        ),
+        market.MFRRActivationSequence: (
+            "open_energy_lab.market.restoration_activation"
+        ),
+        market.build_mfrr_activation_sequence: (
+            "open_energy_lab.market.restoration_activation"
+        ),
+        control.DirectionalCapacitySchedule: (
+            "open_energy_lab.control.restoration_service"
+        ),
+        control.AFRRBaselineConfig: (
+            "open_energy_lab.control.restoration_service"
+        ),
+        control.RestorationBaselineBundle: (
+            "open_energy_lab.control.restoration_service"
+        ),
+        control.build_afrr_baseline: (
+            "open_energy_lab.control.restoration_service"
+        ),
+        control.MFRRBaselineConfig: (
+            "open_energy_lab.control.restoration_service"
+        ),
+        control.build_mfrr_baseline: (
+            "open_energy_lab.control.restoration_service"
+        ),
+        simulator.RestorationIntegrationGrid: (
+            "open_energy_lab.simulator.restoration_service"
+        ),
+        simulator.AFRRReplayRequest: (
+            "open_energy_lab.simulator.restoration_service"
+        ),
+        simulator.AFRRReplayResult: (
+            "open_energy_lab.simulator.restoration_service"
+        ),
+        simulator.replay_afrr: (
+            "open_energy_lab.simulator.restoration_service"
+        ),
+        simulator.MFRRReplayRequest: (
+            "open_energy_lab.simulator.restoration_service"
+        ),
+        simulator.MFRREventPerformance: (
+            "open_energy_lab.simulator.restoration_service"
+        ),
+        simulator.MFRRReplayResult: (
+            "open_energy_lab.simulator.restoration_service"
+        ),
+        simulator.replay_mfrr: (
+            "open_energy_lab.simulator.restoration_service"
+        ),
+        simulator.RestorationSettlement: (
+            "open_energy_lab.simulator.restoration_settlement"
+        ),
+        simulator.AFRRRestorationSettlement: (
+            "open_energy_lab.simulator.restoration_settlement"
+        ),
+        simulator.MFRRRestorationSettlement: (
+            "open_energy_lab.simulator.restoration_settlement"
+        ),
+        simulator.settle_restoration_services: (
+            "open_energy_lab.simulator.restoration_settlement"
+        ),
+    }
+    for exported, owner in expected_owners.items():
+        assert exported.__module__ == owner
+
+    newly_loaded = set(sys.modules) - before_import
+    assert "open_energy_lab.market.rte" not in newly_loaded
+    assert "open_energy_lab.market.entsoe" not in newly_loaded
+    newly_loaded_optional_modules = OPTIONAL_RESEARCH_MODULES & newly_loaded
+    assert newly_loaded_optional_modules == set()
+
+
+def test_feature_011_package_roots_resolve_offline_owners_without_adapter_or_credential_access():
+    source = textwrap.dedent(
+        """
+        import os
+        import sys
+
+        credential_keys = {
+            "RTE_CLIENT_ID",
+            "RTE_CLIENT_SECRET",
+            "RTE_ACCESS_TOKEN",
+            "ENTSOE_API_TOKEN",
+        }
+        adapters = {
+            "open_energy_lab.market.rte",
+            "open_energy_lab.market.entsoe",
+        }
+
+        class GuardedEnvironment(dict):
+            def __getitem__(self, key):
+                if key in credential_keys:
+                    raise AssertionError(f"credential read: {key}")
+                return super().__getitem__(key)
+
+            def get(self, key, default=None):
+                if key in credential_keys:
+                    raise AssertionError(f"credential read: {key}")
+                return super().get(key, default)
+
+            def __contains__(self, key):
+                if key in credential_keys:
+                    raise AssertionError(f"credential inspected: {key}")
+                return super().__contains__(key)
+
+        os.environ = GuardedEnvironment(os.environ)
+        import open_energy_lab.control as control
+        import open_energy_lab.market as market
+        import open_energy_lab.simulator as simulator
+
+        expected_owners = {
+            market.RestorationMarketArtifact:
+                "open_energy_lab.market.restoration_artifact",
+            market.RestorationStudyBundle:
+                "open_energy_lab.market.restoration_artifact",
+            market.AFRRActivationTrajectory:
+                "open_energy_lab.market.restoration_activation",
+            market.MFRRActivationSequence:
+                "open_energy_lab.market.restoration_activation",
+            control.DirectionalCapacitySchedule:
+                "open_energy_lab.control.restoration_service",
+            control.RestorationBaselineBundle:
+                "open_energy_lab.control.restoration_service",
+            simulator.AFRRReplayResult:
+                "open_energy_lab.simulator.restoration_service",
+            simulator.MFRRReplayResult:
+                "open_energy_lab.simulator.restoration_service",
+            simulator.RestorationSettlement:
+                "open_energy_lab.simulator.restoration_settlement",
+            simulator.settle_restoration_services:
+                "open_energy_lab.simulator.restoration_settlement",
+        }
+        for exported, owner in expected_owners.items():
+            assert exported.__module__ == owner
+        assert adapters.isdisjoint(sys.modules)
+        """
+    )
+    completed = subprocess.run(
+        [sys.executable, "-c", source],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
 
 
 def test_core_package_imports_from_source_tree_without_optional_stacks():

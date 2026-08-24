@@ -1,0 +1,7 @@
+{
+  "authentication":{"body":"synthetic authentication rejection","media_type":"application/json","status":401},
+  "oversized":{"body_size_bytes":10485761,"media_type":"application/json","status":200},
+  "permanent_client":{"body":"synthetic invalid period","media_type":"application/json","status":400},
+  "rate_limit":{"body":"synthetic rate limit","media_type":"application/json","retry_after":"2","status":429},
+  "transient_server":{"body":"synthetic temporary service failure","media_type":"application/json","status":503}
+}

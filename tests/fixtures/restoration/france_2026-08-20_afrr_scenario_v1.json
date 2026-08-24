@@ -1,0 +1,291 @@
+{
+  "activation_interpretation": "PT15M interval-average simulated power; no interpolation or AGC claim",
+  "activation_trajectory": {
+    "created_or_retrieved_at_utc": "2026-08-23T09:02:18.482403Z",
+    "mapping_fingerprint": "d1fc944a2f45e1032f7c9c6cafc76b212fd6d4b54576ae1eb58adbe0853a5178",
+    "period": {
+      "end_fold": 0,
+      "end_utc": "2026-08-20T01:00:00Z",
+      "end_utc_offset_seconds": 7200,
+      "interval_convention": "start-inclusive/end-exclusive",
+      "local_end": "2026-08-20T03:00:00+02:00",
+      "local_start": "2026-08-20T02:00:00+02:00",
+      "market_timezone": "Europe/Paris",
+      "start_fold": 0,
+      "start_utc": "2026-08-20T00:00:00Z",
+      "start_utc_offset_seconds": 7200
+    },
+    "product": "AFRR",
+    "resolution": "PT15M",
+    "sample_semantics": "interval_average_requested_bess_power_kw",
+    "samples": [
+      {
+        "direction": "UPWARD",
+        "interval": {
+          "end_fold": 0,
+          "end_utc": "2026-08-20T00:15:00Z",
+          "end_utc_offset_seconds": 7200,
+          "interval_convention": "start-inclusive/end-exclusive",
+          "local_end": "2026-08-20T02:15:00+02:00",
+          "local_start": "2026-08-20T02:00:00+02:00",
+          "market_timezone": "Europe/Paris",
+          "start_fold": 0,
+          "start_utc": "2026-08-20T00:00:00Z",
+          "start_utc_offset_seconds": 7200
+        },
+        "requested_balancing_power_kw": -425.0,
+        "source_observation_refs": [
+          "afrr_requested_need_upward:d50f1a5bf34eb0029782533bf9b249ce7d886917f11d6aba9ae458d4a144aeaf:source-row-3",
+          "afrr_requested_need_downward:3df6dd93852fa9cd46d3f9c41ed9d12d45af9eab4339174c119bdeee90a17176:source-row-3"
+        ]
+      },
+      {
+        "direction": "UPWARD",
+        "interval": {
+          "end_fold": 0,
+          "end_utc": "2026-08-20T00:30:00Z",
+          "end_utc_offset_seconds": 7200,
+          "interval_convention": "start-inclusive/end-exclusive",
+          "local_end": "2026-08-20T02:30:00+02:00",
+          "local_start": "2026-08-20T02:15:00+02:00",
+          "market_timezone": "Europe/Paris",
+          "start_fold": 0,
+          "start_utc": "2026-08-20T00:15:00Z",
+          "start_utc_offset_seconds": 7200
+        },
+        "requested_balancing_power_kw": -315.0,
+        "source_observation_refs": [
+          "afrr_requested_need_upward:d50f1a5bf34eb0029782533bf9b249ce7d886917f11d6aba9ae458d4a144aeaf:source-row-2",
+          "afrr_requested_need_downward:3df6dd93852fa9cd46d3f9c41ed9d12d45af9eab4339174c119bdeee90a17176:source-row-2"
+        ]
+      },
+      {
+        "direction": "UPWARD",
+        "interval": {
+          "end_fold": 0,
+          "end_utc": "2026-08-20T00:45:00Z",
+          "end_utc_offset_seconds": 7200,
+          "interval_convention": "start-inclusive/end-exclusive",
+          "local_end": "2026-08-20T02:45:00+02:00",
+          "local_start": "2026-08-20T02:30:00+02:00",
+          "market_timezone": "Europe/Paris",
+          "start_fold": 0,
+          "start_utc": "2026-08-20T00:30:00Z",
+          "start_utc_offset_seconds": 7200
+        },
+        "requested_balancing_power_kw": -290.0,
+        "source_observation_refs": [
+          "afrr_requested_need_upward:d50f1a5bf34eb0029782533bf9b249ce7d886917f11d6aba9ae458d4a144aeaf:source-row-1",
+          "afrr_requested_need_downward:3df6dd93852fa9cd46d3f9c41ed9d12d45af9eab4339174c119bdeee90a17176:source-row-1"
+        ]
+      },
+      {
+        "direction": "UPWARD",
+        "interval": {
+          "end_fold": 0,
+          "end_utc": "2026-08-20T01:00:00Z",
+          "end_utc_offset_seconds": 7200,
+          "interval_convention": "start-inclusive/end-exclusive",
+          "local_end": "2026-08-20T03:00:00+02:00",
+          "local_start": "2026-08-20T02:45:00+02:00",
+          "market_timezone": "Europe/Paris",
+          "start_fold": 0,
+          "start_utc": "2026-08-20T00:45:00Z",
+          "start_utc_offset_seconds": 7200
+        },
+        "requested_balancing_power_kw": -345.0,
+        "source_observation_refs": [
+          "afrr_requested_need_upward:d50f1a5bf34eb0029782533bf9b249ce7d886917f11d6aba9ae458d4a144aeaf:source-row-0",
+          "afrr_requested_need_downward:3df6dd93852fa9cd46d3f9c41ed9d12d45af9eab4339174c119bdeee90a17176:source-row-0"
+        ]
+      }
+    ],
+    "schema_version": "oel.restoration.afrr-trajectory.v1",
+    "semantics_version": "fr-restoration-reference-v1",
+    "sign_convention": "positive_charge_negative_discharge",
+    "source_kind": "DERIVED_SIMULATION",
+    "trajectory_fingerprint": "8ba487d3680bb2075f74a83b9d38fa0db4f4e36ac01fb3d873b309bf97d6e249",
+    "trajectory_id": "fr-2026-08-20-afrr-derived-v1"
+  },
+  "baseline_assumption": {
+    "mode": "ZERO",
+    "no_activation_lookahead": true,
+    "resolution": "PT15M"
+  },
+  "battery": {
+    "capacity_kwh": 2000.0,
+    "charge_efficiency": 0.95,
+    "discharge_efficiency": 0.95,
+    "initial_soc": 0.5,
+    "max_charge_kw": 500.0,
+    "max_discharge_kw": 500.0,
+    "max_soc": 0.9,
+    "min_soc": 0.1,
+    "name": "reference-restoration-bess"
+  },
+  "capability": {
+    "capability_fingerprint": "0a63dd088cd56f8c02823a1d022a60052c474d4fae26e65a75e299f6cd53efa9",
+    "max_activation_delay_seconds": {
+      "AFRR": 1.0,
+      "MFRR": 1.0
+    },
+    "max_ramp_down_kw_per_second": 500.0,
+    "max_ramp_up_kw_per_second": 500.0,
+    "max_supported_duration_seconds": {
+      "AFRR": 3600.0,
+      "MFRR": 3600.0
+    },
+    "min_supported_duration_seconds": {
+      "AFRR": 1.0,
+      "MFRR": 1.0
+    },
+    "schema_version": "oel.restoration.capability.v1"
+  },
+  "commitments": {
+    "intervals": [
+      {
+        "committed_capacity_kw": 450.0,
+        "direction": "UPWARD",
+        "eligibility": true,
+        "interval": {
+          "end_fold": 0,
+          "end_utc": "2026-08-20T01:00:00Z",
+          "end_utc_offset_seconds": 7200,
+          "interval_convention": "start-inclusive/end-exclusive",
+          "local_end": "2026-08-20T03:00:00+02:00",
+          "local_start": "2026-08-20T02:00:00+02:00",
+          "market_timezone": "Europe/Paris",
+          "start_fold": 0,
+          "start_utc": "2026-08-20T00:00:00Z",
+          "start_utc_offset_seconds": 7200
+        },
+        "product": "AFRR",
+        "source_or_assumption_ref": "study-assumption:fixed-bidirectional-capacity-v1"
+      },
+      {
+        "committed_capacity_kw": 450.0,
+        "direction": "DOWNWARD",
+        "eligibility": true,
+        "interval": {
+          "end_fold": 0,
+          "end_utc": "2026-08-20T01:00:00Z",
+          "end_utc_offset_seconds": 7200,
+          "interval_convention": "start-inclusive/end-exclusive",
+          "local_end": "2026-08-20T03:00:00+02:00",
+          "local_start": "2026-08-20T02:00:00+02:00",
+          "market_timezone": "Europe/Paris",
+          "start_fold": 0,
+          "start_utc": "2026-08-20T00:00:00Z",
+          "start_utc_offset_seconds": 7200
+        },
+        "product": "AFRR",
+        "source_or_assumption_ref": "study-assumption:fixed-bidirectional-capacity-v1"
+      }
+    ],
+    "period": {
+      "end_fold": 0,
+      "end_utc": "2026-08-20T01:00:00Z",
+      "end_utc_offset_seconds": 7200,
+      "interval_convention": "start-inclusive/end-exclusive",
+      "local_end": "2026-08-20T03:00:00+02:00",
+      "local_start": "2026-08-20T02:00:00+02:00",
+      "market_timezone": "Europe/Paris",
+      "start_fold": 0,
+      "start_utc": "2026-08-20T00:00:00Z",
+      "start_utc_offset_seconds": 7200
+    },
+    "product": "AFRR",
+    "schedule_fingerprint": "c35c669a91b54a2288d9770e21c37ca7ae562dcedcde009f97d813cbfb291856",
+    "schedule_id": "fr-reference-afrr-capacity-v1",
+    "semantics_version": "directional-restoration-capacity-v1"
+  },
+  "mapping": {
+    "asset_allocation_fraction": 0.001,
+    "assumptions": [
+      "RTE values are French control-area aggregates, not asset commands",
+      "one fixed 0.001 allocation fraction is applied without clipping",
+      "the output is a derived simulation scenario"
+    ],
+    "capacity_commitment_ref": "c35c669a91b54a2288d9770e21c37ca7ae562dcedcde009f97d813cbfb291856",
+    "comparison_series": [
+      "b11aebd0bf97a84d8e77e92c87e67996e11add6fb34fe829b7ecd567fbeb7ff8",
+      "703109a2dfbe1133e1b664052dffdc924107636707cff1539b70cec804155818",
+      "f02238d41445fdb6e05b408198032eef591ae2b6175f7017887b5a3bc762e66a",
+      "5dc9e5ad065b370b67b11cc00a47ab65f539648c1e0910a7495dca82dd67d0a7",
+      "3df6dd93852fa9cd46d3f9c41ed9d12d45af9eab4339174c119bdeee90a17176",
+      "d7b3c2c7ed1a71bf6510f43fd8d9237e3fa486ef4a17b68a9902b24965684e8d",
+      "c860fe7b9d174e9f4b08cd964d50c966225b8056b8a6e4baae257c75adfdad6e"
+    ],
+    "created_at_utc": "2026-08-23T09:02:18.482403Z",
+    "direction": "UPWARD",
+    "driver_semantics": "afrr_requested_need",
+    "mapping_fingerprint": "d1fc944a2f45e1032f7c9c6cafc76b212fd6d4b54576ae1eb58adbe0853a5178",
+    "mapping_id": "fr-reference-afrr-fraction-v1",
+    "output_label": "derived_simulation",
+    "product": "AFRR",
+    "schema_version": "oel.restoration.derived-mapping.v1",
+    "source_artifact_fingerprint": "83f0c88e5c8d9c0f781305a9552596c3a03956588a75871e9f78e97415811516",
+    "source_kind": "DERIVED_SIMULATION",
+    "source_series_fingerprints": [
+      "d50f1a5bf34eb0029782533bf9b249ce7d886917f11d6aba9ae458d4a144aeaf"
+    ],
+    "unit_scale_kw_per_mw": 1000.0
+  },
+  "output_label": "derived_simulation",
+  "product": "AFRR",
+  "restricted_data_policy": {
+    "external_artifact_store": "prohibited",
+    "package_distribution": "prohibited",
+    "public_ci_artifact": "prohibited",
+    "public_mirror_or_fork": "prohibited",
+    "release_distribution": "prohibited",
+    "repository_publication": "prohibited",
+    "repository_storage": "permitted_private_restricted",
+    "visibility_change_action": "remove_or_reassess_before_change"
+  },
+  "scenario_fingerprint": "fea97fb2e9596e907a7204df9466c355d0ce2493c8c846e85a69093eadcfd9cb",
+  "scenario_id": "fr-2026-reference-afrr-v1",
+  "schema_version": "oel.restoration.reference-scenario.v1",
+  "semantics_version": "fr-restoration-reference-v1",
+  "settlement_assumptions": {
+    "activation_price_basis": "RTE_AREA_PRICE_PROXY",
+    "capacity_price_eur_per_mw_per_hour": 0.0,
+    "day_ahead_price_eur_per_mwh": 0.0,
+    "degradation_proxy_eur_per_kwh": 0.02,
+    "invoice_claim": false,
+    "non_performance_penalty": "UNCONFIGURED"
+  },
+  "source_kind": "DERIVED_SIMULATION",
+  "source_market_artifact": {
+    "artifact_fingerprint": "83f0c88e5c8d9c0f781305a9552596c3a03956588a75871e9f78e97415811516",
+    "artifact_id": "rte-standard_afrr_data-667ea76a648871d7",
+    "comparison_series_fingerprints": {
+      "afrr_activated_for_fr_downward": "b11aebd0bf97a84d8e77e92c87e67996e11add6fb34fe829b7ecd567fbeb7ff8",
+      "afrr_activated_for_fr_upward": "703109a2dfbe1133e1b664052dffdc924107636707cff1539b70cec804155818",
+      "afrr_activated_in_fr_downward": "f02238d41445fdb6e05b408198032eef591ae2b6175f7017887b5a3bc762e66a",
+      "afrr_activated_in_fr_upward": "5dc9e5ad065b370b67b11cc00a47ab65f539648c1e0910a7495dca82dd67d0a7",
+      "afrr_requested_need_downward": "3df6dd93852fa9cd46d3f9c41ed9d12d45af9eab4339174c119bdeee90a17176",
+      "afrr_weighted_average_price_downward": "d7b3c2c7ed1a71bf6510f43fd8d9237e3fa486ef4a17b68a9902b24965684e8d",
+      "afrr_weighted_average_price_upward": "c860fe7b9d174e9f4b08cd964d50c966225b8056b8a6e4baae257c75adfdad6e"
+    },
+    "content_fingerprint": "9f44272301f164562d7552723054438253704c3f65618d2acf8e70755ffd1506",
+    "driver_series_fingerprint": "d50f1a5bf34eb0029782533bf9b249ce7d886917f11d6aba9ae458d4a144aeaf",
+    "driver_series_id": "afrr_requested_need_upward",
+    "fixture_name": "france_2026-08-20_afrr_market_v1.json",
+    "profile_id": "fr-rte-balancing-energy-v5.2-afrr-v1",
+    "requested_period": {
+      "end_fold": 0,
+      "end_utc": "2026-08-20T01:00:00Z",
+      "end_utc_offset_seconds": 7200,
+      "interval_convention": "start-inclusive/end-exclusive",
+      "local_end": "2026-08-20T03:00:00+02:00",
+      "local_start": "2026-08-20T02:00:00+02:00",
+      "market_timezone": "Europe/Paris",
+      "start_fold": 0,
+      "start_utc": "2026-08-20T00:00:00Z",
+      "start_utc_offset_seconds": 7200
+    },
+    "resource": "standard_afrr_data",
+    "retrieved_at_utc": "2026-08-23T09:02:18.482403Z"
+  }
+}

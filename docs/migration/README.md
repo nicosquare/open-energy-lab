@@ -46,6 +46,27 @@ parity validation, and environment assumptions.
 - `restricted-reference-fixtures.md`: private-repository storage boundary,
   distribution prohibitions, package exclusions, and explicit staging workflow
   for the three Feature 010 real-data fixtures
+- `afrr-mfrr-services.md`: Feature 011 source, artifact, derived-scenario,
+  control, replay, settlement, restricted-data, and Feature 010 compatibility
+  ownership boundaries
+
+## aFRR/mFRR Restoration-Services Review Path
+
+For `011-afrr-mfrr-services`, review these linked artifacts in order:
+
+1. [Feature 011 design](../../specs/011-afrr-mfrr-services/plan.md) for scope,
+   product separation, source semantics, and offline acceptance gates.
+2. [RTE Balancing Energy architecture](../architecture/rte-balancing-energy.md)
+   and [migration ownership note](./afrr-mfrr-services.md) for the source and
+   library boundaries implemented under
+   [`src/open_energy_lab`](../../src/open_energy_lab/).
+3. [Offline example guide](../../examples/restoration_services/README.md) for
+   deterministic aFRR/mFRR replay, settlement, and notebook use.
+
+The migrated slice is an offline research workflow. RTE observations are
+control-area aggregates and become BESS inputs only through an explicit,
+labelled derivation; the feature is neither production dispatch nor bidding
+optimization.
 
 ## TPM-Planning Review Path
 
