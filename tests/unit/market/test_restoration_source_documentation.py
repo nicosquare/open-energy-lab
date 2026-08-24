@@ -144,8 +144,11 @@ def test_entsoe_composition_and_fixture_evidence_remain_independent() -> None:
     entsoe = _read(ENTSOE_DOC)
     fixture = _read(FIXTURE_DOC)
     required_entsoe = (
-        "feature 011 does not add an entso-e afrr or mfrr acquisition profile",
+        "feature 011 does not add an entso-e afrr or mfrr activation profile",
         "`fr-day-ahead-symmetric-fcr-v1`",
+        "`fr-day-ahead-quarter-hour-v2`",
+        "native `pt15m`",
+        "without resampling",
         "a44 `day_ahead_price`",
         "series fingerprint",
         "`restorationstudybundle`",

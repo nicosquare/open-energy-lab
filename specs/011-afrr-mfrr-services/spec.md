@@ -442,12 +442,13 @@ obtain the same public behavior and stored results.
   series only when the selected document, process, product, direction, unit,
   resolution, and coverage have been explicitly validated. ENTSO-E records
   MUST retain independent provenance and MUST NOT be used as an undocumented
-  fallback for RTE records. The first Feature 011 release MUST NOT introduce an
-  unvalidated restoration profile: its only supported complementary composition
-  is the existing validated Feature 010 `fr-day-ahead-symmetric-fcr-v1`
-  artifact, selecting its time-compatible A44 `day_ahead_price` series by
-  fingerprint without changing or reinterpreting the closed Feature 010
-  profile.
+  fallback for RTE records. Historical composition MAY select the existing
+  validated Feature 010 `fr-day-ahead-symmetric-fcr-v1` artifact's
+  time-compatible A44 `day_ahead_price` series by fingerprint. Post-transition
+  live composition MUST use the separate A44-only
+  `fr-day-ahead-quarter-hour-v2` profile, require complete native `PT15M`
+  observations, and preserve them without resampling. The closed Feature 010
+  profile and its hourly artifact contract MUST remain unchanged.
 - **FR-008**: Acquisition MUST accept a caller-selected bounded
   start-inclusive/end-exclusive historical period. Canonical instants MUST use
   UTC while retaining the Europe/Paris local labels, offsets, and fold or gap
@@ -506,17 +507,19 @@ obtain the same public behavior and stored results.
   Artifact loading, validation, control construction, replay, settlement,
   documentation examples, and routine tests MUST default to offline operation
   and MUST NOT initialize authentication or networking implicitly.
-- **FR-016a**: Each RTE and ENTSO-E profile MUST expose three explicit
-  acquisition modes. `fetch` creates a new immutable source-acquisition
+- **FR-016a**: Each persisted RTE and ENTSO-E artifact lifecycle MUST expose
+  three explicit acquisition modes. `fetch` creates a new immutable source-acquisition
   artifact, `refresh` compares new normalized source content with one existing
   artifact of the same request identity, and `offline` loads and validates an
   artifact without source access. An unchanged refresh MUST report no change
   and publish nothing; changed content MUST create an immutable successor linked
   to its predecessor and MUST NOT overwrite any version. In the first release,
   the ENTSO-E portion of this requirement is satisfied only by reusing the
-  existing Feature 010 fetch/refresh/offline lifecycle for
-  `fr-day-ahead-symmetric-fcr-v1`; Feature 011 defines no new ENTSO-E
-  restoration acquisition profile.
+  existing Feature 010 fetch/refresh/offline lifecycle for stored
+  `fr-day-ahead-symmetric-fcr-v1` artifacts. The guarded live notebook's
+  A44-only `fr-day-ahead-quarter-hour-v2` path is deliberately transient rather
+  than a persisted lifecycle: it MUST use digest-only retention and MUST NOT
+  publish raw or normalized artifacts.
 - **FR-017**: `RTE_CLIENT_ID`, `RTE_CLIENT_SECRET`, and `ENTSOE_API_TOKEN` MUST
   be read only within an explicit acquisition operation. RTE short-lived access
   tokens MUST be obtained at runtime and MUST NOT be accepted as persisted
@@ -713,14 +716,14 @@ obtain the same public behavior and stored results.
   needed to audit the demonstrations.
 - **FR-045**: The notebook MUST contain a separately guarded live-acquisition
   section with caller-selected bounded query parameters for RTE and, where
-  applicable, ENTSO-E. For the first release, ENTSO-E is applicable only when
-  the selected period can use the existing Feature 010
-  `fr-day-ahead-symmetric-fcr-v1` lifecycle and its A44 `day_ahead_price`
-  series; otherwise the branch MUST report that no compatible profile was
-  selected and perform no substitute query. The section MUST be disabled by
-  default, require explicit opt-in, avoid persistence of raw responses and
-  secrets, and explain that live source availability is not required for the
-  offline results.
+  applicable, ENTSO-E. Direct live ENTSO-E retrieval MUST use the A44-only
+  `fr-day-ahead-quarter-hour-v2` profile, require exact PT15M coverage of the
+  caller period, and pass the source-separated in-memory artifact through the
+  same settlement pipeline. An explicitly supplied historical artifact MAY use
+  the existing Feature 010 hourly profile. The section MUST be disabled by
+  default, require explicit opt-in, avoid persistence of raw responses,
+  normalized live artifacts, and secrets, and explain that live source
+  availability is not required for the offline results.
 - **FR-046**: Public restoration-market, control, and simulator surfaces MUST
   be stable and source-independent for offline consumers. Live retrieval and
   notebook capabilities MUST remain isolated so default imports and routine

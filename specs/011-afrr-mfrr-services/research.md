@@ -169,26 +169,28 @@ false merged source.
 
 ## Decision 7: Keep ENTSO-E complementary and evidence-gated
 
-**Decision**: Feature 011 introduces no new ENTSO-E restoration acquisition
-profile in its first release. Its only supported complementary composition is
-an existing, time-compatible Feature 010
-`fr-day-ahead-symmetric-fcr-v1` artifact, with the A44 `day_ahead_price` series
-selected by fingerprint through the study bundle. The closed A44/A81 profile,
-including its existing fetch/refresh/offline lifecycle, remains unchanged. A
-future ENTSO-E restoration profile may be added only after its document,
-process, product, direction, unit, resolution, and coverage pass the same
-semantic gate.
+**Decision**: Historical stored composition may select a time-compatible
+Feature 010 `fr-day-ahead-symmetric-fcr-v1` artifact's A44
+`day_ahead_price` by fingerprint through the study bundle. For post-transition
+live demonstrations, use the additive A44-only
+`fr-day-ahead-quarter-hour-v2` profile. It requires native PT15M observations,
+preserves every interval without resampling, and produces a source-separated
+digest-only artifact in memory. The closed Feature 010 A44/A81 profile and its
+fetch/refresh/offline lifecycle remain unchanged. Neither profile represents
+an ENTSO-E aFRR or mFRR activation source.
 
 **Rationale**: The [ENTSO-E Transparency Platform REST documentation](https://documenter.getpostman.com/view/7009892/2s93JtP3F6)
 offers multiple capacity, bid, activation, exchange, and price query shapes,
 but matching timestamps do not establish matching semantics. RTE is the
-verified primary source, and the reference restoration behavior does not need
-an ENTSO-E fallback.
+verified primary source. The 2025 SDAC transition makes PT15M the correct
+day-ahead price resolution for post-transition periods, which matches the RTE
+market intervals directly and removes any need for interpolation.
 
 **Alternatives considered**:
 
-- Require an ENTSO-E restoration fixture for completion: rejected because no
-  exact compatible profile has been proven for the selected periods.
+- Persist the live PT15M response as a routine fixture: rejected because the
+  notebook demonstration needs only transient price context and A44 remains
+  restricted research data.
 - Use A83/A84 or another activation document as an asset command: rejected
   without an exact resolution and semantic proof.
 - Make ENTSO-E an automatic fallback: rejected because source substitution

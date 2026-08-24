@@ -101,6 +101,13 @@ tables for:
 Saved source has empty outputs and `RUN_LIVE_QUERY = False`. Figure export is
 off by default and may target only an ignored local output directory.
 
+For an explicit live demonstration, set `RUN_LIVE_QUERY=True`. The selected
+RTE period then runs through in-memory normalization, the declared directional
+mapping and commitment, zero-baseline construction, battery replay, delivery
+validation, degradation proxy, and settlement. Adjust the matching entry in
+`LIVE_SCENARIO_PARAMETERS` when changing product, direction, allocation, or
+commitment. Routine acceptance remains offline.
+
 After interactive exploration, clear all execution state before reviewing a
 source change:
 
@@ -294,7 +301,7 @@ validation. It skips with a clear message when credentials are unavailable.
 | Optional check | Final implementation status | Environment-only note |
 |---|---|---|
 | Live RTE compatibility | Not re-run as part of the final offline gate | Requires an explicit current production-network operation and credential handoff. The governed, previously acquired reference artifacts and parser/transport fixtures remain the acceptance evidence; no live result substitutes for them. |
-| Live ENTSO-E compatibility | Not re-run as part of the final offline gate | Feature 011 adds no new ENTSO-E restoration profile. Existing Feature 010 source compatibility and the fingerprint-only A44 composition contract remain separate from restoration correctness. |
+| Live ENTSO-E compatibility | Passed on 2026-08-24 for `[2026-08-20T00:00:00Z, 2026-08-20T01:00:00Z)` | The additive A44-only profile returned four native PT15M prices. A combined live RTE/aFRR plus ENTSO-E run produced four replay samples and available settlement without persistence; the Feature 010 hourly profile remains unchanged. |
 | Offline notebook runtime | Passed: `1 passed` | The managed sandbox initially prohibited the local loopback sockets Jupyter needs to start a kernel. The same check passed outside that socket sandbox while its injected in-kernel guards still prohibited external networking and credential reads. |
 | Feature 010 reference benchmark | Passed: `1 passed, 1 deselected` | The default uv cache was read-only, so a temporary uv cache was used. Five measured runs remained between 0.876 and 1.040 seconds under the unchanged 10-second threshold. |
 
@@ -335,15 +342,19 @@ command performs no credential or network access.
 
 ## Optional ENTSO-E Composition
 
-ENTSO-E remains complementary, and Feature 011 introduces no new restoration
-profile in its first release. The supported composition reuses a
+ENTSO-E remains complementary. Stored historical composition may reuse a
 time-compatible artifact from the existing Feature 010
-`fr-day-ahead-symmetric-fcr-v1` fetch/refresh/offline lifecycle and selects only
-its A44 `day_ahead_price` series by fingerprint in a
-`RestorationStudyBundle`. If the caller's period is incompatible or no such
-artifact is selected, the optional notebook branch reports that condition and
-does not query or substitute another series. Never copy/join observations into
-one acquisition artifact or treat ENTSO-E as an automatic RTE fallback.
+`fr-day-ahead-symmetric-fcr-v1` lifecycle and select only its A44
+`day_ahead_price` in a `RestorationStudyBundle`. When
+`RUN_LIVE_ENTSOE_QUERY=True`, the notebook instead uses the additive A44-only
+`fr-day-ahead-quarter-hour-v2` profile. It requires complete native PT15M
+coverage, builds a source-separated digest-only artifact in memory, and passes
+those exact quarter-hours to settlement without resampling or persistence.
+`LIVE_ENTSOE_ARTIFACT_PATH` is the mutually exclusive existing-artifact option.
+If neither is selected, the live pipeline records a zero day-ahead study
+assumption. Incompatible profile, resolution, or coverage fails explicitly.
+Never copy/join observations into one acquisition artifact or treat ENTSO-E as
+an automatic RTE fallback.
 
 ## Expected Failure Behavior
 

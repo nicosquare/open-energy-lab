@@ -280,6 +280,14 @@ offline validation across all stories.
 - [X] T094 Document any optional live RTE/ENTSO-E, notebook runtime, or reference-benchmark check that could not run and why, without weakening offline acceptance, in `specs/011-afrr-mfrr-services/quickstart.md`
 - [X] T095 Add deterministic bounded-scaling tests using counted observations, samples, and event segments to verify validation, replay, event expansion, aggregation, and fingerprinting visit inputs only a bounded constant number of times and retain linear-size results without introducing a wall-clock acceptance threshold in `tests/unit/simulator/test_restoration_scaling.py`
 
+## Post-transition A44 resolution remediation
+
+- [X] T096 Add an A44-only `fr-day-ahead-quarter-hour-v2` request profile that accepts only aligned native PT15M responses while preserving the Feature 010 hourly profile in `src/open_energy_lab/market/entsoe.py`
+- [X] T097 Normalize live PT15M A44 observations without resampling into a digest-only, source-separated in-memory artifact in `src/open_energy_lab/market/entsoe_restoration.py`
+- [X] T098 Pass either the legacy hourly A44 artifact or the new native PT15M artifact through the restoration settlement consumer in `examples/restoration_services/live_pipeline.py`
+- [X] T099 Update the guarded notebook live branch and source documentation to explain the 2025 SDAC resolution transition, exact interval alignment, provenance, and non-persistence in `examples/restoration_services/restoration_services_walkthrough.ipynb` and `docs/architecture/entsoe-transparency-platform.md`
+- [X] T100 Add parser, transport, artifact, security, Feature 010 compatibility, and live settlement regression tests for native PT15M A44 in `tests/unit/market/test_entsoe_restoration.py` and `tests/unit/simulator/test_restoration_live_pipeline.py`
+
 ---
 
 ## Dependencies and Execution Order

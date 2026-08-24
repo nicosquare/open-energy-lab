@@ -12,6 +12,9 @@ Open Energy Lab targets the ENTSO-E Transparency Platform **R3** REST API at
 the platform/data-item generation, not a URL segment. The implementation was
 checked on 2026-08-22 against the official Postman collection published on
 2026-01-16 and the current 17.1.B&C data-item documentation.
+The additive quarter-hour A44 path was exercised against production on
+2026-08-24 for a one-hour 2026 delivery period and returned four PT15M records;
+no source values or raw response bytes were persisted by that check.
 
 The validated XML families are:
 
@@ -42,8 +45,25 @@ case-sensitive.
 | `periodEnd` | Requested/enclosing UTC end |
 
 The current response may omit `process.processType`; if present it must be
-`A01`. Values come from `Point/price.amount`, with `EUR/MWh` preserved and
-`PT1H` or the equivalent `PT60M` normalized to canonical `PT1H`.
+`A01`. Values come from `Point/price.amount`, with `EUR/MWh` preserved. The
+closed Feature 010 profile accepts `PT1H` or equivalent `PT60M` and normalizes
+them to canonical `PT1H`.
+
+For delivery from 1 October 2025, Single Day-Ahead Coupling uses a 15-minute
+market time unit. Feature 011 therefore adds the separate A44-only
+`fr-day-ahead-quarter-hour-v2` profile for restoration studies. It requires
+native `PT15M` and keeps every quarter-hour as `PT15M` without resampling:
+there is no averaging, interpolation, or repetition. Requested bounds must
+align to 15-minute UTC boundaries. The original Feature 010 profile and
+artifact bytes remain unchanged.
+
+Post-transition A44 documents may partition one price curve across multiple
+`TimeSeries` identities. The v2 parser records every source `TimeSeries.mRID`
+and accepts them only when business type, France area, currency, unit, and
+resolution agree. Non-overlapping intervals are ordered; exact duplicate
+interval/value rows are collapsed with a diagnostic; conflicting duplicate,
+gap, or overlap semantics fail. Different series identities are never used to
+choose between different prices.
 
 ### Combined A81 contracted reserves (17.1.B&C)
 
@@ -165,11 +185,17 @@ fixtures.
 
 ## Feature 011 Complementary Composition
 
-Feature 011 does not add an ENTSO-E aFRR or mFRR acquisition profile. RTE
-Balancing Energy 5.2 remains the primary verified source for the restoration
-observations. The only supported first-release ENTSO-E composition is an
-already acquired Feature 010 artifact whose profile is exactly
-`fr-day-ahead-symmetric-fcr-v1`.
+Feature 011 does not add an ENTSO-E aFRR or mFRR activation profile. RTE
+Balancing Energy 5.2 remains the primary verified source for restoration
+observations. ENTSO-E supplies only complementary A44 day-ahead price context.
+Two explicit paths are supported:
+
+- An existing historical Feature 010 artifact with profile
+  `fr-day-ahead-symmetric-fcr-v1` can contribute its hourly A44 series.
+- The guarded live notebook branch uses the additive A44-only
+  `fr-day-ahead-quarter-hour-v2` profile and builds a source-separated,
+  digest-only artifact in memory. It is intended for post-transition PT15M
+  delivery periods and does not request A81.
 
 A restoration study may select only that artifact's A44 `day_ahead_price`
 series, and only when the series covers the study interval under the same UTC
@@ -181,14 +207,14 @@ reinterpret them. The RTE artifact remains an independent one-source artifact.
 
 The bundle does not copy, merge, rename, resample, or reinterpret source rows.
 
-The A44 series continues to use Feature 010's unchanged fetch, immutable
-refresh, and zero-network offline lifecycle documented above. Feature 011 does
-not issue a substitute ENTSO-E request, widen the closed A44/A81 schema, or
-create a new restoration fetch profile. If the caller has no existing
-time-compatible Feature 010 artifact, the composition branch reports that no
-compatible profile was selected and proceeds without ENTSO-E data. ENTSO-E is
-never an automatic fallback for an absent, null, incompatible, or failed RTE
-series, and matching timestamps alone never establish matching semantics.
+The v2 live operation requests only A44 and accepts only a complete native
+PT15M series over the requested half-open period. Its request identity,
+retrieval evidence, raw-response digest, series fingerprint, artifact
+fingerprint, and restricted redistribution policy remain independent of the
+RTE artifact. The notebook does not persist the response or normalized
+artifact. ENTSO-E is never an automatic fallback for an absent, null,
+incompatible, or failed RTE series, and matching timestamps alone never
+establish matching semantics.
 
 The selected A44 price retains its original ownership and redistribution
 status. In particular, composing it into a study does not convert restricted
@@ -205,4 +231,5 @@ the strictest policy of its referenced artifacts.
 - [ENTSO-E legal terms](https://transparencyplatform.zendesk.com/hc/en-us/articles/40921911218961-Legal-Terms-and-Conditions)
 - [List of data available for free reuse](https://transparency.entsoe.eu/content/static_content/download?path=%2FStatic+content%2Fterms+and+conditions%2F231018_List_of_Data_available_for_reuse.pdf)
 - [ENTSO-E Energy Prices 12.1(d) ownership profile](https://transparencyplatform.zendesk.com/hc/en-us/articles/16647234190100-Energy-Prices-12-1-D)
+- [ENTSO-E Single Day-Ahead Coupling and 15-minute MTU](https://www.entsoe.eu/network_codes/cacm/implementation/sdac/)
 - [RTE French spot-price ownership and use terms](https://www.rte-france.com/en/data-publications/eco2mix/market-data)

@@ -15,7 +15,8 @@ present library results.
 | `stage_private_reference_data.py` | None; consumes explicitly acquired local artifacts | Validate the pinned periods and publish normalized restricted fixtures to fixed paths |
 | `generate_reference_results.py` | None | Build labelled fixed-fraction scenarios, replay both products, settle them, and write deterministic expected results |
 | `run_offline_replays.py` | None | Load validated fixtures and reproduce the two recorded demonstrations |
-| `restoration_services_walkthrough.ipynb` | None by default; guarded explicit RTE/validated ENTSO-E branch | Explain source meaning, derivation, physical performance, degradation proxy, and settlement with plots |
+| `live_pipeline.py` | None; consumes validated in-memory artifacts | Apply explicit live-study assumptions, replay the battery, and settle without acquiring credentials or writing data |
+| `restoration_services_walkthrough.ipynb` | None by default; guarded RTE and optional ENTSO-E operations | Explain the evidence chain and run either offline references or a live source-to-settlement pipeline with plots |
 
 No script downloads on import, fetches on cache miss, or silently chooses
 another source or period.
@@ -76,10 +77,14 @@ copy, executes every offline cell in order, validates all tables/figures and
 both fingerprints, and leaves the source notebook unchanged with empty outputs.
 
 Live RTE operations read `RTE_CLIENT_ID` and `RTE_CLIENT_SECRET` only inside
-the explicitly selected acquisition command. Optional ENTSO-E composition uses
-only the existing validated Feature 010 `fr-day-ahead-symmetric-fcr-v1`
-lifecycle and selects a compatible A44 `day_ahead_price` series by fingerprint.
-Neither source is an automatic fallback for the other.
+the explicitly selected acquisition command. In the notebook,
+`RUN_LIVE_QUERY=True` normalizes the returned data in memory and passes it
+through the declared mapping, commitments, baseline, battery replay,
+validation, degradation proxy, and settlement. Optional live ENTSO-E
+composition uses the additive A44-only `fr-day-ahead-quarter-hour-v2` profile,
+preserving native PT15M prices in a source-separated in-memory artifact.
+Existing hourly Feature 010 artifacts remain available for historical
+composition. Neither source is an automatic fallback for the other.
 
 An explicit RTE fetch or refresh uses the ignored `artifacts/` tree:
 
@@ -100,12 +105,14 @@ uv run python examples/restoration_services/fetch_rte_period.py \
   --env-file .env
 ```
 
-For ENTSO-E, first use Feature 010's unchanged
-`fetch_french_period.py` fetch/refresh lifecycle. The notebook accepts only the
-resulting exact `fr-day-ahead-symmetric-fcr-v1` artifact when its A44
-`day_ahead_price` covers the caller period, then reports the selected series
-fingerprint. Otherwise it reports `no compatible profile was selected` and
-does not query or substitute another profile.
+For ENTSO-E, either set `RUN_LIVE_ENTSOE_QUERY=True` or provide
+`LIVE_ENTSOE_ARTIFACT_PATH`, but not both. The first option runs the additive
+A44-only quarter-hour fetch in memory, requires native `PT15M`, and uses its
+`day_ahead_price` in the live settlement without persisting raw or normalized
+data. The second reuses an existing compatible hourly Feature 010 artifact.
+Both require exact A44 coverage of the selected RTE period. If neither is
+selected, the notebook explicitly records a zero day-ahead study assumption;
+it does not substitute another profile.
 
 ## Data Meaning
 

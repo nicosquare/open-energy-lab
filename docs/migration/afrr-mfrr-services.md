@@ -140,7 +140,10 @@ partial total.
 The real-data integration tests block network and credential access, verify the
 exact source and mapping fields, physical bounds, settlement reconciliation,
 sparse DA reporting, and repeated-result equality. Routine correctness remains
-fully offline; the live producer is only an optional source-compatibility check.
+fully offline. The optional notebook operation builds the same validated RTE
+artifact in memory and runs an explicitly parameterized directional mapping,
+replay, validation, and settlement without replacing the fixed acceptance
+evidence.
 
 ## Feature 010 Preservation
 
@@ -154,6 +157,12 @@ Feature 011 is additive. It does not widen or rewrite:
   `SettlementBreakdown`; or
 - the three restricted Feature 010 fixture files or any recorded Feature 010
   fingerprint.
+
+Post-transition day-ahead composition uses the separate
+`fr-day-ahead-quarter-hour-v2` A44-only adapter. It retains native PT15M values
+in a source-separated in-memory restoration artifact and never passes them
+through the closed Feature 010 `MarketDataArtifact` schema. The legacy hourly
+parser/profile behavior and stored artifacts remain byte-compatible.
 
 Feature 011 reuses only product-neutral primitives such as
 `CanonicalInterval`, `BatteryComponent`, `build_initial_state`, and

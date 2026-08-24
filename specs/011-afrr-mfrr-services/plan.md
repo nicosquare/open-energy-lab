@@ -238,12 +238,15 @@ Research outcomes are captured in [research.md](./research.md). They resolve:
 - optional ENTSO-E composition without fallback or semantic substitution
 - offline notebook, credential, retry, and validation strategy
 
-No `NEEDS CLARIFICATION` items remain. Feature 011 introduces no new ENTSO-E
-restoration acquisition profile in its first release. Complementary composition
-is limited to a separate time-compatible artifact produced by the existing
-Feature 010 `fr-day-ahead-symmetric-fcr-v1` lifecycle, selecting its A44
-`day_ahead_price` series by fingerprint. Any later restoration series must pass
-the exact document/process/product/direction/unit/resolution semantic gate.
+No `NEEDS CLARIFICATION` items remain. Historical complementary composition
+may use a separate time-compatible artifact produced by the existing Feature
+010 `fr-day-ahead-symmetric-fcr-v1` lifecycle, selecting its A44
+`day_ahead_price` series by fingerprint. The guarded post-transition live path
+uses the additive A44-only `fr-day-ahead-quarter-hour-v2` profile, preserves
+native PT15M values in a source-separated in-memory artifact, and leaves the
+Feature 010 contract unchanged. Any later restoration activation series must
+pass the exact document/process/product/direction/unit/resolution semantic
+gate.
 
 ## Phase 1: Design
 
