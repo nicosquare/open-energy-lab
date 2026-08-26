@@ -257,6 +257,50 @@ rg "from (baselines|legacy)|import (baselines|legacy)" \
 Existing Feature 010 fixture bytes, default settlement values, traces, and
 fingerprints must remain unchanged.
 
+The final additive compatibility gate also includes exact public constructors,
+serialization, module ownership, Feature 011 product separation, zero-service
+profiles, and import isolation:
+
+```bash
+uv run pytest \
+  tests/integration/simulator/test_fcr_bid_evaluation_public_compatibility.py \
+  tests/integration/simulator/test_fcr_bid_evaluation_product_separation.py \
+  tests/integration/simulator/test_fcr_bid_evaluation_compatibility.py \
+  tests/unit/test_no_legacy_imports.py \
+  tests/unit/test_lazy_dependency_boundaries.py \
+  tests/unit/test_import_contract.py \
+  tests/unit/simulator/test_import_boundary.py \
+  tests/unit/market/test_rte_environment.py \
+  -q
+```
+
+On 2026-08-26 this gate passed `121` tests. The broad unchanged market,
+control, simulator, fixture-generation, and integration suite passed `844`
+tests with five explicitly excluded live/reference-data/benchmark selections:
+
+```bash
+uv run pytest \
+  tests/unit/market tests/unit/control tests/unit/simulator \
+  tests/integration/market tests/integration/control tests/integration/simulator \
+  -m "not live_entsoe and not reference_benchmark and not external_reference_data" \
+  -q
+```
+
+### Explicit Feature 010 benchmark result
+
+The unchanged benchmark was selected separately and passed on Linux
+6.8.0-124-generic x86_64, Python 3.14.6, Intel Xeon Gold 5218R at 2.10 GHz,
+with 503 GiB host memory and repository revision `62f20c6` before the
+compatibility-only changes:
+
+```text
+1.551052453, 1.313645234, 1.756199315, 1.581977689, 1.332762067 seconds
+```
+
+All five measured artifact-load/replay/settlement/fingerprint runs were below
+the Feature 010 ten-second limit. This check required no network or credential;
+there was no environment-only limitation to record.
+
 ## 7. Refresh Reference Evidence Deliberately
 
 Reference execution is not part of normal validation. If an authorized

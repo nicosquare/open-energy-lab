@@ -267,8 +267,11 @@ def test_feature_010_public_imports_resolve_from_owned_modules_without_optional_
 def test_feature_012_public_plan_and_evaluator_imports_have_exact_owners():
     control = importlib.import_module("open_energy_lab.control")
     simulator = importlib.import_module("open_energy_lab.simulator")
+    reference = importlib.import_module("open_energy_lab.market.reference_fcr")
     expected = {
+        control.BidPlanProducer: "open_energy_lab.control.fcr_bid_plan",
         control.FixedFCRBidPlan: "open_energy_lab.control.fcr_bid_plan",
+        control.OptimizationMetric: "open_energy_lab.control.fcr_bid_plan",
         control.build_fixed_fcr_bid_plan: "open_energy_lab.control.fcr_bid_plan",
         simulator.FCRBidEvaluationRequest: (
             "open_energy_lab.simulator.fcr_bid_evaluation"
@@ -276,9 +279,34 @@ def test_feature_012_public_plan_and_evaluator_imports_have_exact_owners():
         simulator.DailyFCRBidEvaluationReport: (
             "open_energy_lab.simulator.fcr_bid_evaluation"
         ),
+        simulator.InvalidCommitmentDiagnosticReport: (
+            "open_energy_lab.simulator.fcr_bid_evaluation"
+        ),
+        simulator.DirectionalFCREnergy: (
+            "open_energy_lab.simulator.fcr_settlement"
+        ),
+        simulator.ReferenceSettlementBreakdown: (
+            "open_energy_lab.simulator.fcr_settlement"
+        ),
+        simulator.evaluate_fixed_fcr_bid: (
+            "open_energy_lab.simulator.fcr_bid_evaluation"
+        ),
+        simulator.replay_invalid_fcr_bid_diagnostic: (
+            "open_energy_lab.simulator.fcr_bid_evaluation"
+        ),
+        reference.load_golden_reference_fixture: (
+            "open_energy_lab.market.reference_fcr"
+        ),
+        reference.load_reference_activation_trace: (
+            "open_energy_lab.market.reference_fcr"
+        ),
     }
 
     assert {value: value.__module__ for value in expected} == expected
+
+    market = importlib.import_module("open_energy_lab.market")
+    assert "load_golden_reference_fixture" not in market.__all__
+    assert "load_reference_activation_trace" not in market.__all__
 
 
 def test_feature_011_restoration_public_imports_resolve_from_exact_owned_modules():

@@ -21,6 +21,14 @@ from tests.integration.simulator.fcr_bid_evaluation_fixture_utils import (
     build_test_evaluation_case,
 )
 from tests.unit.simulator.test_stacked_service import _replay_request
+from tests.unit.simulator.test_stacked_service import (
+    _energy_schedule,
+    _fcr_schedule,
+)
+from tests.integration.simulator.test_stacked_service_real_replay import (
+    _assert_reference_result,
+    _load_and_replay,
+)
 
 
 FIXTURE_DIGESTS = {
@@ -86,6 +94,32 @@ def test_feature_010_sample_order_and_fingerprints_remain_exact() -> None:
     assert result.result_fingerprint == (
         "7bd2549dedd1c77ae826c94fb23778a1b8dab2339da81cad4e6c846c1f2d90a9"
     )
+
+
+def test_feature_010_full_reference_fingerprints_remain_exact() -> None:
+    run = _load_and_replay()
+    expected, market, activation, energy, fcr, result = run
+    fingerprints = expected["expected"]["fingerprints"]
+
+    _assert_reference_result(run)
+    assert {
+        "market_artifact": market.artifact_fingerprint,
+        "activation_artifact": activation.artifact_fingerprint,
+        "energy_schedule": energy.schedule_fingerprint,
+        "fcr_schedule": fcr.schedule_fingerprint,
+        "trace": result.trace_fingerprint,
+        "result": result.result_fingerprint,
+    } == {
+        key: fingerprints[key]
+        for key in (
+            "market_artifact",
+            "activation_artifact",
+            "energy_schedule",
+            "fcr_schedule",
+            "trace",
+            "result",
+        )
+    }
 
 
 def test_feature_010_default_settlement_payload_remains_exact() -> None:
@@ -279,3 +313,62 @@ def test_feature_012_rejects_non_fcr_schedule_product_before_evaluation() -> Non
 
     with pytest.raises(FCRBidPlanValidationError, match="FCRCapacitySchedule"):
         replace(case.plan, fcr_schedule=object())
+
+
+def test_zero_service_limits_preserve_default_and_separate_reference_profiles() -> None:
+    default_baseline_only = replay_stacked_services(
+        _replay_request(
+            energy_schedule=_energy_schedule([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0]),
+            fcr_schedule=_fcr_schedule([0.0, 0.0]),
+        )
+    )
+    default_regulation_only = replay_stacked_services(
+        _replay_request(
+            energy_schedule=_energy_schedule([0.0] * 8),
+            fcr_schedule=_fcr_schedule([5.0, 5.0]),
+        )
+    )
+    reference_baseline_only = evaluate_fixed_fcr_bid(
+        build_test_evaluation_case(
+            powers_kw=(1.0, 0.0, 0.0, -1.0),
+            capacities_kw=(0.0,),
+            settlement_profile="robust-storage-bidding-reference-settlement-v1",
+        ).request
+    )
+    reference_regulation_only = evaluate_fixed_fcr_bid(
+        build_test_evaluation_case(
+            powers_kw=(0.0, 0.0, 0.0, 0.0),
+            capacities_kw=(1.0,),
+            settlement_profile="robust-storage-bidding-reference-settlement-v1",
+        ).request
+    )
+
+    assert default_baseline_only.settlement.activation_energy_settlement_status == (
+        "not_modeled"
+    )
+    assert default_baseline_only.settlement.fcr_capacity_revenue_eur == 0.0
+    assert default_baseline_only.result_fingerprint == (
+        "e2a1c8214f81c01c62901ffcea2e03d4e0a03ee319aa24fa2f991f80a86f5a87"
+    )
+    assert default_regulation_only.settlement.day_ahead_energy_revenue_eur == 0.0
+    assert default_regulation_only.result_fingerprint == (
+        "7bd2549dedd1c77ae826c94fb23778a1b8dab2339da81cad4e6c846c1f2d90a9"
+    )
+    assert reference_baseline_only.settlement["profile_id"] == (
+        "robust-storage-bidding-reference-settlement-v1"
+    )
+    assert reference_baseline_only.settlement["activation_energy_revenue"][
+        "value_eur"
+    ] == 0.0
+    assert reference_baseline_only.settlement_fingerprint == (
+        "147ba0bd5d713308706cc162e12780d40bcb05a00c0a8fa55381a9a22518b3de"
+    )
+    assert reference_regulation_only.settlement["day_ahead_revenue"][
+        "value_eur"
+    ] == 0.0
+    assert reference_regulation_only.settlement_fingerprint == (
+        "e59472f8925623cd568ea0c8b3ea2fc15a72cf7c4d7b69e29d5dec202efaae04"
+    )
+    assert reference_baseline_only.settlement_fingerprint != (
+        reference_regulation_only.settlement_fingerprint
+    )
