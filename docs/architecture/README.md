@@ -35,7 +35,8 @@ production dispatch or reserve-bidding optimization.
 - Design: [Feature 012 implementation plan](../../specs/012-fcr-bid-evaluation-parity/plan.md),
   [migration boundary](../migration/fcr-bid-evaluation-parity.md), and
   [review quickstart](../../specs/012-fcr-bid-evaluation-parity/quickstart.md).
-- Examples: [fixed-plan and explicit external-reference consumers](../../examples/fcr_bid_evaluation/README.md).
+- Examples: [fixed-plan and explicit external-reference consumers](../../examples/fcr_bid_evaluation/README.md)
+  and the [source-only evaluation walkthrough](../../examples/fcr_bid_evaluation/fcr_bid_evaluation_walkthrough.ipynb).
 
 This is a bidder-independent evaluator, not a bid optimizer. Reference-result
 parity is limited to the aggregate evidence exported by the pinned reference

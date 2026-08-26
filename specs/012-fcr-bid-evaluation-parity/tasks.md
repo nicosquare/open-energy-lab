@@ -241,6 +241,22 @@ external-reference evidence, and source-boundary review across all stories.
 
 ---
 
+## Phase 9: Source-Only Evaluation Notebook Follow-Up
+
+**Purpose**: Add an offline research walkthrough over the completed Feature 012
+surface without changing the public library API or widening reference-parity
+claims.
+
+- [X] T078 Promote the authored manual request helper to `build_manual_request(*, invalid_headroom=False, producer_kind="manual")`, preserve default CLI identities and fingerprints, and accept manual/heuristic/robust/TPM labels in `examples/fcr_bid_evaluation/run_manual_plan.py`
+- [X] T079 Add source-contract tests for notebook-v4 JSON, stable unique cell IDs, empty execution state, parseable Python, terminology, evidence limits, supported imports, explicit disabled switches, setup instructions, and documentation links in `tests/unit/simulator/test_fcr_bid_evaluation_notebook.py`
+- [X] T080 Add the source-only offline walkthrough with authored schedules, physical replay, settlement, invalid-headroom diagnostics, producer-neutral comparison, Golden Reference Fixture inspection, five deterministic figures, a pinned display payload, guarded full-reference replay, and guarded figure export in `examples/fcr_bid_evaluation/fcr_bid_evaluation_walkthrough.ipynb`
+- [X] T081 Add the optional-dependency default notebook execution contract with network and credential guards, settled/failed/producer/table/figure/fingerprint assertions, source-byte preservation, and no-export verification in `tests/integration/simulator/test_fcr_bid_evaluation_notebook_execution.py`
+- [X] T082 Add the explicitly selected `external_reference_data` notebook execution case with actionable absent-data skip, explicit-path injection, 24/6/96/8,640 counts, bounded status, zero mismatches, and pinned trace/settlement/comparison fingerprints in `tests/integration/simulator/test_fcr_bid_evaluation_notebook_execution.py`
+- [X] T083 Link the walkthrough, offline setup, optional external path, output boundary, and evidence limitations from `examples/fcr_bid_evaluation/README.md`, `README.md`, `docs/architecture/README.md`, and `specs/012-fcr-bid-evaluation-parity/quickstart.md`
+- [X] T084 Run the notebook contracts, Feature 012 routine suite, import-boundary and documentation contracts, optional external selection when data is available, and `git diff --check`; record the precise external-data blocker without weakening routine validation
+
+---
+
 ## Dependencies And Execution Order
 
 ### Phase Dependencies
@@ -260,6 +276,7 @@ US1 through US4 must finish before US5 final regression completion.
 
 US1 through US5
   -> Phase 8: polish and cross-cutting validation
+       -> Phase 9: source-only evaluation notebook follow-up
 ```
 
 ### User Story Dependencies

@@ -72,6 +72,7 @@ service capabilities remain outside the routine environment and import path.
 - [Feature 012 review and external-data quickstart](specs/012-fcr-bid-evaluation-parity/quickstart.md)
 - [FCR bid-evaluation migration and evidence boundary](docs/migration/fcr-bid-evaluation-parity.md)
 - [Runnable fixed-plan and bounded-reference examples](examples/fcr_bid_evaluation/README.md)
+- [Source-only FCR evaluation notebook](examples/fcr_bid_evaluation/fcr_bid_evaluation_walkthrough.ipynb)
 - [Fixture provenance rules](tests/fixtures/README.md)
 - [Active Spec Kit plan](specs/001-library-foundation/plan.md)
 
@@ -105,7 +106,10 @@ claim is bounded reference-result parity for supported aggregate fields under
 documented source-precision intervals. It neither generates bids nor claims
 complete ten-second Julia trace parity. Start with the
 [Feature 012 quickstart](specs/012-fcr-bid-evaluation-parity/quickstart.md) for
-routine offline checks and the explicit external-data workflow.
+routine offline checks and the explicit external-data workflow, or open the
+[source-only evaluation walkthrough](examples/fcr_bid_evaluation/fcr_bid_evaluation_walkthrough.ipynb)
+for an offline physical, settlement, diagnostic, producer-neutrality, and
+bounded-evidence audit.
 
 ## Local Checks
 

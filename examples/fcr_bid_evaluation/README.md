@@ -7,10 +7,34 @@ The example surface is intentionally split by data and review boundary:
 
 | Consumer | Purpose | Routine offline? | External input |
 | --- | --- | --- | --- |
-| fixed-plan walkthrough | Build existing hourly energy and four-hour FCR schedules, wrap them in one plan, evaluate them, and inspect success/failure reports | yes | none |
+| [fixed-plan notebook walkthrough](fcr_bid_evaluation_walkthrough.ipynb) | Build existing hourly energy and four-hour FCR schedules, wrap them in one plan, evaluate them, and inspect physics, settlement, diagnostics, producer neutrality, and bounded reference evidence | yes | none |
 | `run_reference_parity.py` | Map the pinned 2023-06-18 decisions, load a complete activation day, replay it, and report bounded aggregate comparison | no; explicitly selected | caller-supplied regulation CSV via `--activation-path` |
 | `normalize_reference_result.py` | Validate a researcher-generated reference JSON and write canonical review output below an ignored directory | no; fixture refresh only | explicit input JSON, expected digest, and output directory |
 | expected-failure examples | Demonstrate missing/corrupt external data, invalid static commitments, and the separately labelled diagnostic replay | fixed-plan failures are offline; external-data failures are explicit | none or an explicit invalid path |
+
+## Open The Source-Only Walkthrough
+
+Install the optional notebook group and start JupyterLab from the repository
+root:
+
+```bash
+uv sync --group notebook
+uv run jupyter lab \
+  examples/fcr_bid_evaluation/fcr_bid_evaluation_walkthrough.ipynb
+```
+
+Use the project `.venv/bin/python` kernel. The committed notebook has stable
+cell IDs, empty outputs, and no saved execution state. Its default run is fully
+offline: external reference replay and figure export are both disabled. It
+produces five deterministic in-memory figures and writes nothing unless
+`EXPORT_FIGURES` is deliberately enabled, in which case output is restricted to
+`tmp/fcr-bid-evaluation-notebook/figures`.
+
+The optional complete 2023-06-18 section uses only the explicit
+`artifacts/reference/robust_storage_bidding/regulation_signal.csv` path after
+the switch is enabled. It never downloads or searches for that file. The
+notebook demonstrates a TPM-labelled fixed plan solely to prove evaluator
+neutrality; it does not claim TPM bid generation or selection.
 
 ## Run The Authored Fixed Plan
 

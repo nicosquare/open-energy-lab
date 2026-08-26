@@ -83,13 +83,81 @@ uv run pytest \
 uv run pytest tests/unit/simulator/test_fcr_bid_evaluation_scaling.py -q
 ```
 
-On 2026-08-26 these commands completed with `215 passed, 4 deselected` and
-`1 passed`, respectively. The scaling test uses an instrumented 8,640-sample
+On 2026-08-26, after the Phase 9 notebook follow-up, these commands completed
+with `216 passed, 5 deselected` and `1 passed`, respectively. The additional
+routine case is the network-guarded default notebook execution; the additional
+deselection is its explicit external-data branch. The scaling test uses an
+instrumented 8,640-sample
 ordinary day rather than a wall-clock threshold and enforces no more than two
 complete primary-collection iterations per validation, replay, aggregation,
 settlement, comparison, or fingerprint-materialization stage.
 
-## 2. Inspect The Committed Evidence
+## 2. Run The Source-Only Evaluation Walkthrough
+
+Install the optional notebook environment, then open the walkthrough from the
+repository root with the project `.venv/bin/python` kernel:
+
+```bash
+uv sync --group notebook
+uv run jupyter lab \
+  examples/fcr_bid_evaluation/fcr_bid_evaluation_walkthrough.ipynb
+```
+
+The committed
+`examples/fcr_bid_evaluation/fcr_bid_evaluation_walkthrough.ipynb` is valid
+notebook-v4 JSON with stable cell IDs, empty outputs, and no saved execution
+counts. Its default configuration sets both `RUN_EXTERNAL_REFERENCE = False`
+and `EXPORT_FIGURES = False`. Every default cell therefore runs offline from
+the repository root without credentials, network access, the external CSV,
+Julia, or a solver.
+
+The walkthrough evaluates the authored fixed plan, plots its schedule and
+physical trace, audits settlement and directional energy, explains the static
+`validation_failed` case, and proves that manual, heuristic, robust, and
+TPM-labelled plans have identical physical and settlement fingerprints when
+their evaluation inputs match. It then inspects Golden Reference Fixture
+provenance, the 24/6 mapping, supported/unavailable fields, and field-specific
+source-precision bounds. The five deterministic figures remain in memory.
+Figure files are written only when explicitly enabled and only below:
+
+```text
+tmp/fcr-bid-evaluation-notebook/figures
+```
+
+Run the source and default execution contracts with:
+
+```bash
+uv run pytest \
+  tests/unit/simulator/test_fcr_bid_evaluation_notebook.py \
+  tests/integration/simulator/test_fcr_bid_evaluation_notebook_execution.py \
+  -m "not external_reference_data" \
+  -q
+```
+
+After installing the governed CSV as described below, select the complete
+notebook branch through the explicit external-data test:
+
+```bash
+uv run pytest \
+  tests/integration/simulator/test_fcr_bid_evaluation_notebook_execution.py \
+  -m external_reference_data \
+  -q
+```
+
+That test injects the explicit CSV path and enables only the guarded reference
+section. When the file is absent it skips with the installation path; it never
+downloads, searches for, or infers the source. Even when selected, the notebook
+claims only supported bounded aggregate parity—not bid optimization, TPM bid
+selection, or complete Julia trace parity.
+
+On 2026-08-26 the source/default notebook command completed with
+`6 passed, 1 deselected` and reproduced display fingerprint
+`14ac81308ab6efbaa34140c296f6c651dc43262ce2cc5ba8d57985d3fb18eb96`.
+The explicitly selected external command produced one actionable skip because
+the governed CSV was absent at the documented local path. Routine correctness
+remained fully exercised offline.
+
+## 3. Inspect The Committed Evidence
 
 ```bash
 sed -n '1,280p' tests/fixtures/fcr_bid_evaluation/README.md
@@ -102,7 +170,7 @@ original JSON digest, fixed published decisions, prices, battery/time configurat
 expected aggregate fields, mappings, source-precision policy, unsupported fields,
 and external-data descriptor. It contains no activation samples.
 
-## 3. Install The External Regulation Data
+## 4. Install The External Regulation Data
 
 Use the download named by the pinned reference README and place it in the ignored
 OEL artifact directory:
@@ -142,7 +210,7 @@ actionable domain error. The library never downloads or searches for a
 same-named file. Only the explicitly selected pytest wrapper converts an absent
 file into a skip with this installation path.
 
-## 4. Run The Complete Reference Evaluation
+## 5. Run The Complete Reference Evaluation
 
 After placing the CSV:
 
@@ -216,7 +284,7 @@ fingerprint was
 the path-independent trace, settlement, and comparison values stayed exactly
 as recorded above.
 
-## 5. Evaluate Another Fixed Plan
+## 6. Evaluate Another Fixed Plan
 
 Every bidder supplies the existing schedule types, then wraps them once:
 
@@ -269,7 +337,7 @@ valid preflight remains settled, prices only delivered activation, applies only
 an explicit non-delivery penalty, and is outside the initial reference-parity
 domain.
 
-## 6. Feature 010 Regression Gate
+## 7. Feature 010 Regression Gate
 
 Run the unchanged FCR behavior and import boundaries:
 
@@ -316,7 +384,8 @@ uv run pytest \
   -q
 ```
 
-On 2026-08-26 this gate passed `121` tests. The broad unchanged market,
+On 2026-08-26 this gate passed `121` tests. Before the Phase 9 notebook
+follow-up, the broad unchanged market,
 control, simulator, fixture-generation, and integration suite passed `845`
 tests with five explicitly excluded live/reference-data/benchmark selections:
 
@@ -349,7 +418,7 @@ All five measured artifact-load/replay/settlement/fingerprint runs were below
 the Feature 010 ten-second limit. This check required no network or credential;
 there was no environment-only limitation to record.
 
-## 7. Distribution Inspection
+## 8. Distribution Inspection
 
 Build both distributions and inspect their complete manifests:
 
@@ -372,7 +441,7 @@ tests/fixtures/fcr_bid_evaluation/robust_storage_bidding_2023-06-18_aggregate_v1
 
 The generated `dist/` directory remains ignored and is not fixture evidence.
 
-## 8. Refresh Reference Evidence Deliberately
+## 9. Refresh Reference Evidence Deliberately
 
 Reference execution is not part of normal validation. If an authorized
 researcher intentionally refreshes it, run the baseline in its own project and
