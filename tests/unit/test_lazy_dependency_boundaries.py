@@ -212,6 +212,29 @@ def test_feature_011_offline_roots_and_symbols_load_no_adapters_credentials_or_r
     )
 
 
+def test_feature_012_plan_and_evaluator_import_without_reference_or_solver_side_effects() -> None:
+    _run_isolated_python(
+        """
+        import sys
+
+        loaded_before = set(sys.modules)
+        import open_energy_lab.control.fcr_bid_plan
+        import open_energy_lab.simulator.fcr_bid_evaluation
+
+        newly_loaded = set(sys.modules) - loaded_before
+        forbidden_roots = {
+            "IPython", "baselines", "citylearn", "docplex", "gurobipy",
+            "highspy", "jupyter", "legacy", "pandas", "pyomo", "spflow",
+            "torch", "torchrl", "wandb",
+        }
+        loaded_roots = {name.split(".", 1)[0] for name in newly_loaded}
+        assert forbidden_roots.isdisjoint(loaded_roots)
+        assert "open_energy_lab.market.reference_fcr" not in sys.modules
+        assert not any("julia" in name.casefold() for name in newly_loaded)
+        """
+    )
+
+
 def test_tpm_workflow_loads_spflow_and_torch_only_at_its_boundary() -> None:
     _run_isolated_python(
         """

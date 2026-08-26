@@ -18,6 +18,7 @@ PLANNED_MARKET_SUBMODULES = (
     "open_energy_lab.market.artifact",
     "open_energy_lab.market.activation",
     "open_energy_lab.market.entsoe",
+    "open_energy_lab.market.reference_fcr",
 )
 SOURCE_INDEPENDENT_SUBMODULES = (
     "open_energy_lab.market.time",
@@ -25,6 +26,7 @@ SOURCE_INDEPENDENT_SUBMODULES = (
     "open_energy_lab.market.activation",
 )
 RELOADED_MARKET_MODULES = (
+    "open_energy_lab.market.reference_fcr",
     "open_energy_lab.market.rte",
     "open_energy_lab.market.entsoe",
     "open_energy_lab.market.restoration_artifact",
@@ -261,3 +263,21 @@ def test_planned_market_submodules_cannot_resolve_outside_package_boundary() -> 
         origin = Path(module_spec.origin).resolve()
         assert origin.parent == package_dir
         assert "legacy" not in origin.parts
+
+
+def test_feature_012_offline_types_do_not_import_the_external_reference_loader() -> None:
+    _run_isolated_python(
+        """
+        import sys
+
+        import open_energy_lab.control.fcr_bid_plan
+        import open_energy_lab.simulator.fcr_bid_evaluation
+
+        assert "open_energy_lab.market.reference_fcr" not in sys.modules
+        assert not any(
+            name == "baselines" or name.startswith("baselines.")
+            or name == "legacy" or name.startswith("legacy.")
+            for name in sys.modules
+        )
+        """
+    )

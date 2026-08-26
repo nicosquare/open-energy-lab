@@ -770,6 +770,32 @@ class StackedServiceReplayResult:
     result_fingerprint: str
 
 
+@dataclass(frozen=True, slots=True)
+class _PhysicalReplayInputs:
+    """Source-independent inputs to the one shared fixed-schedule replay kernel."""
+
+    activation_trace: RegulationActivationTrace
+    battery: BatteryComponent
+    energy_schedule: EnergyBaselineSchedule
+    fcr_schedule: FCRCapacitySchedule
+    time_contract: MultiRateTimeContract
+    numeric_tolerance: float
+    terminal_soc_target: TerminalSOCTarget | None
+
+
+@dataclass(frozen=True, slots=True)
+class _PhysicalReplayKernelResult:
+    samples: tuple[ReplaySample, ...]
+    state_checkpoints: tuple[StateCheckpoint, ...]
+    checkpoint_summaries: tuple[ReplayIntervalSummary, ...]
+    energy_summaries: tuple[ReplayIntervalSummary, ...]
+    fcr_summaries: tuple[ReplayIntervalSummary, ...]
+    saturation_events: tuple[SaturationEvent, ...]
+    tracking_summary: Mapping[str, object]
+    throughput_kwh: float
+    terminal_soc_report: TerminalSOCReport | None
+
+
 def _battery_payload(battery: BatteryComponent) -> dict[str, object]:
     return {
         "name": battery.name,
@@ -816,14 +842,14 @@ def _input_fingerprints(request: StackedServiceReplayRequest) -> Mapping[str, ob
 
 def _saturation_causes(
     *,
-    request: StackedServiceReplayRequest,
+    inputs: _PhysicalReplayInputs,
     requested_power_kw: float,
     delivered_power_kw: float,
     stored_before_kwh: float,
     stored_after_kwh: float,
 ) -> tuple[str, ...]:
-    battery = request.battery
-    tolerance = request.numeric_tolerance
+    battery = inputs.battery
+    tolerance = inputs.numeric_tolerance
     causes: list[str] = []
     if requested_power_kw > battery.max_charge_kw + tolerance:
         causes.append("charge_power_limit")
@@ -850,27 +876,27 @@ def _saturation_causes(
     return tuple(sorted(causes, key=order.__getitem__))
 
 
-def _physical_samples(request: StackedServiceReplayRequest) -> tuple[ReplaySample, ...]:
-    index = request.time_contract.index
+def _physical_samples(inputs: _PhysicalReplayInputs) -> tuple[ReplaySample, ...]:
+    index = inputs.time_contract.index
     duration_hours = (
         index.activation_intervals[0].end_utc
         - index.activation_intervals[0].start_utc
     ).total_seconds() / 3600.0
-    state = build_initial_state(request.battery)
+    state = build_initial_state(inputs.battery)
     samples: list[ReplaySample] = []
     for sample_index, (activation_sample, interval) in enumerate(
-        zip(request.activation_trace.samples, index.activation_intervals, strict=True)
+        zip(inputs.activation_trace.samples, index.activation_intervals, strict=True)
     ):
         energy_index = index.activation_to_energy[sample_index]
         fcr_index = index.activation_to_fcr[sample_index]
-        baseline = request.energy_schedule.intervals[energy_index].power_kw
-        capacity = request.fcr_schedule.intervals[fcr_index].capacity_kw
+        baseline = inputs.energy_schedule.intervals[energy_index].power_kw
+        capacity = inputs.fcr_schedule.intervals[fcr_index].capacity_kw
         requested_fcr = -activation_sample.activation * capacity
         requested_combined = baseline + requested_fcr
         stored_before = state.stored_energy_kwh
         soc_before = state.soc
         transition = apply_power_request(
-            component=request.battery,
+            component=inputs.battery,
             state=state,
             requested_power_kw=requested_combined,
             time_step_hours=duration_hours,
@@ -888,7 +914,7 @@ def _physical_samples(request: StackedServiceReplayRequest) -> tuple[ReplaySampl
             baseline_error = 0.0
         absolute_tracking = abs(signed_tracking)
         causes = _saturation_causes(
-            request=request,
+            inputs=inputs,
             requested_power_kw=requested_combined,
             delivered_power_kw=delivered_combined,
             stored_before_kwh=stored_before,
@@ -923,15 +949,15 @@ def _physical_samples(request: StackedServiceReplayRequest) -> tuple[ReplaySampl
 
 
 def _state_checkpoints(
-    request: StackedServiceReplayRequest,
+    inputs: _PhysicalReplayInputs,
     samples: tuple[ReplaySample, ...],
 ) -> tuple[StateCheckpoint, ...]:
-    index = request.time_contract.index
+    index = inputs.time_contract.index
     initial = StateCheckpoint(
-        timestamp_utc=request.time_contract.start_utc,
+        timestamp_utc=inputs.time_contract.start_utc,
         sample_index=0,
-        soc=request.battery.initial_soc,
-        stored_energy_kwh=request.battery.initial_soc * request.battery.capacity_kwh,
+        soc=inputs.battery.initial_soc,
+        stored_energy_kwh=inputs.battery.initial_soc * inputs.battery.capacity_kwh,
     )
     checkpoints = [initial]
     for checkpoint_index, interval in enumerate(index.checkpoint_intervals):
@@ -1029,10 +1055,10 @@ def _saturation_events(samples: tuple[ReplaySample, ...]) -> tuple[SaturationEve
 
 
 def _terminal_report(
-    request: StackedServiceReplayRequest,
+    inputs: _PhysicalReplayInputs,
     samples: tuple[ReplaySample, ...],
 ) -> TerminalSOCReport | None:
-    target = request.terminal_soc_target
+    target = inputs.terminal_soc_target
     if target is None:
         return None
     if target.target_kind == "stored_energy_kwh":
@@ -1051,22 +1077,14 @@ def _terminal_report(
     )
 
 
-def _run_replay(
-    request: StackedServiceReplayRequest,
-    *,
-    diagnostic: bool,
-) -> StackedServiceReplayResult:
-    if not isinstance(request, StackedServiceReplayRequest):
-        raise StackedServiceValidationError(
-            "request must be a StackedServiceReplayRequest"
-        )
-    if request.commitment_validation_errors and not diagnostic:
-        raise StackedServiceValidationError(
-            "; ".join(request.commitment_validation_errors)
-        )
-    samples = _physical_samples(request)
-    index = request.time_contract.index
-    checkpoints = _state_checkpoints(request, samples)
+def _replay_physical_kernel(
+    inputs: _PhysicalReplayInputs,
+) -> _PhysicalReplayKernelResult:
+    """Run the shared battery/replay path without market or settlement semantics."""
+
+    samples = _physical_samples(inputs)
+    index = inputs.time_contract.index
+    checkpoints = _state_checkpoints(inputs, samples)
     checkpoint_summaries = _summaries(
         samples,
         index.checkpoint_intervals,
@@ -1092,8 +1110,8 @@ def _run_replay(
         grouped_charge = sum(item.charge_energy_kwh for item in summaries)
         grouped_discharge = sum(item.discharge_energy_kwh for item in summaries)
         if (
-            abs(grouped_charge - charge_energy) > request.numeric_tolerance
-            or abs(grouped_discharge - discharge_energy) > request.numeric_tolerance
+            abs(grouped_charge - charge_energy) > inputs.numeric_tolerance
+            or abs(grouped_discharge - discharge_energy) > inputs.numeric_tolerance
         ):
             raise StackedServiceValidationError(
                 f"{label} aggregation does not conserve terminal energy"
@@ -1123,15 +1141,55 @@ def _run_replay(
             "saturation_event_count": len(events),
         }
     )
+    return _PhysicalReplayKernelResult(
+        samples=samples,
+        state_checkpoints=checkpoints,
+        checkpoint_summaries=checkpoint_summaries,
+        energy_summaries=energy_summaries,
+        fcr_summaries=fcr_summaries,
+        saturation_events=events,
+        tracking_summary=tracking_summary,
+        throughput_kwh=charge_energy + discharge_energy,
+        terminal_soc_report=_terminal_report(inputs, samples),
+    )
+
+
+def _run_replay(
+    request: StackedServiceReplayRequest,
+    *,
+    diagnostic: bool,
+) -> StackedServiceReplayResult:
+    if not isinstance(request, StackedServiceReplayRequest):
+        raise StackedServiceValidationError(
+            "request must be a StackedServiceReplayRequest"
+        )
+    if request.commitment_validation_errors and not diagnostic:
+        raise StackedServiceValidationError(
+            "; ".join(request.commitment_validation_errors)
+        )
+    physical = _replay_physical_kernel(
+        _PhysicalReplayInputs(
+            activation_trace=request.activation_trace,
+            battery=request.battery,
+            energy_schedule=request.energy_schedule,
+            fcr_schedule=request.fcr_schedule,
+            time_contract=request.time_contract,
+            numeric_tolerance=request.numeric_tolerance,
+            terminal_soc_target=request.terminal_soc_target,
+        )
+    )
     from .fcr_settlement import settle_stacked_services
 
-    settlement = settle_stacked_services(request, samples)
-    terminal_report = _terminal_report(request, samples)
+    settlement = settle_stacked_services(request, physical.samples)
     inputs = _input_fingerprints(request)
     trace_payload = {
-        "samples": [sample.to_dict() for sample in samples],
-        "state_checkpoints": [item.to_dict() for item in checkpoints],
-        "saturation_events": [item.to_dict() for item in events],
+        "samples": [sample.to_dict() for sample in physical.samples],
+        "state_checkpoints": [
+            item.to_dict() for item in physical.state_checkpoints
+        ],
+        "saturation_events": [
+            item.to_dict() for item in physical.saturation_events
+        ],
     }
     trace_fingerprint = _fingerprint(trace_payload)
     result_payload = {
@@ -1143,30 +1201,36 @@ def _run_replay(
         ),
         "input_fingerprints": _thaw(inputs),
         "trace_fingerprint": trace_fingerprint,
-        "checkpoint_summaries": [item.to_dict() for item in checkpoint_summaries],
-        "energy_summaries": [item.to_dict() for item in energy_summaries],
-        "fcr_summaries": [item.to_dict() for item in fcr_summaries],
-        "tracking_summary": _thaw(tracking_summary),
-        "throughput_kwh": charge_energy + discharge_energy,
+        "checkpoint_summaries": [
+            item.to_dict() for item in physical.checkpoint_summaries
+        ],
+        "energy_summaries": [
+            item.to_dict() for item in physical.energy_summaries
+        ],
+        "fcr_summaries": [item.to_dict() for item in physical.fcr_summaries],
+        "tracking_summary": _thaw(physical.tracking_summary),
+        "throughput_kwh": physical.throughput_kwh,
         "settlement": settlement.to_dict(),
         "terminal_soc_report": (
-            None if terminal_report is None else terminal_report.to_dict()
+            None
+            if physical.terminal_soc_report is None
+            else physical.terminal_soc_report.to_dict()
         ),
     }
     return StackedServiceReplayResult(
         simulation_semantics_version=request.simulation_semantics_version,
         validation_status=result_payload["validation_status"],
         input_fingerprints=inputs,
-        samples=samples,
-        state_checkpoints=checkpoints,
-        checkpoint_summaries=checkpoint_summaries,
-        energy_summaries=energy_summaries,
-        fcr_summaries=fcr_summaries,
-        saturation_events=events,
-        tracking_summary=tracking_summary,
-        throughput_kwh=charge_energy + discharge_energy,
+        samples=physical.samples,
+        state_checkpoints=physical.state_checkpoints,
+        checkpoint_summaries=physical.checkpoint_summaries,
+        energy_summaries=physical.energy_summaries,
+        fcr_summaries=physical.fcr_summaries,
+        saturation_events=physical.saturation_events,
+        tracking_summary=physical.tracking_summary,
+        throughput_kwh=physical.throughput_kwh,
         settlement=settlement,
-        terminal_soc_report=terminal_report,
+        terminal_soc_report=physical.terminal_soc_report,
         trace_fingerprint=trace_fingerprint,
         result_fingerprint=_fingerprint(result_payload),
     )

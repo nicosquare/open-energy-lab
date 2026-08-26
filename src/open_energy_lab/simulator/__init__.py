@@ -12,6 +12,18 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from .fcr_bid_evaluation import (
+        ComponentAvailability,
+        DailyFCRBidEvaluationReport,
+        EvaluationDiagnostic,
+        EvaluationMarketContext,
+        EvaluationPriceObservation,
+        FCRBidEvaluationRequest,
+        FCRBidEvaluationValidationError,
+        build_feature_010_market_context,
+        build_settled_evaluation_report,
+        build_validation_failed_evaluation_report,
+    )
     from .fcr_settlement import (
         EnergySettlementInterval,
         FCRPenaltyRule,
@@ -118,6 +130,46 @@ if TYPE_CHECKING:
 
 
 _EXPORT_MAP = {
+    "ComponentAvailability": (
+        ".fcr_bid_evaluation",
+        "ComponentAvailability",
+    ),
+    "DailyFCRBidEvaluationReport": (
+        ".fcr_bid_evaluation",
+        "DailyFCRBidEvaluationReport",
+    ),
+    "EvaluationDiagnostic": (
+        ".fcr_bid_evaluation",
+        "EvaluationDiagnostic",
+    ),
+    "EvaluationMarketContext": (
+        ".fcr_bid_evaluation",
+        "EvaluationMarketContext",
+    ),
+    "EvaluationPriceObservation": (
+        ".fcr_bid_evaluation",
+        "EvaluationPriceObservation",
+    ),
+    "FCRBidEvaluationRequest": (
+        ".fcr_bid_evaluation",
+        "FCRBidEvaluationRequest",
+    ),
+    "FCRBidEvaluationValidationError": (
+        ".fcr_bid_evaluation",
+        "FCRBidEvaluationValidationError",
+    ),
+    "build_feature_010_market_context": (
+        ".fcr_bid_evaluation",
+        "build_feature_010_market_context",
+    ),
+    "build_settled_evaluation_report": (
+        ".fcr_bid_evaluation",
+        "build_settled_evaluation_report",
+    ),
+    "build_validation_failed_evaluation_report": (
+        ".fcr_bid_evaluation",
+        "build_validation_failed_evaluation_report",
+    ),
     "ArbitrageObjectiveRepresentation": (".pricing", "ArbitrageObjectiveRepresentation"),
     "ArbitrageScenario": (".scenario", "ArbitrageScenario"),
     "BatteryLoadPVScenario": (".scenario", "BatteryLoadPVScenario"),
@@ -359,12 +411,17 @@ __all__ = [
     "ArbitrageScenario",
     "BatteryLoadPVScenario",
     "BatteryComponent",
+    "ComponentAvailability",
     "DEMAND_SUPPORTED_SUMMARY_OUTPUT_FIELDS",
     "DemandFamilyEvaluationRequest",
     "DemandFamilyEvaluationResult",
     "DemandScenarioEvaluationResult",
+    "DailyFCRBidEvaluationReport",
     "DeterministicRulePolicy",
     "DispatchRequestSeries",
+    "EvaluationDiagnostic",
+    "EvaluationMarketContext",
+    "EvaluationPriceObservation",
     "evaluate_demand_family",
     "export_planning_dataset",
     "generate_planning_study_dataset",
@@ -384,6 +441,8 @@ __all__ = [
     "EnergyBaselineInterval",
     "EnergyBaselineSchedule",
     "FCRCapacitySchedule",
+    "FCRBidEvaluationRequest",
+    "FCRBidEvaluationValidationError",
     "FCRCommitmentInterval",
     "MultiRateTimeContract",
     "ReplayIntervalSummary",
@@ -396,7 +455,10 @@ __all__ = [
     "TerminalSOCTarget",
     "TerminalSOCReport",
     "build_energy_baseline_schedule",
+    "build_feature_010_market_context",
     "build_fcr_capacity_schedule",
+    "build_settled_evaluation_report",
+    "build_validation_failed_evaluation_report",
     "replay_stacked_services",
     "replay_stacked_services_diagnostic",
     "EnergySettlementInterval",

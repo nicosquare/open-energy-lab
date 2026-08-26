@@ -22,12 +22,17 @@ EXPECTED_CONTROL_EXPORTS = [
     "AFRRBaselineMode",
     "ArbitrageOnlyBaselineConfig",
     "BaselineScheduleBundle",
+    "BidPlanProducer",
     "DirectionalCapacityCommitmentInterval",
     "DirectionalCapacitySchedule",
+    "FCRBidPlanValidationError",
+    "FixedFCRBidPlan",
     "MFRRBaselineConfig",
     "MFRRBaselineMode",
+    "OptimizationMetric",
     "PVSelfConsumptionConfig",
     "PVSelfConsumptionController",
+    "PlanDiagnostic",
     "PriceThresholdConfig",
     "PriceThresholdController",
     "RegulationOnlyBaselineConfig",
@@ -36,6 +41,7 @@ EXPECTED_CONTROL_EXPORTS = [
     "RestorationControlValidationError",
     "RestorationEnergyBaselineInterval",
     "RestorationEnergyBaselineSchedule",
+    "SerializedScheduleReference",
     "SocGuardrailConfig",
     "SocGuardrailController",
     "StackedBaselineValidationError",
@@ -44,6 +50,7 @@ EXPECTED_CONTROL_EXPORTS = [
     "build_afrr_baseline_config",
     "build_afrr_directional_capacity_schedule",
     "build_arbitrage_only_baseline",
+    "build_fixed_fcr_bid_plan",
     "build_mfrr_baseline",
     "build_mfrr_baseline_config",
     "build_mfrr_directional_capacity_schedule",
@@ -255,6 +262,23 @@ def test_feature_010_public_imports_resolve_from_owned_modules_without_optional_
         set(sys.modules) - before_import
     )
     assert newly_loaded_optional_modules == set()
+
+
+def test_feature_012_public_plan_and_evaluator_imports_have_exact_owners():
+    control = importlib.import_module("open_energy_lab.control")
+    simulator = importlib.import_module("open_energy_lab.simulator")
+    expected = {
+        control.FixedFCRBidPlan: "open_energy_lab.control.fcr_bid_plan",
+        control.build_fixed_fcr_bid_plan: "open_energy_lab.control.fcr_bid_plan",
+        simulator.FCRBidEvaluationRequest: (
+            "open_energy_lab.simulator.fcr_bid_evaluation"
+        ),
+        simulator.DailyFCRBidEvaluationReport: (
+            "open_energy_lab.simulator.fcr_bid_evaluation"
+        ),
+    }
+
+    assert {value: value.__module__ for value in expected} == expected
 
 
 def test_feature_011_restoration_public_imports_resolve_from_exact_owned_modules():
