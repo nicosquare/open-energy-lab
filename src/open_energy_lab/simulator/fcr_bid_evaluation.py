@@ -850,6 +850,9 @@ class DailyFCRBidEvaluationReport:
     plan_id: str
     producer: Mapping[str, object]
     information_cutoff_utc: str
+    schedule_identity: Mapping[str, object]
+    optimization_metadata: Mapping[str, object]
+    input_fingerprints: Mapping[str, object]
     diagnostics: tuple[EvaluationDiagnostic, ...]
     plan_fingerprint: str
     evaluation_input_fingerprint: str
@@ -859,6 +862,7 @@ class DailyFCRBidEvaluationReport:
     total_profit_eur: float | None
     trace_fingerprint: str | None
     settlement_fingerprint: str | None
+    comparison: Mapping[str, object] | None
     comparison_fingerprint: str | None
     schema_version: str = FCR_BID_EVALUATION_REPORT_SCHEMA_VERSION
     result_fingerprint: str = field(init=False)
@@ -879,6 +883,13 @@ class DailyFCRBidEvaluationReport:
             )
         diagnostics = tuple(sorted(diagnostics, key=_diagnostic_sort_key))
         object.__setattr__(self, "diagnostics", diagnostics)
+        object.__setattr__(self, "schedule_identity", _freeze(self.schedule_identity))
+        object.__setattr__(
+            self,
+            "optimization_metadata",
+            _freeze(self.optimization_metadata),
+        )
+        object.__setattr__(self, "input_fingerprints", _freeze(self.input_fingerprints))
         object.__setattr__(
             self,
             "plan_fingerprint",
@@ -908,6 +919,8 @@ class DailyFCRBidEvaluationReport:
                 _freeze(self.physical_metrics),
             )
             object.__setattr__(self, "settlement", _freeze(self.settlement))
+            if self.comparison is not None:
+                object.__setattr__(self, "comparison", _freeze(self.comparison))
             object.__setattr__(
                 self,
                 "total_profit_eur",
@@ -936,6 +949,7 @@ class DailyFCRBidEvaluationReport:
                     self.total_profit_eur,
                     self.trace_fingerprint,
                     self.settlement_fingerprint,
+                    self.comparison,
                     self.comparison_fingerprint,
                 )
             ):
@@ -951,6 +965,18 @@ class DailyFCRBidEvaluationReport:
                     field_name="comparison_fingerprint",
                 ),
             )
+            if self.comparison is None:
+                raise FCRBidEvaluationValidationError(
+                    "comparison fingerprint requires field-level comparison content"
+                )
+            if self.comparison.get("comparison_fingerprint") != self.comparison_fingerprint:
+                raise FCRBidEvaluationValidationError(
+                    "comparison content does not match comparison_fingerprint"
+                )
+        elif self.comparison is not None:
+            raise FCRBidEvaluationValidationError(
+                "comparison content requires a comparison fingerprint"
+            )
         object.__setattr__(self, "producer", _freeze(self.producer))
         object.__setattr__(self, "result_fingerprint", _fingerprint(self._payload()))
 
@@ -962,6 +988,9 @@ class DailyFCRBidEvaluationReport:
             "plan_id": self.plan_id,
             "producer": _thaw(self.producer),
             "information_cutoff_utc": self.information_cutoff_utc,
+            "schedule_identity": _thaw(self.schedule_identity),
+            "optimization_metadata": _thaw(self.optimization_metadata),
+            "input_fingerprints": _thaw(self.input_fingerprints),
             "diagnostics": [item.to_dict() for item in self.diagnostics],
             "plan_fingerprint": self.plan_fingerprint,
             "evaluation_input_fingerprint": self.evaluation_input_fingerprint,
@@ -971,6 +1000,7 @@ class DailyFCRBidEvaluationReport:
             "total_profit_eur": self.total_profit_eur,
             "trace_fingerprint": self.trace_fingerprint,
             "settlement_fingerprint": self.settlement_fingerprint,
+            "comparison": _thaw(self.comparison),
             "comparison_fingerprint": self.comparison_fingerprint,
         }
 
@@ -981,6 +1011,85 @@ class DailyFCRBidEvaluationReport:
         return canonical_json_bytes(self.to_dict())
 
 
+@dataclass(frozen=True, slots=True)
+class InvalidCommitmentDiagnosticReport:
+    """Explicitly non-economic replay of a statically invalid commitment."""
+
+    evaluation_id: str
+    plan_id: str
+    producer: Mapping[str, object]
+    information_cutoff_utc: str
+    schedule_identity: Mapping[str, object]
+    optimization_metadata: Mapping[str, object]
+    input_fingerprints: Mapping[str, object]
+    diagnostics: tuple[EvaluationDiagnostic, ...]
+    physical_trace: Mapping[str, object]
+    physical_metrics: Mapping[str, object]
+    trace_fingerprint: str
+    status: str = "invalid_commitment_diagnostic"
+    settlement: None = field(default=None, init=False)
+    total_profit_eur: None = field(default=None, init=False)
+    comparison: None = field(default=None, init=False)
+    diagnostic_fingerprint: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        if self.status != "invalid_commitment_diagnostic":
+            raise FCRBidEvaluationValidationError(
+                "diagnostic report status must be invalid_commitment_diagnostic"
+            )
+        diagnostics = tuple(sorted(self.diagnostics, key=_diagnostic_sort_key))
+        if not diagnostics or any(item.severity != "error" for item in diagnostics):
+            raise FCRBidEvaluationValidationError(
+                "invalid commitment diagnostic requires preflight errors"
+            )
+        object.__setattr__(self, "diagnostics", diagnostics)
+        object.__setattr__(self, "producer", _freeze(self.producer))
+        object.__setattr__(self, "schedule_identity", _freeze(self.schedule_identity))
+        object.__setattr__(
+            self,
+            "optimization_metadata",
+            _freeze(self.optimization_metadata),
+        )
+        object.__setattr__(self, "input_fingerprints", _freeze(self.input_fingerprints))
+        object.__setattr__(self, "physical_trace", _freeze(self.physical_trace))
+        object.__setattr__(self, "physical_metrics", _freeze(self.physical_metrics))
+        object.__setattr__(
+            self,
+            "trace_fingerprint",
+            _sha256(self.trace_fingerprint, field_name="trace_fingerprint"),
+        )
+        object.__setattr__(
+            self,
+            "diagnostic_fingerprint",
+            _fingerprint(self._payload()),
+        )
+
+    def _payload(self) -> dict[str, object]:
+        return {
+            "evaluation_id": self.evaluation_id,
+            "status": self.status,
+            "plan_id": self.plan_id,
+            "producer": _thaw(self.producer),
+            "information_cutoff_utc": self.information_cutoff_utc,
+            "schedule_identity": _thaw(self.schedule_identity),
+            "optimization_metadata": _thaw(self.optimization_metadata),
+            "input_fingerprints": _thaw(self.input_fingerprints),
+            "diagnostics": [item.to_dict() for item in self.diagnostics],
+            "physical_trace": _thaw(self.physical_trace),
+            "physical_metrics": _thaw(self.physical_metrics),
+            "trace_fingerprint": self.trace_fingerprint,
+            "settlement": None,
+            "total_profit_eur": None,
+            "comparison": None,
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            **self._payload(),
+            "diagnostic_fingerprint": self.diagnostic_fingerprint,
+        }
+
+
 def _report_identity(request: FCRBidEvaluationRequest) -> dict[str, object]:
     return {
         "evaluation_id": request.evaluation_id,
@@ -989,6 +1098,16 @@ def _report_identity(request: FCRBidEvaluationRequest) -> dict[str, object]:
         "information_cutoff_utc": request.plan.information_cutoff_utc.isoformat().replace(
             "+00:00", "Z"
         ),
+        "schedule_identity": {
+            "energy": request.plan.energy_schedule_ref.to_dict(),
+            "fcr": request.plan.fcr_schedule_ref.to_dict(),
+        },
+        "optimization_metadata": {
+            "solve_status": request.plan.solve_status,
+            "objective": request.plan.objective.to_dict(),
+            "objective_bound": request.plan.objective_bound.to_dict(),
+        },
+        "input_fingerprints": _thaw(request.input_fingerprints),
         "plan_fingerprint": request.plan.plan_fingerprint,
         "evaluation_input_fingerprint": request.evaluation_input_fingerprint,
     }
@@ -1004,6 +1123,7 @@ def build_settled_evaluation_report(
     total_profit_eur: float,
     trace_fingerprint: str,
     settlement_fingerprint: str,
+    comparison: Mapping[str, object] | None,
     comparison_fingerprint: str | None,
 ) -> DailyFCRBidEvaluationReport:
     request.assert_battery_unchanged()
@@ -1017,6 +1137,7 @@ def build_settled_evaluation_report(
         total_profit_eur=total_profit_eur,
         trace_fingerprint=trace_fingerprint,
         settlement_fingerprint=settlement_fingerprint,
+        comparison=comparison,
         comparison_fingerprint=comparison_fingerprint,
     )
 
@@ -1036,6 +1157,7 @@ def build_validation_failed_evaluation_report(
         total_profit_eur=None,
         trace_fingerprint=None,
         settlement_fingerprint=None,
+        comparison=None,
         comparison_fingerprint=None,
     )
 
@@ -1671,6 +1793,46 @@ def _reference_actual_values(
     return values
 
 
+def _reference_domain_unavailable_comparison(
+    fixture: object,
+    *,
+    reason: str,
+) -> ReferenceComparisonReport:
+    from open_energy_lab.market.reference_fcr import GoldenReferenceFixture
+
+    if not isinstance(fixture, GoldenReferenceFixture):
+        raise FCRBidEvaluationValidationError(
+            "comparison fixture must be one GoldenReferenceFixture"
+        )
+    return ReferenceComparisonReport(
+        fixture_id=fixture.fixture_id,
+        policy_id=fixture.precision_policy.policy_id,
+        overall_status="unavailable",
+        fields=tuple(
+            ReferenceFieldComparison(
+                field_id=item.field_id,
+                status="unavailable",
+                comparison_rule=item.comparison_rule,
+                actual_value=None,
+                expected_value=(
+                    float(item.expected_value)
+                    if isinstance(item.expected_value, (int, float))
+                    else None
+                ),
+                unit=item.unit,
+                actual_interval=None,
+                expected_interval=None,
+                decision_bound=None,
+                aggregate_half_unit=None,
+                exact_rounded_match=None,
+                evidence_ref=item.reference_field_path,
+                reason=reason,
+            )
+            for item in fixture.expected_fields
+        ),
+    )
+
+
 def compare_reference_evaluation(
     request: FCRBidEvaluationRequest,
     report: DailyFCRBidEvaluationReport,
@@ -1721,12 +1883,28 @@ def compare_reference_evaluation(
         values["plan.objective"] = float(request.plan.objective.value)
     if request.plan.objective_bound.availability == "available":
         values["plan.objective_bound"] = float(request.plan.objective_bound.value)
-    comparison = compare_reference_values(
-        fixture=request.comparison_fixture,
-        actual_values=values,
-        activation_trace=request.activation_trace,
-        requested_field_ids=requested_field_ids,
-    )
+    if (
+        physical["saturation_event_count"] > 0
+        or physical["non_delivery_energy_kwh"] > request.numeric_tolerance
+    ):
+        if requested_field_ids is not None:
+            raise FCRBidEvaluationValidationError(
+                "field selection is unavailable outside the reference parity domain"
+            )
+        comparison = _reference_domain_unavailable_comparison(
+            request.comparison_fixture,
+            reason=(
+                "dynamic saturation or non-delivery is outside the declared "
+                "no-curtailment reference parity domain"
+            ),
+        )
+    else:
+        comparison = compare_reference_values(
+            fixture=request.comparison_fixture,
+            actual_values=values,
+            activation_trace=request.activation_trace,
+            requested_field_ids=requested_field_ids,
+        )
     if requested_field_ids is None and (
         report.comparison_fingerprint != comparison.comparison_fingerprint
     ):
@@ -1772,15 +1950,28 @@ def evaluate_fixed_fcr_bid(
     physical_metrics = _daily_physical_metrics(request, physical)
     comparison = None
     if request.comparison_fixture is not None:
-        comparison = compare_reference_values(
-            fixture=request.comparison_fixture,
-            actual_values=_reference_actual_values(
-                request,
-                physical_metrics,
-                settlement,
-            ),
-            activation_trace=request.activation_trace,
-        )
+        if (
+            physical_metrics["saturation_event_count"] > 0
+            or physical_metrics["non_delivery_energy_kwh"]
+            > request.numeric_tolerance
+        ):
+            comparison = _reference_domain_unavailable_comparison(
+                request.comparison_fixture,
+                reason=(
+                    "dynamic saturation or non-delivery is outside the declared "
+                    "no-curtailment reference parity domain"
+                ),
+            )
+        else:
+            comparison = compare_reference_values(
+                fixture=request.comparison_fixture,
+                actual_values=_reference_actual_values(
+                    request,
+                    physical_metrics,
+                    settlement,
+                ),
+                activation_trace=request.activation_trace,
+            )
         diagnostics = (
             *diagnostics,
             EvaluationDiagnostic(
@@ -1809,9 +2000,66 @@ def evaluate_fixed_fcr_bid(
         total_profit_eur=settlement.total_profit_eur,
         trace_fingerprint=trace_fingerprint,
         settlement_fingerprint=settlement.settlement_fingerprint,
+        comparison=None if comparison is None else comparison.to_dict(),
         comparison_fingerprint=(
             None if comparison is None else comparison.comparison_fingerprint
         ),
+    )
+
+
+def replay_invalid_fcr_bid_diagnostic(
+    request: FCRBidEvaluationRequest,
+) -> InvalidCommitmentDiagnosticReport:
+    """Replay only static headroom failures without settlement or comparison."""
+
+    if not isinstance(request, FCRBidEvaluationRequest):
+        raise FCRBidEvaluationValidationError(
+            "request must be one FCRBidEvaluationRequest"
+        )
+    diagnostics = _preflight_diagnostics(request)
+    errors = tuple(item for item in diagnostics if item.severity == "error")
+    if not errors:
+        raise FCRBidEvaluationValidationError(
+            "diagnostic replay requires a statically invalid accepted commitment"
+        )
+    diagnostic_codes = {
+        "charge_power_headroom_insufficient",
+        "discharge_power_headroom_insufficient",
+    }
+    unsupported = [item.code for item in errors if item.code not in diagnostic_codes]
+    if unsupported:
+        raise FCRBidEvaluationValidationError(
+            "diagnostic replay refuses integrity or input failures: "
+            + ", ".join(sorted(unsupported))
+        )
+
+    from .stacked_service import _PhysicalReplayInputs, _replay_physical_kernel
+
+    physical = _replay_physical_kernel(
+        _PhysicalReplayInputs(
+            activation_trace=request.activation_trace,
+            battery=request.battery,
+            energy_schedule=request.energy_schedule,
+            fcr_schedule=request.fcr_schedule,
+            time_contract=request.time_contract,
+            numeric_tolerance=request.numeric_tolerance,
+            terminal_soc_target=request.terminal_soc_target,
+        )
+    )
+    physical_trace = _physical_trace_payload(physical)
+    identity = _report_identity(request)
+    return InvalidCommitmentDiagnosticReport(
+        evaluation_id=request.evaluation_id,
+        plan_id=request.plan.plan_id,
+        producer=identity["producer"],
+        information_cutoff_utc=identity["information_cutoff_utc"],
+        schedule_identity=identity["schedule_identity"],
+        optimization_metadata=identity["optimization_metadata"],
+        input_fingerprints=identity["input_fingerprints"],
+        diagnostics=errors,
+        physical_trace=physical_trace,
+        physical_metrics=_daily_physical_metrics(request, physical),
+        trace_fingerprint=_fingerprint(physical_trace),
     )
 
 
@@ -1829,6 +2077,7 @@ __all__ = [
     "REFERENCE_SETTLEMENT_PROFILE",
     "ReferenceComparisonReport",
     "ReferenceFieldComparison",
+    "InvalidCommitmentDiagnosticReport",
     "build_feature_010_market_context",
     "build_settled_evaluation_report",
     "build_validation_failed_evaluation_report",
@@ -1836,5 +2085,6 @@ __all__ = [
     "compare_reference_evaluation",
     "compare_reference_values",
     "evaluate_fixed_fcr_bid",
+    "replay_invalid_fcr_bid_diagnostic",
     "recompute_reference_precision_bounds",
 ]

@@ -25,7 +25,7 @@ This suite proves the plan boundary, hand-calculable physics and accounting,
 failed-report behavior, Golden Reference Fixture provenance, precision formulas,
 deterministic fingerprints, and Feature 010 compatibility.
 
-The focused US1 evaluator gate is:
+The focused US1/US3 evaluator and audit gate is:
 
 ```bash
 uv run pytest \
@@ -34,11 +34,16 @@ uv run pytest \
   tests/unit/simulator/test_fcr_reference_settlement.py \
   tests/integration/simulator/test_fcr_bid_evaluation_manual.py \
   tests/integration/simulator/test_fcr_bid_evaluation_compatibility.py \
+  tests/unit/simulator/test_import_boundary.py \
   -q
 ```
 
-It must pass with both the settled authored oracle and deterministic
-`validation_failed` assertions. The runnable equivalents are:
+On 2026-08-26 this completed with `57 passed`. It asserts the settled authored
+oracle, directional requested/delivered FCR, delivered-only activation payment,
+explicit and absent penalties, strict component reconciliation, valid dynamic
+SOC saturation, deterministic `validation_failed` reports for static power
+headroom, non-economic diagnostic replay, complete report lineage, pinned
+fingerprints, and additive lazy exports. The runnable equivalents are:
 
 ```bash
 uv run python examples/fcr_bid_evaluation/run_manual_plan.py
@@ -135,9 +140,13 @@ precision. Stable content fingerprints were:
 
 ```text
 physical trace: f292f4990d99f6ca4aa7bb12c304b70751396e3c2005544577c58ceb153573f6
-settlement:     d8241f80dafc8c6b3444f479b74c6c16fd8f79fae4e9d73f60e6fc3177da0c7e
+settlement:     8e5382463fd8e9bd110214fa4cd87be7539ae0fab70eb4ead0bb2b55cbbf72ca
 comparison:     1e16c8f03f3c8c649ab1a435d8a14849f51b168b91fc7915df236c492a8b274e
 ```
+
+The settlement fingerprint above supersedes the pre-audit value after the
+versioned profile began serializing directional FCR energy and combined-FCR
+reconciliation. The physical trace and comparison fingerprint were unchanged.
 
 Activation-artifact, evaluation-input, and final-report fingerprints also bind
 the explicit file locator and therefore are checked for repeatability at a

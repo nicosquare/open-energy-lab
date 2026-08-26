@@ -11,6 +11,15 @@ from open_energy_lab.simulator.stacked_service import (
     StackedServiceValidationError,
     replay_stacked_services,
 )
+from open_energy_lab.simulator.fcr_bid_evaluation import (
+    evaluate_fixed_fcr_bid,
+    replay_invalid_fcr_bid_diagnostic,
+)
+from open_energy_lab.simulator.fcr_settlement import FCRPenaltyRule
+from tests.integration.simulator.fcr_bid_evaluation_fixture_utils import (
+    build_test_battery,
+    build_test_evaluation_case,
+)
 from tests.unit.simulator.test_stacked_service import _replay_request
 
 
@@ -144,3 +153,129 @@ def test_feature_010_default_settlement_payload_remains_exact() -> None:
         "degradation_cost_status": "not_modeled",
         "total_profit_eur": 0.8200000000000001,
     }
+
+
+def _dynamic_case(*, penalty_rule=None, comparison_fixture=None):
+    return build_test_evaluation_case(
+        powers_kw=(0.0, 0.0, 0.0, 0.0),
+        capacities_kw=(1.0,),
+        activation_values=(1.0,) * 8,
+        day_ahead_prices_eur_per_mwh=(100.0,) * 4,
+        fcr_capacity_prices_eur_per_kw_block=(0.08,),
+        battery=build_test_battery(
+            capacity_kwh=2.0,
+            max_charge_kw=2.0,
+            max_discharge_kw=2.0,
+            charge_efficiency=1.0,
+            discharge_efficiency=1.0,
+            initial_soc=0.25,
+            min_soc=0.0,
+            max_soc=1.0,
+        ),
+        settlement_profile="robust-storage-bidding-reference-settlement-v1",
+        penalty_rule=penalty_rule,
+        comparison_fixture=comparison_fixture,
+    )
+
+
+def test_reference_profile_zero_fcr_zero_energy_and_both_directions_share_path() -> None:
+    zero_fcr = build_test_evaluation_case(
+        powers_kw=(1.0, 0.0, 0.0, -1.0),
+        capacities_kw=(0.0,),
+        activation_values=(1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0, -1.0),
+        settlement_profile="robust-storage-bidding-reference-settlement-v1",
+    )
+    zero_energy = build_test_evaluation_case(
+        powers_kw=(0.0, 0.0, 0.0, 0.0),
+        capacities_kw=(1.0,),
+        activation_values=(1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0, -1.0),
+        settlement_profile="robust-storage-bidding-reference-settlement-v1",
+    )
+
+    zero_fcr_report = evaluate_fixed_fcr_bid(zero_fcr.request)
+    zero_energy_report = evaluate_fixed_fcr_bid(zero_energy.request)
+
+    assert zero_fcr_report.status == "settled"
+    assert zero_fcr_report.settlement["activation_energy_revenue"]["value_eur"] == 0.0
+    assert zero_energy_report.status == "settled"
+    directional = zero_energy_report.physical_metrics["requested_fcr_energy_kwh"]
+    assert directional["upward_discharge"] > 0.0
+    assert directional["downward_charge"] > 0.0
+
+
+def test_valid_dynamic_saturation_stays_settled_with_optional_explicit_penalty() -> None:
+    rule = FCRPenaltyRule(
+        rule_id="compatibility-non-delivery-v1",
+        measure="absolute_fcr_non_delivery_energy_kwh",
+        rate=0.02,
+        rate_unit="EUR/kWh",
+        application="sum per activation interval",
+    )
+    no_penalty = evaluate_fixed_fcr_bid(_dynamic_case().request)
+    configured = evaluate_fixed_fcr_bid(_dynamic_case(penalty_rule=rule).request)
+
+    assert no_penalty.status == configured.status == "settled"
+    assert no_penalty.physical_metrics == configured.physical_metrics
+    assert configured.physical_metrics["non_delivery_energy_kwh"] == pytest.approx(3.5)
+    assert no_penalty.settlement["penalty"]["value_eur"] == 0.0
+    assert configured.settlement["penalty"]["value_eur"] == pytest.approx(0.07)
+    assert configured.settlement["activation_energy_revenue"]["value_eur"] == (
+        pytest.approx(0.05)
+    )
+
+
+def test_static_headroom_failure_can_only_be_replayed_as_diagnostic() -> None:
+    case = build_test_evaluation_case(
+        powers_kw=(1.0, 0.0, 0.0, -1.0),
+        capacities_kw=(2.0,),
+        battery=build_test_battery(
+            capacity_kwh=5.0,
+            max_charge_kw=2.0,
+            max_discharge_kw=2.0,
+            initial_soc=0.5,
+            min_soc=0.0,
+            max_soc=1.0,
+        ),
+        settlement_profile="robust-storage-bidding-reference-settlement-v1",
+    )
+
+    failed = evaluate_fixed_fcr_bid(case.request)
+    diagnostic = replay_invalid_fcr_bid_diagnostic(case.request)
+
+    assert failed.status == "validation_failed"
+    assert failed.settlement is None
+    assert diagnostic.status == "invalid_commitment_diagnostic"
+    assert diagnostic.settlement is None
+    assert any(
+        sample["saturation_causes"]
+        for sample in diagnostic.physical_trace["samples"]
+    )
+
+
+def test_saturated_run_marks_reference_parity_unavailable() -> None:
+    from open_energy_lab.market.reference_fcr import load_golden_reference_fixture
+
+    fixture = load_golden_reference_fixture(
+        "tests/fixtures/fcr_bid_evaluation/"
+        "robust_storage_bidding_2023-06-18_aggregate_v1.json"
+    )
+    report = evaluate_fixed_fcr_bid(
+        _dynamic_case(comparison_fixture=fixture).request
+    )
+
+    assert report.status == "settled"
+    assert report.comparison["overall_status"] == "unavailable"
+    assert all(
+        item["status"] == "unavailable" for item in report.comparison["fields"]
+    )
+    assert "outside the declared" in report.comparison["fields"][0]["reason"]
+
+
+def test_feature_012_rejects_non_fcr_schedule_product_before_evaluation() -> None:
+    from dataclasses import replace
+    from open_energy_lab.control.fcr_bid_plan import FCRBidPlanValidationError
+
+    case = _dynamic_case()
+
+    with pytest.raises(FCRBidPlanValidationError, match="FCRCapacitySchedule"):
+        replace(case.plan, fcr_schedule=object())

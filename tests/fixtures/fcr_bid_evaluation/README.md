@@ -90,9 +90,14 @@ fixture:    6bce7f00bb38b257a6f5e4186a8b8dab06d7f5f41336238b499b153b3f7a59fd
 mapping:    53f1819fe433e55e87aa98f19f280dbdfabdef935658abd531bbe079fec88945
 plan:       6bbbf946b8d12762971e5b369d4f63fa57b0a17d8977ca84de4655927bf36f11
 trace:      f292f4990d99f6ca4aa7bb12c304b70751396e3c2005544577c58ceb153573f6
-settlement: d8241f80dafc8c6b3444f479b74c6c16fd8f79fae4e9d73f60e6fc3177da0c7e
+settlement: 8e5382463fd8e9bd110214fa4cd87be7539ae0fab70eb4ead0bb2b55cbbf72ca
 comparison: 1e16c8f03f3c8c649ab1a435d8a14849f51b168b91fc7915df236c492a8b274e
 ```
+
+The settlement fingerprint was revalidated after the Feature 012 audit schema
+added directional FCR energy and explicit combined-FCR reconciliation. That
+additive report change left the physical trace and comparison fingerprint
+unchanged.
 
 The activation artifact, evaluation-input, and final result fingerprints also
 bind the caller-supplied locator. They are intentionally not promoted as

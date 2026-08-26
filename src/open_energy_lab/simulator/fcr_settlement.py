@@ -146,6 +146,50 @@ class SettlementBreakdown:
 
 
 @dataclass(frozen=True, slots=True)
+class DirectionalFCREnergy:
+    """Non-cancelling directional FCR energy under charge-positive power."""
+
+    upward_discharge_kwh: float
+    downward_charge_kwh: float
+    signed_net_charge_positive_kwh: float
+    numeric_tolerance: float = field(repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        upward = _finite(
+            self.upward_discharge_kwh,
+            field_name="upward_discharge_kwh",
+        )
+        downward = _finite(
+            self.downward_charge_kwh,
+            field_name="downward_charge_kwh",
+        )
+        signed = _finite(
+            self.signed_net_charge_positive_kwh,
+            field_name="signed_net_charge_positive_kwh",
+        )
+        tolerance = _finite(self.numeric_tolerance, field_name="numeric_tolerance")
+        if upward < 0.0 or downward < 0.0 or tolerance <= 0.0:
+            raise FCRSettlementValidationError(
+                "directional FCR energy must be non-negative and tolerance positive"
+            )
+        if abs(signed - (downward - upward)) > tolerance:
+            raise FCRSettlementValidationError(
+                "directional FCR signed net must equal downward minus upward energy"
+            )
+        object.__setattr__(self, "upward_discharge_kwh", upward)
+        object.__setattr__(self, "downward_charge_kwh", downward)
+        object.__setattr__(self, "signed_net_charge_positive_kwh", signed)
+        object.__setattr__(self, "numeric_tolerance", tolerance)
+
+    def to_dict(self) -> dict[str, float]:
+        return {
+            "upward_discharge_kwh": self.upward_discharge_kwh,
+            "downward_charge_kwh": self.downward_charge_kwh,
+            "signed_net_charge_positive_kwh": self.signed_net_charge_positive_kwh,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ReferenceSettlementBreakdown:
     """Additive delivered-energy settlement for reference-result evaluation."""
 
@@ -153,18 +197,22 @@ class ReferenceSettlementBreakdown:
     day_ahead_revenue: ComponentAvailability
     fcr_capacity_revenue: ComponentAvailability
     activation_energy_revenue: ComponentAvailability
+    combined_fcr_revenue: ComponentAvailability
     penalty: ComponentAvailability
     intraday: ComponentAvailability
     imbalance: ComponentAvailability
     degradation: ComponentAvailability
     terminal_value: ComponentAvailability
     penalty_rule_id: str
+    requested_fcr_energy: DirectionalFCREnergy
+    delivered_fcr_energy: DirectionalFCREnergy
     non_delivery_energy_kwh: float
     charge_energy_kwh: float
     discharge_energy_kwh: float
     throughput_kwh: float
     total_profit_eur: float
     reconciliation_error_eur: float
+    numeric_tolerance: float = field(repr=False, compare=False)
     settlement_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
@@ -178,6 +226,7 @@ class ReferenceSettlementBreakdown:
             self.day_ahead_revenue,
             self.fcr_capacity_revenue,
             self.activation_energy_revenue,
+            self.combined_fcr_revenue,
             self.penalty,
             self.intraday,
             self.imbalance,
@@ -187,6 +236,14 @@ class ReferenceSettlementBreakdown:
         if any(not isinstance(item, ComponentAvailability) for item in components):
             raise FCRSettlementValidationError(
                 "reference settlement components must declare availability"
+            )
+        if not isinstance(self.requested_fcr_energy, DirectionalFCREnergy):
+            raise FCRSettlementValidationError(
+                "requested_fcr_energy must be DirectionalFCREnergy"
+            )
+        if not isinstance(self.delivered_fcr_energy, DirectionalFCREnergy):
+            raise FCRSettlementValidationError(
+                "delivered_fcr_energy must be DirectionalFCREnergy"
             )
         for field_name in (
             "non_delivery_energy_kwh",
@@ -198,6 +255,10 @@ class ReferenceSettlementBreakdown:
         ):
             value = _finite(getattr(self, field_name), field_name=field_name)
             object.__setattr__(self, field_name, value)
+        tolerance = _finite(self.numeric_tolerance, field_name="numeric_tolerance")
+        if tolerance <= 0.0:
+            raise FCRSettlementValidationError("numeric_tolerance must be positive")
+        object.__setattr__(self, "numeric_tolerance", tolerance)
         if any(
             value < 0.0
             for value in (
@@ -211,9 +272,48 @@ class ReferenceSettlementBreakdown:
             raise FCRSettlementValidationError(
                 "reference settlement energy and reconciliation values must be non-negative"
             )
-        if self.throughput_kwh != self.charge_energy_kwh + self.discharge_energy_kwh:
+        if abs(
+            self.throughput_kwh
+            - (self.charge_energy_kwh + self.discharge_energy_kwh)
+        ) > tolerance:
             raise FCRSettlementValidationError(
                 "reference settlement throughput must equal charge plus discharge energy"
+            )
+        required_available = (
+            self.day_ahead_revenue,
+            self.fcr_capacity_revenue,
+            self.activation_energy_revenue,
+            self.combined_fcr_revenue,
+            self.penalty,
+        )
+        if any(item.status != "available" for item in required_available):
+            raise FCRSettlementValidationError(
+                "reference profile revenue and penalty components must be available"
+            )
+        combined_error = abs(
+            self.combined_fcr_revenue.value_eur
+            - (
+                self.fcr_capacity_revenue.value_eur
+                + self.activation_energy_revenue.value_eur
+            )
+        )
+        if combined_error > tolerance:
+            raise FCRSettlementValidationError(
+                "combined FCR revenue must equal capacity plus activation revenue"
+            )
+        reconstructed = (
+            self.day_ahead_revenue.value_eur
+            + self.combined_fcr_revenue.value_eur
+            - self.penalty.value_eur
+        )
+        actual_error = abs(self.total_profit_eur - reconstructed)
+        if actual_error > tolerance:
+            raise FCRSettlementValidationError(
+                "reference settlement components do not reconcile to total profit"
+            )
+        if abs(self.reconciliation_error_eur - actual_error) > tolerance:
+            raise FCRSettlementValidationError(
+                "reference settlement reconciliation_error_eur is inconsistent"
             )
         object.__setattr__(
             self,
@@ -229,12 +329,15 @@ class ReferenceSettlementBreakdown:
             "day_ahead_revenue": self.day_ahead_revenue.to_dict(),
             "fcr_capacity_revenue": self.fcr_capacity_revenue.to_dict(),
             "activation_energy_revenue": self.activation_energy_revenue.to_dict(),
+            "combined_fcr_revenue": self.combined_fcr_revenue.to_dict(),
             "penalty": self.penalty.to_dict(),
             "intraday": self.intraday.to_dict(),
             "imbalance": self.imbalance.to_dict(),
             "degradation": self.degradation.to_dict(),
             "terminal_value": self.terminal_value.to_dict(),
             "penalty_rule_id": self.penalty_rule_id,
+            "requested_fcr_energy": self.requested_fcr_energy.to_dict(),
+            "delivered_fcr_energy": self.delivered_fcr_energy.to_dict(),
             "non_delivery_energy_kwh": self.non_delivery_energy_kwh,
             "charge_energy_kwh": self.charge_energy_kwh,
             "discharge_energy_kwh": self.discharge_energy_kwh,
@@ -252,6 +355,29 @@ class ReferenceSettlementBreakdown:
 
 def _same_interval(left: CanonicalInterval, right: CanonicalInterval) -> bool:
     return left.start_utc == right.start_utc and left.end_utc == right.end_utc
+
+
+def _directional_energy(
+    samples: Sequence[ReplaySample],
+    *,
+    power_field: str,
+    numeric_tolerance: float,
+) -> DirectionalFCREnergy:
+    upward = 0.0
+    downward = 0.0
+    for sample in samples:
+        power = float(getattr(sample, power_field))
+        duration = (
+            sample.interval.end_utc - sample.interval.start_utc
+        ).total_seconds() / 3600.0
+        upward += max(-power, 0.0) * duration
+        downward += max(power, 0.0) * duration
+    return DirectionalFCREnergy(
+        upward_discharge_kwh=upward,
+        downward_charge_kwh=downward,
+        signed_net_charge_positive_kwh=downward - upward,
+        numeric_tolerance=numeric_tolerance,
+    )
 
 
 def settle_stacked_services(
@@ -492,7 +618,8 @@ def settle_reference_fcr_bid(
             "penalty rule must be an explicit FCRPenaltyRule or None"
         )
     total = energy_revenue + capacity_revenue + activation_revenue - penalty
-    reconstructed = energy_revenue + capacity_revenue + activation_revenue - penalty
+    combined_fcr_revenue = capacity_revenue + activation_revenue
+    reconstructed = energy_revenue + combined_fcr_revenue - penalty
     reconciliation_error = abs(total - reconstructed)
     if reconciliation_error > request.numeric_tolerance:
         raise FCRSettlementValidationError(
@@ -503,6 +630,7 @@ def settle_reference_fcr_bid(
         day_ahead_revenue=ComponentAvailability.available(energy_revenue),
         fcr_capacity_revenue=ComponentAvailability.available(capacity_revenue),
         activation_energy_revenue=ComponentAvailability.available(activation_revenue),
+        combined_fcr_revenue=ComponentAvailability.available(combined_fcr_revenue),
         penalty=ComponentAvailability.available(penalty),
         intraday=ComponentAvailability.unavailable(
             "intraday settlement is unavailable in reference profile v1"
@@ -517,17 +645,29 @@ def settle_reference_fcr_bid(
             "terminal value is unavailable in reference profile v1"
         ),
         penalty_rule_id=penalty_rule_id,
+        requested_fcr_energy=_directional_energy(
+            replay_samples,
+            power_field="requested_fcr_power_kw",
+            numeric_tolerance=request.numeric_tolerance,
+        ),
+        delivered_fcr_energy=_directional_energy(
+            replay_samples,
+            power_field="delivered_fcr_power_kw",
+            numeric_tolerance=request.numeric_tolerance,
+        ),
         non_delivery_energy_kwh=non_delivery,
         charge_energy_kwh=charge_energy,
         discharge_energy_kwh=discharge_energy,
         throughput_kwh=charge_energy + discharge_energy,
         total_profit_eur=total,
         reconciliation_error_eur=reconciliation_error,
+        numeric_tolerance=request.numeric_tolerance,
     )
 
 
 __all__ = [
     "EnergySettlementInterval",
+    "DirectionalFCREnergy",
     "FCRPenaltyRule",
     "FCRSettlementBlock",
     "FCRSettlementValidationError",

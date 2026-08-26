@@ -172,6 +172,7 @@ def test_successful_and_failed_reports_have_disjoint_shapes() -> None:
         total_profit_eur=0.13,
         trace_fingerprint="d" * 64,
         settlement_fingerprint="e" * 64,
+        comparison=None,
         comparison_fingerprint=None,
     )
     failed = module.build_validation_failed_evaluation_report(
@@ -330,6 +331,153 @@ def test_repeated_evaluation_has_identical_trace_settlement_and_result_fingerpri
     assert first.trace_fingerprint == repeated.trace_fingerprint
     assert first.settlement_fingerprint == repeated.settlement_fingerprint
     assert first.result_fingerprint == repeated.result_fingerprint
+
+
+def _audit_battery(**overrides: object):
+    from tests.integration.simulator.fcr_bid_evaluation_fixture_utils import (
+        build_test_battery,
+    )
+
+    values = {
+        "capacity_kwh": 2.0,
+        "max_charge_kw": 2.0,
+        "max_discharge_kw": 2.0,
+        "charge_efficiency": 1.0,
+        "discharge_efficiency": 1.0,
+        "initial_soc": 0.25,
+        "min_soc": 0.0,
+        "max_soc": 1.0,
+    }
+    values.update(overrides)
+    return build_test_battery(**values)
+
+
+def test_valid_static_commitment_remains_settled_after_dynamic_soc_saturation() -> None:
+    case = _us1_case(
+        powers_kw=(0.0, 0.0, 0.0, 0.0),
+        activation_values=(1.0,) * 8,
+        day_ahead_prices_eur_per_mwh=(100.0,) * 4,
+        battery=_audit_battery(),
+    )
+
+    report = _module().evaluate_fixed_fcr_bid(case.request)
+
+    assert report.status == "settled"
+    assert [item.code for item in report.diagnostics] == ["preflight_valid"]
+    assert report.physical_metrics["saturation_sample_count"] == 7
+    assert report.physical_metrics["non_delivery_energy_kwh"] == pytest.approx(3.5)
+    assert report.settlement is not None
+    assert report.total_profit_eur is not None
+
+
+def test_static_headroom_failure_has_ordered_diagnostics_and_no_economic_output() -> None:
+    case = _us1_case(
+        capacities_kw=(2.0,),
+        battery=_audit_battery(capacity_kwh=5.0, initial_soc=0.5),
+    )
+
+    report = _module().evaluate_fixed_fcr_bid(case.request)
+
+    assert report.status == "validation_failed"
+    assert [item.code for item in report.diagnostics] == [
+        "charge_power_headroom_insufficient",
+        "discharge_power_headroom_insufficient",
+    ]
+    assert report.physical_trace is None
+    assert report.physical_metrics is None
+    assert report.settlement is None
+    assert report.total_profit_eur is None
+    assert report.comparison is None
+
+
+def test_invalid_commitment_diagnostic_is_explicitly_non_economic() -> None:
+    module = _module()
+    case = _us1_case(
+        capacities_kw=(2.0,),
+        battery=_audit_battery(capacity_kwh=5.0, initial_soc=0.5),
+    )
+
+    diagnostic = module.replay_invalid_fcr_bid_diagnostic(case.request)
+    repeated = module.replay_invalid_fcr_bid_diagnostic(case.request)
+
+    assert diagnostic.status == "invalid_commitment_diagnostic"
+    assert diagnostic.settlement is None
+    assert diagnostic.total_profit_eur is None
+    assert diagnostic.comparison is None
+    assert diagnostic.physical_trace["samples"][6]["saturation_causes"] == (
+        "discharge_power_limit",
+    )
+    assert diagnostic.diagnostic_fingerprint == repeated.diagnostic_fingerprint
+
+
+def test_diagnostic_replay_refuses_valid_or_integrity_failed_requests() -> None:
+    module = _module()
+    valid = _us1_case()
+
+    with pytest.raises(module.FCRBidEvaluationValidationError, match="statically invalid"):
+        module.replay_invalid_fcr_bid_diagnostic(valid.request)
+
+    corrupted = _us1_case()
+    object.__setattr__(
+        corrupted.plan.energy_schedule,
+        "schedule_fingerprint",
+        "0" * 64,
+    )
+    failed = module.evaluate_fixed_fcr_bid(corrupted.request)
+    assert failed.status == "validation_failed"
+    assert failed.diagnostics[0].code == "energy_schedule_fingerprint_mismatch"
+    with pytest.raises(module.FCRBidEvaluationValidationError, match="integrity"):
+        module.replay_invalid_fcr_bid_diagnostic(corrupted.request)
+
+
+def test_battery_mutation_produces_failed_report_without_replay_or_settlement() -> None:
+    case = _us1_case()
+    case.battery.initial_soc = 0.6
+
+    report = _module().evaluate_fixed_fcr_bid(case.request)
+
+    assert report.status == "validation_failed"
+    assert [item.code for item in report.diagnostics] == ["battery_mutated"]
+    assert report.physical_trace is None
+    assert report.settlement is None
+
+
+def test_diagnostic_result_cannot_enter_settlement_or_reference_comparison() -> None:
+    module = _module()
+    settlement = importlib.import_module("open_energy_lab.simulator.fcr_settlement")
+    reference = importlib.import_module("open_energy_lab.market.reference_fcr")
+    fixture = reference.load_golden_reference_fixture(REFERENCE_FIXTURE_PATH)
+    case = _us1_case(
+        capacities_kw=(2.0,),
+        battery=_audit_battery(capacity_kwh=5.0, initial_soc=0.5),
+        comparison_fixture=fixture,
+    )
+    diagnostic = module.replay_invalid_fcr_bid_diagnostic(case.request)
+
+    with pytest.raises(settlement.FCRSettlementValidationError, match="ReplaySample"):
+        settlement.settle_reference_fcr_bid(
+            case.request,
+            diagnostic.physical_trace["samples"],
+        )
+    with pytest.raises(module.FCRBidEvaluationValidationError, match="settled"):
+        module.compare_reference_evaluation(case.request, diagnostic)
+
+
+def test_daily_report_exposes_schedule_optimization_and_input_lineage() -> None:
+    case = _us1_case()
+    report = _module().evaluate_fixed_fcr_bid(case.request)
+
+    assert report.schedule_identity == {
+        "energy": case.plan.energy_schedule_ref.to_dict(),
+        "fcr": case.plan.fcr_schedule_ref.to_dict(),
+    }
+    assert report.optimization_metadata == {
+        "solve_status": "not_applicable",
+        "objective": case.plan.objective.to_dict(),
+        "objective_bound": case.plan.objective_bound.to_dict(),
+    }
+    assert report.input_fingerprints == case.request.input_fingerprints
+    assert report.to_dict()["comparison"] is None
 
 
 REFERENCE_FIXTURE_PATH = Path(

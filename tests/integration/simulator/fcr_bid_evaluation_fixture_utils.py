@@ -348,6 +348,8 @@ def build_test_evaluation_case(
     battery: BatteryComponent | None = None,
     settlement_profile: str = "feature-010-default-v1",
     producer_kind: str = "manual",
+    penalty_rule: object | None = None,
+    comparison_fixture: object | None = None,
 ) -> FCRBidEvaluationTestCase:
     contract = time_contract or build_test_time_contract()
     component = battery or build_test_battery()
@@ -385,9 +387,9 @@ def build_test_evaluation_case(
         battery=component,
         time_contract=contract,
         settlement_profile=settlement_profile,
-        penalty_rule=None,
+        penalty_rule=penalty_rule,
         terminal_soc_target=None,
-        comparison_fixture=None,
+        comparison_fixture=comparison_fixture,
         numeric_tolerance=1e-6,
     )
     return FCRBidEvaluationTestCase(

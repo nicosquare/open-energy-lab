@@ -8,7 +8,11 @@ from pathlib import Path
 
 import pytest
 
-from open_energy_lab.simulator.fcr_bid_evaluation import evaluate_fixed_fcr_bid
+from open_energy_lab.simulator.fcr_bid_evaluation import (
+    evaluate_fixed_fcr_bid,
+    replay_invalid_fcr_bid_diagnostic,
+)
+from open_energy_lab.simulator.fcr_settlement import FCRPenaltyRule
 from tests.integration.simulator.fcr_bid_evaluation_fixture_utils import (
     build_test_battery,
     build_test_evaluation_case,
@@ -60,6 +64,52 @@ def _case(fixture: dict[str, object]):
             initial_soc=battery["initial_soc"],
             min_soc=battery["min_soc"],
             max_soc=battery["max_soc"],
+        ),
+        settlement_profile="robust-storage-bidding-reference-settlement-v1",
+    )
+
+
+def _dynamic_saturation_case(fixture: dict[str, object]):
+    values = fixture["dynamic_saturation_case"]
+    battery = values["battery"]
+    penalty = values["penalty_rule"]
+    return build_test_evaluation_case(
+        powers_kw=tuple(values["energy_baseline_kw"]),
+        capacities_kw=tuple(values["fcr_capacity_kw"]),
+        activation_values=tuple(values["activation"]),
+        day_ahead_prices_eur_per_mwh=tuple(
+            values["day_ahead_prices_eur_per_mwh"]
+        ),
+        fcr_capacity_prices_eur_per_kw_block=tuple(
+            values["fcr_capacity_prices_eur_per_kw_block"]
+        ),
+        battery=build_test_battery(**battery),
+        settlement_profile="robust-storage-bidding-reference-settlement-v1",
+        penalty_rule=FCRPenaltyRule(**penalty),
+    )
+
+
+def _invalid_static_case(fixture: dict[str, object]):
+    values = fixture["invalid_static_headroom_case"]
+    return build_test_evaluation_case(
+        powers_kw=tuple(values["energy_baseline_kw"]),
+        capacities_kw=tuple(values["fcr_capacity_kw"]),
+        activation_values=tuple(fixture["activation"]["values"]),
+        day_ahead_prices_eur_per_mwh=tuple(
+            fixture["energy_schedule"]["prices_eur_per_mwh"]
+        ),
+        fcr_capacity_prices_eur_per_kw_block=tuple(
+            fixture["fcr_schedule"]["capacity_price_eur_per_kw_block"]
+        ),
+        battery=build_test_battery(
+            capacity_kwh=5.0,
+            max_charge_kw=values["battery_max_charge_kw"],
+            max_discharge_kw=values["battery_max_discharge_kw"],
+            charge_efficiency=0.8,
+            discharge_efficiency=0.8,
+            initial_soc=0.5,
+            min_soc=0.0,
+            max_soc=1.0,
         ),
         settlement_profile="robust-storage-bidding-reference-settlement-v1",
     )
@@ -196,3 +246,115 @@ def test_manual_fcr_bid_evaluation_matches_every_authored_value() -> None:
     assert report.trace_fingerprint == fixture["fingerprints"]["trace"]
     assert report.settlement_fingerprint == fixture["fingerprints"]["settlement"]
     assert report.result_fingerprint == fixture["fingerprints"]["result"]
+
+
+def test_dynamic_soc_saturation_matches_independent_delivery_and_penalty_oracle() -> None:
+    fixture = _fixture()
+    case = _dynamic_saturation_case(fixture)
+    expected = fixture["dynamic_saturation_case"]["expected"]
+
+    report = evaluate_fixed_fcr_bid(case.request)
+
+    assert report.status == "settled"
+    assert report.physical_metrics["stored_energy_kwh"] == pytest.approx(
+        expected["stored_energy_kwh"], abs=TOLERANCE
+    )
+    for field in (
+        "requested_power_kw",
+        "delivered_power_kw",
+        "requested_fcr_energy_kwh",
+        "delivered_fcr_energy_kwh",
+    ):
+        assert report.physical_metrics[field] == pytest.approx(
+            expected[field], abs=TOLERANCE
+        )
+    for field in (
+        "signed_tracking_error_kw_sum",
+        "absolute_tracking_error_kw_sum",
+        "non_delivery_energy_kwh",
+        "charge_energy_kwh",
+        "discharge_energy_kwh",
+        "throughput_kwh",
+        "saturation_sample_count",
+        "saturation_duration_hours",
+        "saturation_event_count",
+    ):
+        assert report.physical_metrics[field] == pytest.approx(
+            expected[field], abs=TOLERANCE
+        )
+    event = report.physical_trace["saturation_events"][0]
+    expected_event = expected["saturation_event"]
+    assert event["event_id"] == expected_event["event_id"]
+    assert event["cause"] == expected_event["cause"]
+    assert event["sample_count"] == expected_event["sample_count"]
+    assert event["duration_hours"] == pytest.approx(expected_event["duration_hours"])
+    assert event["undelivered_energy_kwh"] == pytest.approx(
+        expected_event["undelivered_energy_kwh"]
+    )
+    assert report.physical_trace["samples"][0]["saturation_causes"] == ()
+    assert all(
+        sample["saturation_causes"] == ("minimum_soc_limit",)
+        for sample in report.physical_trace["samples"][1:]
+    )
+
+    settlement = report.settlement
+    expected_settlement = expected["settlement"]
+    for component in (
+        "day_ahead_revenue",
+        "fcr_capacity_revenue",
+        "activation_energy_revenue",
+        "combined_fcr_revenue",
+        "penalty",
+    ):
+        key = component + "_eur"
+        assert settlement[component]["value_eur"] == pytest.approx(
+            expected_settlement[key], abs=TOLERANCE
+        )
+    assert settlement["total_profit_eur"] == pytest.approx(
+        expected_settlement["total_profit_eur"], abs=TOLERANCE
+    )
+    assert settlement["requested_fcr_energy"] == pytest.approx(
+        {
+            "upward_discharge_kwh": 4.0,
+            "downward_charge_kwh": 0.0,
+            "signed_net_charge_positive_kwh": -4.0,
+        }
+    )
+    assert settlement["delivered_fcr_energy"] == pytest.approx(
+        {
+            "upward_discharge_kwh": 0.5,
+            "downward_charge_kwh": 0.0,
+            "signed_net_charge_positive_kwh": -0.5,
+        }
+    )
+    assert report.result_fingerprint == fixture["fingerprints"][
+        "dynamic_saturation_result"
+    ]
+
+
+def test_static_failure_and_diagnostic_replay_remain_distinct() -> None:
+    fixture = _fixture()
+    case = _invalid_static_case(fixture)
+    expected = fixture["invalid_static_headroom_case"]
+
+    failed = evaluate_fixed_fcr_bid(case.request)
+    diagnostic = replay_invalid_fcr_bid_diagnostic(case.request)
+
+    assert failed.status == expected["expected_status"]
+    assert [item.code for item in failed.diagnostics] == expected[
+        "expected_diagnostic_codes"
+    ]
+    assert failed.physical_trace is expected["expected_trace"]
+    assert failed.settlement is expected["expected_settlement"]
+    assert failed.total_profit_eur is expected["expected_profit"]
+    assert diagnostic.status == expected["diagnostic_replay_status"]
+    assert diagnostic.settlement is None
+    assert diagnostic.total_profit_eur is None
+    saturation = expected["diagnostic_replay_expected_saturation"]
+    assert diagnostic.physical_trace["samples"][saturation["sample_index"]][
+        "saturation_causes"
+    ] == (saturation["cause"],)
+    assert failed.result_fingerprint == fixture["fingerprints"]["failed_report"]
+    assert diagnostic.diagnostic_fingerprint == fixture["fingerprints"][
+        "diagnostic_replay"
+    ]

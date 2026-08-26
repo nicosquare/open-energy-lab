@@ -20,6 +20,7 @@ if TYPE_CHECKING:
         EvaluationPriceObservation,
         FCRBidEvaluationRequest,
         FCRBidEvaluationValidationError,
+        InvalidCommitmentDiagnosticReport,
         ReferenceComparisonReport,
         ReferenceFieldComparison,
         build_feature_010_market_context,
@@ -29,12 +30,15 @@ if TYPE_CHECKING:
         compare_reference_values,
         evaluate_fixed_fcr_bid,
         recompute_reference_precision_bounds,
+        replay_invalid_fcr_bid_diagnostic,
     )
     from .fcr_settlement import (
+        DirectionalFCREnergy,
         EnergySettlementInterval,
         FCRPenaltyRule,
         FCRSettlementBlock,
         FCRSettlementValidationError,
+        ReferenceSettlementBreakdown,
         SettlementBreakdown,
         settle_stacked_services,
     )
@@ -164,6 +168,10 @@ _EXPORT_MAP = {
         ".fcr_bid_evaluation",
         "FCRBidEvaluationValidationError",
     ),
+    "InvalidCommitmentDiagnosticReport": (
+        ".fcr_bid_evaluation",
+        "InvalidCommitmentDiagnosticReport",
+    ),
     "ReferenceComparisonReport": (
         ".fcr_bid_evaluation",
         "ReferenceComparisonReport",
@@ -199,6 +207,10 @@ _EXPORT_MAP = {
     "recompute_reference_precision_bounds": (
         ".fcr_bid_evaluation",
         "recompute_reference_precision_bounds",
+    ),
+    "replay_invalid_fcr_bid_diagnostic": (
+        ".fcr_bid_evaluation",
+        "replay_invalid_fcr_bid_diagnostic",
     ),
     "ArbitrageObjectiveRepresentation": (".pricing", "ArbitrageObjectiveRepresentation"),
     "ArbitrageScenario": (".scenario", "ArbitrageScenario"),
@@ -296,6 +308,7 @@ _EXPORT_MAP = {
         ".fcr_settlement",
         "EnergySettlementInterval",
     ),
+    "DirectionalFCREnergy": (".fcr_settlement", "DirectionalFCREnergy"),
     "FCRPenaltyRule": (".fcr_settlement", "FCRPenaltyRule"),
     "FCRSettlementBlock": (".fcr_settlement", "FCRSettlementBlock"),
     "FCRSettlementValidationError": (
@@ -303,6 +316,10 @@ _EXPORT_MAP = {
         "FCRSettlementValidationError",
     ),
     "SettlementBreakdown": (".fcr_settlement", "SettlementBreakdown"),
+    "ReferenceSettlementBreakdown": (
+        ".fcr_settlement",
+        "ReferenceSettlementBreakdown",
+    ),
     "settle_stacked_services": (".fcr_settlement", "settle_stacked_services"),
     "RestorationSettlementValidationError": (
         ".restoration_settlement",
@@ -474,6 +491,7 @@ __all__ = [
     "FCRCapacitySchedule",
     "FCRBidEvaluationRequest",
     "FCRBidEvaluationValidationError",
+    "InvalidCommitmentDiagnosticReport",
     "ReferenceComparisonReport",
     "ReferenceFieldComparison",
     "FCRCommitmentInterval",
@@ -495,13 +513,16 @@ __all__ = [
     "compare_reference_evaluation",
     "compare_reference_values",
     "recompute_reference_precision_bounds",
+    "replay_invalid_fcr_bid_diagnostic",
     "replay_stacked_services",
     "replay_stacked_services_diagnostic",
     "EnergySettlementInterval",
+    "DirectionalFCREnergy",
     "FCRPenaltyRule",
     "FCRSettlementBlock",
     "FCRSettlementValidationError",
     "SettlementBreakdown",
+    "ReferenceSettlementBreakdown",
     "settle_stacked_services",
     "RestorationSettlementValidationError",
     "SettlementAvailability",
