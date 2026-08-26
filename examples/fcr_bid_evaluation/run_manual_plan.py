@@ -34,7 +34,19 @@ def _digest(value: object) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def _build_request(*, invalid_headroom: bool) -> FCRBidEvaluationRequest:
+def build_manual_request(
+    *,
+    invalid_headroom: bool = False,
+    producer_kind: str = "manual",
+) -> FCRBidEvaluationRequest:
+    """Build the deterministic authored request used by examples and notebooks."""
+
+    supported_producer_kinds = {"manual", "heuristic", "robust", "tpm"}
+    if producer_kind not in supported_producer_kinds:
+        supported = ", ".join(sorted(supported_producer_kinds))
+        raise ValueError(
+            f"producer_kind must be one of {supported}; got {producer_kind!r}"
+        )
     start = datetime(2023, 6, 17, 22, tzinfo=UTC)
     end = start + timedelta(hours=4)
     time_contract = MultiRateTimeContract(
@@ -194,7 +206,7 @@ def _build_request(*, invalid_headroom: bool) -> FCRBidEvaluationRequest:
         plan_id="manual-example-plan-v1",
         producer=BidPlanProducer(
             producer_id="manual-example",
-            producer_kind="manual",
+            producer_kind=producer_kind,
             producer_version="v1",
             configuration_fingerprint=_digest("manual-example-v1"),
             configuration_unavailable_reason=None,
@@ -241,7 +253,7 @@ def main() -> int:
         help="evaluate an intentionally invalid static reserve commitment",
     )
     args = parser.parse_args()
-    request = _build_request(invalid_headroom=args.invalid_headroom)
+    request = build_manual_request(invalid_headroom=args.invalid_headroom)
     report = evaluate_fixed_fcr_bid(request)
     print("objective:", request.plan.objective.unavailable_reason)
     print("objective bound:", request.plan.objective_bound.unavailable_reason)
