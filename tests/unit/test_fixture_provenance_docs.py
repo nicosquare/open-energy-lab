@@ -63,3 +63,29 @@ def test_feature_012_golden_fixture_provenance_is_complete_and_external_only() -
     ):
         missing = [term for term in required if term not in text]
         assert missing == [], f"{path} is missing Feature 012 evidence: {missing}"
+
+
+def test_feature_012_external_descriptor_is_consistent_across_user_guides() -> None:
+    paths = (
+        Path("tests/fixtures/fcr_bid_evaluation/README.md"),
+        Path("specs/012-fcr-bid-evaluation-parity/quickstart.md"),
+        Path("examples/fcr_bid_evaluation/README.md"),
+    )
+    required = (
+        "https://github.com/lauinger/robust-storage-bidding/releases/download/v0.1/regulation_signal.csv",
+        "0c2bf5203410f193c555460ec5593b546af42556f29afac821584e403c407d13",
+        "528805941",
+        "datetime,frequency (hz),xi,xi_eu",
+        "artifacts/reference/robust_storage_bidding/regulation_signal.csv",
+    )
+    for path in paths:
+        content = _read_text(path)
+        missing = [term for term in required if term not in content]
+        assert missing == [], f"{path} has an inconsistent external descriptor: {missing}"
+
+    fixture_policy = _read_text(paths[0])
+    assert "external_only" in fixture_policy
+    assert "pinned reference readme" in fixture_policy
+    assert "data/regulation_signal_info.txt" not in fixture_policy or (
+        "superseded" in fixture_policy
+    )

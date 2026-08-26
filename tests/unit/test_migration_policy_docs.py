@@ -267,3 +267,70 @@ def test_feature_012_migration_docs_define_common_environment_and_limits() -> No
         assert missing == [], f"{path} is missing Feature 012 policy: {missing}"
         assert "status = paper-compatible" not in content
         assert "is paper-compatible" not in content
+
+
+def test_feature_012_docs_use_exact_reference_terms_and_source_paths() -> None:
+    migration_path = Path("docs/migration/fcr-bid-evaluation-parity.md")
+    migration = _read_text(migration_path)
+    required_terms = (
+        "reference implementation",
+        "reference-result parity",
+        "energy baseline schedule",
+        "golden reference fixture",
+        "source_precision_compatible",
+    )
+    required_sources = (
+        "baselines/robust_storage_bidding/code/01_datastruct.jl",
+        "baselines/robust_storage_bidding/code/02_model.jl",
+        "baselines/robust_storage_bidding/code/03_backtest_save.jl",
+        "baselines/robust_storage_bidding/code/04_parse_results.jl",
+        "baselines/robust_storage_bidding/results/02/2023-06-18.json",
+        "baselines/robust_storage_bidding/results/result_overview.xlsx",
+    )
+    missing = [
+        term for term in required_terms + required_sources if term not in migration
+    ]
+    assert missing == [], f"{migration_path} is missing exact Feature 012 terms: {missing}"
+
+
+def test_feature_012_docs_bound_supported_and_unavailable_claims() -> None:
+    fixture_policy = _read_text(
+        Path("tests/fixtures/fcr_bid_evaluation/README.md")
+    )
+    parity_policy = _read_text(Path("docs/migration/parity-validation.md"))
+    for path, content in (
+        (Path("tests/fixtures/fcr_bid_evaluation/README.md"), fixture_policy),
+        (Path("docs/migration/parity-validation.md"), parity_policy),
+    ):
+        required = (
+            "aggregate",
+            "source_precision_compatible",
+            "unavailable",
+            "complete ten-second",
+            "directional fcr energy",
+            "throughput",
+        )
+        missing = [term for term in required if term not in content]
+        assert missing == [], f"{path} overstates or omits the parity boundary: {missing}"
+
+    claim_paths = (
+        Path("README.md"),
+        Path("docs/architecture/README.md"),
+        Path("docs/migration/fcr-bid-evaluation-parity.md"),
+        Path("docs/migration/parity-validation.md"),
+        Path("examples/fcr_bid_evaluation/README.md"),
+        Path("specs/012-fcr-bid-evaluation-parity/quickstart.md"),
+        Path("tests/fixtures/fcr_bid_evaluation/README.md"),
+    )
+    forbidden_claims = (
+        "status = paper-compatible",
+        "status: paper-compatible",
+        "is paper-compatible",
+        "are paper-compatible",
+        "must be paper-compatible",
+        "paper-compatible parity",
+    )
+    for path in claim_paths:
+        content = _read_text(path)
+        found = [claim for claim in forbidden_claims if claim in content]
+        assert found == [], f"{path} contains vague acceptance claims: {found}"

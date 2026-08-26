@@ -948,115 +948,9 @@ def _physical_samples(inputs: _PhysicalReplayInputs) -> tuple[ReplaySample, ...]
     return tuple(samples)
 
 
-def _state_checkpoints(
-    inputs: _PhysicalReplayInputs,
-    samples: tuple[ReplaySample, ...],
-) -> tuple[StateCheckpoint, ...]:
-    index = inputs.time_contract.index
-    initial = StateCheckpoint(
-        timestamp_utc=inputs.time_contract.start_utc,
-        sample_index=0,
-        soc=inputs.battery.initial_soc,
-        stored_energy_kwh=inputs.battery.initial_soc * inputs.battery.capacity_kwh,
-    )
-    checkpoints = [initial]
-    for checkpoint_index, interval in enumerate(index.checkpoint_intervals):
-        contained = [
-            sample_index
-            for sample_index, mapped in enumerate(index.activation_to_checkpoint)
-            if mapped == checkpoint_index
-        ]
-        last_sample_index = contained[-1]
-        sample = samples[last_sample_index]
-        checkpoints.append(
-            StateCheckpoint(
-                timestamp_utc=interval.end_utc,
-                sample_index=last_sample_index + 1,
-                soc=sample.soc_after,
-                stored_energy_kwh=sample.stored_energy_after_kwh,
-            )
-        )
-    return tuple(checkpoints)
-
-
-def _summaries(
-    samples: tuple[ReplaySample, ...],
-    intervals: Sequence[CanonicalInterval],
-    mapping: Sequence[int],
-) -> tuple[ReplayIntervalSummary, ...]:
-    result: list[ReplayIntervalSummary] = []
-    for group_index, interval in enumerate(intervals):
-        members = [
-            sample
-            for sample, mapped in zip(samples, mapping, strict=True)
-            if mapped == group_index
-        ]
-        charge = sum(sample.charge_energy_kwh for sample in members)
-        discharge = sum(sample.discharge_energy_kwh for sample in members)
-        result.append(
-            ReplayIntervalSummary(
-                interval=interval,
-                charge_energy_kwh=charge,
-                discharge_energy_kwh=discharge,
-                net_terminal_energy_kwh=charge - discharge,
-                non_delivery_energy_kwh=sum(
-                    sample.non_delivery_energy_kwh for sample in members
-                ),
-            )
-        )
-    return tuple(result)
-
-
-def _saturation_events(samples: tuple[ReplaySample, ...]) -> tuple[SaturationEvent, ...]:
-    cause_order = {
-        "charge_power_limit": 0,
-        "discharge_power_limit": 1,
-        "minimum_soc_limit": 2,
-        "maximum_soc_limit": 3,
-    }
-    spans: list[tuple[int, int, str]] = []
-    active: dict[str, int] = {}
-    for sample_index, sample in enumerate(samples):
-        current = set(sample.saturation_causes)
-        for cause in tuple(active):
-            if cause not in current:
-                spans.append((active.pop(cause), sample_index - 1, cause))
-        for cause in sample.saturation_causes:
-            active.setdefault(cause, sample_index)
-    for cause, start_index in active.items():
-        spans.append((start_index, len(samples) - 1, cause))
-    spans.sort(key=lambda item: (item[0], cause_order[item[2]], item[1]))
-    events: list[SaturationEvent] = []
-    for event_index, (start_index, end_index, cause) in enumerate(spans):
-        members = samples[start_index : end_index + 1]
-        start = members[0].interval.start_utc
-        end = members[-1].interval.end_utc
-        events.append(
-            SaturationEvent(
-                event_id=f"saturation-{event_index:04d}",
-                cause=cause,
-                start_utc=start,
-                end_utc=end,
-                sample_count=len(members),
-                duration_hours=(end - start).total_seconds() / 3600.0,
-                maximum_power_error_kw=max(
-                    abs(
-                        sample.requested_combined_power_kw
-                        - sample.delivered_combined_power_kw
-                    )
-                    for sample in members
-                ),
-                undelivered_energy_kwh=sum(
-                    sample.non_delivery_energy_kwh for sample in members
-                ),
-            )
-        )
-    return tuple(events)
-
-
 def _terminal_report(
     inputs: _PhysicalReplayInputs,
-    samples: tuple[ReplaySample, ...],
+    samples: Sequence[ReplaySample],
 ) -> TerminalSOCReport | None:
     target = inputs.terminal_soc_target
     if target is None:
@@ -1077,31 +971,193 @@ def _terminal_report(
     )
 
 
-def _replay_physical_kernel(
-    inputs: _PhysicalReplayInputs,
-) -> _PhysicalReplayKernelResult:
-    """Run the shared battery/replay path without market or settlement semantics."""
+def _summary_row(
+    interval: CanonicalInterval,
+    values: tuple[list[float], list[float], list[float]],
+) -> ReplayIntervalSummary:
+    """Finalize one group with Feature 010's exact ``sum`` semantics."""
 
-    samples = _physical_samples(inputs)
+    charge = sum(values[0])
+    discharge = sum(values[1])
+    return ReplayIntervalSummary(
+        interval=interval,
+        charge_energy_kwh=charge,
+        discharge_energy_kwh=discharge,
+        net_terminal_energy_kwh=charge - discharge,
+        non_delivery_energy_kwh=sum(values[2]),
+    )
+
+
+def _aggregate_physical_samples(
+    inputs: _PhysicalReplayInputs,
+    samples: Sequence[ReplaySample],
+) -> _PhysicalReplayKernelResult:
+    """Aggregate replay output in one pass over activation samples."""
+
     index = inputs.time_contract.index
-    checkpoints = _state_checkpoints(inputs, samples)
-    checkpoint_summaries = _summaries(
-        samples,
-        index.checkpoint_intervals,
-        index.activation_to_checkpoint,
+    grouped_values: dict[str, tuple[list[float], list[float], list[float]]] = {
+        "checkpoint": ([], [], []),
+        "energy": ([], [], []),
+        "fcr": ([], [], []),
+    }
+    grouped_summaries: dict[str, list[ReplayIntervalSummary]] = {
+        "checkpoint": [],
+        "energy": [],
+        "fcr": [],
+    }
+    checkpoints = [
+        StateCheckpoint(
+            timestamp_utc=inputs.time_contract.start_utc,
+            sample_index=0,
+            soc=inputs.battery.initial_soc,
+            stored_energy_kwh=(
+                inputs.battery.initial_soc * inputs.battery.capacity_kwh
+            ),
+        )
+    ]
+    aggregate_values: list[tuple[float, float, float, float, float, bool]] = []
+    saturation_sample_count = 0
+    # Preserve Feature 010's canonical JSON type: ``sum(...)`` returned the
+    # integer zero when no sample saturated and a float otherwise.
+    saturation_duration_hours: int | float = 0
+    active_events: dict[str, dict[str, object]] = {}
+    closed_events: list[dict[str, object]] = []
+
+    for sample_index, sample in enumerate(samples):
+        checkpoint_index = index.activation_to_checkpoint[sample_index]
+        energy_index = index.activation_to_energy[sample_index]
+        fcr_index = index.activation_to_fcr[sample_index]
+        for values in grouped_values.values():
+            values[0].append(sample.charge_energy_kwh)
+            values[1].append(sample.discharge_energy_kwh)
+            values[2].append(sample.non_delivery_energy_kwh)
+        aggregate_values.append(
+            (
+                sample.charge_energy_kwh,
+                sample.discharge_energy_kwh,
+                sample.signed_tracking_error_kw,
+                sample.absolute_tracking_error_kw,
+                sample.non_delivery_energy_kwh,
+                bool(sample.saturation_causes),
+            )
+        )
+
+        duration_hours = (
+            sample.interval.end_utc - sample.interval.start_utc
+        ).total_seconds() / 3600.0
+        current_causes = set(sample.saturation_causes)
+        if current_causes:
+            saturation_sample_count += 1
+            saturation_duration_hours += duration_hours
+        for cause in tuple(active_events):
+            if cause not in current_causes:
+                closed_events.append(active_events.pop(cause))
+        power_error = abs(
+            sample.requested_combined_power_kw - sample.delivered_combined_power_kw
+        )
+        for cause in sample.saturation_causes:
+            event = active_events.setdefault(
+                cause,
+                {
+                    "cause": cause,
+                    "start_index": sample_index,
+                    "end_index": sample_index,
+                    "start_utc": sample.interval.start_utc,
+                    "end_utc": sample.interval.end_utc,
+                    "sample_count": 0,
+                    "maximum_power_error_kw": 0.0,
+                    "undelivered_energy_kwh": 0.0,
+                },
+            )
+            event["end_index"] = sample_index
+            event["end_utc"] = sample.interval.end_utc
+            event["sample_count"] = int(event["sample_count"]) + 1
+            event["maximum_power_error_kw"] = max(
+                float(event["maximum_power_error_kw"]),
+                power_error,
+            )
+            event["undelivered_energy_kwh"] = (
+                float(event["undelivered_energy_kwh"])
+                + sample.non_delivery_energy_kwh
+            )
+
+        next_checkpoint = (
+            None
+            if sample_index + 1 == len(samples)
+            else index.activation_to_checkpoint[sample_index + 1]
+        )
+        next_energy = (
+            None
+            if sample_index + 1 == len(samples)
+            else index.activation_to_energy[sample_index + 1]
+        )
+        next_fcr = (
+            None
+            if sample_index + 1 == len(samples)
+            else index.activation_to_fcr[sample_index + 1]
+        )
+        for label, current_index, next_index, intervals in (
+            (
+                "checkpoint",
+                checkpoint_index,
+                next_checkpoint,
+                index.checkpoint_intervals,
+            ),
+            ("energy", energy_index, next_energy, index.energy_intervals),
+            ("fcr", fcr_index, next_fcr, index.fcr_intervals),
+        ):
+            if next_index != current_index:
+                grouped_summaries[label].append(
+                    _summary_row(intervals[current_index], grouped_values[label])
+                )
+                grouped_values[label] = ([], [], [])
+        if next_checkpoint != checkpoint_index:
+            checkpoints.append(
+                StateCheckpoint(
+                    timestamp_utc=index.checkpoint_intervals[
+                        checkpoint_index
+                    ].end_utc,
+                    sample_index=sample_index + 1,
+                    soc=sample.soc_after,
+                    stored_energy_kwh=sample.stored_energy_after_kwh,
+                )
+            )
+
+    closed_events.extend(active_events.values())
+    cause_order = {
+        "charge_power_limit": 0,
+        "discharge_power_limit": 1,
+        "minimum_soc_limit": 2,
+        "maximum_soc_limit": 3,
+    }
+    closed_events.sort(
+        key=lambda event: (
+            int(event["start_index"]),
+            cause_order[str(event["cause"])],
+            int(event["end_index"]),
+        )
     )
-    energy_summaries = _summaries(
-        samples,
-        index.energy_intervals,
-        index.activation_to_energy,
+    events = tuple(
+        SaturationEvent(
+            event_id=f"saturation-{event_index:04d}",
+            cause=str(event["cause"]),
+            start_utc=event["start_utc"],
+            end_utc=event["end_utc"],
+            sample_count=int(event["sample_count"]),
+            duration_hours=(
+                event["end_utc"] - event["start_utc"]
+            ).total_seconds()
+            / 3600.0,
+            maximum_power_error_kw=float(event["maximum_power_error_kw"]),
+            undelivered_energy_kwh=float(event["undelivered_energy_kwh"]),
+        )
+        for event_index, event in enumerate(closed_events)
     )
-    fcr_summaries = _summaries(
-        samples,
-        index.fcr_intervals,
-        index.activation_to_fcr,
-    )
-    charge_energy = sum(sample.charge_energy_kwh for sample in samples)
-    discharge_energy = sum(sample.discharge_energy_kwh for sample in samples)
+    checkpoint_summaries = tuple(grouped_summaries["checkpoint"])
+    energy_summaries = tuple(grouped_summaries["energy"])
+    fcr_summaries = tuple(grouped_summaries["fcr"])
+    charge_energy = sum(item[0] for item in aggregate_values)
+    discharge_energy = sum(item[1] for item in aggregate_values)
     for label, summaries in (
         ("checkpoint", checkpoint_summaries),
         ("energy", energy_summaries),
@@ -1116,42 +1172,41 @@ def _replay_physical_kernel(
             raise StackedServiceValidationError(
                 f"{label} aggregation does not conserve terminal energy"
             )
-    events = _saturation_events(samples)
-    duration_hours = (
-        index.activation_intervals[0].end_utc
-        - index.activation_intervals[0].start_utc
-    ).total_seconds() / 3600.0
-    tracking_summary = _freeze(
-        {
-            "signed_tracking_error_kw_sum": sum(
-                sample.signed_tracking_error_kw for sample in samples
-            ),
-            "absolute_tracking_error_kw_sum": sum(
-                sample.absolute_tracking_error_kw for sample in samples
-            ),
-            "non_delivery_energy_kwh": sum(
-                sample.non_delivery_energy_kwh for sample in samples
-            ),
-            "saturation_sample_count": sum(
-                bool(sample.saturation_causes) for sample in samples
-            ),
-            "saturation_duration_hours": sum(
-                duration_hours for sample in samples if sample.saturation_causes
-            ),
-            "saturation_event_count": len(events),
-        }
-    )
     return _PhysicalReplayKernelResult(
-        samples=samples,
-        state_checkpoints=checkpoints,
+        samples=samples if isinstance(samples, tuple) else tuple(samples),
+        state_checkpoints=tuple(checkpoints),
         checkpoint_summaries=checkpoint_summaries,
         energy_summaries=energy_summaries,
         fcr_summaries=fcr_summaries,
         saturation_events=events,
-        tracking_summary=tracking_summary,
+        tracking_summary=_freeze(
+            {
+                "signed_tracking_error_kw_sum": sum(
+                    item[2] for item in aggregate_values
+                ),
+                "absolute_tracking_error_kw_sum": sum(
+                    item[3] for item in aggregate_values
+                ),
+                "non_delivery_energy_kwh": sum(
+                    item[4] for item in aggregate_values
+                ),
+                "saturation_sample_count": saturation_sample_count,
+                "saturation_duration_hours": saturation_duration_hours,
+                "saturation_event_count": len(events),
+            }
+        ),
         throughput_kwh=charge_energy + discharge_energy,
         terminal_soc_report=_terminal_report(inputs, samples),
     )
+
+
+def _replay_physical_kernel(
+    inputs: _PhysicalReplayInputs,
+) -> _PhysicalReplayKernelResult:
+    """Run the shared battery/replay path without market or settlement semantics."""
+
+    samples = _physical_samples(inputs)
+    return _aggregate_physical_samples(inputs, samples)
 
 
 def _run_replay(

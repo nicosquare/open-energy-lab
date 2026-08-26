@@ -68,6 +68,10 @@ service capabilities remain outside the routine environment and import path.
 - [French aFRR/mFRR architecture and source contract](docs/architecture/rte-balancing-energy.md)
 - [French aFRR/mFRR migration and ownership note](docs/migration/afrr-mfrr-services.md)
 - [Offline restoration-services working example](examples/restoration_services/README.md)
+- [Feature 012 fixed-plan FCR evaluator design](specs/012-fcr-bid-evaluation-parity/plan.md)
+- [Feature 012 review and external-data quickstart](specs/012-fcr-bid-evaluation-parity/quickstart.md)
+- [FCR bid-evaluation migration and evidence boundary](docs/migration/fcr-bid-evaluation-parity.md)
+- [Runnable fixed-plan and bounded-reference examples](examples/fcr_bid_evaluation/README.md)
 - [Fixture provenance rules](tests/fixtures/README.md)
 - [Active Spec Kit plan](specs/001-library-foundation/plan.md)
 
@@ -86,6 +90,22 @@ This is a deterministic research replay, not a production dispatch service or
 bidding optimizer. Public RTE values remain French control-area aggregates;
 any battery activation shown by the example is explicitly labelled as a
 derived simulation scenario.
+
+## Fixed-Plan FCR Evaluation
+
+Feature 012 evaluates one existing hourly energy schedule and one existing
+four-hour FCR capacity schedule through a common physical replay, settlement,
+reporting, and validation environment. Manual, heuristic, robust, and future
+TPM bidders can therefore be compared without changing the evaluator according
+to how a plan was produced.
+
+The optional 2023-06-18 reference workflow maps decisions and aggregate evidence
+from the pinned implementation under `baselines/robust_storage_bidding/`. Its
+claim is bounded reference-result parity for supported aggregate fields under
+documented source-precision intervals. It neither generates bids nor claims
+complete ten-second Julia trace parity. Start with the
+[Feature 012 quickstart](specs/012-fcr-bid-evaluation-parity/quickstart.md) for
+routine offline checks and the explicit external-data workflow.
 
 ## Local Checks
 

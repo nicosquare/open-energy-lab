@@ -394,7 +394,7 @@ def settle_stacked_services(
         )
     if isinstance(samples, (str, bytes)) or not isinstance(samples, Sequence):
         raise FCRSettlementValidationError("samples must be a replay-sample sequence")
-    replay_samples = tuple(samples)
+    replay_samples = samples if isinstance(samples, tuple) else tuple(samples)
     if len(replay_samples) != len(request.time_contract.index.activation_intervals):
         raise FCRSettlementValidationError(
             "samples must exactly cover every activation interval"
@@ -515,16 +515,11 @@ def settle_reference_fcr_bid(
         )
     if isinstance(samples, (str, bytes)) or not isinstance(samples, Sequence):
         raise FCRSettlementValidationError("samples must be a replay-sample sequence")
-    replay_samples = tuple(samples)
+    replay_samples = samples if isinstance(samples, tuple) else tuple(samples)
     if len(replay_samples) != len(request.time_contract.index.activation_intervals):
         raise FCRSettlementValidationError(
             "samples must exactly cover every activation interval"
         )
-    if any(not isinstance(sample, ReplaySample) for sample in replay_samples):
-        raise FCRSettlementValidationError(
-            "samples contain a non-ReplaySample value"
-        )
-
     energy_revenue = 0.0
     if len(request.market_context.day_ahead_prices) != len(
         request.energy_schedule.intervals
@@ -591,7 +586,16 @@ def settle_reference_fcr_bid(
 
     index = request.time_contract.index
     activation_revenue = 0.0
+    requested_upward = 0.0
+    requested_downward = 0.0
+    delivered_upward = 0.0
+    delivered_downward = 0.0
+    aggregate_values: list[tuple[float, float, float]] = []
     for sample_index, sample in enumerate(replay_samples):
+        if not isinstance(sample, ReplaySample):
+            raise FCRSettlementValidationError(
+                "samples contain a non-ReplaySample value"
+            )
         energy_index = index.activation_to_energy[sample_index]
         price = request.market_context.day_ahead_prices[energy_index]
         duration = (
@@ -603,10 +607,21 @@ def settle_reference_fcr_bid(
             * price.canonical_value
             / 1000.0
         )
+        requested_upward += max(-sample.requested_fcr_power_kw, 0.0) * duration
+        requested_downward += max(sample.requested_fcr_power_kw, 0.0) * duration
+        delivered_upward += max(-sample.delivered_fcr_power_kw, 0.0) * duration
+        delivered_downward += max(sample.delivered_fcr_power_kw, 0.0) * duration
+        aggregate_values.append(
+            (
+                sample.non_delivery_energy_kwh,
+                sample.charge_energy_kwh,
+                sample.discharge_energy_kwh,
+            )
+        )
 
-    non_delivery = sum(sample.non_delivery_energy_kwh for sample in replay_samples)
-    charge_energy = sum(sample.charge_energy_kwh for sample in replay_samples)
-    discharge_energy = sum(sample.discharge_energy_kwh for sample in replay_samples)
+    non_delivery = sum(item[0] for item in aggregate_values)
+    charge_energy = sum(item[1] for item in aggregate_values)
+    discharge_energy = sum(item[2] for item in aggregate_values)
     if request.penalty_rule is None:
         penalty_rule_id = "no_penalty_rule"
         penalty = 0.0
@@ -645,14 +660,20 @@ def settle_reference_fcr_bid(
             "terminal value is unavailable in reference profile v1"
         ),
         penalty_rule_id=penalty_rule_id,
-        requested_fcr_energy=_directional_energy(
-            replay_samples,
-            power_field="requested_fcr_power_kw",
+        requested_fcr_energy=DirectionalFCREnergy(
+            upward_discharge_kwh=requested_upward,
+            downward_charge_kwh=requested_downward,
+            signed_net_charge_positive_kwh=(
+                requested_downward - requested_upward
+            ),
             numeric_tolerance=request.numeric_tolerance,
         ),
-        delivered_fcr_energy=_directional_energy(
-            replay_samples,
-            power_field="delivered_fcr_power_kw",
+        delivered_fcr_energy=DirectionalFCREnergy(
+            upward_discharge_kwh=delivered_upward,
+            downward_charge_kwh=delivered_downward,
+            signed_net_charge_positive_kwh=(
+                delivered_downward - delivered_upward
+            ),
             numeric_tolerance=request.numeric_tolerance,
         ),
         non_delivery_energy_kwh=non_delivery,

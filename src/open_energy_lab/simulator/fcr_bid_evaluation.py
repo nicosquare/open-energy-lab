@@ -1223,24 +1223,6 @@ def _preflight_diagnostics(
             "market_context.day_ahead_prices",
             "day-ahead prices must align one-to-one with hourly schedule intervals",
         )
-    else:
-        for index, (schedule, price) in enumerate(
-            zip(request.energy_schedule.intervals, day_prices, strict=True)
-        ):
-            if not _same_interval(schedule.interval, price.interval):
-                reject(
-                    "day_ahead_price_alignment_mismatch",
-                    f"market_context.day_ahead_prices[{index}]",
-                    "day-ahead price interval does not match the energy schedule",
-                    (price.source_ref,),
-                )
-            if price.canonical_unit != "EUR/MWh":
-                reject(
-                    "day_ahead_price_unit_mismatch",
-                    f"market_context.day_ahead_prices[{index}].canonical_unit",
-                    "day-ahead price canonical unit must be EUR/MWh",
-                    (price.source_ref,),
-                )
 
     fcr_prices = request.market_context.fcr_capacity_prices
     if len(fcr_prices) != len(request.fcr_schedule.intervals):
@@ -1320,31 +1302,54 @@ def _preflight_diagnostics(
                     (price.source_ref,),
                 )
 
-        for energy_index, baseline in enumerate(request.energy_schedule.intervals):
-            if (
-                baseline.interval.start_utc >= commitment.interval.start_utc
-                and baseline.interval.end_utc <= commitment.interval.end_utc
-            ):
-                if (
-                    baseline.power_kw + commitment.capacity_kw
-                    > request.battery.max_charge_kw + request.numeric_tolerance
-                ):
-                    reject(
-                        "charge_power_headroom_insufficient",
-                        f"plan.energy_schedule.intervals[{energy_index}].power_kw",
-                        "accepted commitment lacks charge power headroom",
-                        (f"fcr:{index}",),
-                    )
-                if (
-                    baseline.power_kw - commitment.capacity_kw
-                    < -request.battery.max_discharge_kw - request.numeric_tolerance
-                ):
-                    reject(
-                        "discharge_power_headroom_insufficient",
-                        f"plan.energy_schedule.intervals[{energy_index}].power_kw",
-                        "accepted commitment lacks discharge power headroom",
-                        (f"fcr:{index}",),
-                    )
+    # Both schedules are already validated as ordered, complete, and aligned.
+    # Combine hourly price and headroom checks so fingerprint verification plus
+    # this loop are the only two complete energy-schedule passes.
+    fcr_index = 0
+    commitments = request.fcr_schedule.intervals
+    for energy_index, baseline in enumerate(request.energy_schedule.intervals):
+        if len(day_prices) == len(request.energy_schedule.intervals):
+            price = day_prices[energy_index]
+            if not _same_interval(baseline.interval, price.interval):
+                reject(
+                    "day_ahead_price_alignment_mismatch",
+                    f"market_context.day_ahead_prices[{energy_index}]",
+                    "day-ahead price interval does not match the energy schedule",
+                    (price.source_ref,),
+                )
+            if price.canonical_unit != "EUR/MWh":
+                reject(
+                    "day_ahead_price_unit_mismatch",
+                    f"market_context.day_ahead_prices[{energy_index}].canonical_unit",
+                    "day-ahead price canonical unit must be EUR/MWh",
+                    (price.source_ref,),
+                )
+        while (
+            fcr_index + 1 < len(commitments)
+            and baseline.interval.start_utc >= commitments[fcr_index].interval.end_utc
+        ):
+            fcr_index += 1
+        commitment = commitments[fcr_index]
+        if (
+            baseline.power_kw + commitment.capacity_kw
+            > request.battery.max_charge_kw + request.numeric_tolerance
+        ):
+            reject(
+                "charge_power_headroom_insufficient",
+                f"plan.energy_schedule.intervals[{energy_index}].power_kw",
+                "accepted commitment lacks charge power headroom",
+                (f"fcr:{fcr_index}",),
+            )
+        if (
+            baseline.power_kw - commitment.capacity_kw
+            < -request.battery.max_discharge_kw - request.numeric_tolerance
+        ):
+            reject(
+                "discharge_power_headroom_insufficient",
+                f"plan.energy_schedule.intervals[{energy_index}].power_kw",
+                "accepted commitment lacks discharge power headroom",
+                (f"fcr:{fcr_index}",),
+            )
 
     if request.settlement_profile != REFERENCE_SETTLEMENT_PROFILE:
         reject(
@@ -1370,27 +1375,6 @@ def _preflight_diagnostics(
     )
 
 
-def _directional_fcr_energy(
-    samples: Sequence[object],
-    *,
-    power_field: str,
-) -> dict[str, float]:
-    upward = 0.0
-    downward = 0.0
-    for sample in samples:
-        power = float(getattr(sample, power_field))
-        duration = (
-            sample.interval.end_utc - sample.interval.start_utc
-        ).total_seconds() / 3600.0
-        upward += max(-power, 0.0) * duration
-        downward += max(power, 0.0) * duration
-    return {
-        "upward_discharge": upward,
-        "downward_charge": downward,
-        "signed_net_charge_positive": downward - upward,
-    }
-
-
 def _physical_trace_payload(physical: object) -> dict[str, object]:
     return {
         "samples": [sample.to_dict() for sample in physical.samples],
@@ -1413,13 +1397,51 @@ def _daily_physical_metrics(
     physical: object,
 ) -> dict[str, object]:
     samples = physical.samples
-    stored_values = [physical.state_checkpoints[0].stored_energy_kwh] + [
-        sample.stored_energy_after_kwh for sample in samples
-    ]
-    requested_powers = [sample.requested_combined_power_kw for sample in samples]
-    delivered_powers = [sample.delivered_combined_power_kw for sample in samples]
-    charge_energy = sum(sample.charge_energy_kwh for sample in samples)
-    discharge_energy = sum(sample.discharge_energy_kwh for sample in samples)
+    initial_stored = physical.state_checkpoints[0].stored_energy_kwh
+    minimum_stored = initial_stored
+    maximum_stored = initial_stored
+    terminal_stored = initial_stored
+    minimum_requested = math.inf
+    maximum_requested = -math.inf
+    minimum_delivered = math.inf
+    maximum_delivered = -math.inf
+    requested_upward = 0.0
+    requested_downward = 0.0
+    delivered_upward = 0.0
+    delivered_downward = 0.0
+    energy_values: list[tuple[float, float]] = []
+    for sample in samples:
+        terminal_stored = sample.stored_energy_after_kwh
+        minimum_stored = min(minimum_stored, terminal_stored)
+        maximum_stored = max(maximum_stored, terminal_stored)
+        minimum_requested = min(
+            minimum_requested,
+            sample.requested_combined_power_kw,
+        )
+        maximum_requested = max(
+            maximum_requested,
+            sample.requested_combined_power_kw,
+        )
+        minimum_delivered = min(
+            minimum_delivered,
+            sample.delivered_combined_power_kw,
+        )
+        maximum_delivered = max(
+            maximum_delivered,
+            sample.delivered_combined_power_kw,
+        )
+        duration = (
+            sample.interval.end_utc - sample.interval.start_utc
+        ).total_seconds() / 3600.0
+        requested_upward += max(-sample.requested_fcr_power_kw, 0.0) * duration
+        requested_downward += max(sample.requested_fcr_power_kw, 0.0) * duration
+        delivered_upward += max(-sample.delivered_fcr_power_kw, 0.0) * duration
+        delivered_downward += max(sample.delivered_fcr_power_kw, 0.0) * duration
+        energy_values.append(
+            (sample.charge_energy_kwh, sample.discharge_energy_kwh)
+        )
+    charge_energy = sum(item[0] for item in energy_values)
+    discharge_energy = sum(item[1] for item in energy_values)
     capacity = request.battery.capacity_kwh
     return {
         "interval_counts": {
@@ -1429,33 +1451,35 @@ def _daily_physical_metrics(
             "fcr": len(request.fcr_schedule.intervals),
         },
         "stored_energy_kwh": {
-            "initial": stored_values[0],
-            "minimum": min(stored_values),
-            "maximum": max(stored_values),
-            "terminal": stored_values[-1],
+            "initial": initial_stored,
+            "minimum": minimum_stored,
+            "maximum": maximum_stored,
+            "terminal": terminal_stored,
         },
         "soc_fraction": {
-            "initial": stored_values[0] / capacity,
-            "minimum": min(stored_values) / capacity,
-            "maximum": max(stored_values) / capacity,
-            "terminal": stored_values[-1] / capacity,
+            "initial": initial_stored / capacity,
+            "minimum": minimum_stored / capacity,
+            "maximum": maximum_stored / capacity,
+            "terminal": terminal_stored / capacity,
         },
         "requested_power_kw": {
-            "minimum": min(requested_powers),
-            "maximum": max(requested_powers),
+            "minimum": minimum_requested,
+            "maximum": maximum_requested,
         },
         "delivered_power_kw": {
-            "minimum": min(delivered_powers),
-            "maximum": max(delivered_powers),
+            "minimum": minimum_delivered,
+            "maximum": maximum_delivered,
         },
-        "requested_fcr_energy_kwh": _directional_fcr_energy(
-            samples,
-            power_field="requested_fcr_power_kw",
-        ),
-        "delivered_fcr_energy_kwh": _directional_fcr_energy(
-            samples,
-            power_field="delivered_fcr_power_kw",
-        ),
+        "requested_fcr_energy_kwh": {
+            "upward_discharge": requested_upward,
+            "downward_charge": requested_downward,
+            "signed_net_charge_positive": requested_downward - requested_upward,
+        },
+        "delivered_fcr_energy_kwh": {
+            "upward_discharge": delivered_upward,
+            "downward_charge": delivered_downward,
+            "signed_net_charge_positive": delivered_downward - delivered_upward,
+        },
         "charge_energy_kwh": charge_energy,
         "discharge_energy_kwh": discharge_energy,
         "throughput_kwh": charge_energy + discharge_energy,

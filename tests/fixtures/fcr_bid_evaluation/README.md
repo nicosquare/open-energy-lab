@@ -24,7 +24,7 @@ evidence, precision bounds, and an external-data descriptor. It is not a copy
 of the original result or regulation signal.
 
 Reference-result claims are limited to fields supported by the generated JSON.
-Detailed ten-second state, tracking, non-delivery, saturation, directional FCR
+Complete ten-second state, tracking, non-delivery, saturation, directional FCR
 energy, separate observed FCR subrevenues, and Open Energy Lab throughput remain
 unavailable as reference evidence.
 
