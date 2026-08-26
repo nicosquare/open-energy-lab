@@ -66,6 +66,29 @@ uv run python examples/fcr_bid_evaluation/run_manual_plan.py
 uv run python examples/fcr_bid_evaluation/run_manual_plan.py --invalid-headroom
 ```
 
+### Final routine and scaling record
+
+After the SC-014 bounded-pass refactor, the complete routine command required by
+Feature 012 was rerun exactly as follows:
+
+```bash
+uv run pytest \
+  tests/unit/control/test_fcr_bid_plan.py \
+  tests/unit/market/test_reference_fcr.py \
+  tests/unit/simulator/test_fcr_bid_evaluation.py \
+  tests/unit/simulator/test_fcr_reference_settlement.py \
+  tests/integration/simulator/ \
+  -m "not external_reference_data and not reference_benchmark"
+
+uv run pytest tests/unit/simulator/test_fcr_bid_evaluation_scaling.py -q
+```
+
+On 2026-08-26 these commands completed with `215 passed, 4 deselected` and
+`1 passed`, respectively. The scaling test uses an instrumented 8,640-sample
+ordinary day rather than a wall-clock threshold and enforces no more than two
+complete primary-collection iterations per validation, replay, aggregation,
+settlement, comparison, or fingerprint-materialization stage.
+
 ## 2. Inspect The Committed Evidence
 
 ```bash
@@ -174,6 +197,25 @@ Activation-artifact, evaluation-input, and final-report fingerprints also bind
 the explicit file locator and therefore are checked for repeatability at a
 given installation path rather than treated as path-independent golden values.
 
+### Final post-polish full-data regression
+
+After the bounded-pass and documentation changes, the explicit consumer above
+was rerun using the regular digest-verified file at the documented ignored
+artifact path. It again settled all 8,640 samples with overall
+`source_precision_compatible`, zero supported mismatches, and the same exact
+trace and comparison fingerprints recorded at T039. The settlement fingerprint
+remained the intentional post-audit value shown above; its difference from
+T039's `d8241f80dafc8c6b3444f479b74c6c16fd8f79fae4e9d73f60e6fc3177da0c7e`
+is solely the versioned addition of directional FCR energy and combined-FCR
+reconciliation, not physical or economic drift.
+
+The explicitly selected integration command completed with `3 passed` in
+57.93 seconds. At the documented artifact locator the path-bound final report
+fingerprint was
+`6aa9c1e75101354523432adecbf6b8dfb7fa946211151ebcfc7e767575777bb3`;
+the path-independent trace, settlement, and comparison values stayed exactly
+as recorded above.
+
 ## 5. Evaluate Another Fixed Plan
 
 Every bidder supplies the existing schedule types, then wraps them once:
@@ -275,7 +317,7 @@ uv run pytest \
 ```
 
 On 2026-08-26 this gate passed `121` tests. The broad unchanged market,
-control, simulator, fixture-generation, and integration suite passed `844`
+control, simulator, fixture-generation, and integration suite passed `845`
 tests with five explicitly excluded live/reference-data/benchmark selections:
 
 ```bash
@@ -285,6 +327,12 @@ uv run pytest \
   -m "not live_entsoe and not reference_benchmark and not external_reference_data" \
   -q
 ```
+
+The narrower unchanged Feature 010 command immediately above passed `54` tests
+with the benchmark deselected, and the import/lazy/no-reference-import command
+passed `128` tests. The extra broad-suite test relative to the earlier record is
+the new Feature 012 scaling gate; no existing Feature 010 result or fingerprint
+changed.
 
 ### Explicit Feature 010 benchmark result
 
@@ -301,7 +349,30 @@ All five measured artifact-load/replay/settlement/fingerprint runs were below
 the Feature 010 ten-second limit. This check required no network or credential;
 there was no environment-only limitation to record.
 
-## 7. Refresh Reference Evidence Deliberately
+## 7. Distribution Inspection
+
+Build both distributions and inspect their complete manifests:
+
+```bash
+uv build
+unzip -l dist/open_energy_lab-0.1.0-py3-none-any.whl
+tar -tvf dist/open_energy_lab-0.1.0.tar.gz
+```
+
+On 2026-08-26 the final build produced a 369,822-byte wheel containing 86 files
+and a 1,519,529-byte sdist containing 690 files. Neither manifest contained
+`regulation_signal.csv`, an `artifacts/` path, or a `baselines/` path. The wheel
+contained no reference data. The sdist contained only the two intended small,
+reviewable Feature 012 JSON fixtures:
+
+```text
+tests/fixtures/fcr_bid_evaluation/manual_fcr_bid_evaluation_v1.json
+tests/fixtures/fcr_bid_evaluation/robust_storage_bidding_2023-06-18_aggregate_v1.json
+```
+
+The generated `dist/` directory remains ignored and is not fixture evidence.
+
+## 8. Refresh Reference Evidence Deliberately
 
 Reference execution is not part of normal validation. If an authorized
 researcher intentionally refreshes it, run the baseline in its own project and

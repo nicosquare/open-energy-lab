@@ -146,6 +146,17 @@ added directional FCR energy and explicit combined-FCR reconciliation. That
 additive report change left the physical trace and comparison fingerprint
 unchanged.
 
+The final post-polish run on 2026-08-26 used a regular copy of the same
+digest-verified bytes at the documented ignored artifact path. The explicit
+consumer again reported `source_precision_compatible` with no supported
+mismatches, and the selected `external_reference_data` integration command
+reported `3 passed`. The trace and comparison fingerprints exactly matched the
+T039 acceptance record. The settlement fingerprint remained the documented
+post-audit value above; T039's earlier
+`d8241f80dafc8c6b3444f479b74c6c16fd8f79fae4e9d73f60e6fc3177da0c7e`
+predated the versioned directional-energy and combined-FCR reconciliation
+fields and is intentionally superseded.
+
 The activation artifact, evaluation-input, and final result fingerprints also
 bind the caller-supplied locator. They are intentionally not promoted as
 location-independent golden values; placing identical bytes at the supported
