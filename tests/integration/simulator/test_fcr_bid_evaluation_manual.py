@@ -236,6 +236,7 @@ def test_manual_fcr_bid_evaluation_matches_every_authored_value() -> None:
         abs=TOLERANCE,
     )
     assert report.physical_trace == repeated.physical_trace
+    assert report.canonical_bytes() == repeated.canonical_bytes()
     assert report.trace_fingerprint == repeated.trace_fingerprint
     assert report.settlement_fingerprint == repeated.settlement_fingerprint
     assert report.result_fingerprint == repeated.result_fingerprint

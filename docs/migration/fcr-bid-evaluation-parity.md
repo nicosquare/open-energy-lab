@@ -91,6 +91,22 @@ The following paths are read-only behavioral and provenance evidence:
 No production module resolves these paths. Routine tests consume only committed
 Open Energy Lab fixtures.
 
+## Validation And Environment Boundary
+
+The routine common-environment suite uses a hand-calculable oracle and the
+Golden Reference Fixture. It requires no Julia, no Gurobi, no network, no
+external CSV, and no initialized reference implementation submodule. The full
+2023-06-18 aggregate run is marked `external_reference_data` and accepts only an
+explicit caller path with the declared digest and structure.
+
+Aggregate comparison can be `exact`, `source_precision_compatible`, `mismatch`,
+or `unavailable`. The generated JSON does not support complete ten-second trace
+parity, so detailed delivery, tracking, saturation, directional energy,
+throughput, and separate FCR subrevenue remain invariant-only or unavailable
+reference evidence. A normalizer validates explicit generated JSON and writes
+canonical semantic differences below ignored `artifacts/`; it never executes or
+mutates the baseline.
+
 ## Out Of Scope
 
 - Bid generation or optimization, including Pyomo, HiGHS, Gurobi, robust

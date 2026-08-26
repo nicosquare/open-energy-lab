@@ -28,6 +28,35 @@ Detailed ten-second state, tracking, non-delivery, saturation, directional FCR
 energy, separate observed FCR subrevenues, and Open Energy Lab throughput remain
 unavailable as reference evidence.
 
+The Golden Reference Fixture provenance is fixed as follows:
+
+- origin: Experiment 2 from the reference implementation at commit
+  `7e44738bb30e5c8204efe40103b9be4c2203685c`;
+- generation command, from `baselines/robust_storage_bidding/code/`:
+  `julia --project=. 12.jl 2023-06-18`;
+- original output digest:
+  `8c13f8318d533c35755e90e4e45bcef336cb7b31c09afccbe616844acbddc1e6`;
+- input data: 24 rounded `x0` decisions, six rounded `xr` decisions, 24
+  day-ahead prices, six FCR prices, declared battery/time configuration, and
+  the external-only activation descriptor;
+- expected output or invariant: supported aggregate profit, stored-energy,
+  energy-flow, and power-extrema values plus explicit unavailable fields;
+- random seed: no random seed; the optimizer output and replay are
+  deterministic inputs;
+- tolerance: `1e-6` for internal OEL equations and field-specific propagated
+  three-decimal source intervals for reference-result comparison;
+- license, access, or privacy notes: the small derived manifest is reviewable,
+  while the activation CSV remains `external_only`; and
+- refresh policy: normalize a digest-pinned researcher-generated JSON below
+  ignored `artifacts/`, review every semantic diff, then promote deliberately.
+
+The source-precision decision-only bounds are 0.012970 kWh for charge/discharge,
+0.014097 kWh for stored-energy extrema/terminal, 0.0007345 kW for power
+extrema, EUR 0.0010736 for day-ahead revenue, EUR 0.0003798 for capacity,
+EUR 0.0000867 for activation, EUR 0.0004665 for combined FCR, and EUR 0.0015401
+for total revenue. The implementation recomputes them; stored numbers alone do
+not establish `source_precision_compatible` status.
+
 ## External-Only Activation Data
 
 The reference regulation CSV is approximately 529 MB and is never committed,
@@ -66,6 +95,24 @@ refresh are explicit researcher operations. Normalized output is written below
 ignored `artifacts/` first, semantically compared with the committed fixture,
 and promoted only through review. The refresh helper must not execute Julia,
 Gurobi, or mutate `baselines/`.
+
+The reviewed normalization command is:
+
+```bash
+uv run python examples/fcr_bid_evaluation/normalize_reference_result.py \
+  --input baselines/robust_storage_bidding/results/02/2023-06-18.json \
+  --expected-sha256 8c13f8318d533c35755e90e4e45bcef336cb7b31c09afccbe616844acbddc1e6 \
+  --output-dir artifacts/reference/robust_storage_bidding/normalized
+```
+
+It emits canonical candidate semantics and an ordered semantic diff. It refuses
+to write into committed fixture paths.
+
+The 2026-08-26 refresh-helper acceptance used the digest-pinned generated JSON
+already produced by the researcher. It returned `semantic_differences=0` and
+wrote only the ignored normalized artifact. The documented routine suite was
+then executed twice with socket construction blocked and the supported external
+path absent; both runs reported `113 passed` with stable evidence.
 
 ## Initial Full-Data Acceptance Record
 

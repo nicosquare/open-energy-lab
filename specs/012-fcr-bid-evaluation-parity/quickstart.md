@@ -18,12 +18,28 @@ uv run pytest \
   tests/unit/simulator/test_fcr_reference_settlement.py \
   tests/integration/simulator/test_fcr_bid_evaluation_manual.py \
   tests/integration/simulator/test_fcr_bid_evaluation_compatibility.py \
-  tests/integration/simulator/test_fcr_reference_fixture.py
+  tests/integration/simulator/test_fcr_reference_fixture.py \
+  tests/integration/simulator/test_fcr_reference_normalization.py \
+  tests/unit/test_fixture_provenance_docs.py \
+  tests/unit/test_migration_policy_docs.py \
+  tests/unit/test_ci_workflow.py
 ```
 
 This suite proves the plan boundary, hand-calculable physics and accounting,
 failed-report behavior, Golden Reference Fixture provenance, precision formulas,
 deterministic fingerprints, and Feature 010 compatibility.
+It also proves zero-network fixture assembly, actionable external-data
+boundaries, canonical refresh output, distribution exclusions, and documentation
+governance.
+
+### Offline reproducibility record
+
+On 2026-08-26 the exact routine file list above was run twice in fresh pytest
+sessions while `socket.socket` was patched to fail on any construction and the
+supported external path under `artifacts/` was absent. Both runs completed with
+`113 passed` and identical pinned fixture/report fingerprints. No test consulted
+an environment-selected path, reference submodule, Julia, Gurobi, or external
+activation bytes.
 
 The focused US1/US3 evaluator and audit gate is:
 
@@ -96,6 +112,12 @@ The older `lauinger/MV` URL still present in the pinned
 `data/regulation_signal_info.txt` is superseded by the pinned README instruction.
 Regardless of locator, bytes are accepted only if the exact digest, size, schema,
 date coverage, and cadence pass.
+
+Absent, misplaced, truncated, digest-mismatched, wrong-header, wrong-column,
+non-finite, duplicated, gapped, overlapping, or wrong-date inputs fail with an
+actionable domain error. The library never downloads or searches for a
+same-named file. Only the explicitly selected pytest wrapper converts an absent
+file into a skip with this installation path.
 
 ## 4. Run The Complete Reference Evaluation
 
@@ -256,3 +278,10 @@ The normalizer validates but never starts Julia or mutates the baseline. Promoti
 from ignored output to `tests/fixtures/` is an explicit reviewed change. A future
 full-precision decision export requires a new fixture/precision schema version;
 it cannot silently upgrade the initial rounded-evidence claim.
+
+The output file is
+`artifacts/reference/robust_storage_bidding/normalized/normalized_reference_result.json`.
+It is canonical JSON containing the validated source digest/configuration,
+decisions, prices, mapped aggregate evidence, and a deterministic ordered
+semantic diff against the committed fixture. The helper refuses output under a
+committed repository path outside ignored `artifacts/`.

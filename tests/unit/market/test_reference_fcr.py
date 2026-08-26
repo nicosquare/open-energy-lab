@@ -87,6 +87,26 @@ def test_loader_missing_path_is_actionable_and_does_not_search_or_download(
     assert descriptor.download_url in message
     assert descriptor.local_relative_path in message
     assert "caller-selected-missing.csv" in message
+    assert "download" in message.casefold()
+    assert "explicit" in message.casefold()
+
+
+def test_loader_does_not_treat_a_same_named_misplaced_file_as_installed(
+    tmp_path: Path,
+) -> None:
+    data = _csv_bytes()
+    descriptor = _descriptor(data)
+    misplaced = tmp_path / "elsewhere" / "regulation_signal.csv"
+    misplaced.parent.mkdir(parents=True, exist_ok=True)
+    _write(misplaced, data)
+
+    requested = tmp_path / descriptor.local_relative_path
+    with pytest.raises(ExternalReferenceDataError) as exc_info:
+        load_reference_activation_trace(requested, descriptor=descriptor)
+
+    message = str(exc_info.value)
+    assert requested.as_posix() in message
+    assert descriptor.local_relative_path in message
 
 
 def test_loader_rejects_wrong_byte_count_before_parsing(tmp_path: Path) -> None:

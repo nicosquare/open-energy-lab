@@ -15,10 +15,12 @@ from open_energy_lab.control.fcr_bid_plan import (
     map_reference_decisions_to_schedules,
 )
 from open_energy_lab.market.reference_fcr import (
+    GoldenReferenceFixture,
     build_reference_market_context,
     load_golden_reference_fixture,
     load_reference_activation_trace,
 )
+from open_energy_lab.market.activation import RegulationActivationTrace
 from open_energy_lab.simulator import (
     BatteryComponent,
     FCRBidEvaluationRequest,
@@ -51,15 +53,28 @@ def build_reference_request(
     activation_path: Path,
 ) -> FCRBidEvaluationRequest:
     fixture = load_golden_reference_fixture(fixture_path)
+    activation_trace = load_reference_activation_trace(
+        activation_path,
+        descriptor=fixture.external_activation,
+    )
+    return assemble_reference_request(
+        fixture=fixture,
+        activation_trace=activation_trace,
+    )
+
+
+def assemble_reference_request(
+    *,
+    fixture: GoldenReferenceFixture,
+    activation_trace: RegulationActivationTrace,
+) -> FCRBidEvaluationRequest:
+    """Assemble a request from already validated fixture and activation evidence."""
+
     mapped = map_reference_decisions_to_schedules(fixture)
     market_context = build_reference_market_context(
         fixture,
         energy_schedule=mapped.energy_schedule,
         fcr_schedule=mapped.fcr_schedule,
-    )
-    activation_trace = load_reference_activation_trace(
-        activation_path,
-        descriptor=fixture.external_activation,
     )
     configuration = fixture.reference_configuration
     battery = BatteryComponent(

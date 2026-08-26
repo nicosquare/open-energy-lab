@@ -49,6 +49,28 @@ parity validation, and environment assumptions.
 - `afrr-mfrr-services.md`: Feature 011 source, artifact, derived-scenario,
   control, replay, settlement, restricted-data, and Feature 010 compatibility
   ownership boundaries
+- `fcr-bid-evaluation-parity.md`: Feature 012 fixed-plan common environment,
+  pinned reference implementation mappings, bounded aggregate evidence,
+  external-data governance, and no-bid-generation boundary
+
+## FCR Bid-Evaluation Parity Review Path
+
+For `012-fcr-bid-evaluation-parity`, review these artifacts in order:
+
+1. `fcr-bid-evaluation-parity.md` for preserve/improve/reject decisions, exact
+   reference paths, common-environment ownership, and bid generation exclusions.
+2. `fixture-provenance.md` and
+   `tests/fixtures/fcr_bid_evaluation/README.md` for the Golden Reference
+   Fixture, authoritative download, digest, external-only rule, supported and
+   unavailable evidence, and refresh policy.
+3. `parity-validation.md` for field-specific `source_precision_compatible`
+   comparison and the absence of complete ten-second reference parity.
+4. `environment-assumptions.md` and
+   `specs/012-fcr-bid-evaluation-parity/quickstart.md` for routine no Julia/no
+   Gurobi validation and the explicitly selected `external_reference_data` run.
+
+The resulting evaluator is the common environment for fixed schedules. It does
+not perform bid generation, reference optimizer translation, or TPM selection.
 
 ## aFRR/mFRR Restoration-Services Review Path
 

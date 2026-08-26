@@ -1,13 +1,26 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 import hashlib
 import json
+import os
 from pathlib import Path
+import socket
+import subprocess
+from types import MappingProxyType
 
 import pytest
 
+from examples.fcr_bid_evaluation.run_reference_parity import (
+    assemble_reference_request,
+)
 from open_energy_lab.control.fcr_bid_plan import map_reference_decisions_to_schedules
+from open_energy_lab.market.activation import (
+    ActivationImportRequest,
+    import_regulation_activation_trace,
+)
 from open_energy_lab.market.reference_fcr import (
     ReferenceFCRIntegrityError,
     ReferenceFCRValidationError,
@@ -16,6 +29,7 @@ from open_energy_lab.market.reference_fcr import (
     golden_reference_fixture_from_dict,
     load_golden_reference_fixture,
 )
+from open_energy_lab.simulator import evaluate_fixed_fcr_bid
 
 
 FIXTURE_PATH = Path(
@@ -117,6 +131,82 @@ def test_fixture_semantics_have_byte_stable_canonical_serialization() -> None:
     )
 
 
+def test_golden_fixture_offline_evaluation_is_canonically_stable_without_csv() -> None:
+    fixture = load_golden_reference_fixture(FIXTURE_PATH)
+    period = fixture.mapping.target_period
+    step = timedelta(seconds=10)
+    activation = import_regulation_activation_trace(
+        ActivationImportRequest(
+            source_name="Feature 012 offline determinism oracle",
+            source_locator="authored-zero-activation",
+            source_revision="v1",
+            source_timezone="Europe/Paris",
+            requested_start_utc=period.start_utc,
+            requested_end_utc=period.end_utc,
+            source_resolution="PT10S",
+            source_value_kind="interval_average",
+            source_sign_meaning="positive is upward/discharge",
+            normalization_rule={
+                "conversion": "identity",
+                "formula": "activation",
+                "point_to_interval": "already_interval_average",
+                "clip_min": -1.0,
+                "clip_max": 1.0,
+                "target_sign": "positive is upward/discharge",
+            },
+            redistribution_basis={"source": "project-authored test data"},
+        ),
+        [
+            {
+                "start_utc": period.start_utc + index * step,
+                "end_utc": period.start_utc + (index + 1) * step,
+                "value": 0.0,
+                "source_value": 0.0,
+                "source_unit": "dimensionless",
+            }
+            for index in range(8640)
+        ],
+        trace_id="feature-012-offline-zero-reference-activation-v1",
+        created_at_utc=datetime(2026, 8, 26, tzinfo=UTC),
+    )
+    zero_activation_bounds = {
+        "charge_energy_kwh": 0.012,
+        "discharge_energy_kwh": 0.012,
+        "stored_energy_kwh": 0.012 / 0.92,
+        "power_extrema_kw": 0.0005,
+        "day_ahead_revenue_eur": 0.001073575,
+        "fcr_capacity_revenue_eur": 0.00037976,
+        "activation_revenue_eur": 0.0,
+        "combined_fcr_revenue_eur": 0.00037976,
+        "total_revenue_eur": 0.001453335,
+    }
+    policy = replace(
+        fixture.precision_policy,
+        field_bounds=MappingProxyType(
+            {
+                key: replace(value, decision_bound=zero_activation_bounds[key])
+                for key, value in fixture.precision_policy.field_bounds.items()
+            }
+        ),
+    )
+    fixture = replace(fixture, precision_policy=policy)
+    request = assemble_reference_request(fixture=fixture, activation_trace=activation)
+
+    first = evaluate_fixed_fcr_bid(request)
+    repeated = evaluate_fixed_fcr_bid(request)
+
+    assert first.status == "settled"
+    assert first.canonical_bytes() == repeated.canonical_bytes()
+    assert request.plan.plan_fingerprint == repeated.plan_fingerprint
+    assert request.evaluation_input_fingerprint == (
+        repeated.evaluation_input_fingerprint
+    )
+    assert first.trace_fingerprint == repeated.trace_fingerprint
+    assert first.settlement_fingerprint == repeated.settlement_fingerprint
+    assert first.comparison_fingerprint == repeated.comparison_fingerprint
+    assert first.result_fingerprint == repeated.result_fingerprint
+
+
 @pytest.mark.parametrize(
     ("mutation", "message"),
     [
@@ -213,6 +303,48 @@ def test_offline_fixture_assembly_maps_existing_schedule_and_price_types(
     assert all(
         reference.startswith("reference_accepted_fcr_bid:")
         for reference in context.accepted_bid_evidence
+    )
+
+
+def test_routine_fixture_path_never_consults_network_environment_or_tooling(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    opened: list[str] = []
+    real_open = Path.open
+
+    def guarded_open(path: Path, *args, **kwargs):
+        rendered = path.as_posix()
+        opened.append(rendered)
+        assert rendered == FIXTURE_PATH.as_posix()
+        return real_open(path, *args, **kwargs)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError(
+            "routine fixture validation must not inspect network, environment, "
+            "Julia, Gurobi, the external CSV, or the reference submodule"
+        )
+
+    monkeypatch.setattr(Path, "open", guarded_open)
+    monkeypatch.setattr(socket, "create_connection", forbidden)
+    monkeypatch.setattr(subprocess, "run", forbidden)
+    monkeypatch.setattr(subprocess, "Popen", forbidden)
+    monkeypatch.setattr(os, "getenv", forbidden)
+
+    first = load_golden_reference_fixture(FIXTURE_PATH)
+    repeated = load_golden_reference_fixture(FIXTURE_PATH)
+    first_mapping = map_reference_decisions_to_schedules(first)
+    repeated_mapping = map_reference_decisions_to_schedules(repeated)
+
+    assert opened == [FIXTURE_PATH.as_posix(), FIXTURE_PATH.as_posix()]
+    assert first.fixture_fingerprint == repeated.fixture_fingerprint
+    assert first_mapping.mapping_fingerprint == repeated_mapping.mapping_fingerprint
+    assert (
+        first_mapping.energy_schedule.schedule_fingerprint
+        == repeated_mapping.energy_schedule.schedule_fingerprint
+    )
+    assert (
+        first_mapping.fcr_schedule.schedule_fingerprint
+        == repeated_mapping.fcr_schedule.schedule_fingerprint
     )
 
 

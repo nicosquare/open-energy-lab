@@ -224,3 +224,46 @@ def test_feature_011_restricted_paths_are_absent_from_upload_manifests() -> None
         "external_artifact_store: prohibited",
     ):
         assert required in policy
+
+
+def test_feature_012_external_csv_is_ignored_and_excluded_from_distributions() -> None:
+    gitignore = Path(".gitignore").read_text(encoding="utf-8").splitlines()
+    configuration = tomllib.loads(Path("pyproject.toml").read_text("utf-8"))
+    wheel = set(
+        configuration["tool"]["hatch"]["build"]["targets"]["wheel"]["exclude"]
+    )
+    sdist = set(
+        configuration["tool"]["hatch"]["build"]["targets"]["sdist"]["exclude"]
+    )
+
+    assert "artifacts/" in gitignore
+    assert {"/artifacts/**", "/baselines/**"} <= wheel
+    assert {"/artifacts/**", "/baselines/**"} <= sdist
+    assert not Path(
+        "artifacts/reference/robust_storage_bidding/regulation_signal.csv"
+    ).exists()
+    assert not Path("src/open_energy_lab/regulation_signal.csv").exists()
+
+
+def test_feature_012_migration_docs_define_common_environment_and_limits() -> None:
+    paths = (
+        Path("docs/migration/fcr-bid-evaluation-parity.md"),
+        Path("docs/migration/parity-validation.md"),
+        Path("docs/migration/environment-assumptions.md"),
+    )
+    required = (
+        "reference implementation",
+        "common environment",
+        "source_precision_compatible",
+        "external_reference_data",
+        "no julia",
+        "no gurobi",
+        "complete ten-second",
+        "bid generation",
+    )
+    for path in paths:
+        content = _read_text(path)
+        missing = [term for term in required if term not in content]
+        assert missing == [], f"{path} is missing Feature 012 policy: {missing}"
+        assert "status = paper-compatible" not in content
+        assert "is paper-compatible" not in content

@@ -22,17 +22,29 @@ DEFAULT_ACTIVATION_PATH = Path(
 pytestmark = pytest.mark.external_reference_data
 
 
-def _installed_request():
-    if not DEFAULT_ACTIVATION_PATH.is_file():
+def _installed_request(activation_path: Path = DEFAULT_ACTIVATION_PATH):
+    if not activation_path.is_file():
         pytest.skip(
             "external reference activation is not installed at "
-            f"{DEFAULT_ACTIVATION_PATH}; follow "
+            f"{activation_path}; follow "
             "tests/fixtures/fcr_bid_evaluation/README.md and rerun this explicitly"
         )
     return build_reference_request(
         fixture_path=DEFAULT_FIXTURE,
-        activation_path=DEFAULT_ACTIVATION_PATH,
+        activation_path=activation_path,
     )
+
+
+def test_absent_external_data_skip_is_actionable(tmp_path: Path) -> None:
+    missing = tmp_path / "misplaced" / "regulation_signal.csv"
+
+    with pytest.raises(pytest.skip.Exception) as exc_info:
+        _installed_request(missing)
+
+    message = str(exc_info.value)
+    assert missing.as_posix() in message
+    assert "tests/fixtures/fcr_bid_evaluation/README.md" in message
+    assert "rerun this explicitly" in message
 
 
 def test_complete_2023_06_18_reference_aggregate_parity() -> None:
