@@ -1,0 +1,104 @@
+# FCR Bid-Evaluation Parity Migration
+
+## Scope And Ownership
+
+Feature 012 adds a common environment for evaluating one fixed hourly energy
+schedule and one fixed four-hour FCR schedule. Control owns the plan and bidder
+lineage, market adapters own explicit reference inputs, and the simulator owns
+preflight, the shared battery replay, settlement, reporting, and comparison.
+
+The primary external coding reference is the pinned implementation under
+`baselines/robust_storage_bidding/` at commit
+`7e44738bb30e5c8204efe40103b9be4c2203685c`. The associated publication provides
+mathematical context, but reference-result parity means agreement with observable
+outputs from this pinned implementation within the declared evidence and
+precision domain.
+
+## Target Paths
+
+- Plan envelope and fixed-decision mapping:
+  `src/open_energy_lab/control/fcr_bid_plan.py`
+- Explicit reference fixture and activation inputs:
+  `src/open_energy_lab/market/reference_fcr.py`
+- Bidder-independent evaluation and comparison:
+  `src/open_energy_lab/simulator/fcr_bid_evaluation.py`
+- Additive reference settlement profile:
+  `src/open_energy_lab/simulator/fcr_settlement.py`
+- Shared physical kernel and unchanged Feature 010 adapter:
+  `src/open_energy_lab/simulator/stacked_service.py`
+- Validation evidence: `tests/fixtures/fcr_bid_evaluation/`,
+  `tests/unit/{control,market,simulator}/`, and
+  `tests/integration/simulator/`
+
+## Preserve
+
+- Existing `EnergyBaselineSchedule`, `FCRCapacitySchedule`,
+  `StackedServiceReplayRequest`, activation trace, time, and battery types.
+- Charge-positive Open Energy Lab battery physics and existing requested versus
+  delivered FCR attribution.
+- Feature 010 public constructors, validation behavior, default settlement,
+  fixture bytes, trace/result payloads, and fingerprints.
+- Pinned reference signs, units, index relationships, ordinary-day timing,
+  realized replay equations, and supported aggregate field meanings where they
+  are directly evidenced.
+- Offline, deterministic, provenance-rich validation.
+
+## Improve
+
+- Represent a fixed plan once, without copying schedule interval values, and
+  retain producer identity, cutoff, solve metadata, diagnostics, and lineage.
+- Keep activation and expected results out of producer-visible lineage, then
+  bind them only in the evaluation request.
+- Use one source-independent physical kernel without manufacturing ENTSO-E A44
+  or A81 provenance for the reference result.
+- Expose separate day-ahead, capacity, delivered-activation, penalty, and
+  unavailable settlement components with strict reconciliation.
+- Report field-specific `source_precision_compatible` outcomes for rounded
+  reference decisions instead of using a blanket tolerance or overstating exact
+  equality.
+- Fail closed for missing, corrupt, misaligned, ambiguous, or unsupported
+  inputs; keep invalid diagnostic replay separate from bidder performance.
+
+## Reject
+
+- A second battery simulator or duplicate energy/FCR schedule representation.
+- Production imports, execution, or writes under `baselines/` or `legacy/`.
+- Implicit download, environment lookup, submodule lookup, interpolation,
+  deduplication, clipping, or synthetic substitution of reference evidence.
+- Paying requested but undelivered activation energy.
+- Treating objective value as realized profit or inferring unsupported detailed
+  parity from aggregate agreement.
+- The vague term “paper-compatible” as an acceptance criterion.
+
+## Reference Sources
+
+The following paths are read-only behavioral and provenance evidence:
+
+- `baselines/robust_storage_bidding/code/01_datastruct.jl` for battery,
+  efficiency, resolution, sign, and unit declarations.
+- `baselines/robust_storage_bidding/code/02_model.jl` for decision indexing,
+  price loading, SOC helpers, and objective meaning.
+- `baselines/robust_storage_bidding/code/03_backtest_save.jl`, especially
+  `bt_simulation`, for replay, stored energy, activation accounting, output
+  fields, and three-decimal serialization.
+- `baselines/robust_storage_bidding/code/04_parse_results.jl` for aggregate
+  labels and their limitations.
+- `baselines/robust_storage_bidding/results/02/2023-06-18.json` for the generated
+  Experiment 2 decisions and aggregate evidence.
+- `baselines/robust_storage_bidding/results/result_overview.xlsx` for supporting
+  publication context only.
+
+No production module resolves these paths. Routine tests consume only committed
+Open Energy Lab fixtures.
+
+## Out Of Scope
+
+- Bid generation or optimization, including Pyomo, HiGHS, Gurobi, robust
+  uncertainty sets, TPM fitting/querying, or bidder selection.
+- Intraday adjustment/recourse, imbalance settlement, degradation cost,
+  terminal value, multi-day carry-over, and rolling backtests.
+- aFRR or mFRR behavior and any cross-product substitution.
+- Live market acquisition, notebooks, general Julia interoperability, or
+  reproduction of every reference experiment.
+- Complete ten-second Julia trace parity without a separately reviewed export
+  harness and stronger source evidence.

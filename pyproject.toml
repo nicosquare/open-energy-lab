@@ -61,4 +61,5 @@ markers = [
     "live_entsoe: explicitly selected credentialed ENTSO-E compatibility checks (excluded from routine offline validation)",
     "live_rte: explicitly selected credentialed RTE compatibility checks (excluded from routine offline validation)",
     "reference_benchmark: explicitly selected reference-host performance checks (excluded from routine correctness validation)",
+    "external_reference_data: explicitly selected checks requiring caller-installed reference data (excluded from routine offline validation)",
 ]

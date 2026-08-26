@@ -29,10 +29,10 @@ foundational. The full external-reference run remains explicitly selected.
 **Purpose**: Establish governed fixture, example, marker, CI, and documentation
 surfaces without modifying `baselines/*`, `legacy/*`, or core dependencies.
 
-- [ ] T001 [P] Create the Feature 012 fixture policy and layout, including the authored-oracle versus external-only reference boundary and ignored local CSV location, in `tests/fixtures/fcr_bid_evaluation/README.md`
-- [ ] T002 [P] Create the fixed-plan, full-reference, fixture-refresh, and expected-failure consumer map without executable placeholder imports in `examples/fcr_bid_evaluation/README.md`
-- [ ] T003 [P] Register the `external_reference_data` pytest marker and exclude it explicitly from the broad routine offline CI job without changing core dependencies in `pyproject.toml` and `.github/workflows/ci.yml`
-- [ ] T004 [P] Create the Feature 012 ownership, preserve/improve/reject, reference-source, and out-of-scope documentation scaffold in `docs/migration/fcr-bid-evaluation-parity.md`
+- [X] T001 [P] Create the Feature 012 fixture policy and layout, including the authored-oracle versus external-only reference boundary and ignored local CSV location, in `tests/fixtures/fcr_bid_evaluation/README.md`
+- [X] T002 [P] Create the fixed-plan, full-reference, fixture-refresh, and expected-failure consumer map without executable placeholder imports in `examples/fcr_bid_evaluation/README.md`
+- [X] T003 [P] Register the `external_reference_data` pytest marker and exclude it explicitly from the broad routine offline CI job without changing core dependencies in `pyproject.toml` and `.github/workflows/ci.yml`
+- [X] T004 [P] Create the Feature 012 ownership, preserve/improve/reject, reference-source, and out-of-scope documentation scaffold in `docs/migration/fcr-bid-evaluation-parity.md`
 
 ---
 
