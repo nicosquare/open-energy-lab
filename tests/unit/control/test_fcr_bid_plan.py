@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 import importlib
+from pathlib import Path
 
 import pytest
 
@@ -224,3 +225,144 @@ def test_plan_rejects_incompatible_schedules_metrics_and_fingerprints() -> None:
         _plan(objective=_available(meaning="optimization_bound"))
     with pytest.raises(module.FCRBidPlanValidationError, match="SHA-256"):
         _plan(producer_input_fingerprints={"forecast": "not-a-digest"})
+
+
+REFERENCE_FIXTURE_PATH = Path(
+    "tests/fixtures/fcr_bid_evaluation/"
+    "robust_storage_bidding_2023-06-18_aggregate_v1.json"
+)
+
+
+def _reference_fixture():
+    reference = importlib.import_module("open_energy_lab.market.reference_fcr")
+    return reference.load_golden_reference_fixture(REFERENCE_FIXTURE_PATH)
+
+
+def test_reference_mapping_inverts_x0_and_preserves_nonnegative_xr() -> None:
+    fixture = _reference_fixture()
+    mapped = _module().map_reference_decisions_to_schedules(fixture)
+
+    assert len(mapped.energy_schedule.intervals) == 24
+    assert len(mapped.fcr_schedule.intervals) == 6
+    assert [item.power_kw for item in mapped.energy_schedule.intervals] == [
+        -value for value in fixture.rounded_x0_kw
+    ]
+    assert [item.capacity_kw for item in mapped.fcr_schedule.intervals] == list(
+        fixture.rounded_xr_kw
+    )
+    assert mapped.source_field_refs[0] == "/fixed_decisions/rounded_x0_kw/0"
+    assert mapped.source_field_refs[-1] == "/fixed_decisions/rounded_xr_kw/5"
+    assert len(mapped.mapping_fingerprint) == 64
+
+
+def test_reference_mapping_rejects_negative_xr_before_building_schedules(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _module()
+    fixture = _reference_fixture()
+    invalid = replace(
+        fixture,
+        rounded_xr_kw=(fixture.rounded_xr_kw[0], -0.001, *fixture.rounded_xr_kw[2:]),
+    )
+    calls: list[str] = []
+    monkeypatch.setattr(
+        module,
+        "build_energy_baseline_schedule",
+        lambda **kwargs: calls.append("energy"),
+    )
+    monkeypatch.setattr(
+        module,
+        "build_fcr_capacity_schedule",
+        lambda **kwargs: calls.append("fcr"),
+    )
+
+    with pytest.raises(
+        module.FCRBidPlanValidationError,
+        match=r"rounded_xr_kw\[1\].*non-negative.*before schedule",
+    ):
+        module.map_reference_decisions_to_schedules(invalid)
+    assert calls == []
+
+
+def test_reference_mapping_assigns_deterministic_evidence_references() -> None:
+    mapped = _module().map_reference_decisions_to_schedules(_reference_fixture())
+
+    for index, commitment in enumerate(mapped.fcr_schedule.intervals):
+        assert commitment.volume_observation_ref == (
+            f"reference_accepted_fcr_bid:{index}"
+        )
+        assert commitment.price_observation_ref == (
+            f"reference_fcr_capacity_price:{index}"
+        )
+
+
+def test_reference_and_library_activation_equations_are_sign_equivalent() -> None:
+    fixture = _reference_fixture()
+    mapped = _module().map_reference_decisions_to_schedules(fixture)
+    activation_values = (-0.5, 0.0, 0.75)
+
+    for activation_index, activation in enumerate(activation_values):
+        energy_index = activation_index // 360
+        fcr_index = activation_index // 1440
+        reference_requested = (
+            fixture.rounded_x0_kw[energy_index]
+            + activation * fixture.rounded_xr_kw[fcr_index]
+        )
+        library_requested = (
+            mapped.energy_schedule.intervals[energy_index].power_kw
+            - activation * mapped.fcr_schedule.intervals[fcr_index].capacity_kw
+        )
+        assert library_requested == pytest.approx(-reference_requested)
+
+
+def test_reference_one_based_indices_match_zero_based_interval_edges() -> None:
+    fixture = _reference_fixture()
+    mapped = _module().map_reference_decisions_to_schedules(fixture)
+
+    assert mapped.energy_schedule.intervals[23].power_kw == -fixture.rounded_x0_kw[23]
+    assert mapped.fcr_schedule.intervals[5].capacity_kw == fixture.rounded_xr_kw[5]
+    assert (8640 - 1) // 360 == 23
+    assert (8640 - 1) // 90 == 95
+    assert (8640 - 1) // 1440 == 5
+
+
+def test_reference_power_extrema_reverse_under_charge_positive_mapping() -> None:
+    fixture = _reference_fixture()
+    expected = {item.field_id: item for item in fixture.expected_fields}
+
+    assert expected["physical.maximum_delivered_power_kw"].reference_transform == (
+        "negate"
+    )
+    assert expected["physical.maximum_delivered_power_kw"].expected_value == 14.385
+    assert expected["physical.minimum_delivered_power_kw"].expected_value == -31.826
+
+
+def test_reference_period_declares_exact_utc_and_local_delivery_labels() -> None:
+    fixture = _reference_fixture()
+    period = fixture.mapping.target_period
+
+    assert period.start_utc == datetime(2023, 6, 17, 22, tzinfo=UTC)
+    assert period.end_utc == datetime(2023, 6, 18, 22, tzinfo=UTC)
+    assert period.local_start.isoformat() == "2023-06-18T00:00:00+02:00"
+    assert period.local_end.isoformat() == "2023-06-19T00:00:00+02:00"
+
+
+def test_reference_mapper_rejects_a_dst_transition_period() -> None:
+    from open_energy_lab.market.time import CanonicalInterval
+
+    fixture = _reference_fixture()
+    transition_period = CanonicalInterval.from_utc(
+        datetime(2023, 3, 25, 23, tzinfo=UTC),
+        datetime(2023, 3, 26, 22, tzinfo=UTC),
+        market_timezone="Europe/Paris",
+    )
+    invalid = replace(
+        fixture,
+        mapping=replace(fixture.mapping, target_period=transition_period),
+    )
+
+    with pytest.raises(
+        _module().FCRBidPlanValidationError,
+        match="ordinary 24-hour delivery day",
+    ):
+        _module().map_reference_decisions_to_schedules(invalid)

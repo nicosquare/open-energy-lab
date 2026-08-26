@@ -125,6 +125,24 @@ The expected comparison is bounded by the evidence in the generated JSON:
 
 Julia and Gurobi are not used by this command or test.
 
+### Initial acceptance result
+
+The 2026-08-26 explicit full-data run completed successfully with overall status
+`source_precision_compatible` and no mismatches. The source-precision fields
+were day-ahead profit, minimum/maximum/terminal stored energy, and discharge
+energy; supported remaining aggregates were exact at the recorded display
+precision. Stable content fingerprints were:
+
+```text
+physical trace: f292f4990d99f6ca4aa7bb12c304b70751396e3c2005544577c58ceb153573f6
+settlement:     d8241f80dafc8c6b3444f479b74c6c16fd8f79fae4e9d73f60e6fc3177da0c7e
+comparison:     1e16c8f03f3c8c649ab1a435d8a14849f51b168b91fc7915df236c492a8b274e
+```
+
+Activation-artifact, evaluation-input, and final-report fingerprints also bind
+the explicit file locator and therefore are checked for repeatability at a
+given installation path rather than treated as path-independent golden values.
+
 ## 5. Evaluate Another Fixed Plan
 
 Every bidder supplies the existing schedule types, then wraps them once:

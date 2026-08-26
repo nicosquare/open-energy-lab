@@ -1,0 +1,294 @@
+{
+  "schema_version": "oel.fcr-reference-aggregate.v1",
+  "fixture_id": "robust-storage-bidding-experiment-2-2023-06-18-v1",
+  "reference_provenance": {
+    "reference_commit": "7e44738bb30e5c8204efe40103b9be4c2203685c",
+    "generation_working_directory": "baselines/robust_storage_bidding/code/",
+    "generation_command": "julia --project=. 12.jl 2023-06-18",
+    "original_result_path": "baselines/robust_storage_bidding/results/02/2023-06-18.json",
+    "original_result_sha256": "8c13f8318d533c35755e90e4e45bcef336cb7b31c09afccbe616844acbddc1e6",
+    "reference_source_paths": [
+      "baselines/robust_storage_bidding/code/01_datastruct.jl",
+      "baselines/robust_storage_bidding/code/02_model.jl",
+      "baselines/robust_storage_bidding/code/03_backtest_save.jl",
+      "baselines/robust_storage_bidding/code/04_parse_results.jl",
+      "baselines/robust_storage_bidding/results/02/2023-06-18.json"
+    ]
+  },
+  "runtime_provenance": {
+    "generation_runtime": {
+      "status": "not_recorded",
+      "reason": "the generated JSON does not record the Julia or loaded solver runtime versions"
+    },
+    "locked_manifest": {
+      "julia_version": "1.10.1",
+      "manifest_format": "2.0",
+      "project_hash": "bc9042f31012e59e3feb329dfa3e1c5d1efcec48",
+      "packages": {
+        "CSV": "0.10.15",
+        "DataFrames": "1.7.0",
+        "Gurobi": "1.3.1",
+        "Gurobi_jll": "11.0.3",
+        "JSON": "0.21.4",
+        "JuMP": "1.23.3"
+      }
+    }
+  },
+  "reference_configuration": {
+    "test_date": "2023-06-18",
+    "experiment": 2,
+    "model_type": "restrict",
+    "activation_series": "xi_EU",
+    "energy_payment": true,
+    "intraday_trading": false,
+    "day_ahead": true,
+    "day_ahead_limited": false,
+    "reference_power_sign": "positive_is_discharge",
+    "max_discharge_kw": 50.0,
+    "max_charge_kw": 50.0,
+    "capacity_kwh": 100.0,
+    "minimum_stored_energy_kwh": 10.0,
+    "maximum_stored_energy_kwh": 90.0,
+    "initial_stored_energy_kwh": 53.328,
+    "charge_efficiency": 0.92,
+    "discharge_efficiency": 0.92,
+    "planning_interval_count": 96,
+    "planning_resolution_hours": 0.25,
+    "activation_resolution_hours": 0.002777777777777778,
+    "fcr_commitment_planning_intervals": 16,
+    "saved_decimal_places": 3,
+    "intraday_adjustment_kw": 0.0
+  },
+  "fixed_decisions": {
+    "x0_source_path": "/bt/curr/x0",
+    "x0_source_unit": "kW",
+    "x0_source_sign": "positive_is_discharge",
+    "rounded_x0_kw": [
+      27.593,
+      -12.269,
+      -12.269,
+      0.0,
+      -3.162,
+      -4.901,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "xr_source_path": "/bt/curr/xr",
+    "xr_source_unit": "kW",
+    "xr_source_sign": "non_negative_symmetric_capacity",
+    "rounded_xr_kw": [12.269, 14.495, 14.495, 14.495, 14.495, 14.495]
+  },
+  "price_inputs": {
+    "p0_source_path": "/case_data/p0",
+    "p0_source_unit": "EUR/kWh",
+    "p0": [
+      0.12678,
+      0.10887,
+      0.10319,
+      0.1,
+      0.09601,
+      0.08681,
+      0.09475,
+      0.09206,
+      0.085,
+      0.07817,
+      0.06353,
+      0.05388,
+      0.046,
+      0.02952,
+      0.0251,
+      0.04914,
+      0.075,
+      0.09378,
+      0.10723,
+      0.11825,
+      0.12547,
+      0.13402,
+      0.13706,
+      0.11753
+    ],
+    "pr_source_path": "/case_data/pr",
+    "pr_source_unit": "EUR/kW/4h-block",
+    "pr": [0.06672, 0.1, 0.2136, 0.24848, 0.1028, 0.02792]
+  },
+  "mapping": {
+    "mapping_id": "robust-storage-bidding-to-oel-v1",
+    "reference_commit": "7e44738bb30e5c8204efe40103b9be4c2203685c",
+    "source_fields": {
+      "battery": "/case_data",
+      "day_ahead_prices": "/case_data/p0",
+      "expected_outputs": "/bt/curr",
+      "fcr_prices": "/case_data/pr",
+      "x0": "/bt/curr/x0",
+      "xr": "/bt/curr/xr"
+    },
+    "source_sign_convention": "positive power is discharge",
+    "target_sign_convention": "positive power is charge",
+    "x0_formula": "library_baseline_kw[h] = -reference_x0_kw[h]",
+    "xr_formula": "library_fcr_capacity_kw[b] = reference_xr_kw[b]",
+    "activation_formula": "library_requested_combined_kw[i] = -(reference_x0_kw[h(i)] + xi_EU[i] * reference_xr_kw[b(i)])",
+    "unit_conversions": [
+      "p0 EUR/kWh * 1000 = OEL EUR/MWh",
+      "pr EUR/kW/4h-block = OEL EUR/kW/block",
+      "reference x0/xr kW = OEL kW after declared sign mapping",
+      "reference stored energy and y_in/y_out kWh = OEL kWh"
+    ],
+    "index_conversions": [
+      "reference one-based activation i maps to OEL zero-based i-1",
+      "energy index = activation_index // 360 with 24 PT1H intervals",
+      "checkpoint index = activation_index // 90 with 96 PT15M intervals",
+      "FCR index = activation_index // 1440 with six PT4H intervals"
+    ],
+    "source_timezone_interpretation": "naive reference timestamps are Europe/Paris delivery-day labels on an ordinary 24-hour day",
+    "target_period": {
+      "start_utc": "2023-06-17T22:00:00Z",
+      "end_utc": "2023-06-18T22:00:00Z",
+      "start_local": "2023-06-18T00:00:00+02:00",
+      "end_local": "2023-06-19T00:00:00+02:00",
+      "market_timezone": "Europe/Paris",
+      "interval_convention": "start-inclusive/end-exclusive"
+    },
+    "mapping_fingerprint": "53f1819fe433e55e87aa98f19f280dbdfabdef935658abd531bbe079fec88945"
+  },
+  "external_activation": {
+    "input_id": "robust-storage-bidding-regulation-signal-v0.1",
+    "download_url": "https://github.com/lauinger/robust-storage-bidding/releases/download/v0.1/regulation_signal.csv",
+    "superseded_locator": "https://github.com/lauinger/MV/releases/download/v1.0-publication/regulation_signal.csv",
+    "local_relative_path": "artifacts/reference/robust_storage_bidding/regulation_signal.csv",
+    "byte_count": 528805941,
+    "sha256": "0c2bf5203410f193c555460ec5593b546af42556f29afac821584e403c407d13",
+    "header": ["DateTime", "Frequency (Hz)", "xi", "xi_EU"],
+    "selected_date": "2023-06-18",
+    "selected_column": "xi_EU",
+    "selected_resolution": "PT10S",
+    "selected_row_count": 8640,
+    "retention_status": "external_only",
+    "redistribution_policy": {
+      "git": false,
+      "package": false,
+      "release": false,
+      "mirror": false,
+      "ci_artifact": false
+    }
+  },
+  "precision_policy": {
+    "policy_id": "rounded-decisions-interval-v1",
+    "decision_decimal_places": 3,
+    "aggregate_decimal_places": 3,
+    "decision_half_unit_kw": 0.0005,
+    "aggregate_half_unit": 0.0005,
+    "propagation_method": "analytic field-specific interval bound",
+    "exact_rounding_mode": "record_only",
+    "field_bounds": {
+      "charge_energy_kwh": {
+        "formula_id": "combined-power-L1-v1",
+        "decision_bound": 0.01297,
+        "unit": "kWh",
+        "dependencies": ["rounded_x0_kw", "rounded_xr_kw", "xi_EU", "activation_resolution_hours"]
+      },
+      "discharge_energy_kwh": {
+        "formula_id": "combined-power-L1-v1",
+        "decision_bound": 0.01297,
+        "unit": "kWh",
+        "dependencies": ["rounded_x0_kw", "rounded_xr_kw", "xi_EU", "activation_resolution_hours"]
+      },
+      "stored_energy_kwh": {
+        "formula_id": "efficiency-weighted-combined-power-L1-v1",
+        "decision_bound": 0.014097,
+        "unit": "kWh",
+        "dependencies": ["rounded_x0_kw", "rounded_xr_kw", "xi_EU", "activation_resolution_hours", "charge_efficiency", "discharge_efficiency"]
+      },
+      "power_extrema_kw": {
+        "formula_id": "combined-power-Linf-v1",
+        "decision_bound": 0.0007345,
+        "unit": "kW",
+        "dependencies": ["rounded_x0_kw", "rounded_xr_kw", "xi_EU"]
+      },
+      "day_ahead_revenue_eur": {
+        "formula_id": "day-ahead-price-L1-v1",
+        "decision_bound": 0.0010736,
+        "unit": "EUR",
+        "dependencies": ["p0", "decision_half_unit_kw"]
+      },
+      "fcr_capacity_revenue_eur": {
+        "formula_id": "capacity-price-L1-v1",
+        "decision_bound": 0.0003798,
+        "unit": "EUR",
+        "dependencies": ["pr", "decision_half_unit_kw"]
+      },
+      "activation_revenue_eur": {
+        "formula_id": "activation-price-L1-v1",
+        "decision_bound": 0.0000867,
+        "unit": "EUR",
+        "dependencies": ["p0", "xi_EU", "activation_resolution_hours", "decision_half_unit_kw"]
+      },
+      "combined_fcr_revenue_eur": {
+        "formula_id": "capacity-plus-activation-bound-v1",
+        "decision_bound": 0.0004665,
+        "unit": "EUR",
+        "dependencies": ["fcr_capacity_revenue_eur", "activation_revenue_eur"]
+      },
+      "total_revenue_eur": {
+        "formula_id": "day-ahead-plus-combined-fcr-bound-v1",
+        "decision_bound": 0.0015401,
+        "unit": "EUR",
+        "dependencies": ["day_ahead_revenue_eur", "combined_fcr_revenue_eur"]
+      }
+    },
+    "policy_fingerprint": "bfd916486fd583bb7835678c9addb3c663ffec59729ec5d7f583ec4610dbab66"
+  },
+  "expected_fields": [
+    {"field_id": "plan.objective", "reference_field_path": "/objective value", "expected_value": 11.028, "unit": "EUR", "evidence_kind": "metadata", "comparison_rule": "metadata-only"},
+    {"field_id": "plan.objective_bound", "reference_field_path": "/objective bound", "expected_value": 11.028, "unit": "EUR", "evidence_kind": "metadata", "comparison_rule": "metadata-only"},
+    {"field_id": "settlement.total_profit_eur", "reference_field_path": "/bt/curr/profit_total", "expected_value": 10.749, "unit": "EUR", "evidence_kind": "parity", "comparison_rule": "source-precision", "precision_bound_id": "total_revenue_eur"},
+    {"field_id": "settlement.day_ahead_revenue_eur", "reference_field_path": "/bt/curr/profit_da", "expected_value": 0.168, "unit": "EUR", "evidence_kind": "parity", "comparison_rule": "source-precision", "precision_bound_id": "day_ahead_revenue_eur"},
+    {"field_id": "settlement.combined_fcr_revenue_eur", "reference_field_path": "/bt/curr/profit_fcr", "expected_value": 10.581, "unit": "EUR", "evidence_kind": "parity", "comparison_rule": "source-precision", "precision_bound_id": "combined_fcr_revenue_eur"},
+    {"field_id": "reference.intraday_revenue_eur", "reference_field_path": "/bt/curr/profit_id", "expected_value": 0.0, "unit": "EUR", "evidence_kind": "metadata", "comparison_rule": "metadata-only"},
+    {"field_id": "physical.initial_stored_energy_kwh", "reference_field_path": "/bt/curr/soc_initial", "expected_value": 53.328, "unit": "kWh", "evidence_kind": "parity", "comparison_rule": "source-precision", "precision_bound_id": "stored_energy_kwh"},
+    {"field_id": "physical.minimum_stored_energy_kwh", "reference_field_path": "/bt/curr/soc_min", "expected_value": 23.495, "unit": "kWh", "evidence_kind": "parity", "comparison_rule": "source-precision", "precision_bound_id": "stored_energy_kwh"},
+    {"field_id": "physical.maximum_stored_energy_kwh", "reference_field_path": "/bt/curr/soc_max", "expected_value": 58.579, "unit": "kWh", "evidence_kind": "parity", "comparison_rule": "source-precision", "precision_bound_id": "stored_energy_kwh"},
+    {"field_id": "physical.terminal_stored_energy_kwh", "reference_field_path": "/bt/curr/soc_terminal", "expected_value": 55.482, "unit": "kWh", "evidence_kind": "parity", "comparison_rule": "source-precision", "precision_bound_id": "stored_energy_kwh"},
+    {"field_id": "physical.charge_energy_kwh", "reference_field_path": "/bt/curr/y_in", "expected_value": 46.122, "unit": "kWh", "evidence_kind": "parity", "comparison_rule": "source-precision", "precision_bound_id": "charge_energy_kwh"},
+    {"field_id": "physical.discharge_energy_kwh", "reference_field_path": "/bt/curr/y_out", "expected_value": 37.056, "unit": "kWh", "evidence_kind": "parity", "comparison_rule": "source-precision", "precision_bound_id": "discharge_energy_kwh"},
+    {"field_id": "physical.maximum_delivered_power_kw", "reference_field_path": "/bt/curr/xmin", "expected_value": 14.385, "unit": "kW", "evidence_kind": "parity", "comparison_rule": "source-precision", "precision_bound_id": "power_extrema_kw", "reference_transform": "negate"},
+    {"field_id": "physical.minimum_delivered_power_kw", "reference_field_path": "/bt/curr/xmax", "expected_value": -31.826, "unit": "kW", "evidence_kind": "parity", "comparison_rule": "source-precision", "precision_bound_id": "power_extrema_kw", "reference_transform": "negate"},
+    {"field_id": "provenance.solve_time_seconds", "reference_field_path": "/solve_time", "expected_value": 1070.788, "unit": "s", "evidence_kind": "metadata", "comparison_rule": "metadata-only"},
+    {"field_id": "provenance.bilinear_violations", "reference_field_path": "/bilinear_violations", "expected_value": 0, "unit": null, "evidence_kind": "metadata", "comparison_rule": "metadata-only"}
+  ],
+  "unsupported_fields": [
+    {"field_id": "physical.detailed_trace", "reason": "the generated JSON contains no complete ten-second state trajectory"},
+    {"field_id": "physical.directional_fcr_energy", "reason": "the generated JSON contains no directional FCR aggregates"},
+    {"field_id": "physical.tracking_error", "reason": "the generated JSON contains no requested-versus-delivered tracking aggregate"},
+    {"field_id": "physical.non_delivery_energy", "reason": "the generated JSON contains no non-delivery aggregate"},
+    {"field_id": "physical.saturation_diagnostics", "reason": "the generated JSON contains no realized saturation causes"},
+    {"field_id": "settlement.separate_capacity_revenue", "reason": "profit_fcr combines capacity and activation-energy accounting"},
+    {"field_id": "settlement.separate_activation_revenue", "reason": "profit_fcr combines capacity and activation-energy accounting"},
+    {"field_id": "physical.throughput_kwh", "reason": "throughput is not reported by the generated JSON"}
+  ],
+  "redistribution_status": {
+    "original_result": "digest_and_normalized_derived_values_only",
+    "fixed_decisions": "permitted_derived_values",
+    "price_inputs": "permitted_derived_values",
+    "expected_aggregates": "permitted_derived_values",
+    "mapping": "project_authored",
+    "precision_policy": "project_authored",
+    "activation_csv": "external_only"
+  },
+  "fixture_fingerprint": "6bce7f00bb38b257a6f5e4186a8b8dab06d7f5f41336238b499b153b3f7a59fd"
+}

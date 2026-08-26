@@ -66,3 +66,36 @@ refresh are explicit researcher operations. Normalized output is written below
 ignored `artifacts/` first, semantically compared with the committed fixture,
 and promoted only through review. The refresh helper must not execute Julia,
 Gurobi, or mutate `baselines/`.
+
+## Initial Full-Data Acceptance Record
+
+On 2026-08-26, the complete consumer was run with the digest-matched local CSV
+explicitly supplied from the researcher's existing checkout. This was an
+explicit path argument, not a production fallback or routine-test dependency.
+It produced 24 hourly decisions, six FCR blocks, 96 checkpoints, and 8,640 PT10S
+activation samples with no saturation events. The overall comparison was
+`source_precision_compatible` and no supported field was a mismatch.
+
+Exact supported fields were objective, objective bound, total profit, combined
+FCR profit, initial stored energy, charge energy, and both mapped power extrema.
+Day-ahead profit, minimum/maximum/terminal stored energy, and discharge energy
+were `source_precision_compatible`. Reference intraday detail, solve/runtime
+metadata comparisons, and unsupported per-step evidence remained explicitly
+`unavailable`.
+
+Stable content/results from that acceptance run were:
+
+```text
+fixture:    6bce7f00bb38b257a6f5e4186a8b8dab06d7f5f41336238b499b153b3f7a59fd
+mapping:    53f1819fe433e55e87aa98f19f280dbdfabdef935658abd531bbe079fec88945
+plan:       6bbbf946b8d12762971e5b369d4f63fa57b0a17d8977ca84de4655927bf36f11
+trace:      f292f4990d99f6ca4aa7bb12c304b70751396e3c2005544577c58ceb153573f6
+settlement: d8241f80dafc8c6b3444f479b74c6c16fd8f79fae4e9d73f60e6fc3177da0c7e
+comparison: 1e16c8f03f3c8c649ab1a435d8a14849f51b168b91fc7915df236c492a8b274e
+```
+
+The activation artifact, evaluation-input, and final result fingerprints also
+bind the caller-supplied locator. They are intentionally not promoted as
+location-independent golden values; placing identical bytes at the supported
+`artifacts/` path changes lineage while leaving the physical, settlement, and
+comparison fingerprints above unchanged.

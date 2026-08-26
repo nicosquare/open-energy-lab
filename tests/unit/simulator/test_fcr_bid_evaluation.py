@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 import importlib
+from pathlib import Path
+from types import MappingProxyType
 
 import pytest
 
@@ -328,3 +330,205 @@ def test_repeated_evaluation_has_identical_trace_settlement_and_result_fingerpri
     assert first.trace_fingerprint == repeated.trace_fingerprint
     assert first.settlement_fingerprint == repeated.settlement_fingerprint
     assert first.result_fingerprint == repeated.result_fingerprint
+
+
+REFERENCE_FIXTURE_PATH = Path(
+    "tests/fixtures/fcr_bid_evaluation/"
+    "robust_storage_bidding_2023-06-18_aggregate_v1.json"
+)
+
+
+@pytest.fixture(scope="module")
+def zero_activation_reference_case():
+    reference = importlib.import_module("open_energy_lab.market.reference_fcr")
+    activation = importlib.import_module("open_energy_lab.market.activation")
+    fixture = reference.load_golden_reference_fixture(REFERENCE_FIXTURE_PATH)
+    period = fixture.mapping.target_period
+    step = timedelta(seconds=10)
+    request = activation.ActivationImportRequest(
+        source_name="unit-test zero activation",
+        source_locator="authored in test_fcr_bid_evaluation.py",
+        source_revision="v1",
+        source_timezone="Europe/Paris",
+        requested_start_utc=period.start_utc,
+        requested_end_utc=period.end_utc,
+        source_resolution="PT10S",
+        source_value_kind="interval_average",
+        source_sign_meaning="positive is upward/discharge",
+        normalization_rule={
+            "conversion": "identity",
+            "formula": "activation",
+            "point_to_interval": "already_interval_average",
+            "clip_min": -1.0,
+            "clip_max": 1.0,
+            "target_sign": "positive is upward/discharge",
+        },
+        redistribution_basis={"source": "project-authored unit test"},
+    )
+    trace = activation.import_regulation_activation_trace(
+        request,
+        [
+            {
+                "start_utc": period.start_utc + index * step,
+                "end_utc": period.start_utc + (index + 1) * step,
+                "value": 0.0,
+                "source_value": 0.0,
+                "source_unit": "dimensionless",
+            }
+            for index in range(8640)
+        ],
+        trace_id="unit-test-zero-reference-activation-v1",
+        created_at_utc=datetime(2026, 8, 26, tzinfo=UTC),
+    )
+    computed_bounds = {
+        "charge_energy_kwh": 0.012,
+        "discharge_energy_kwh": 0.012,
+        "stored_energy_kwh": 0.012 / 0.92,
+        "power_extrema_kw": 0.0005,
+        "day_ahead_revenue_eur": 0.001073575,
+        "fcr_capacity_revenue_eur": 0.00037976,
+        "activation_revenue_eur": 0.0,
+        "combined_fcr_revenue_eur": 0.00037976,
+        "total_revenue_eur": 0.001453335,
+    }
+    field_bounds = {
+        key: replace(value, decision_bound=computed_bounds[key])
+        for key, value in fixture.precision_policy.field_bounds.items()
+    }
+    policy = replace(
+        fixture.precision_policy,
+        field_bounds=MappingProxyType(field_bounds),
+    )
+    synthetic_fixture = replace(fixture, precision_policy=policy)
+    return synthetic_fixture, trace, computed_bounds
+
+
+def test_precision_bounds_are_recomputed_from_decisions_prices_and_activation(
+    zero_activation_reference_case,
+) -> None:
+    fixture, trace, expected_bounds = zero_activation_reference_case
+
+    actual = _module().recompute_reference_precision_bounds(fixture, trace)
+
+    assert actual == pytest.approx(expected_bounds, abs=1e-12)
+
+
+def test_reference_comparison_records_exact_rounded_match(
+    zero_activation_reference_case,
+) -> None:
+    fixture, trace, _ = zero_activation_reference_case
+    comparison = _module().compare_reference_values(
+        fixture=fixture,
+        actual_values={"settlement.day_ahead_revenue_eur": 0.1684},
+        activation_trace=trace,
+        requested_field_ids=("settlement.day_ahead_revenue_eur",),
+    )
+
+    assert comparison.overall_status == "exact"
+    assert comparison.fields[0].status == "exact"
+    assert comparison.fields[0].exact_rounded_match is True
+
+
+def test_reference_comparison_uses_analytic_interval_overlap(
+    zero_activation_reference_case,
+) -> None:
+    fixture, trace, bounds = zero_activation_reference_case
+    field_id = "settlement.day_ahead_revenue_eur"
+    comparison = _module().compare_reference_values(
+        fixture=fixture,
+        actual_values={field_id: 0.169},
+        activation_trace=trace,
+        requested_field_ids=(field_id,),
+    )
+
+    field = comparison.fields[0]
+    assert comparison.overall_status == "source_precision_compatible"
+    assert field.status == "source_precision_compatible"
+    assert field.decision_bound == pytest.approx(bounds["day_ahead_revenue_eur"])
+    assert field.actual_interval == pytest.approx(
+        (0.169 - bounds["day_ahead_revenue_eur"], 0.169 + bounds["day_ahead_revenue_eur"])
+    )
+    assert field.expected_interval == pytest.approx((0.1675, 0.1685))
+    assert field.exact_rounded_match is False
+
+
+def test_reference_comparison_accepts_closed_interval_endpoint_overlap(
+    zero_activation_reference_case,
+) -> None:
+    fixture, trace, bounds = zero_activation_reference_case
+    field_id = "settlement.day_ahead_revenue_eur"
+    actual = 0.168 + 0.0005 + bounds["day_ahead_revenue_eur"]
+    comparison = _module().compare_reference_values(
+        fixture=fixture,
+        actual_values={field_id: actual},
+        activation_trace=trace,
+        requested_field_ids=(field_id,),
+    )
+
+    assert comparison.fields[0].actual_interval[0] == pytest.approx(0.1685)
+    assert comparison.fields[0].expected_interval[1] == pytest.approx(0.1685)
+    assert comparison.overall_status == "source_precision_compatible"
+
+
+def test_reference_comparison_reports_mismatch_outside_field_bound(
+    zero_activation_reference_case,
+) -> None:
+    fixture, trace, _ = zero_activation_reference_case
+    comparison = _module().compare_reference_values(
+        fixture=fixture,
+        actual_values={"settlement.day_ahead_revenue_eur": 0.2},
+        activation_trace=trace,
+        requested_field_ids=("settlement.day_ahead_revenue_eur",),
+    )
+
+    assert comparison.overall_status == "mismatch"
+    assert comparison.fields[0].status == "mismatch"
+
+
+def test_reference_comparison_returns_unavailable_for_unsupported_evidence(
+    zero_activation_reference_case,
+) -> None:
+    fixture, trace, _ = zero_activation_reference_case
+    comparison = _module().compare_reference_values(
+        fixture=fixture,
+        actual_values={"physical.throughput_kwh": 83.0},
+        activation_trace=trace,
+        requested_field_ids=("physical.throughput_kwh",),
+    )
+
+    assert comparison.overall_status == "unavailable"
+    assert comparison.fields[0].status == "unavailable"
+    assert "not reported" in comparison.fields[0].reason
+
+
+def test_reference_objective_metadata_is_compared_separately_from_profit(
+    zero_activation_reference_case,
+) -> None:
+    fixture, trace, _ = zero_activation_reference_case
+    comparison = _module().compare_reference_values(
+        fixture=fixture,
+        actual_values={
+            "plan.objective": 11.028,
+            "settlement.total_profit_eur": 10.749,
+        },
+        activation_trace=trace,
+        requested_field_ids=("plan.objective", "settlement.total_profit_eur"),
+    )
+
+    assert [item.status for item in comparison.fields] == ["exact", "exact"]
+    assert comparison.fields[0].actual_value != comparison.fields[1].actual_value
+
+
+def test_reference_comparison_api_rejects_a_blanket_tolerance_argument(
+    zero_activation_reference_case,
+) -> None:
+    fixture, trace, _ = zero_activation_reference_case
+
+    with pytest.raises(TypeError, match="tolerance"):
+        _module().compare_reference_values(
+            fixture=fixture,
+            actual_values={"settlement.total_profit_eur": 10.749},
+            activation_trace=trace,
+            requested_field_ids=("settlement.total_profit_eur",),
+            tolerance=0.01,
+        )

@@ -43,7 +43,16 @@ lineage. It has no physical trace, settlement, or numeric zero standing in for
 unavailable profit.
 
 The full-reference consumer never downloads data and never reads the reference
-submodule. Installation, digest verification, runnable commands, and supported
-comparison outcomes are documented in the Feature 012 quickstart. Until the
-reference consumer and normalization helper are implemented in later Feature
-012 phases; their rows above define the governed data boundary meanwhile.
+submodule. After installing the digest-matched CSV at the documented ignored
+location, run:
+
+```bash
+uv run python examples/fcr_bid_evaluation/run_reference_parity.py \
+  --activation-path artifacts/reference/robust_storage_bidding/regulation_signal.csv
+```
+
+The command reports the 24/6/96/8,640 mapping counts, input lineage, physical
+metrics, settlement components, and each `exact`,
+`source_precision_compatible`, or `unavailable` field result. It exits nonzero
+if any supported parity field is a `mismatch`. Installation, digest
+verification, and evidence limits are documented in the Feature 012 quickstart.
