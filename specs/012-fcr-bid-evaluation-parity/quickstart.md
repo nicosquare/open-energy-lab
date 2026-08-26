@@ -25,6 +25,26 @@ This suite proves the plan boundary, hand-calculable physics and accounting,
 failed-report behavior, Golden Reference Fixture provenance, precision formulas,
 deterministic fingerprints, and Feature 010 compatibility.
 
+The focused US1 evaluator gate is:
+
+```bash
+uv run pytest \
+  tests/unit/control/test_fcr_bid_plan.py \
+  tests/unit/simulator/test_fcr_bid_evaluation.py \
+  tests/unit/simulator/test_fcr_reference_settlement.py \
+  tests/integration/simulator/test_fcr_bid_evaluation_manual.py \
+  tests/integration/simulator/test_fcr_bid_evaluation_compatibility.py \
+  -q
+```
+
+It must pass with both the settled authored oracle and deterministic
+`validation_failed` assertions. The runnable equivalents are:
+
+```bash
+uv run python examples/fcr_bid_evaluation/run_manual_plan.py
+uv run python examples/fcr_bid_evaluation/run_manual_plan.py --invalid-headroom
+```
+
 ## 2. Inspect The Committed Evidence
 
 ```bash

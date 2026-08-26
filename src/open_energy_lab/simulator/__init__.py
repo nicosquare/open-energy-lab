@@ -23,6 +23,7 @@ if TYPE_CHECKING:
         build_feature_010_market_context,
         build_settled_evaluation_report,
         build_validation_failed_evaluation_report,
+        evaluate_fixed_fcr_bid,
     )
     from .fcr_settlement import (
         EnergySettlementInterval,
@@ -169,6 +170,10 @@ _EXPORT_MAP = {
     "build_validation_failed_evaluation_report": (
         ".fcr_bid_evaluation",
         "build_validation_failed_evaluation_report",
+    ),
+    "evaluate_fixed_fcr_bid": (
+        ".fcr_bid_evaluation",
+        "evaluate_fixed_fcr_bid",
     ),
     "ArbitrageObjectiveRepresentation": (".pricing", "ArbitrageObjectiveRepresentation"),
     "ArbitrageScenario": (".scenario", "ArbitrageScenario"),
@@ -423,6 +428,7 @@ __all__ = [
     "EvaluationMarketContext",
     "EvaluationPriceObservation",
     "evaluate_demand_family",
+    "evaluate_fixed_fcr_bid",
     "export_planning_dataset",
     "generate_planning_study_dataset",
     "evaluate_with_controller",

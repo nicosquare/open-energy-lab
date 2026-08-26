@@ -164,6 +164,7 @@ def test_successful_and_failed_reports_have_disjoint_shapes() -> None:
     settled = module.build_settled_evaluation_report(
         request=request,
         diagnostics=(diagnostic,),
+        physical_trace={"samples": []},
         physical_metrics={"throughput_kwh": 2.0},
         settlement={"total_profit_eur": 0.13},
         total_profit_eur=0.13,
@@ -184,10 +185,12 @@ def test_successful_and_failed_reports_have_disjoint_shapes() -> None:
     )
 
     assert settled.status == "settled"
+    assert settled.physical_trace == {"samples": ()}
     assert settled.physical_metrics == {"throughput_kwh": 2.0}
     assert settled.settlement == {"total_profit_eur": 0.13}
     assert settled.total_profit_eur == 0.13
     assert failed.status == "validation_failed"
+    assert failed.physical_trace is None
     assert failed.physical_metrics is None
     assert failed.settlement is None
     assert failed.total_profit_eur is None
@@ -225,3 +228,103 @@ def test_request_and_report_canonical_bytes_and_fingerprints_are_stable() -> Non
     assert first.canonical_bytes() == repeated.canonical_bytes()
     assert first.result_fingerprint == repeated.result_fingerprint
     assert len(first.result_fingerprint) == 64
+
+
+def _us1_case(*, producer_kind: str = "manual", **overrides: object):
+    from tests.integration.simulator.fcr_bid_evaluation_fixture_utils import (
+        build_test_evaluation_case,
+    )
+
+    values = {
+        "powers_kw": (1.0, 0.0, 0.0, -1.0),
+        "capacities_kw": (1.0,),
+        "activation_values": (1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0, -1.0),
+        "day_ahead_prices_eur_per_mwh": (50.0, 60.0, 70.0, 100.0),
+        "fcr_capacity_prices_eur_per_kw_block": (0.08,),
+        "settlement_profile": "robust-storage-bidding-reference-settlement-v1",
+        "producer_kind": producer_kind,
+    }
+    values.update(overrides)
+    return build_test_evaluation_case(**values)
+
+
+def test_valid_fixed_plan_preflight_returns_a_settled_report() -> None:
+    module = _module()
+    case = _us1_case()
+
+    report = module.evaluate_fixed_fcr_bid(case.request)
+
+    assert report.status == "settled"
+    assert report.diagnostics[0].code == "preflight_valid"
+    assert report.plan_fingerprint == case.plan.plan_fingerprint
+    assert report.evaluation_input_fingerprint == (
+        case.request.evaluation_input_fingerprint
+    )
+
+
+def test_identical_values_are_physically_invariant_across_producer_kinds() -> None:
+    module = _module()
+    reports = [
+        module.evaluate_fixed_fcr_bid(_us1_case(producer_kind=kind).request)
+        for kind in ("manual", "heuristic", "robust", "tpm")
+    ]
+
+    assert all(report.status == "settled" for report in reports)
+    assert all(report.physical_metrics == reports[0].physical_metrics for report in reports)
+    assert all(report.physical_trace == reports[0].physical_trace for report in reports)
+    assert all(report.settlement == reports[0].settlement for report in reports)
+    assert all(report.trace_fingerprint == reports[0].trace_fingerprint for report in reports)
+    assert all(
+        report.settlement_fingerprint == reports[0].settlement_fingerprint
+        for report in reports
+    )
+    assert len({report.result_fingerprint for report in reports}) == 4
+
+
+def test_manual_plan_retains_explicit_unavailable_objective_reasons_and_no_activation() -> None:
+    case = _us1_case()
+    plan = case.plan
+
+    assert plan.objective.availability == "unavailable"
+    assert plan.objective.unavailable_reason == (
+        "authored plan has no optimization objective"
+    )
+    assert plan.objective_bound.availability == "unavailable"
+    assert plan.objective_bound.unavailable_reason == (
+        "authored plan has no optimization bound"
+    )
+    assert "activation" not in repr(plan.to_dict()).casefold()
+    assert case.request.energy_schedule is plan.energy_schedule
+    assert case.request.fcr_schedule is plan.fcr_schedule
+
+
+def test_zero_fcr_and_zero_energy_use_the_same_evaluation_path() -> None:
+    module = _module()
+    zero_fcr = _us1_case(capacities_kw=(0.0,))
+    zero_energy = _us1_case(powers_kw=(0.0, 0.0, 0.0, 0.0))
+
+    fcr_report = module.evaluate_fixed_fcr_bid(zero_fcr.request)
+    energy_report = module.evaluate_fixed_fcr_bid(zero_energy.request)
+
+    assert fcr_report.status == "settled"
+    assert fcr_report.physical_metrics["requested_fcr_energy_kwh"] == {
+        "upward_discharge": 0.0,
+        "downward_charge": 0.0,
+        "signed_net_charge_positive": 0.0,
+    }
+    assert fcr_report.settlement["activation_energy_revenue"]["value_eur"] == 0.0
+    assert energy_report.status == "settled"
+    assert energy_report.settlement["day_ahead_revenue"]["value_eur"] == 0.0
+
+
+def test_repeated_evaluation_has_identical_trace_settlement_and_result_fingerprints() -> None:
+    module = _module()
+    case = _us1_case()
+
+    first = module.evaluate_fixed_fcr_bid(case.request)
+    repeated = module.evaluate_fixed_fcr_bid(case.request)
+
+    assert first.physical_trace == repeated.physical_trace
+    assert first.trace_fingerprint == repeated.trace_fingerprint
+    assert first.settlement_fingerprint == repeated.settlement_fingerprint
+    assert first.result_fingerprint == repeated.result_fingerprint

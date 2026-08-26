@@ -697,6 +697,7 @@ class DailyFCRBidEvaluationReport:
     diagnostics: tuple[EvaluationDiagnostic, ...]
     plan_fingerprint: str
     evaluation_input_fingerprint: str
+    physical_trace: Mapping[str, object] | None
     physical_metrics: Mapping[str, object] | None
     settlement: Mapping[str, object] | None
     total_profit_eur: float | None
@@ -736,10 +737,15 @@ class DailyFCRBidEvaluationReport:
             ),
         )
         if self.status == "settled":
-            if self.physical_metrics is None or self.settlement is None:
+            if (
+                self.physical_trace is None
+                or self.physical_metrics is None
+                or self.settlement is None
+            ):
                 raise FCRBidEvaluationValidationError(
-                    "settled report requires physical metrics and settlement"
+                    "settled report requires physical trace, metrics, and settlement"
                 )
+            object.__setattr__(self, "physical_trace", _freeze(self.physical_trace))
             object.__setattr__(
                 self,
                 "physical_metrics",
@@ -769,6 +775,7 @@ class DailyFCRBidEvaluationReport:
                 item is not None
                 for item in (
                     self.physical_metrics,
+                    self.physical_trace,
                     self.settlement,
                     self.total_profit_eur,
                     self.trace_fingerprint,
@@ -802,6 +809,7 @@ class DailyFCRBidEvaluationReport:
             "diagnostics": [item.to_dict() for item in self.diagnostics],
             "plan_fingerprint": self.plan_fingerprint,
             "evaluation_input_fingerprint": self.evaluation_input_fingerprint,
+            "physical_trace": _thaw(self.physical_trace),
             "physical_metrics": _thaw(self.physical_metrics),
             "settlement": _thaw(self.settlement),
             "total_profit_eur": self.total_profit_eur,
@@ -834,6 +842,7 @@ def build_settled_evaluation_report(
     *,
     request: FCRBidEvaluationRequest,
     diagnostics: Sequence[EvaluationDiagnostic],
+    physical_trace: Mapping[str, object],
     physical_metrics: Mapping[str, object],
     settlement: Mapping[str, object],
     total_profit_eur: float,
@@ -846,6 +855,7 @@ def build_settled_evaluation_report(
         **_report_identity(request),
         status="settled",
         diagnostics=tuple(diagnostics),
+        physical_trace=physical_trace,
         physical_metrics=physical_metrics,
         settlement=settlement,
         total_profit_eur=total_profit_eur,
@@ -864,11 +874,385 @@ def build_validation_failed_evaluation_report(
         **_report_identity(request),
         status="validation_failed",
         diagnostics=tuple(diagnostics),
+        physical_trace=None,
         physical_metrics=None,
         settlement=None,
         total_profit_eur=None,
         trace_fingerprint=None,
         settlement_fingerprint=None,
+        comparison_fingerprint=None,
+    )
+
+
+def _schedule_fingerprint_matches(
+    schedule: EnergyBaselineSchedule | FCRCapacitySchedule,
+) -> bool:
+    payload = schedule.to_dict()
+    recorded = payload.pop("schedule_fingerprint")
+    return recorded == _fingerprint(payload)
+
+
+def _preflight_diagnostics(
+    request: FCRBidEvaluationRequest,
+) -> tuple[EvaluationDiagnostic, ...]:
+    diagnostics: list[EvaluationDiagnostic] = []
+
+    def reject(
+        code: str,
+        field_path: str,
+        message: str,
+        evidence_refs: tuple[str, ...] = (),
+    ) -> None:
+        diagnostics.append(
+            EvaluationDiagnostic(
+                phase="preflight",
+                code=code,
+                severity="error",
+                field_path=field_path,
+                message=message,
+                evidence_refs=evidence_refs,
+            )
+        )
+
+    try:
+        request.assert_battery_unchanged()
+    except FCRBidEvaluationValidationError as exc:
+        reject(
+            "battery_mutated",
+            "battery",
+            str(exc),
+            (request.input_fingerprints["battery"],),
+        )
+    if not _schedule_fingerprint_matches(request.energy_schedule):
+        reject(
+            "energy_schedule_fingerprint_mismatch",
+            "plan.energy_schedule",
+            "energy schedule semantic content does not match its fingerprint",
+            (request.energy_schedule.schedule_fingerprint,),
+        )
+    if not _schedule_fingerprint_matches(request.fcr_schedule):
+        reject(
+            "fcr_schedule_fingerprint_mismatch",
+            "plan.fcr_schedule",
+            "FCR schedule semantic content does not match its fingerprint",
+            (request.fcr_schedule.schedule_fingerprint,),
+        )
+
+    day_prices = request.market_context.day_ahead_prices
+    if len(day_prices) != len(request.energy_schedule.intervals):
+        reject(
+            "day_ahead_price_count_mismatch",
+            "market_context.day_ahead_prices",
+            "day-ahead prices must align one-to-one with hourly schedule intervals",
+        )
+    else:
+        for index, (schedule, price) in enumerate(
+            zip(request.energy_schedule.intervals, day_prices, strict=True)
+        ):
+            if not _same_interval(schedule.interval, price.interval):
+                reject(
+                    "day_ahead_price_alignment_mismatch",
+                    f"market_context.day_ahead_prices[{index}]",
+                    "day-ahead price interval does not match the energy schedule",
+                    (price.source_ref,),
+                )
+            if price.canonical_unit != "EUR/MWh":
+                reject(
+                    "day_ahead_price_unit_mismatch",
+                    f"market_context.day_ahead_prices[{index}].canonical_unit",
+                    "day-ahead price canonical unit must be EUR/MWh",
+                    (price.source_ref,),
+                )
+
+    fcr_prices = request.market_context.fcr_capacity_prices
+    if len(fcr_prices) != len(request.fcr_schedule.intervals):
+        reject(
+            "fcr_price_count_mismatch",
+            "market_context.fcr_capacity_prices",
+            "FCR prices must align one-to-one with four-hour commitments",
+        )
+    for index, commitment in enumerate(request.fcr_schedule.intervals):
+        evidence = request.market_context.accepted_bid_evidence.get(
+            commitment.volume_observation_ref
+        )
+        if not isinstance(evidence, Mapping):
+            reject(
+                "accepted_bid_evidence_invalid",
+                f"market_context.accepted_bid_evidence[{commitment.volume_observation_ref}]",
+                "accepted-bid evidence must be an explicit mapping",
+                (commitment.volume_observation_ref,),
+            )
+        else:
+            try:
+                if "capacity_kw" in evidence:
+                    accepted_kw = _finite(
+                        evidence["capacity_kw"],
+                        field_name="accepted FCR capacity_kw",
+                    )
+                    if abs(accepted_kw - commitment.capacity_kw) > request.numeric_tolerance:
+                        reject(
+                            "accepted_bid_capacity_mismatch",
+                            f"plan.fcr_schedule.intervals[{index}].capacity_kw",
+                            "reference-result accepted capacity must equal the commitment",
+                            (commitment.volume_observation_ref,),
+                        )
+                elif evidence.get("unit") == "MW" and "value" in evidence:
+                    limit_kw = _finite(
+                        evidence["value"],
+                        field_name="accepted market volume",
+                    ) * 1000.0
+                    if commitment.capacity_kw > limit_kw + request.numeric_tolerance:
+                        reject(
+                            "accepted_bid_exceeds_market_volume",
+                            f"plan.fcr_schedule.intervals[{index}].capacity_kw",
+                            "FCR commitment exceeds observed accepted market volume",
+                            (commitment.volume_observation_ref,),
+                        )
+                else:
+                    reject(
+                        "accepted_bid_evidence_semantics_missing",
+                        f"market_context.accepted_bid_evidence[{commitment.volume_observation_ref}]",
+                        "accepted-bid evidence must declare capacity_kw or an MW market volume",
+                        (commitment.volume_observation_ref,),
+                    )
+            except FCRBidEvaluationValidationError as exc:
+                reject(
+                    "accepted_bid_evidence_nonfinite",
+                    f"market_context.accepted_bid_evidence[{commitment.volume_observation_ref}]",
+                    str(exc),
+                    (commitment.volume_observation_ref,),
+                )
+        if index < len(fcr_prices):
+            price = fcr_prices[index]
+            if (
+                not _same_interval(commitment.interval, price.interval)
+                or commitment.price_observation_ref != price.source_ref
+            ):
+                reject(
+                    "fcr_price_alignment_mismatch",
+                    f"market_context.fcr_capacity_prices[{index}]",
+                    "FCR price interval/reference does not match the commitment",
+                    (commitment.price_observation_ref, price.source_ref),
+                )
+            if price.canonical_unit not in {"EUR/kW/block", "EUR/MW/h"}:
+                reject(
+                    "fcr_price_unit_mismatch",
+                    f"market_context.fcr_capacity_prices[{index}].canonical_unit",
+                    "FCR price canonical unit must be EUR/kW/block or EUR/MW/h",
+                    (price.source_ref,),
+                )
+
+        for energy_index, baseline in enumerate(request.energy_schedule.intervals):
+            if (
+                baseline.interval.start_utc >= commitment.interval.start_utc
+                and baseline.interval.end_utc <= commitment.interval.end_utc
+            ):
+                if (
+                    baseline.power_kw + commitment.capacity_kw
+                    > request.battery.max_charge_kw + request.numeric_tolerance
+                ):
+                    reject(
+                        "charge_power_headroom_insufficient",
+                        f"plan.energy_schedule.intervals[{energy_index}].power_kw",
+                        "accepted commitment lacks charge power headroom",
+                        (f"fcr:{index}",),
+                    )
+                if (
+                    baseline.power_kw - commitment.capacity_kw
+                    < -request.battery.max_discharge_kw - request.numeric_tolerance
+                ):
+                    reject(
+                        "discharge_power_headroom_insufficient",
+                        f"plan.energy_schedule.intervals[{energy_index}].power_kw",
+                        "accepted commitment lacks discharge power headroom",
+                        (f"fcr:{index}",),
+                    )
+
+    if request.settlement_profile != REFERENCE_SETTLEMENT_PROFILE:
+        reject(
+            "unsupported_common_evaluator_settlement_profile",
+            "settlement_profile",
+            "the common evaluator currently requires the explicit reference settlement profile",
+            (request.settlement_profile,),
+        )
+    if diagnostics:
+        return tuple(sorted(diagnostics, key=_diagnostic_sort_key))
+    return (
+        EvaluationDiagnostic(
+            phase="preflight",
+            code="preflight_valid",
+            severity="info",
+            field_path=None,
+            message="fixed plan passed deterministic accepted-commitment preflight",
+            evidence_refs=(
+                request.plan.plan_fingerprint,
+                request.market_context.context_fingerprint,
+            ),
+        ),
+    )
+
+
+def _directional_fcr_energy(
+    samples: Sequence[object],
+    *,
+    power_field: str,
+) -> dict[str, float]:
+    upward = 0.0
+    downward = 0.0
+    for sample in samples:
+        power = float(getattr(sample, power_field))
+        duration = (
+            sample.interval.end_utc - sample.interval.start_utc
+        ).total_seconds() / 3600.0
+        upward += max(-power, 0.0) * duration
+        downward += max(power, 0.0) * duration
+    return {
+        "upward_discharge": upward,
+        "downward_charge": downward,
+        "signed_net_charge_positive": downward - upward,
+    }
+
+
+def _physical_trace_payload(physical: object) -> dict[str, object]:
+    return {
+        "samples": [sample.to_dict() for sample in physical.samples],
+        "state_checkpoints": [
+            item.to_dict() for item in physical.state_checkpoints
+        ],
+        "checkpoint_summaries": [
+            item.to_dict() for item in physical.checkpoint_summaries
+        ],
+        "energy_summaries": [item.to_dict() for item in physical.energy_summaries],
+        "fcr_summaries": [item.to_dict() for item in physical.fcr_summaries],
+        "saturation_events": [
+            item.to_dict() for item in physical.saturation_events
+        ],
+    }
+
+
+def _daily_physical_metrics(
+    request: FCRBidEvaluationRequest,
+    physical: object,
+) -> dict[str, object]:
+    samples = physical.samples
+    stored_values = [physical.state_checkpoints[0].stored_energy_kwh] + [
+        sample.stored_energy_after_kwh for sample in samples
+    ]
+    requested_powers = [sample.requested_combined_power_kw for sample in samples]
+    delivered_powers = [sample.delivered_combined_power_kw for sample in samples]
+    charge_energy = sum(sample.charge_energy_kwh for sample in samples)
+    discharge_energy = sum(sample.discharge_energy_kwh for sample in samples)
+    capacity = request.battery.capacity_kwh
+    return {
+        "interval_counts": {
+            "activation": len(samples),
+            "checkpoint": len(request.time_contract.index.checkpoint_intervals),
+            "energy": len(request.energy_schedule.intervals),
+            "fcr": len(request.fcr_schedule.intervals),
+        },
+        "stored_energy_kwh": {
+            "initial": stored_values[0],
+            "minimum": min(stored_values),
+            "maximum": max(stored_values),
+            "terminal": stored_values[-1],
+        },
+        "soc_fraction": {
+            "initial": stored_values[0] / capacity,
+            "minimum": min(stored_values) / capacity,
+            "maximum": max(stored_values) / capacity,
+            "terminal": stored_values[-1] / capacity,
+        },
+        "requested_power_kw": {
+            "minimum": min(requested_powers),
+            "maximum": max(requested_powers),
+        },
+        "delivered_power_kw": {
+            "minimum": min(delivered_powers),
+            "maximum": max(delivered_powers),
+        },
+        "requested_fcr_energy_kwh": _directional_fcr_energy(
+            samples,
+            power_field="requested_fcr_power_kw",
+        ),
+        "delivered_fcr_energy_kwh": _directional_fcr_energy(
+            samples,
+            power_field="delivered_fcr_power_kw",
+        ),
+        "charge_energy_kwh": charge_energy,
+        "discharge_energy_kwh": discharge_energy,
+        "throughput_kwh": charge_energy + discharge_energy,
+        "signed_tracking_error_kw_sum": physical.tracking_summary[
+            "signed_tracking_error_kw_sum"
+        ],
+        "absolute_tracking_error_kw_sum": physical.tracking_summary[
+            "absolute_tracking_error_kw_sum"
+        ],
+        "non_delivery_energy_kwh": physical.tracking_summary[
+            "non_delivery_energy_kwh"
+        ],
+        "saturation_sample_count": physical.tracking_summary[
+            "saturation_sample_count"
+        ],
+        "saturation_duration_hours": physical.tracking_summary[
+            "saturation_duration_hours"
+        ],
+        "saturation_event_count": physical.tracking_summary[
+            "saturation_event_count"
+        ],
+        "physical_limit_diagnostics": [
+            {
+                "event_id": event.event_id,
+                "cause": event.cause,
+                "sample_count": event.sample_count,
+                "undelivered_energy_kwh": event.undelivered_energy_kwh,
+            }
+            for event in physical.saturation_events
+        ],
+    }
+
+
+def evaluate_fixed_fcr_bid(
+    request: FCRBidEvaluationRequest,
+) -> DailyFCRBidEvaluationReport:
+    """Evaluate a frozen bid plan without inspecting how the schedules were made."""
+
+    if not isinstance(request, FCRBidEvaluationRequest):
+        raise FCRBidEvaluationValidationError(
+            "request must be one FCRBidEvaluationRequest"
+        )
+    diagnostics = _preflight_diagnostics(request)
+    if any(item.severity == "error" for item in diagnostics):
+        return build_validation_failed_evaluation_report(
+            request=request,
+            diagnostics=diagnostics,
+        )
+
+    from .fcr_settlement import settle_reference_fcr_bid
+    from .stacked_service import _PhysicalReplayInputs, _replay_physical_kernel
+
+    physical = _replay_physical_kernel(
+        _PhysicalReplayInputs(
+            activation_trace=request.activation_trace,
+            battery=request.battery,
+            energy_schedule=request.energy_schedule,
+            fcr_schedule=request.fcr_schedule,
+            time_contract=request.time_contract,
+            numeric_tolerance=request.numeric_tolerance,
+            terminal_soc_target=request.terminal_soc_target,
+        )
+    )
+    physical_trace = _physical_trace_payload(physical)
+    trace_fingerprint = _fingerprint(physical_trace)
+    settlement = settle_reference_fcr_bid(request, physical.samples)
+    return build_settled_evaluation_report(
+        request=request,
+        diagnostics=diagnostics,
+        physical_trace=physical_trace,
+        physical_metrics=_daily_physical_metrics(request, physical),
+        settlement=settlement.to_dict(),
+        total_profit_eur=settlement.total_profit_eur,
+        trace_fingerprint=trace_fingerprint,
+        settlement_fingerprint=settlement.settlement_fingerprint,
         comparison_fingerprint=None,
     )
 
@@ -889,4 +1273,5 @@ __all__ = [
     "build_settled_evaluation_report",
     "build_validation_failed_evaluation_report",
     "canonical_json_bytes",
+    "evaluate_fixed_fcr_bid",
 ]

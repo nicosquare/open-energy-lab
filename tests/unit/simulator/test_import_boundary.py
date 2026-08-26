@@ -68,6 +68,7 @@ def test_simulator_import_stays_lightweight() -> None:
         "EvaluationMarketContext",
         "EvaluationPriceObservation",
         "evaluate_demand_family",
+        "evaluate_fixed_fcr_bid",
         "export_planning_dataset",
         "generate_planning_study_dataset",
         "evaluate_with_controller",
