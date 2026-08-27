@@ -1,0 +1,756 @@
+{
+  "approximation_metadata": {
+    "approximation_kind": "piecewise",
+    "breakpoint_policy": {
+      "exp_breakpoint_start": 0.3,
+      "exp_probability_floor": 0.001,
+      "piecewise_breakpoint_count": 5,
+      "policy_name": "legacy-logspace-v1"
+    },
+    "fit_numeric_tolerance": 1e-09,
+    "leaf_encoding_mode": "histogram",
+    "legacy_reference_paths": [
+      "legacy/old_tpm/src_py/tpm/spn/main.py",
+      "legacy/old_tpm/src_py/tpm/spn/encoding.py",
+      "legacy/old_tpm/src_py/utils/densities.py"
+    ],
+    "mio_epsilon": 1e-06,
+    "query_numeric_tolerance": 1e-09,
+    "sum_encoding_mode": "piecewise",
+    "tolerance": 1e-09
+  },
+  "artifact_id": "tpm-artifact:declared-feature-domains-v3",
+  "backend_api_version": "1.1.0",
+  "backend_generation": "current-spflow",
+  "created_at": "2026-08-27T00:00:00Z",
+  "dataset_reference": "declared-feature-domains-v1",
+  "declared_domain_evidence": {
+    "domain_membership_policy": "exact",
+    "feature_semantics": {
+      "activation": {
+        "mathematical_domain": {
+          "feature_kind": "binary",
+          "feature_name": "activation",
+          "ordering": [
+            "off",
+            "on"
+          ],
+          "origin": "caller-declared",
+          "purpose": "decision-domain",
+          "values": [
+            "off",
+            "on"
+          ]
+        },
+        "normalization": {
+          "feature_kind": "binary",
+          "feature_name": "activation",
+          "kind": "ordered-index",
+          "ordering": [
+            "off",
+            "on"
+          ],
+          "origin": "caller-declared"
+        },
+        "training_support": {
+          "feature_kind": "binary",
+          "feature_name": "activation",
+          "observed_values": [
+            "off",
+            "on"
+          ],
+          "origin": "physical-training-rows"
+        }
+      },
+      "demand": {
+        "mathematical_domain": {
+          "feature_kind": "continuous",
+          "feature_name": "demand",
+          "origin": "caller-declared",
+          "purpose": "distribution-support",
+          "shape": "unbounded"
+        },
+        "normalization": {
+          "feature_kind": "continuous",
+          "feature_name": "demand",
+          "kind": "identity",
+          "origin": "caller-declared"
+        },
+        "training_support": {
+          "feature_kind": "continuous",
+          "feature_name": "demand",
+          "maximum": 134.0,
+          "minimum": 65.0,
+          "origin": "physical-training-rows"
+        }
+      },
+      "demand_above_100": {
+        "mathematical_domain": {
+          "feature_kind": "binary",
+          "feature_name": "demand_above_100",
+          "ordering": [
+            0.0,
+            1.0
+          ],
+          "origin": "internal-exact-target",
+          "purpose": "distribution-support",
+          "values": [
+            0.0,
+            1.0
+          ]
+        },
+        "normalization": {
+          "feature_kind": "binary",
+          "feature_name": "demand_above_100",
+          "kind": "ordered-index",
+          "ordering": [
+            0.0,
+            1.0
+          ],
+          "origin": "internal-exact-target"
+        },
+        "training_support": {
+          "feature_kind": "binary",
+          "feature_name": "demand_above_100",
+          "observed_values": [
+            0.0,
+            1.0
+          ],
+          "origin": "physical-training-rows"
+        }
+      },
+      "service_tier": {
+        "mathematical_domain": {
+          "feature_kind": "categorical",
+          "feature_name": "service_tier",
+          "ordering": [
+            "economy",
+            "standard",
+            "priority"
+          ],
+          "origin": "caller-declared",
+          "purpose": "decision-domain",
+          "values": [
+            "economy",
+            "standard",
+            "priority"
+          ]
+        },
+        "normalization": {
+          "feature_kind": "categorical",
+          "feature_name": "service_tier",
+          "kind": "ordered-index",
+          "ordering": [
+            "economy",
+            "standard",
+            "priority"
+          ],
+          "origin": "caller-declared"
+        },
+        "training_support": {
+          "feature_kind": "categorical",
+          "feature_name": "service_tier",
+          "observed_values": [
+            "economy",
+            "standard"
+          ],
+          "origin": "physical-training-rows"
+        }
+      },
+      "x": {
+        "mathematical_domain": {
+          "feature_kind": "continuous",
+          "feature_name": "x",
+          "lower": 40.0,
+          "origin": "caller-declared",
+          "purpose": "decision-domain",
+          "shape": "finite",
+          "upper": 160.0
+        },
+        "normalization": {
+          "feature_kind": "continuous",
+          "feature_name": "x",
+          "kind": "min-max",
+          "lower": 40.0,
+          "origin": "caller-declared",
+          "upper": 160.0
+        },
+        "training_support": {
+          "feature_kind": "continuous",
+          "feature_name": "x",
+          "maximum": 140.0,
+          "minimum": 60.0,
+          "origin": "physical-training-rows"
+        }
+      }
+    },
+    "model_coordinate_tolerance": 1e-12,
+    "native_probability_tolerance": 1e-06,
+    "native_queries": [
+      {
+        "case_name": "lower-endpoint-outside-training-support",
+        "conditional_probability": 0.44444444444444425,
+        "decision_assignments": {
+          "activation": "off",
+          "service_tier": "economy",
+          "x": 40.0
+        },
+        "source": "spflow_backend"
+      },
+      {
+        "case_name": "upper-endpoint-outside-training-support",
+        "conditional_probability": 0.44444444444444425,
+        "decision_assignments": {
+          "activation": "on",
+          "service_tier": "standard",
+          "x": 160.0
+        },
+        "source": "spflow_backend"
+      },
+      {
+        "case_name": "declared-unobserved-category",
+        "conditional_probability": 0.44444444444444503,
+        "decision_assignments": {
+          "activation": "on",
+          "service_tier": "priority",
+          "x": 100.0
+        },
+        "source": "spflow_backend"
+      }
+    ],
+    "probe_results": [
+      {
+        "domain_membership": true,
+        "feature_name": "x",
+        "model_coordinate": 0.0,
+        "physical_value": 40.0,
+        "probe_name": "decision-lower-endpoint"
+      },
+      {
+        "domain_membership": true,
+        "feature_name": "x",
+        "model_coordinate": 1.0,
+        "physical_value": 160.0,
+        "probe_name": "decision-upper-endpoint"
+      },
+      {
+        "domain_membership": false,
+        "feature_name": "x",
+        "model_coordinate": null,
+        "physical_value": 39.99999999999999,
+        "probe_name": "decision-adjacent-below"
+      },
+      {
+        "domain_membership": false,
+        "feature_name": "x",
+        "model_coordinate": null,
+        "physical_value": 160.00000000000003,
+        "probe_name": "decision-adjacent-above"
+      },
+      {
+        "domain_membership": true,
+        "feature_name": "service_tier",
+        "model_coordinate": 2.0,
+        "physical_value": "priority",
+        "probe_name": "declared-unobserved-category"
+      },
+      {
+        "domain_membership": true,
+        "feature_name": "demand",
+        "model_coordinate": 250.0,
+        "physical_value": 250.0,
+        "probe_name": "unbounded-demand-probe"
+      }
+    ],
+    "source_fixture_sha256": "ed37460e4503f95f272e8c588d603f875806050060795225828697b36c1371b5"
+  },
+  "execution_mode": "production",
+  "feature_schema": [
+    {
+      "bounds": [
+        40.0,
+        160.0
+      ],
+      "feature_name": "x",
+      "feature_role": "decision",
+      "feature_type": "continuous",
+      "mathematical_domain": {
+        "feature_kind": "continuous",
+        "feature_name": "x",
+        "lower": 40.0,
+        "origin": "caller-declared",
+        "purpose": "decision-domain",
+        "shape": "finite",
+        "upper": 160.0
+      },
+      "modifiable": true,
+      "monotonicity": "none",
+      "normalization": {
+        "feature_kind": "continuous",
+        "feature_name": "x",
+        "kind": "min-max",
+        "lower": 40.0,
+        "origin": "caller-declared",
+        "upper": 160.0
+      },
+      "normalization_rule": "minmax",
+      "training_support": {
+        "feature_kind": "continuous",
+        "feature_name": "x",
+        "maximum": 140.0,
+        "minimum": 60.0,
+        "origin": "physical-training-rows"
+      }
+    },
+    {
+      "discrete_values": [
+        "off",
+        "on"
+      ],
+      "feature_name": "activation",
+      "feature_role": "decision",
+      "feature_type": "binary",
+      "mathematical_domain": {
+        "feature_kind": "binary",
+        "feature_name": "activation",
+        "ordering": [
+          "off",
+          "on"
+        ],
+        "origin": "caller-declared",
+        "purpose": "decision-domain",
+        "values": [
+          "off",
+          "on"
+        ]
+      },
+      "modifiable": true,
+      "monotonicity": "none",
+      "normalization": {
+        "feature_kind": "binary",
+        "feature_name": "activation",
+        "kind": "ordered-index",
+        "ordering": [
+          "off",
+          "on"
+        ],
+        "origin": "caller-declared"
+      },
+      "normalization_rule": "binary_index",
+      "ordering": [
+        "off",
+        "on"
+      ],
+      "training_support": {
+        "feature_kind": "binary",
+        "feature_name": "activation",
+        "observed_values": [
+          "off",
+          "on"
+        ],
+        "origin": "physical-training-rows"
+      }
+    },
+    {
+      "discrete_values": [
+        "economy",
+        "standard",
+        "priority"
+      ],
+      "feature_name": "service_tier",
+      "feature_role": "decision",
+      "feature_type": "categorical",
+      "mathematical_domain": {
+        "feature_kind": "categorical",
+        "feature_name": "service_tier",
+        "ordering": [
+          "economy",
+          "standard",
+          "priority"
+        ],
+        "origin": "caller-declared",
+        "purpose": "decision-domain",
+        "values": [
+          "economy",
+          "standard",
+          "priority"
+        ]
+      },
+      "modifiable": true,
+      "monotonicity": "none",
+      "normalization": {
+        "feature_kind": "categorical",
+        "feature_name": "service_tier",
+        "kind": "ordered-index",
+        "ordering": [
+          "economy",
+          "standard",
+          "priority"
+        ],
+        "origin": "caller-declared"
+      },
+      "normalization_rule": "categorical_index",
+      "ordering": [
+        "economy",
+        "standard",
+        "priority"
+      ],
+      "training_support": {
+        "feature_kind": "categorical",
+        "feature_name": "service_tier",
+        "observed_values": [
+          "economy",
+          "standard"
+        ],
+        "origin": "physical-training-rows"
+      }
+    },
+    {
+      "feature_name": "demand",
+      "feature_role": "metric_target",
+      "feature_type": "continuous",
+      "mathematical_domain": {
+        "feature_kind": "continuous",
+        "feature_name": "demand",
+        "origin": "caller-declared",
+        "purpose": "distribution-support",
+        "shape": "unbounded"
+      },
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization": {
+        "feature_kind": "continuous",
+        "feature_name": "demand",
+        "kind": "identity",
+        "origin": "caller-declared"
+      },
+      "normalization_rule": "identity",
+      "training_support": {
+        "feature_kind": "continuous",
+        "feature_name": "demand",
+        "maximum": 134.0,
+        "minimum": 65.0,
+        "origin": "physical-training-rows"
+      }
+    },
+    {
+      "discrete_values": [
+        0.0,
+        1.0
+      ],
+      "feature_name": "demand_above_100",
+      "feature_role": "target",
+      "feature_type": "binary",
+      "mathematical_domain": {
+        "feature_kind": "binary",
+        "feature_name": "demand_above_100",
+        "ordering": [
+          0.0,
+          1.0
+        ],
+        "origin": "internal-exact-target",
+        "purpose": "distribution-support",
+        "values": [
+          0.0,
+          1.0
+        ]
+      },
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization": {
+        "feature_kind": "binary",
+        "feature_name": "demand_above_100",
+        "kind": "ordered-index",
+        "ordering": [
+          0.0,
+          1.0
+        ],
+        "origin": "internal-exact-target"
+      },
+      "normalization_rule": "binary_index",
+      "ordering": [
+        0.0,
+        1.0
+      ],
+      "training_support": {
+        "feature_kind": "binary",
+        "feature_name": "demand_above_100",
+        "observed_values": [
+          0.0,
+          1.0
+        ],
+        "origin": "physical-training-rows"
+      }
+    }
+  ],
+  "fit_configuration": {
+    "backend_api_version": "1.1.0",
+    "backend_generation": "current-spflow",
+    "backend_name": "spflow",
+    "determinism_configuration": {
+      "canonical_random_seed": 13,
+      "cudnn_benchmark": false,
+      "cudnn_deterministic": true,
+      "numpy_random_seed": 13,
+      "python_random_seed": 13,
+      "robustness_random_seeds": [
+        37,
+        101
+      ],
+      "selected_random_seed": 13,
+      "torch_deterministic_algorithms": true,
+      "torch_device": "cpu",
+      "torch_dtype": "float64",
+      "torch_num_threads": 1,
+      "torch_random_seed": 13,
+      "torch_version": "2.13.0+cu130"
+    },
+    "execution_mode": "production",
+    "fit_summary": {
+      "likelihood": {
+        "maximum": -5.334925504195924,
+        "mean": -6.308835023109811,
+        "minimum": -7.889065631584457,
+        "shape": [
+          18,
+          1,
+          1,
+          1
+        ],
+        "value_count": 18,
+        "values": [
+          -7.3391717886969845,
+          -6.08439471863329,
+          -5.851487314533488,
+          -6.00817521262266,
+          -5.334925504195924,
+          -7.141508545955993,
+          -5.970169665554735,
+          -6.262952282686355,
+          -6.388004060459194,
+          -7.889065631584457,
+          -6.009235482964502,
+          -6.465075424936886,
+          -5.967197266403992,
+          -5.781848248716079,
+          -5.387579432009088,
+          -6.8574321128349744,
+          -6.182483890607814,
+          -6.638323832580198
+        ]
+      },
+      "parameters": {
+        "parameter_count": 9,
+        "tensors": [
+          {
+            "name": "inputs.inputs.0.loc",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.5,
+              99.33333333333333
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.log_scale",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -1.4774551395168678,
+              2.986268268611232
+            ]
+          },
+          {
+            "name": "inputs.inputs.1._logits",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.0,
+              -0.22314355131420985
+            ]
+          },
+          {
+            "name": "inputs.inputs.2._logits",
+            "shape": [
+              1,
+              1,
+              1,
+              3
+            ],
+            "values": [
+              -0.6931471815599454,
+              -0.6931471815599454,
+              -20.723265837846412
+            ]
+          }
+        ]
+      },
+      "structure": {
+        "module_count": 6,
+        "modules": [
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.products.product.Product",
+            "path": "<root>",
+            "query_scope": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs",
+            "query_scope": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0",
+            "query_scope": [
+              0,
+              3
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.1",
+            "query_scope": [
+              1,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.categorical.Categorical",
+            "path": "inputs.inputs.2",
+            "query_scope": [
+              2
+            ]
+          }
+        ]
+      }
+    },
+    "input_column_order": [
+      "x",
+      "activation",
+      "service_tier",
+      "demand",
+      "demand_above_100"
+    ],
+    "input_row_count": 18,
+    "leaf_families": [
+      "Normal",
+      "Bernoulli",
+      "Categorical"
+    ],
+    "learn_mspn_kwargs": {},
+    "learn_spn_kwargs": {},
+    "notes": [
+      "declared-feature-domains-v1",
+      "offline-cpu-current-spflow"
+    ],
+    "training_random_seed": 13
+  },
+  "fixture_name": "tpm_artifact_domains_v3",
+  "fixture_status": "active",
+  "notes": [
+    "The source fixture contains reviewable physical inputs; this fixture contains fitted output.",
+    "Domain membership is exact; recorded tolerances apply only to coordinate and probability comparisons.",
+    "Verification compares semantic and numeric evidence, not pickle-byte identity."
+  ],
+  "payload_hash": "4b3a9fcf0b5cfbcade6c2ae09e52ada8bbbf3b091323cebce13c6d99da438273",
+  "planned_contracts": [
+    "specs/014-declared-feature-domains/contracts/feature-domain-contract.md",
+    "specs/014-declared-feature-domains/contracts/training-normalization-query-contract.md",
+    "specs/014-declared-feature-domains/contracts/validation-contract.md"
+  ],
+  "provenance": {
+    "artifact_schema_version": "v3",
+    "author": "OpenAI Codex",
+    "backend_api_version": "1.1.0",
+    "backend_generation": "current-spflow",
+    "commercial_solver_required": false,
+    "generation_command": "uv run --locked --no-sync python examples/tpm_planning/run_declared_domains_pipeline.py --regenerate-fixture",
+    "legacy_evidence_paths": [
+      "legacy/old_tpm/src_py/tpm/data/datahandler.py",
+      "legacy/old_tpm/src_py/tpm/spn/main.py",
+      "legacy/old_tpm/src_py/tpm/spn/encoding.py",
+      "legacy/old_tpm/src_py/utils/densities.py"
+    ],
+    "network_required": false,
+    "origin": "Real current-SPFlow fit from the reviewable U-Bounds physical input fixture",
+    "python_version": "3.14.6",
+    "random_seed": 13,
+    "refresh_policy": "Regenerate only after intentional changes to declared-domain semantics, physical rows, the fit contract, or required backend.",
+    "sidecar_sha256": "4b3a9fcf0b5cfbcade6c2ae09e52ada8bbbf3b091323cebce13c6d99da438273",
+    "source_fixture": "tests/fixtures/tpm/declared_feature_domains_v1.json",
+    "source_fixture_sha256": "ed37460e4503f95f272e8c588d603f875806050060795225828697b36c1371b5",
+    "torch_device": "cpu",
+    "torch_version": "2.13.0+cu130",
+    "training_column_order": [
+      "x",
+      "activation",
+      "service_tier",
+      "demand",
+      "demand_above_100"
+    ],
+    "training_dataset_id": "declared-feature-domains-v1",
+    "training_random_seed": 13,
+    "training_row_count": 18,
+    "verification_command": "uv run --locked --no-sync python examples/tpm_planning/run_declared_domains_pipeline.py --verify-fixture"
+  },
+  "purpose": "Real current-SPFlow schema-v3 evidence for declared mathematical domains, physical training support, normalization, reload, and queries.",
+  "query_configuration": {
+    "required_decision_features": [
+      "x",
+      "activation",
+      "service_tier"
+    ],
+    "supported_output_modes": [
+      "conditional_probability",
+      "log_likelihood"
+    ]
+  },
+  "schema_version": "v3",
+  "spec_feature": "014-declared-feature-domains",
+  "spn_payload": {
+    "backend": "spflow",
+    "locator": "sidecars/tpm_artifact_domains_v3.spn_payload.pkl",
+    "serialization": "spflow-model-sidecar"
+  },
+  "spn_payload_format": "spflow-model-sidecar",
+  "target_definition": {
+    "event_target_name": "demand_above_100",
+    "event_threshold_comparison": ">",
+    "event_threshold_source": "threshold_default",
+    "supported_query_mode": "exceedance-probability",
+    "target_name": "demand",
+    "threshold_default": 100.0
+  }
+}

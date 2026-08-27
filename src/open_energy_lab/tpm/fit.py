@@ -31,6 +31,7 @@ from .optional_spflow import (
     detect_spflow_backend_capabilities,
     fit_spflow_model,
     require_spflow_backend,
+    stabilize_spflow_leaf_parameters,
 )
 from .piecewise import (
     CANONICAL_PIECEWISE_LEGACY_REFERENCE_PATHS,
@@ -927,32 +928,10 @@ def _cluster_by_kmeans_with_degenerate_fallback(data: object, **kwargs: object) 
 def _stabilize_leaf_parameters(module: object, *, minimum_value: float = 1e-9) -> None:
     """Keep constant learned slices finite without changing non-degenerate leaves."""
 
-    import torch
-    from spflow.modules.leaves import Bernoulli, Normal
-
-    with torch.no_grad():
-        for child in module.modules():
-            if isinstance(child, Normal):
-                child.scale = torch.clamp(
-                    torch.nan_to_num(
-                        child.scale,
-                        nan=float(minimum_value),
-                        posinf=float(minimum_value),
-                        neginf=float(minimum_value),
-                    ),
-                    min=float(minimum_value),
-                )
-            elif isinstance(child, Bernoulli):
-                child.probs = torch.clamp(
-                    torch.nan_to_num(
-                        child.probs,
-                        nan=0.5,
-                        posinf=1.0 - float(minimum_value),
-                        neginf=float(minimum_value),
-                    ),
-                    min=float(minimum_value),
-                    max=1.0 - float(minimum_value),
-                )
+    stabilize_spflow_leaf_parameters(
+        module,
+        minimum_value=minimum_value,
+    )
 
 
 def _materialize_native_categorical_leaves(module: object) -> object:

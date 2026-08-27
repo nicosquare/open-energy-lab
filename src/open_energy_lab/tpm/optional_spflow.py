@@ -573,6 +573,55 @@ def supports_spn_mip(artifact: TPMArtifact) -> bool:
     return runtime_payload is not None and _runtime_payload_supports_spn_mip(runtime_payload)
 
 
+def stabilize_spflow_leaf_parameters(
+    module: object,
+    *,
+    minimum_value: float = 1e-9,
+) -> None:
+    """Regularize learned degenerate leaves without changing training evidence."""
+
+    import torch
+    from spflow.modules.leaves import Bernoulli, Categorical, Normal
+
+    with torch.no_grad():
+        for child in module.modules():
+            if isinstance(child, Normal):
+                child.scale = torch.clamp(
+                    torch.nan_to_num(
+                        child.scale,
+                        nan=float(minimum_value),
+                        posinf=float(minimum_value),
+                        neginf=float(minimum_value),
+                    ),
+                    min=float(minimum_value),
+                )
+            elif isinstance(child, Bernoulli):
+                child.probs = torch.clamp(
+                    torch.nan_to_num(
+                        child.probs,
+                        nan=0.5,
+                        posinf=1.0 - float(minimum_value),
+                        neginf=float(minimum_value),
+                    ),
+                    min=float(minimum_value),
+                    max=1.0 - float(minimum_value),
+                )
+            elif isinstance(child, Categorical):
+                probabilities = torch.clamp(
+                    torch.nan_to_num(
+                        child.probs,
+                        nan=1.0 / float(child.K),
+                        posinf=1.0,
+                        neginf=0.0,
+                    ),
+                    min=float(minimum_value),
+                )
+                child.probs = probabilities / probabilities.sum(
+                    dim=-1,
+                    keepdim=True,
+                )
+
+
 __all__ = [
     "CURRENT_SPFLOW_ADAPTER_NAME",
     "CURRENT_SPFLOW_BACKEND_GENERATION",

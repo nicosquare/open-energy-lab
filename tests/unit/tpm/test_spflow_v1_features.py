@@ -5,6 +5,8 @@ from __future__ import annotations
 import pytest
 
 import open_energy_lab.tpm.features as features_module
+from open_energy_lab.tpm.data import normalize_training_data
+from open_energy_lab.tpm.domains import TPMFeatureDomain
 from open_energy_lab.tpm.features import TPMFeatureSpec
 
 
@@ -100,6 +102,54 @@ def test_training_rows_encode_to_float64_torch_tensor() -> None:
     assert tensor[:, 1].tolist() == pytest.approx([0.0, 1.0, 0.0])
     assert tensor[:, 2].tolist() == pytest.approx([0.0, 1.0, 2.0])
     assert tensor[:, 3].tolist() == pytest.approx([0.25, 0.5, 0.75])
+
+
+def test_constant_declared_columns_reach_backend_tensor_without_synthetic_values() -> None:
+    rows = (
+        {"fixed_x": 100.0, "activation": "off", "tier": "economy"},
+        {"fixed_x": 100.0, "activation": "off", "tier": "economy"},
+    )
+    training_data = normalize_training_data(
+        rows,
+        feature_domains={
+            "fixed_x": TPMFeatureDomain(
+                feature_name="fixed_x",
+                feature_kind="continuous",
+                purpose="decision-domain",
+                shape="finite",
+                lower=100.0,
+                upper=100.0,
+            ),
+            "activation": TPMFeatureDomain(
+                feature_name="activation",
+                feature_kind="binary",
+                purpose="decision-domain",
+                values=("off", "on"),
+            ),
+            "tier": TPMFeatureDomain(
+                feature_name="tier",
+                feature_kind="categorical",
+                purpose="decision-domain",
+                values=("economy", "priority"),
+            ),
+        },
+        feature_roles={
+            "fixed_x": "decision",
+            "activation": "decision",
+            "tier": "decision",
+        },
+    )
+
+    tensor = features_module.build_spflow_training_tensor(
+        training_data.rows,
+        feature_schema=training_data.feature_schema,
+    )
+
+    assert [dict(row) for row in training_data.normalized_rows] == [
+        {"fixed_x": 0.0, "activation": 0.0, "tier": 0.0},
+        {"fixed_x": 0.0, "activation": 0.0, "tier": 0.0},
+    ]
+    assert tensor.tolist() == [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
 
 
 @pytest.mark.parametrize(

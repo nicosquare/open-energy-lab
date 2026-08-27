@@ -52,7 +52,9 @@ class TPMQueryRequest:
             raise ValueError("decision_assignments must not contain empty feature names")
         object.__setattr__(self, "decision_assignments", normalized_assignments)
 
-        marginalized_features = tuple(str(feature_name) for feature_name in self.marginalized_features)
+        marginalized_features = tuple(
+            str(feature_name) for feature_name in self.marginalized_features
+        )
         if any(not feature_name for feature_name in marginalized_features):
             raise ValueError("marginalized_features must not contain empty feature names")
         if len(set(marginalized_features)) != len(marginalized_features):
@@ -223,7 +225,7 @@ def _build_query_context(
             (),
         )
     )
-    validate_spflow_feature_assignments(
+    _validate_native_assignments(
         artifact.feature_specs,
         request.decision_assignments,
         required_decision_features=tuple(
@@ -266,6 +268,21 @@ def _build_query_context(
         event_target_name=event_target_name,
         target_threshold=target_threshold,
         numeric_tolerance=numeric_tolerance,
+    )
+
+
+def _validate_native_assignments(
+    feature_schema: tuple[TPMFeatureSpec, ...],
+    assignments: Mapping[str, object],
+    *,
+    required_decision_features: tuple[str, ...],
+) -> None:
+    """Validate physical query inputs through persisted semantic records."""
+
+    validate_spflow_feature_assignments(
+        feature_schema,
+        assignments,
+        required_decision_features=required_decision_features,
     )
 
 
@@ -418,7 +435,10 @@ def _evaluate_empirical_query(
             value = 0.0
         else:
             if event_target_name in dataset.column_order:
-                value = sum(int(row[event_target_name]) for row in matching_rows) / matched_row_count
+                value = (
+                    sum(int(row[event_target_name]) for row in matching_rows)
+                    / matched_row_count
+                )
             else:
                 value = sum(
                     float(row[target_name]) > context.target_threshold for row in matching_rows

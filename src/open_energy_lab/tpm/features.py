@@ -27,6 +27,12 @@ SUPPORTED_SPFLOW_VALIDATION_REASONS = (
     "out_of_bounds",
     "unseen_category",
     "invalid_binary",
+    "non_finite",
+    "decision_domain_violation",
+    "distribution_support_violation",
+    "declared_discrete_violation",
+    "legacy_operational_restriction",
+    "unknown_domain",
 )
 _MISSING_SUPPLIED_VALUE = object()
 
@@ -344,6 +350,7 @@ class TPMFeatureValidationError(ValueError):
         expected_domain: Sequence[object],
         reason: str,
         supplied_value: object = _MISSING_SUPPLIED_VALUE,
+        semantic_source: str = "",
     ) -> None:
         if reason not in SUPPORTED_SPFLOW_VALIDATION_REASONS:
             raise ValueError(
@@ -353,6 +360,7 @@ class TPMFeatureValidationError(ValueError):
         self.feature_name = str(feature_name)
         self.expected_domain = tuple(expected_domain)
         self.reason = reason
+        self.semantic_source = str(semantic_source)
         self._has_supplied_value = supplied_value is not _MISSING_SUPPLIED_VALUE
         if self._has_supplied_value:
             self.supplied_value = supplied_value
@@ -362,6 +370,8 @@ class TPMFeatureValidationError(ValueError):
         )
         if self._has_supplied_value:
             message += f"; supplied_value={supplied_value!r}"
+        if self.semantic_source:
+            message += f"; semantic_source={self.semantic_source}"
         super().__init__(message)
 
     def to_dict(self) -> dict[str, object]:
@@ -372,6 +382,8 @@ class TPMFeatureValidationError(ValueError):
         }
         if self._has_supplied_value:
             payload["supplied_value"] = self.supplied_value
+        if self.semantic_source:
+            payload["semantic_source"] = self.semantic_source
         return payload
 
 
@@ -502,24 +514,6 @@ def build_spflow_training_tensor(
             [spec.normalize_value(row[spec.feature_name]) for spec in schema]
         )
 
-    # Maximum-likelihood leaf fits are undefined at zero variance or infinite
-    # discrete logits. Keep persisted values unchanged while supplying a
-    # deterministic backend-only regularization observation.
-    for column_index, spec in enumerate(schema):
-        if len(matrix) < 2:
-            continue
-        values = [row[column_index] for row in matrix]
-        if min(values) != max(values):
-            continue
-        if spec.feature_type == "continuous":
-            for row_index, row in enumerate(matrix):
-                row[column_index] = values[0] + (row_index % 2) * 1e-6
-        elif spec.feature_type in {"binary", "categorical"} and len(spec.ordering) >= 2:
-            current_index = int(values[0])
-            matrix[-1][column_index] = float(
-                1 if current_index == 0 else 0
-            )
-
     import torch
 
     return torch.tensor(matrix, dtype=torch.float64, device="cpu")
@@ -558,6 +552,13 @@ def validate_spflow_feature_assignments(
         if spec is None:
             raise ValueError(f"unknown TPM feature assignment {normalized_name!r}")
         expected_domain = _feature_expected_domain(spec)
+        if spec.mathematical_domain is not None:
+            _validate_semantic_assignment(
+                spec,
+                value,
+                expected_domain=expected_domain,
+            )
+            continue
         if spec.feature_type == "continuous":
             if not _is_non_boolean_real(value) or not _value_within_bounds(
                 value,
@@ -597,6 +598,56 @@ def validate_spflow_feature_assignments(
             )
 
 
+def _validate_semantic_assignment(
+    spec: TPMFeatureSpec,
+    value: object,
+    *,
+    expected_domain: tuple[object, ...],
+) -> None:
+    domain = spec.mathematical_domain
+    if spec.feature_type == "continuous" and (
+        not _is_non_boolean_real(value) or not math.isfinite(float(value))
+    ):
+        raise TPMFeatureValidationError(
+            feature_name=spec.feature_name,
+            expected_domain=expected_domain,
+            reason="non_finite",
+            supplied_value=value,
+            semantic_source=(
+                "legacy-inferred"
+                if domain.origin == "omitted"
+                else domain.purpose
+            ),
+        )
+    try:
+        spec.validate_value(value)
+    except (TypeError, ValueError) as exc:
+        if domain.origin == "omitted":
+            reason = {
+                "continuous": "out_of_bounds",
+                "binary": "invalid_binary",
+                "categorical": "unseen_category",
+            }.get(spec.feature_type, "legacy_operational_restriction")
+            semantic_source = "legacy-inferred"
+        elif spec.feature_type in {"binary", "categorical"}:
+            reason = "declared_discrete_violation"
+            semantic_source = domain.purpose
+        elif domain.purpose == "decision-domain":
+            reason = "decision_domain_violation"
+            semantic_source = "decision-domain"
+        else:
+            reason = "distribution_support_violation"
+            semantic_source = "distribution-support"
+        error = TPMFeatureValidationError(
+            feature_name=spec.feature_name,
+            expected_domain=expected_domain,
+            reason=reason,
+            supplied_value=value,
+            semantic_source=semantic_source,
+        )
+        raise error from exc
+
+
 __all__ = [
     "SUPPORTED_TPM_FEATURE_TYPES",
     "SUPPORTED_TPM_MONOTONICITY",
@@ -629,6 +680,23 @@ def _validated_feature_schema(
 
 
 def _feature_expected_domain(spec: TPMFeatureSpec) -> tuple[object, ...]:
+    if spec.mathematical_domain is not None:
+        domain = spec.mathematical_domain
+        if domain.origin == "omitted" and spec.training_support is not None:
+            if spec.feature_type == "continuous":
+                return (spec.training_support.minimum, spec.training_support.maximum)
+            return tuple(spec.training_support.observed_values)
+        if spec.feature_type == "continuous":
+            if domain.shape == "finite":
+                return (domain.lower, domain.upper)
+            if domain.shape == "lower-bounded":
+                return (domain.lower, "+unbounded")
+            if domain.shape == "upper-bounded":
+                return ("-unbounded", domain.upper)
+            if domain.shape == "unbounded":
+                return ("all-finite-values",)
+            return ("finite-value; mathematical extent unknown",)
+        return tuple(domain.ordering)
     if spec.feature_type == "continuous":
         return tuple(spec.bounds or ("numeric",))
     if spec.feature_type in {"binary", "categorical"}:
