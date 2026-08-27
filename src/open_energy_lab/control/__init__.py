@@ -18,6 +18,7 @@ if TYPE_CHECKING:
         RecoveryWindowActivationBudget,
         RobustFCRBatteryParameters,
         RobustFCRBiddingProblem,
+        RobustFCRBoundComparison,
         RobustFCRDecisions,
         RobustFCRFormulationProfile,
         RobustFCRPriceInputs,
@@ -31,6 +32,7 @@ if TYPE_CHECKING:
         TerminalStoredEnergyRule,
         build_robust_fcr_bidding_problem,
         build_robust_fcr_time_contract,
+        compare_robust_fcr_bounds,
         derive_non_intraday_horizon_budget,
         solve_robust_fcr_bid,
     )
@@ -106,6 +108,10 @@ _EXPORT_MAP = {
         ".robust_fcr_bidding",
         "RobustFCRBiddingProblem",
     ),
+    "RobustFCRBoundComparison": (
+        ".robust_fcr_bidding",
+        "RobustFCRBoundComparison",
+    ),
     "RobustFCRDecisions": (".robust_fcr_bidding", "RobustFCRDecisions"),
     "RobustFCRFormulationProfile": (
         ".robust_fcr_bidding",
@@ -145,6 +151,10 @@ _EXPORT_MAP = {
     "build_robust_fcr_time_contract": (
         ".robust_fcr_bidding",
         "build_robust_fcr_time_contract",
+    ),
+    "compare_robust_fcr_bounds": (
+        ".robust_fcr_bidding",
+        "compare_robust_fcr_bounds",
     ),
     "derive_non_intraday_horizon_budget": (
         ".robust_fcr_bidding",
@@ -289,6 +299,7 @@ __all__ = [
     "RestorationEnergyBaselineSchedule",
     "RobustFCRBatteryParameters",
     "RobustFCRBiddingProblem",
+    "RobustFCRBoundComparison",
     "RobustFCRDecisions",
     "RobustFCRFormulationProfile",
     "RobustFCRPriceInputs",
@@ -317,6 +328,7 @@ __all__ = [
     "build_restoration_capability",
     "build_robust_fcr_bidding_problem",
     "build_robust_fcr_time_contract",
+    "compare_robust_fcr_bounds",
     "build_stacked_heuristic_baseline",
     "derive_non_intraday_horizon_budget",
     "solve_robust_fcr_bid",

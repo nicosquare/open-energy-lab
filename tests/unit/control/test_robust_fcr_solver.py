@@ -9,9 +9,11 @@ import pytest
 from open_energy_lab.control._robust_fcr_solver import RawRobustFCRSolveResult
 from open_energy_lab.control.robust_fcr_bidding import (
     DEPLOYABILITY_THRESHOLD,
+    RobustFCRBoundComparison,
     RobustFCRFormulationProfile,
     _finalize_solve_result,
     _normalize_maximization_gap,
+    compare_robust_fcr_bounds,
 )
 from tests.robust_fcr_case_utils import build_authored_problem
 
@@ -230,3 +232,158 @@ def test_raw_objective_mismatch_is_diagnostic_and_blocks_plan() -> None:
         diagnostic.code == "objective_reconciliation_failed"
         for diagnostic in result.diagnostics
     )
+
+
+def _comparison_result(
+    kind: str,
+    objective: float,
+    *,
+    absolute_tolerance: float = 1e-6,
+    relative_tolerance: float = 1e-9,
+):
+    problem = build_authored_problem(
+        objective_comparison_absolute_tolerance_eur=absolute_tolerance,
+        objective_comparison_relative_tolerance=relative_tolerance,
+    )
+    profile = RobustFCRFormulationProfile.for_kind(kind)
+    raw = _raw_result(
+        witness=_zero_witness(),
+        objective=0.0,
+        bound=0.0,
+    )
+    base = _finalize_solve_result(problem, profile, raw)
+    solver = replace(
+        base.solver,
+        objective_value_eur=objective,
+        best_upper_bound_eur=objective,
+        absolute_gap_eur=0.0,
+        relative_gap=0.0,
+    )
+    return replace(
+        base,
+        solver=solver,
+        deployability_status=("blocked" if kind == "restriction" else "not_applicable"),
+        deployability_reasons=("comparison_test_result",),
+        deployable_plan=None,
+    )
+
+
+def test_formulation_profiles_pin_distinct_operational_roles() -> None:
+    restriction = RobustFCRFormulationProfile.for_kind("restriction")
+    relaxation = RobustFCRFormulationProfile.for_kind("relaxation")
+    exact = RobustFCRFormulationProfile.for_kind("exact")
+    assert restriction.deployability_role == "candidate_plan"
+    assert relaxation.deployability_role == "upper_bound_only"
+    assert exact.deployability_role == "exact_evidence_only"
+    assert len({value.formulation_fingerprint for value in (restriction, relaxation, exact)}) == 3
+
+
+@pytest.mark.parametrize(
+    ("restriction_objective", "relaxation_objective", "expected_satisfied"),
+    (
+        (10.0, 10.0, True),
+        (10.000001, 10.0, True),
+        (10.0000011, 10.0, False),
+        (-9.999999, -10.0, True),
+        (-9.9999989, -10.0, False),
+    ),
+)
+def test_pairwise_bound_order_uses_default_absolute_boundary(
+    restriction_objective: float,
+    relaxation_objective: float,
+    expected_satisfied: bool,
+) -> None:
+    comparison = compare_robust_fcr_bounds(
+        _comparison_result("restriction", restriction_objective),
+        _comparison_result("relaxation", relaxation_objective),
+    )
+    assert isinstance(comparison, RobustFCRBoundComparison)
+    assert comparison.restriction_le_relaxation.satisfied is expected_satisfied
+    assert comparison.restriction_le_relaxation.allowance_eur == pytest.approx(1e-6)
+    assert comparison.overall_status == (
+        "satisfied" if expected_satisfied else "violated"
+    )
+
+
+def test_pairwise_bound_order_uses_configured_relative_scale() -> None:
+    comparison = compare_robust_fcr_bounds(
+        _comparison_result(
+            "restriction",
+            1000.5,
+            absolute_tolerance=0.01,
+            relative_tolerance=0.001,
+        ),
+        _comparison_result(
+            "relaxation",
+            1000.0,
+            absolute_tolerance=0.01,
+            relative_tolerance=0.001,
+        ),
+    )
+    assert comparison.restriction_le_relaxation.allowance_eur == 1.0005
+    assert comparison.restriction_le_relaxation.satisfied is True
+
+
+def test_bound_comparison_rejects_wrong_roles_and_mismatched_policy() -> None:
+    restriction = _comparison_result("restriction", 1.0)
+    relaxation = _comparison_result("relaxation", 2.0)
+    with pytest.raises(ValueError, match="restriction formulation"):
+        compare_robust_fcr_bounds(relaxation, relaxation)
+    with pytest.raises(ValueError, match="relaxation formulation"):
+        compare_robust_fcr_bounds(restriction, restriction)
+    with pytest.raises(ValueError, match="comparison policy"):
+        compare_robust_fcr_bounds(
+            restriction,
+            _comparison_result(
+                "relaxation",
+                2.0,
+                absolute_tolerance=0.1,
+            ),
+        )
+
+
+def test_exact_evidence_is_unavailable_or_checked_between_bounds() -> None:
+    restriction = _comparison_result("restriction", 1.0)
+    relaxation = _comparison_result("relaxation", 3.0)
+    unavailable = compare_robust_fcr_bounds(restriction, relaxation)
+    assert unavailable.restriction_le_exact is None
+    assert unavailable.exact_le_relaxation is None
+    assert unavailable.exact_status == "unavailable"
+
+    checked = compare_robust_fcr_bounds(
+        restriction,
+        relaxation,
+        exact=_comparison_result("exact", 2.0),
+    )
+    assert checked.restriction_le_exact.satisfied is True
+    assert checked.exact_le_relaxation.satisfied is True
+    assert checked.exact_status == "satisfied"
+
+
+def test_relaxation_and_exact_results_never_expose_deployable_plans() -> None:
+    for kind in ("relaxation", "exact"):
+        problem = build_authored_problem()
+        result = _finalize_solve_result(
+            problem,
+            RobustFCRFormulationProfile.for_kind(kind),
+            _raw_result(witness=_zero_witness()),
+        )
+        assert result.deployability_status == "not_applicable"
+        assert result.deployable_plan is None
+        assert result.formulation.deployability_role.endswith("only")
+
+
+def test_result_contract_enforces_formulation_deployability_roles() -> None:
+    restriction = _comparison_result("restriction", 1.0)
+    relaxation = _comparison_result("relaxation", 2.0)
+    eligible = _finalize(_raw_result(witness=_zero_witness()))
+    assert eligible.deployable_plan is not None
+
+    with pytest.raises(ValueError, match="must be eligible or blocked"):
+        replace(restriction, deployability_status="not_applicable")
+    with pytest.raises(ValueError, match="must contain a deployable plan"):
+        replace(eligible, deployable_plan=None)
+    with pytest.raises(ValueError, match="not deployable"):
+        replace(relaxation, deployability_status="eligible")
+    with pytest.raises(ValueError, match="only an eligible restriction"):
+        replace(relaxation, deployable_plan=eligible.deployable_plan)

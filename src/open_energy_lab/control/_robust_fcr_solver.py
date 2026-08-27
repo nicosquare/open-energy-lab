@@ -37,6 +37,17 @@ class SolverBackendModules:
 
 
 @dataclass(frozen=True, slots=True)
+class GurobiBackendModules:
+    """Explicit optional exact backend loaded only after caller selection."""
+
+    pyomo_package: Any
+    pyomo_environ: Any
+    gurobipy: Any
+    pyomo_version: str
+    gurobi_version: str
+
+
+@dataclass(frozen=True, slots=True)
 class RawRobustFCRSolveResult:
     """Backend-neutral evidence before public auditing and plan policy."""
 
@@ -186,6 +197,48 @@ def require_highs_backend() -> SolverBackendModules:
         highspy=highspy,
         pyomo_version=pyomo_version,
         highspy_version=highspy_version,
+    )
+
+
+def load_optional_gurobi_backend() -> tuple[GurobiBackendModules | None, str | None]:
+    """Return optional Gurobi modules or one actionable unavailable reason."""
+
+    try:
+        pyomo_package = import_module("pyomo")
+        pyomo_environ = import_module("pyomo.environ")
+        gurobipy = import_module("gurobipy")
+    except (ImportError, ModuleNotFoundError) as exc:
+        return None, (
+            "optional exact Gurobi evidence is unavailable because gurobipy is not "
+            f"installed ({exc}); restriction and relaxation remain available in HiGHS"
+        )
+    pyomo_version = str(getattr(pyomo_package, "__version__", "unknown"))
+    if pyomo_version != REQUIRED_PYOMO_VERSION:
+        return None, (
+            f"optional exact Gurobi requires Pyomo {REQUIRED_PYOMO_VERSION}; "
+            f"installed version is {pyomo_version}"
+        )
+    try:
+        raw_version = gurobipy.gurobi.version()
+        gurobi_version = ".".join(str(value) for value in raw_version)
+        available = bool(
+            pyomo_environ.SolverFactory("gurobi_direct").available(
+                exception_flag=False
+            )
+        )
+    except Exception as exc:
+        return None, f"optional exact Gurobi adapter is unavailable: {exc}"
+    if not available:
+        return None, "optional exact Gurobi binary is unavailable to Pyomo"
+    return (
+        GurobiBackendModules(
+            pyomo_package=pyomo_package,
+            pyomo_environ=pyomo_environ,
+            gurobipy=gurobipy,
+            pyomo_version=pyomo_version,
+            gurobi_version=gurobi_version,
+        ),
+        None,
     )
 
 
@@ -427,11 +480,143 @@ def solve_assembled_model(
     )
 
 
+def unavailable_exact_raw_result(
+    reason: str,
+    policy: Any,
+    *,
+    cardinality: Mapping[str, int] | None = None,
+    code: str = "optional_exact_unavailable",
+) -> RawRobustFCRSolveResult:
+    return RawRobustFCRSolveResult(
+        solve_status="unavailable",
+        termination_status="optional_backend_unavailable",
+        has_incumbent=False,
+        solver_name="gurobi",
+        configured_options={
+            "NonConvex": 2,
+            "time_limit_seconds": policy.time_limit_seconds,
+            "threads": policy.threads,
+            "random_seed": policy.random_seed,
+        },
+        model_cardinality=cardinality or {},
+        diagnostics=(
+            {
+                "code": code,
+                "severity": "warning",
+                "message": reason,
+            },
+        ),
+        runtime_metadata={"optional_evidence": "unavailable"},
+    )
+
+
+def solve_exact_assembled_model(
+    assembled: AssembledRobustFCRModel,
+    policy: Any,
+    *,
+    backend: GurobiBackendModules,
+) -> RawRobustFCRSolveResult:
+    """Run an explicitly selected nonconvex exact model without any fallback."""
+
+    pyo = backend.pyomo_environ
+    solver = pyo.SolverFactory("gurobi_direct")
+    options = {
+        "NonConvex": 2,
+        "TimeLimit": policy.time_limit_seconds,
+        "Threads": policy.threads,
+        "Seed": policy.random_seed,
+        "FeasibilityTol": policy.primal_feasibility_tolerance,
+        "OptimalityTol": policy.dual_feasibility_tolerance,
+        "IntFeasTol": policy.mip_feasibility_tolerance,
+        "MIPGap": policy.relative_mip_gap,
+        "OutputFlag": 0,
+    }
+    for name, value in options.items():
+        solver.options[name] = value
+    started = time.perf_counter()
+    try:
+        results = solver.solve(
+            assembled.model,
+            tee=False,
+            load_solutions=False,
+        )
+    except Exception as exc:
+        return unavailable_exact_raw_result(
+            f"optional exact Gurobi execution or license is unavailable: {exc}",
+            policy,
+            cardinality=assembled.handoff.cardinality,
+            code="optional_exact_execution_unavailable",
+        )
+    runtime = time.perf_counter() - started
+    termination = _termination_text(results)
+    confirmed = _has_solver_confirmed_solution(results)
+    witness: Mapping[str, object] | None = None
+    objective: float | None = None
+    diagnostics: list[Mapping[str, object]] = []
+    if confirmed:
+        try:
+            assembled.model.solutions.load_from(results)
+            witness = _extract_complete_witness(assembled, pyo)
+            objective = _finite_backend_value(
+                pyo.value(assembled.model.objective),
+                field_name="objective value",
+            )
+        except Exception as exc:
+            confirmed = False
+            diagnostics.append(
+                {
+                    "code": "incomplete_or_nonfinite_incumbent",
+                    "severity": "error",
+                    "message": str(exc),
+                }
+            )
+    status = _normalized_status(termination, has_incumbent=confirmed)
+    upper_bound = _result_upper_bound(results)
+    if status == "optimal" and objective is not None and upper_bound is None:
+        upper_bound = objective
+        diagnostics.append(
+            {
+                "code": "optimal_bound_fallback",
+                "severity": "info",
+                "message": "proven-optimal exact objective used as omitted bound",
+            }
+        )
+    return RawRobustFCRSolveResult(
+        solve_status=status,
+        termination_status=termination,
+        has_incumbent=confirmed,
+        objective_value_eur=objective,
+        best_upper_bound_eur=upper_bound,
+        witness=witness,
+        solver_name="gurobi",
+        solver_version=backend.gurobi_version,
+        pyomo_version=backend.pyomo_version,
+        configured_options={
+            **options,
+            "load_solutions": False,
+            "solve_policy_fingerprint": policy.solve_policy_fingerprint,
+        },
+        model_cardinality=assembled.handoff.cardinality,
+        diagnostics=tuple(diagnostics),
+        runtime_seconds=runtime,
+        runtime_metadata={
+            "elapsed_seconds": runtime,
+            "tee": False,
+            "temporary_logs_retained": False,
+            "optional_exact": True,
+        },
+    )
+
+
 __all__ = [
     "REQUIRED_HIGHSPY_VERSION",
     "REQUIRED_PYOMO_VERSION",
     "RawRobustFCRSolveResult",
+    "GurobiBackendModules",
     "SolverBackendModules",
     "require_highs_backend",
+    "load_optional_gurobi_backend",
+    "solve_exact_assembled_model",
     "solve_assembled_model",
+    "unavailable_exact_raw_result",
 ]

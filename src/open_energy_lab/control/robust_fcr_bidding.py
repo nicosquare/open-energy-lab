@@ -1072,6 +1072,8 @@ class RobustFCRBiddingProblem:
     provenance: Mapping[str, object]
     semantics_version: str = ROBUST_FCR_BIDDING_PROBLEM_VERSION
     problem_fingerprint: str = field(init=False)
+    comparison_problem_fingerprint: str = field(init=False)
+    objective_comparison_policy_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "problem_id", _non_empty(self.problem_id, field_name="problem_id"))
@@ -1152,6 +1154,27 @@ class RobustFCRBiddingProblem:
             "problem_fingerprint",
             _fingerprint(self._semantic_payload()),
         )
+        comparison_payload = self._semantic_payload()
+        comparison_payload.pop("solve_policy")
+        object.__setattr__(
+            self,
+            "comparison_problem_fingerprint",
+            _fingerprint(comparison_payload),
+        )
+        object.__setattr__(
+            self,
+            "objective_comparison_policy_fingerprint",
+            _fingerprint(
+                {
+                    "absolute_tolerance_eur": (
+                        self.solve_policy.objective_comparison_absolute_tolerance_eur
+                    ),
+                    "relative_tolerance": (
+                        self.solve_policy.objective_comparison_relative_tolerance
+                    ),
+                }
+            ),
+        )
 
     def _semantic_payload(self) -> dict[str, object]:
         return {
@@ -1172,6 +1195,10 @@ class RobustFCRBiddingProblem:
         return {
             **self._semantic_payload(),
             "problem_fingerprint": self.problem_fingerprint,
+            "comparison_problem_fingerprint": self.comparison_problem_fingerprint,
+            "objective_comparison_policy_fingerprint": (
+                self.objective_comparison_policy_fingerprint
+            ),
         }
 
 
@@ -1700,6 +1727,8 @@ class SolverEvidence:
 @dataclass(frozen=True, slots=True)
 class RobustFCRSolveResult:
     problem_fingerprint: str
+    comparison_problem_fingerprint: str
+    objective_comparison_policy_fingerprint: str
     formulation: RobustFCRFormulationProfile
     solver: SolverEvidence
     raw_objective: ObjectiveBreakdown | None
@@ -1719,12 +1748,46 @@ class RobustFCRSolveResult:
             "problem_fingerprint",
             _sha256(self.problem_fingerprint, field_name="problem_fingerprint"),
         )
+        object.__setattr__(
+            self,
+            "comparison_problem_fingerprint",
+            _sha256(
+                self.comparison_problem_fingerprint,
+                field_name="comparison_problem_fingerprint",
+            ),
+        )
+        object.__setattr__(
+            self,
+            "objective_comparison_policy_fingerprint",
+            _sha256(
+                self.objective_comparison_policy_fingerprint,
+                field_name="objective_comparison_policy_fingerprint",
+            ),
+        )
         if not isinstance(self.formulation, RobustFCRFormulationProfile):
             raise RobustFCRValidationError("formulation has the wrong contract type")
         if not isinstance(self.solver, SolverEvidence):
             raise RobustFCRValidationError("solver has the wrong contract type")
         if self.deployability_status not in {"eligible", "blocked", "not_applicable"}:
             raise RobustFCRValidationError("unsupported deployability_status")
+        if self.formulation.kind == "restriction":
+            if self.deployability_status == "not_applicable":
+                raise RobustFCRValidationError(
+                    "restriction deployability must be eligible or blocked"
+                )
+        elif self.deployability_status != "not_applicable":
+            raise RobustFCRValidationError(
+                f"{self.formulation.deployability_role} results are not deployable"
+            )
+        if self.deployability_status == "eligible":
+            if self.deployable_plan is None:
+                raise RobustFCRValidationError(
+                    "eligible restriction result must contain a deployable plan"
+                )
+        elif self.deployable_plan is not None:
+            raise RobustFCRValidationError(
+                "only an eligible restriction result may contain a deployable plan"
+            )
         reasons = tuple(
             _non_empty(value, field_name="deployability reason")
             for value in self.deployability_reasons
@@ -1755,6 +1818,10 @@ class RobustFCRSolveResult:
         return {
             "semantics_version": self.semantics_version,
             "problem_fingerprint": self.problem_fingerprint,
+            "comparison_problem_fingerprint": self.comparison_problem_fingerprint,
+            "objective_comparison_policy_fingerprint": (
+                self.objective_comparison_policy_fingerprint
+            ),
             "formulation": self.formulation.to_dict(),
             "solver": self.solver.semantic_dict(),
             "raw_objective": (
@@ -1782,6 +1849,270 @@ class RobustFCRSolveResult:
             "semantic_result_fingerprint": self.semantic_result_fingerprint,
             "runtime_metadata": _thaw(self.runtime_metadata),
         }
+
+
+@dataclass(frozen=True, slots=True)
+class RobustFCRBoundInequality:
+    lower_label: str
+    upper_label: str
+    lower_objective_eur: float
+    upper_objective_eur: float
+    allowance_eur: float
+    delta_eur: float
+    satisfied: bool
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "lower_label",
+            _non_empty(self.lower_label, field_name="lower_label"),
+        )
+        object.__setattr__(
+            self,
+            "upper_label",
+            _non_empty(self.upper_label, field_name="upper_label"),
+        )
+        for name in (
+            "lower_objective_eur",
+            "upper_objective_eur",
+            "allowance_eur",
+            "delta_eur",
+        ):
+            normalized = _finite(getattr(self, name), field_name=name)
+            if name == "allowance_eur" and normalized < 0.0:
+                raise RobustFCRValidationError("allowance_eur must be non-negative")
+            object.__setattr__(self, name, normalized)
+        if not isinstance(self.satisfied, bool):
+            raise RobustFCRValidationError("bound inequality satisfied must be boolean")
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "lower_label": self.lower_label,
+            "upper_label": self.upper_label,
+            "lower_objective_eur": self.lower_objective_eur,
+            "upper_objective_eur": self.upper_objective_eur,
+            "allowance_eur": self.allowance_eur,
+            "delta_eur": self.delta_eur,
+            "satisfied": self.satisfied,
+            "relation": "lower <= upper + allowance",
+            "unit": "EUR",
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class RobustFCRBoundComparison:
+    comparison_problem_fingerprint: str
+    objective_comparison_policy_fingerprint: str
+    restriction_result_fingerprint: str
+    relaxation_result_fingerprint: str
+    exact_result_fingerprint: str | None
+    restriction_le_relaxation: RobustFCRBoundInequality
+    restriction_le_exact: RobustFCRBoundInequality | None
+    exact_le_relaxation: RobustFCRBoundInequality | None
+    exact_status: str
+    overall_status: str
+    comparison_fingerprint: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        for name in (
+            "comparison_problem_fingerprint",
+            "objective_comparison_policy_fingerprint",
+            "restriction_result_fingerprint",
+            "relaxation_result_fingerprint",
+        ):
+            object.__setattr__(
+                self,
+                name,
+                _sha256(getattr(self, name), field_name=name),
+            )
+        if self.exact_result_fingerprint is not None:
+            object.__setattr__(
+                self,
+                "exact_result_fingerprint",
+                _sha256(
+                    self.exact_result_fingerprint,
+                    field_name="exact_result_fingerprint",
+                ),
+            )
+        if self.exact_status not in {"satisfied", "violated", "unavailable"}:
+            raise RobustFCRValidationError("unsupported exact_status")
+        if self.overall_status not in {"satisfied", "violated", "unavailable"}:
+            raise RobustFCRValidationError("unsupported bound comparison status")
+        object.__setattr__(
+            self,
+            "comparison_fingerprint",
+            _fingerprint(self._semantic_payload()),
+        )
+
+    def _semantic_payload(self) -> dict[str, object]:
+        return {
+            "comparison_problem_fingerprint": self.comparison_problem_fingerprint,
+            "objective_comparison_policy_fingerprint": (
+                self.objective_comparison_policy_fingerprint
+            ),
+            "restriction_result_fingerprint": self.restriction_result_fingerprint,
+            "relaxation_result_fingerprint": self.relaxation_result_fingerprint,
+            "exact_result_fingerprint": self.exact_result_fingerprint,
+            "restriction_le_relaxation": self.restriction_le_relaxation.to_dict(),
+            "restriction_le_exact": (
+                self.restriction_le_exact.to_dict()
+                if self.restriction_le_exact is not None
+                else None
+            ),
+            "exact_le_relaxation": (
+                self.exact_le_relaxation.to_dict()
+                if self.exact_le_relaxation is not None
+                else None
+            ),
+            "exact_status": self.exact_status,
+            "overall_status": self.overall_status,
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            **self._semantic_payload(),
+            "comparison_fingerprint": self.comparison_fingerprint,
+        }
+
+
+def _comparison_policy(result: RobustFCRSolveResult) -> tuple[float, float]:
+    options = result.solver.configured_options
+    try:
+        absolute = _non_negative(
+            options["objective_comparison_absolute_tolerance_eur"],
+            field_name="objective comparison absolute tolerance",
+        )
+        relative = _non_negative(
+            options["objective_comparison_relative_tolerance"],
+            field_name="objective comparison relative tolerance",
+        )
+    except KeyError as exc:
+        raise RobustFCRValidationError(
+            "solve result is missing its objective comparison policy"
+        ) from exc
+    return absolute, relative
+
+
+def _bound_inequality(
+    lower_label: str,
+    lower: float,
+    upper_label: str,
+    upper: float,
+    *,
+    absolute_tolerance: float,
+    relative_tolerance: float,
+) -> RobustFCRBoundInequality:
+    allowance = max(
+        absolute_tolerance,
+        relative_tolerance * max(abs(lower), abs(upper), 1.0),
+    )
+    return RobustFCRBoundInequality(
+        lower_label=lower_label,
+        upper_label=upper_label,
+        lower_objective_eur=lower,
+        upper_objective_eur=upper,
+        allowance_eur=allowance,
+        delta_eur=lower - upper,
+        satisfied=lower <= upper + allowance,
+    )
+
+
+def compare_robust_fcr_bounds(
+    restriction: RobustFCRSolveResult,
+    relaxation: RobustFCRSolveResult,
+    *,
+    exact: RobustFCRSolveResult | None = None,
+) -> RobustFCRBoundComparison:
+    """Check formulation roles, compatibility, and maximization objective order."""
+
+    if restriction.formulation.kind != "restriction":
+        raise RobustFCRValidationError("first result must use the restriction formulation")
+    if relaxation.formulation.kind != "relaxation":
+        raise RobustFCRValidationError("second result must use the relaxation formulation")
+    if exact is not None and exact.formulation.kind != "exact":
+        raise RobustFCRValidationError("exact result must use the exact formulation")
+    results = (restriction, relaxation) + ((exact,) if exact is not None else ())
+    if len({value.objective_comparison_policy_fingerprint for value in results}) != 1:
+        raise RobustFCRValidationError(
+            "bound comparison requires an identical objective comparison policy"
+        )
+    policies = {_comparison_policy(value) for value in results}
+    if len(policies) != 1:
+        raise RobustFCRValidationError(
+            "bound comparison requires an identical objective comparison policy"
+        )
+    if restriction.problem_fingerprint != relaxation.problem_fingerprint:
+        raise RobustFCRValidationError(
+            "restriction and relaxation must solve the same complete problem"
+        )
+    if len({value.comparison_problem_fingerprint for value in results}) != 1:
+        raise RobustFCRValidationError(
+            "all formulations must solve the same decision problem"
+        )
+    if restriction.solver.objective_value_eur is None:
+        raise RobustFCRValidationError("restriction objective is unavailable")
+    if relaxation.solver.objective_value_eur is None:
+        raise RobustFCRValidationError("relaxation objective is unavailable")
+    absolute, relative = next(iter(policies))
+    paired = _bound_inequality(
+        "restriction",
+        restriction.solver.objective_value_eur,
+        "relaxation",
+        relaxation.solver.objective_value_eur,
+        absolute_tolerance=absolute,
+        relative_tolerance=relative,
+    )
+    restriction_exact: RobustFCRBoundInequality | None = None
+    exact_relaxation: RobustFCRBoundInequality | None = None
+    if (
+        exact is None
+        or exact.solver.solve_status not in {"optimal", "feasible"}
+        or exact.solver.objective_value_eur is None
+    ):
+        exact_status = "unavailable"
+    else:
+        restriction_exact = _bound_inequality(
+            "restriction",
+            restriction.solver.objective_value_eur,
+            "exact",
+            exact.solver.objective_value_eur,
+            absolute_tolerance=absolute,
+            relative_tolerance=relative,
+        )
+        exact_relaxation = _bound_inequality(
+            "exact",
+            exact.solver.objective_value_eur,
+            "relaxation",
+            relaxation.solver.objective_value_eur,
+            absolute_tolerance=absolute,
+            relative_tolerance=relative,
+        )
+        exact_status = (
+            "satisfied"
+            if restriction_exact.satisfied and exact_relaxation.satisfied
+            else "violated"
+        )
+    overall_status = (
+        "violated"
+        if not paired.satisfied or exact_status == "violated"
+        else "satisfied"
+    )
+    return RobustFCRBoundComparison(
+        comparison_problem_fingerprint=restriction.comparison_problem_fingerprint,
+        objective_comparison_policy_fingerprint=(
+            restriction.objective_comparison_policy_fingerprint
+        ),
+        restriction_result_fingerprint=restriction.semantic_result_fingerprint,
+        relaxation_result_fingerprint=relaxation.semantic_result_fingerprint,
+        exact_result_fingerprint=(
+            exact.semantic_result_fingerprint if exact is not None else None
+        ),
+        restriction_le_relaxation=paired,
+        restriction_le_exact=restriction_exact,
+        exact_le_relaxation=exact_relaxation,
+        exact_status=exact_status,
+        overall_status=overall_status,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -2321,7 +2652,19 @@ def _build_solver_evidence(
         solver_version=raw.solver_version,
         pyomo_version=raw.pyomo_version,
         highspy_version=raw.highspy_version,
-        configured_options=raw.configured_options,
+        configured_options={
+            **_thaw(raw.configured_options),
+            "objective_comparison_absolute_tolerance_eur": (
+                problem.solve_policy.objective_comparison_absolute_tolerance_eur
+            ),
+            "objective_comparison_relative_tolerance": (
+                problem.solve_policy.objective_comparison_relative_tolerance
+            ),
+            "objective_comparison_policy_fingerprint": (
+                problem.objective_comparison_policy_fingerprint
+            ),
+            "solve_policy_fingerprint": problem.solve_policy.solve_policy_fingerprint,
+        },
         model_cardinality=raw.model_cardinality,
         runtime_seconds=raw.runtime_seconds,
     )
@@ -2580,6 +2923,10 @@ def _finalize_solve_result(
         plan = None
     return RobustFCRSolveResult(
         problem_fingerprint=problem.problem_fingerprint,
+        comparison_problem_fingerprint=problem.comparison_problem_fingerprint,
+        objective_comparison_policy_fingerprint=(
+            problem.objective_comparison_policy_fingerprint
+        ),
         formulation=profile,
         solver=solver,
         raw_objective=objective,
@@ -2608,11 +2955,45 @@ def solve_robust_fcr_bid(
             "problem must be a validated RobustFCRBiddingProblem"
         )
     profile = RobustFCRFormulationProfile.for_kind(formulation)
-    if profile.kind == "exact":
-        raise RobustFCRSolverUnavailableError(
-            "exact formulation requires the optional explicitly selected Gurobi adapter"
-        )
     from ._robust_fcr_formulation import assemble_robust_fcr_model
+
+    if profile.kind == "exact":
+        from ._robust_fcr_solver import (
+            load_optional_gurobi_backend,
+            solve_exact_assembled_model,
+            unavailable_exact_raw_result,
+        )
+
+        if problem.solve_policy.solver_name != "gurobi":
+            raw = unavailable_exact_raw_result(
+                (
+                    "exact formulation requires the optional explicitly selected "
+                    "Gurobi adapter; the configured solver is "
+                    f"{problem.solve_policy.solver_name}"
+                ),
+                problem.solve_policy,
+                code="exact_requires_explicit_gurobi",
+            )
+            return _finalize_solve_result(problem, profile, raw)
+        backend, unavailable_reason = load_optional_gurobi_backend()
+        if backend is None:
+            raw = unavailable_exact_raw_result(
+                unavailable_reason or "optional exact Gurobi evidence is unavailable",
+                problem.solve_policy,
+            )
+            return _finalize_solve_result(problem, profile, raw)
+        assembled = assemble_robust_fcr_model(
+            problem,
+            profile,
+            pyomo_environ=backend.pyomo_environ,
+        )
+        raw = solve_exact_assembled_model(
+            assembled,
+            problem.solve_policy,
+            backend=backend,
+        )
+        return _finalize_solve_result(problem, profile, raw)
+
     from ._robust_fcr_solver import require_highs_backend, solve_assembled_model
 
     backend = require_highs_backend()
@@ -2642,6 +3023,7 @@ __all__ = [
     "HorizonWideActivationBudget",
     "RecoveryWindowActivationBudget",
     "RobustFCRBatteryParameters",
+    "RobustFCRBoundComparison",
     "RobustFCRBiddingProblem",
     "RobustFCRDecisions",
     "RobustFCRDiagnostic",
@@ -2662,5 +3044,6 @@ __all__ = [
     "TERMINAL_STORED_ENERGY_RULE_VERSION",
     "build_robust_fcr_bidding_problem",
     "build_robust_fcr_time_contract",
+    "compare_robust_fcr_bounds",
     "derive_non_intraday_horizon_budget",
 ]

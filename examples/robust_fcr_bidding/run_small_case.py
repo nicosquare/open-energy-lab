@@ -15,6 +15,7 @@ from open_energy_lab.control import (
     TerminalStoredEnergyRule,
     build_robust_fcr_bidding_problem,
     build_robust_fcr_time_contract,
+    compare_robust_fcr_bounds,
     derive_non_intraday_horizon_budget,
     solve_robust_fcr_bid,
 )
@@ -107,47 +108,91 @@ def build_small_problem():
 
 def main() -> int:
     problem = build_small_problem()
-    result = solve_robust_fcr_bid(problem, formulation="restriction")
+    restriction = solve_robust_fcr_bid(problem, formulation="restriction")
+    relaxation = solve_robust_fcr_bid(problem, formulation="relaxation")
+    exact = solve_robust_fcr_bid(problem, formulation="exact")
+    comparison = compare_robust_fcr_bounds(
+        restriction,
+        relaxation,
+        exact=exact,
+    )
     print("restriction solver evidence")
-    print(json.dumps(result.solver.to_dict(), indent=2, sort_keys=True))
-    if result.raw_objective is not None:
+    print(json.dumps(restriction.solver.to_dict(), indent=2, sort_keys=True))
+    print("relaxation solver evidence")
+    print(json.dumps(relaxation.solver.to_dict(), indent=2, sort_keys=True))
+    print("bound comparison")
+    print(json.dumps(comparison.to_dict(), indent=2, sort_keys=True))
+    print(
+        "exact evidence interpretation",
+        {
+            "status": comparison.exact_status,
+            "solver_status": exact.solver.solve_status,
+            "meaning": (
+                "optional exact evidence was not requested; select a Gurobi solve "
+                "policy explicitly to check restriction <= exact <= relaxation"
+            ),
+        },
+    )
+    if restriction.raw_objective is not None:
         print("ex-ante objective reconciliation")
-        print(json.dumps(result.raw_objective.to_dict(), indent=2, sort_keys=True))
-    if result.feasibility_audit is not None:
+        print(json.dumps(restriction.raw_objective.to_dict(), indent=2, sort_keys=True))
+    if restriction.feasibility_audit is not None:
         print("independent residual and slack maxima")
         print(
             json.dumps(
                 {
                     "constraint_families": {
                         item.family_id: item.maximum_positive_violation
-                        for item in result.feasibility_audit.constraint_families
+                        for item in restriction.feasibility_audit.constraint_families
                     },
                     "maximum_modeled_slack": max(
-                        result.feasibility_audit.modeled_slacks.values()
+                        restriction.feasibility_audit.modeled_slacks.values()
                     ),
                     "raw_witness_fingerprint": (
-                        result.feasibility_audit.raw_witness_fingerprint
+                        restriction.feasibility_audit.raw_witness_fingerprint
                     ),
                     "canonical_witness_fingerprint": (
-                        result.feasibility_audit.canonical_witness_fingerprint
+                        restriction.feasibility_audit.canonical_witness_fingerprint
                     ),
                 },
                 indent=2,
                 sort_keys=True,
             )
         )
-    if result.decisions is not None:
+    if restriction.decisions is not None:
         print("charge-positive hourly energy schedule (kW)")
-        print(list(result.decisions.energy_baseline_charge_positive_kw))
+        print(list(restriction.decisions.energy_baseline_charge_positive_kw))
         print("four-hour symmetric FCR capacities (kW)")
-        print(list(result.decisions.fcr_capacity_kw))
-    print("deployability", result.deployability_status, result.deployability_reasons)
-    if result.deployable_plan is not None:
-        print("energy schedule fingerprint", result.deployable_plan.energy_schedule.schedule_fingerprint)
-        print("FCR schedule fingerprint", result.deployable_plan.fcr_schedule.schedule_fingerprint)
-        print("plan fingerprint", result.deployable_plan.plan_fingerprint)
-    print("semantic result fingerprint", result.semantic_result_fingerprint)
-    return 0 if result.deployable_plan is not None else 1
+        print(list(restriction.decisions.fcr_capacity_kw))
+    print(
+        "restriction deployability",
+        restriction.deployability_status,
+        restriction.deployability_reasons,
+    )
+    print(
+        "relaxation deployability",
+        relaxation.deployability_status,
+        relaxation.deployability_reasons,
+    )
+    if restriction.deployable_plan is not None:
+        print(
+            "energy schedule fingerprint",
+            restriction.deployable_plan.energy_schedule.schedule_fingerprint,
+        )
+        print(
+            "FCR schedule fingerprint",
+            restriction.deployable_plan.fcr_schedule.schedule_fingerprint,
+        )
+        print("plan fingerprint", restriction.deployable_plan.plan_fingerprint)
+    print("restriction result fingerprint", restriction.semantic_result_fingerprint)
+    print("relaxation result fingerprint", relaxation.semantic_result_fingerprint)
+    return (
+        0
+        if restriction.deployable_plan is not None
+        and relaxation.deployable_plan is None
+        and comparison.restriction_le_relaxation.satisfied
+        else 1
+    )
 
 
 if __name__ == "__main__":

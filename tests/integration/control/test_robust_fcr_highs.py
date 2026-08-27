@@ -8,6 +8,7 @@ from open_energy_lab.control.robust_fcr_bidding import (
     RobustFCRBatteryParameters,
     RobustFCRPriceInputs,
     TerminalStoredEnergyRule,
+    compare_robust_fcr_bounds,
     solve_robust_fcr_bid,
 )
 from tests.robust_fcr_case_utils import build_authored_problem
@@ -125,3 +126,37 @@ def test_real_highs_repeated_semantic_evidence_is_exactly_identical() -> None:
     assert first.diagnostics == second.diagnostics
     assert first.deployable_plan.plan_fingerprint == second.deployable_plan.plan_fingerprint
     assert first.semantic_result_fingerprint == second.semantic_result_fingerprint
+
+
+def test_real_highs_restriction_and_relaxation_have_ordered_roles() -> None:
+    problem = _presolve_zero_problem(problem_id="feature-013-bound-order")
+    restriction = solve_robust_fcr_bid(problem, formulation="restriction")
+    relaxation = solve_robust_fcr_bid(problem, formulation="relaxation")
+    comparison = compare_robust_fcr_bounds(restriction, relaxation)
+
+    assert restriction.formulation.deployability_role == "candidate_plan"
+    assert restriction.deployable_plan is not None
+    assert relaxation.formulation.deployability_role == "upper_bound_only"
+    assert relaxation.deployability_status == "not_applicable"
+    assert relaxation.deployable_plan is None
+    assert restriction.problem_fingerprint == relaxation.problem_fingerprint
+    assert comparison.restriction_le_relaxation.satisfied is True
+    assert comparison.overall_status == "satisfied"
+
+
+def test_real_highs_paired_results_repeat_exact_numeric_payloads() -> None:
+    problem = _presolve_zero_problem(problem_id="feature-013-paired-repeatability")
+    first = tuple(
+        solve_robust_fcr_bid(problem, formulation=kind)
+        for kind in ("restriction", "relaxation")
+    )
+    second = tuple(
+        solve_robust_fcr_bid(problem, formulation=kind)
+        for kind in ("restriction", "relaxation")
+    )
+    for left, right in zip(first, second, strict=True):
+        assert left.solver.objective_value_eur == right.solver.objective_value_eur
+        assert left.solver.best_upper_bound_eur == right.solver.best_upper_bound_eur
+        assert left.solver.absolute_gap_eur == right.solver.absolute_gap_eur
+        assert left.solver.relative_gap == right.solver.relative_gap
+        assert left.semantic_result_fingerprint == right.semantic_result_fingerprint
