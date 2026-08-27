@@ -57,6 +57,28 @@ their imports lazy. The remaining environment-sensitive capabilities include:
 These capabilities may be documented and prepared for later migration, but
 they must not block ordinary library import or the foundation unit tests.
 
+## FCR Bid-Evaluation Parity Environment
+
+Feature `012-fcr-bid-evaluation-parity` keeps its common environment entirely
+offline for routine validation: no Julia, no Gurobi, no solver license, no
+network, no initialized reference implementation submodule, and no external
+activation file. The routine suite loads only the hand oracle and Golden
+Reference Fixture, and blocks ordinary package imports from consulting
+`baselines/*`, `legacy/*`, environment paths, or download clients.
+
+The optional complete ten-second aggregate replay is marked
+`external_reference_data`. A researcher downloads the exact 528805941-byte CSV,
+verifies SHA-256
+`0c2bf5203410f193c555460ec5593b546af42556f29afac821584e403c407d13`,
+places it below ignored `artifacts/`, and passes that path explicitly. Missing or
+invalid bytes are an actionable external-data outcome, not a synthetic fallback.
+Reference execution itself is needed only for intentional fixture refresh.
+
+Bid generation, robust optimization, and TPM selection remain outside Feature
+012. Reference comparisons use field-specific source intervals, with
+`source_precision_compatible` and `unavailable` recorded explicitly; complete
+ten-second Julia trace parity is not claimed.
+
 ## TPM-Backed Planning Notes
 
 The `009-tpm-planning` feature keeps the same minimal conda bootstrap while uv

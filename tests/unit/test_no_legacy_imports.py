@@ -21,6 +21,30 @@ FEATURE_011_OFFLINE_MODULES = (
     TARGET_PACKAGE / "simulator" / "restoration_service.py",
     TARGET_PACKAGE / "simulator" / "restoration_settlement.py",
 )
+FEATURE_012_OFFLINE_MODULES = (
+    TARGET_PACKAGE / "control" / "fcr_bid_plan.py",
+    TARGET_PACKAGE / "market" / "reference_fcr.py",
+    TARGET_PACKAGE / "simulator" / "fcr_bid_evaluation.py",
+    TARGET_PACKAGE / "simulator" / "fcr_settlement.py",
+)
+FEATURE_012_FORBIDDEN_IMPORTS = {
+    "IPython",
+    "aiohttp",
+    "baselines",
+    "gurobipy",
+    "httpx",
+    "julia",
+    "juliacall",
+    "legacy",
+    "nbclient",
+    "nbformat",
+    "notebook",
+    "pyomo",
+    "requests",
+    "socket",
+    "subprocess",
+    "urllib",
+}
 FEATURE_011_FORBIDDEN_IMPORTS = {
     "IPython",
     "citylearn",
@@ -135,3 +159,23 @@ def test_feature_011_offline_modules_have_zero_adapter_credential_or_research_le
 
     assert import_violations == {}
     assert credential_violations == {}
+
+
+def test_feature_012_offline_modules_import_no_baseline_solver_network_or_notebook_code() -> None:
+    violations: dict[str, list[str]] = {}
+
+    for path in FEATURE_012_OFFLINE_MODULES:
+        assert path.is_file(), f"missing Feature 012 offline module: {path}"
+        imported = _imported_modules(path)
+        forbidden = sorted(
+            name
+            for name in imported
+            if any(
+                name == blocked or name.startswith(f"{blocked}.")
+                for blocked in FEATURE_012_FORBIDDEN_IMPORTS
+            )
+        )
+        if forbidden:
+            violations[path.as_posix()] = forbidden
+
+    assert violations == {}

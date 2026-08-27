@@ -127,5 +127,6 @@ jobs:
               tests/unit/test_lazy_dependency_boundaries.py \
               tests/unit/test_import_contract.py \
               tests/unit/test_no_legacy_imports.py \
+              -m "not external_reference_data" \
               --strict-markers \
               -ra

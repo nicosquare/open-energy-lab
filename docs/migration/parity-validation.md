@@ -70,6 +70,30 @@ capture the intended clean behavior.
   settlement, or trace semantics, and allow cleaner implementation choices
   everywhere else.
 
+## FCR Bid-Evaluation Reference Validation
+
+Feature `012-fcr-bid-evaluation-parity` uses the pinned code under
+`baselines/robust_storage_bidding/` as the reference implementation and the OEL
+fixed-plan evaluator as the common environment. Bid generation and optimizer
+translation are out of scope: manual, heuristic, robust, and future TPM bidders
+all supply the existing energy and FCR schedules to the same replay, settlement,
+reporting, and comparison path.
+
+Routine checks use the hand oracle and committed Golden Reference Fixture with
+no Julia, no Gurobi, no network, no submodule initialization, and no external
+CSV. The complete test is marked `external_reference_data` and requires an
+explicit digest-matched user path. It may produce `exact`,
+`source_precision_compatible`, `mismatch`, or `unavailable` per field; a blanket
+tolerance is forbidden.
+
+The initial artifact supports aggregate decisions, economics, stored energy,
+charge/discharge, and mapped power extrema. It does not support complete ten-second
+trace parity, tracking, saturation, directional FCR energy,
+throughput, or separate observed capacity/activation subrevenue. Those remain
+OEL-invariant evidence or `unavailable`, never inferred parity. Dynamic
+saturation is valid OEL behavior but outside the initial no-curtailment parity
+domain.
+
 ## TPM-Backed Planning Validation Governance
 
 The `009-tpm-planning` migration validates current library behavior rather

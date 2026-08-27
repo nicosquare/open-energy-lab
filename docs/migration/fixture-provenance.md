@@ -99,6 +99,40 @@ fixtures: the manual oracle already supplies synthetic arithmetic coverage,
 while the real replay and benchmark must skip with the documented blocker until
 the hard gate passes.
 
+## Feature 012 Golden Reference Fixture
+
+Feature `012-fcr-bid-evaluation-parity` uses the small committed fixture path
+`tests/fixtures/fcr_bid_evaluation/robust_storage_bidding_2023-06-18_aggregate_v1.json`.
+Its purpose is bounded aggregate evidence for the fixed-plan common environment,
+not a copy of the reference implementation or its activation dataset.
+
+- origin and source legacy path or generation script: pinned reference
+  implementation commit `7e44738bb30e5c8204efe40103b9be4c2203685c`, especially
+  `baselines/robust_storage_bidding/code/01_datastruct.jl`, `02_model.jl`,
+  `03_backtest_save.jl`, and `04_parse_results.jl`;
+- generation command: `julia --project=. 12.jl 2023-06-18` from the reference
+  `code/` directory;
+- original result SHA-256:
+  `8c13f8318d533c35755e90e4e45bcef336cb7b31c09afccbe616844acbddc1e6`;
+- random seed: no random seed; this is deterministic fixed-result evidence;
+- input data: 24 `x0`, six `xr`, prices, battery/time configuration, and an
+  external activation descriptor;
+- expected output or invariant: supported aggregate economics/physics,
+  declared mappings, field-specific precision bounds, and explicit unavailable
+  fields;
+- tolerance: internal equations use `1e-6`; rounded source evidence uses
+  analytic, field-specific intervals and may be `source_precision_compatible`;
+- license, access, or privacy notes: derived fixture values are committed, but
+  `regulation_signal.csv` remains `external_only`; and
+- refresh policy: the explicit normalizer writes below ignored `artifacts/`,
+  emits semantic differences, and never modifies a committed fixture.
+
+The external file is 528805941 bytes, has SHA-256
+`0c2bf5203410f193c555460ec5593b546af42556f29afac821584e403c407d13`,
+and exact header `DateTime,Frequency (Hz),xi,xi_EU`. The pinned README release
+URL is authoritative; the older MV locator is superseded. The file is excluded
+from Git, wheels, sdists, releases, mirrors, and public CI artifacts.
+
 ### Feature 010 Single-Owner Matrix
 
 | Responsibility ID | Responsibility | Single owner |

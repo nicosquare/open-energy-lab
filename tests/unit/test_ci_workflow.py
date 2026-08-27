@@ -26,3 +26,7 @@ def test_ci_runs_broad_offline_feature_regressions() -> None:
         "tests/unit/test_no_legacy_imports.py",
     ):
         assert required_path in offline_job
+
+    assert '-m "not external_reference_data"' in offline_job
+    assert "regulation_signal.csv" not in workflow
+    assert "actions/upload-artifact" not in offline_job

@@ -56,13 +56,19 @@ def test_simulator_import_stays_lightweight() -> None:
         "ArbitrageScenario",
         "BatteryLoadPVScenario",
         "BatteryComponent",
+        "ComponentAvailability",
         "DEMAND_SUPPORTED_SUMMARY_OUTPUT_FIELDS",
         "DemandFamilyEvaluationRequest",
         "DemandFamilyEvaluationResult",
         "DemandScenarioEvaluationResult",
+        "DailyFCRBidEvaluationReport",
         "DeterministicRulePolicy",
         "DispatchRequestSeries",
+        "EvaluationDiagnostic",
+        "EvaluationMarketContext",
+        "EvaluationPriceObservation",
         "evaluate_demand_family",
+        "evaluate_fixed_fcr_bid",
         "export_planning_dataset",
         "generate_planning_study_dataset",
         "evaluate_with_controller",
@@ -81,6 +87,11 @@ def test_simulator_import_stays_lightweight() -> None:
         "EnergyBaselineInterval",
         "EnergyBaselineSchedule",
         "FCRCapacitySchedule",
+        "FCRBidEvaluationRequest",
+        "FCRBidEvaluationValidationError",
+        "InvalidCommitmentDiagnosticReport",
+        "ReferenceComparisonReport",
+        "ReferenceFieldComparison",
         "FCRCommitmentInterval",
         "MultiRateTimeContract",
         "ReplayIntervalSummary",
@@ -93,14 +104,23 @@ def test_simulator_import_stays_lightweight() -> None:
         "TerminalSOCTarget",
         "TerminalSOCReport",
         "build_energy_baseline_schedule",
+        "build_feature_010_market_context",
         "build_fcr_capacity_schedule",
+        "build_settled_evaluation_report",
+        "build_validation_failed_evaluation_report",
+        "compare_reference_evaluation",
+        "compare_reference_values",
+        "recompute_reference_precision_bounds",
+        "replay_invalid_fcr_bid_diagnostic",
         "replay_stacked_services",
         "replay_stacked_services_diagnostic",
         "EnergySettlementInterval",
+        "DirectionalFCREnergy",
         "FCRPenaltyRule",
         "FCRSettlementBlock",
         "FCRSettlementValidationError",
         "SettlementBreakdown",
+        "ReferenceSettlementBreakdown",
         "settle_stacked_services",
         "RestorationSettlementValidationError",
         "SettlementAvailability",
@@ -276,6 +296,38 @@ def test_stacked_service_exports_remain_lazy_and_import_light() -> None:
         }
         loaded_by_access = set(sys.modules) - loaded_before_import
         assert optional_research_modules.isdisjoint(loaded_by_access)
+        """
+    )
+
+
+def test_feature_012_evaluator_exports_are_lazy_and_exactly_owned() -> None:
+    _run_isolated_python(
+        """
+        import sys
+
+        import open_energy_lab.simulator as module
+
+        assert "open_energy_lab.simulator.fcr_bid_evaluation" not in sys.modules
+        assert "open_energy_lab.market.reference_fcr" not in sys.modules
+        expected = {
+            "ComponentAvailability",
+            "DailyFCRBidEvaluationReport",
+            "EvaluationDiagnostic",
+            "EvaluationMarketContext",
+            "EvaluationPriceObservation",
+            "FCRBidEvaluationRequest",
+            "FCRBidEvaluationValidationError",
+            "build_feature_010_market_context",
+            "build_settled_evaluation_report",
+            "build_validation_failed_evaluation_report",
+        }
+        assert expected.issubset(module.__all__)
+        for name in expected:
+            assert getattr(module, name).__module__ == (
+                "open_energy_lab.simulator.fcr_bid_evaluation"
+            )
+        assert "open_energy_lab.simulator.fcr_bid_evaluation" in sys.modules
+        assert "open_energy_lab.market.reference_fcr" not in sys.modules
         """
     )
 

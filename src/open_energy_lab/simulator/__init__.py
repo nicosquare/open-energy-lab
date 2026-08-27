@@ -12,11 +12,33 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from .fcr_bid_evaluation import (
+        ComponentAvailability,
+        DailyFCRBidEvaluationReport,
+        EvaluationDiagnostic,
+        EvaluationMarketContext,
+        EvaluationPriceObservation,
+        FCRBidEvaluationRequest,
+        FCRBidEvaluationValidationError,
+        InvalidCommitmentDiagnosticReport,
+        ReferenceComparisonReport,
+        ReferenceFieldComparison,
+        build_feature_010_market_context,
+        build_settled_evaluation_report,
+        build_validation_failed_evaluation_report,
+        compare_reference_evaluation,
+        compare_reference_values,
+        evaluate_fixed_fcr_bid,
+        recompute_reference_precision_bounds,
+        replay_invalid_fcr_bid_diagnostic,
+    )
     from .fcr_settlement import (
+        DirectionalFCREnergy,
         EnergySettlementInterval,
         FCRPenaltyRule,
         FCRSettlementBlock,
         FCRSettlementValidationError,
+        ReferenceSettlementBreakdown,
         SettlementBreakdown,
         settle_stacked_services,
     )
@@ -118,6 +140,78 @@ if TYPE_CHECKING:
 
 
 _EXPORT_MAP = {
+    "ComponentAvailability": (
+        ".fcr_bid_evaluation",
+        "ComponentAvailability",
+    ),
+    "DailyFCRBidEvaluationReport": (
+        ".fcr_bid_evaluation",
+        "DailyFCRBidEvaluationReport",
+    ),
+    "EvaluationDiagnostic": (
+        ".fcr_bid_evaluation",
+        "EvaluationDiagnostic",
+    ),
+    "EvaluationMarketContext": (
+        ".fcr_bid_evaluation",
+        "EvaluationMarketContext",
+    ),
+    "EvaluationPriceObservation": (
+        ".fcr_bid_evaluation",
+        "EvaluationPriceObservation",
+    ),
+    "FCRBidEvaluationRequest": (
+        ".fcr_bid_evaluation",
+        "FCRBidEvaluationRequest",
+    ),
+    "FCRBidEvaluationValidationError": (
+        ".fcr_bid_evaluation",
+        "FCRBidEvaluationValidationError",
+    ),
+    "InvalidCommitmentDiagnosticReport": (
+        ".fcr_bid_evaluation",
+        "InvalidCommitmentDiagnosticReport",
+    ),
+    "ReferenceComparisonReport": (
+        ".fcr_bid_evaluation",
+        "ReferenceComparisonReport",
+    ),
+    "ReferenceFieldComparison": (
+        ".fcr_bid_evaluation",
+        "ReferenceFieldComparison",
+    ),
+    "build_feature_010_market_context": (
+        ".fcr_bid_evaluation",
+        "build_feature_010_market_context",
+    ),
+    "build_settled_evaluation_report": (
+        ".fcr_bid_evaluation",
+        "build_settled_evaluation_report",
+    ),
+    "build_validation_failed_evaluation_report": (
+        ".fcr_bid_evaluation",
+        "build_validation_failed_evaluation_report",
+    ),
+    "compare_reference_evaluation": (
+        ".fcr_bid_evaluation",
+        "compare_reference_evaluation",
+    ),
+    "compare_reference_values": (
+        ".fcr_bid_evaluation",
+        "compare_reference_values",
+    ),
+    "evaluate_fixed_fcr_bid": (
+        ".fcr_bid_evaluation",
+        "evaluate_fixed_fcr_bid",
+    ),
+    "recompute_reference_precision_bounds": (
+        ".fcr_bid_evaluation",
+        "recompute_reference_precision_bounds",
+    ),
+    "replay_invalid_fcr_bid_diagnostic": (
+        ".fcr_bid_evaluation",
+        "replay_invalid_fcr_bid_diagnostic",
+    ),
     "ArbitrageObjectiveRepresentation": (".pricing", "ArbitrageObjectiveRepresentation"),
     "ArbitrageScenario": (".scenario", "ArbitrageScenario"),
     "BatteryLoadPVScenario": (".scenario", "BatteryLoadPVScenario"),
@@ -214,6 +308,7 @@ _EXPORT_MAP = {
         ".fcr_settlement",
         "EnergySettlementInterval",
     ),
+    "DirectionalFCREnergy": (".fcr_settlement", "DirectionalFCREnergy"),
     "FCRPenaltyRule": (".fcr_settlement", "FCRPenaltyRule"),
     "FCRSettlementBlock": (".fcr_settlement", "FCRSettlementBlock"),
     "FCRSettlementValidationError": (
@@ -221,6 +316,10 @@ _EXPORT_MAP = {
         "FCRSettlementValidationError",
     ),
     "SettlementBreakdown": (".fcr_settlement", "SettlementBreakdown"),
+    "ReferenceSettlementBreakdown": (
+        ".fcr_settlement",
+        "ReferenceSettlementBreakdown",
+    ),
     "settle_stacked_services": (".fcr_settlement", "settle_stacked_services"),
     "RestorationSettlementValidationError": (
         ".restoration_settlement",
@@ -359,13 +458,19 @@ __all__ = [
     "ArbitrageScenario",
     "BatteryLoadPVScenario",
     "BatteryComponent",
+    "ComponentAvailability",
     "DEMAND_SUPPORTED_SUMMARY_OUTPUT_FIELDS",
     "DemandFamilyEvaluationRequest",
     "DemandFamilyEvaluationResult",
     "DemandScenarioEvaluationResult",
+    "DailyFCRBidEvaluationReport",
     "DeterministicRulePolicy",
     "DispatchRequestSeries",
+    "EvaluationDiagnostic",
+    "EvaluationMarketContext",
+    "EvaluationPriceObservation",
     "evaluate_demand_family",
+    "evaluate_fixed_fcr_bid",
     "export_planning_dataset",
     "generate_planning_study_dataset",
     "evaluate_with_controller",
@@ -384,6 +489,11 @@ __all__ = [
     "EnergyBaselineInterval",
     "EnergyBaselineSchedule",
     "FCRCapacitySchedule",
+    "FCRBidEvaluationRequest",
+    "FCRBidEvaluationValidationError",
+    "InvalidCommitmentDiagnosticReport",
+    "ReferenceComparisonReport",
+    "ReferenceFieldComparison",
     "FCRCommitmentInterval",
     "MultiRateTimeContract",
     "ReplayIntervalSummary",
@@ -396,14 +506,23 @@ __all__ = [
     "TerminalSOCTarget",
     "TerminalSOCReport",
     "build_energy_baseline_schedule",
+    "build_feature_010_market_context",
     "build_fcr_capacity_schedule",
+    "build_settled_evaluation_report",
+    "build_validation_failed_evaluation_report",
+    "compare_reference_evaluation",
+    "compare_reference_values",
+    "recompute_reference_precision_bounds",
+    "replay_invalid_fcr_bid_diagnostic",
     "replay_stacked_services",
     "replay_stacked_services_diagnostic",
     "EnergySettlementInterval",
+    "DirectionalFCREnergy",
     "FCRPenaltyRule",
     "FCRSettlementBlock",
     "FCRSettlementValidationError",
     "SettlementBreakdown",
+    "ReferenceSettlementBreakdown",
     "settle_stacked_services",
     "RestorationSettlementValidationError",
     "SettlementAvailability",

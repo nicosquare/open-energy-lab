@@ -21,6 +21,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 
 EXPECTED_PLACEHOLDERS = {
     "ENTSOE_API_TOKEN": "replace-with-your-entsoe-api-token",
+    "GRB_LICENSE_FILE": "replace-with-your-gurobi-license-file-path",
     "RTE_CLIENT_ID": "replace-with-your-rte-client-id",
     "RTE_CLIENT_SECRET": "replace-with-your-rte-client-secret",
 }

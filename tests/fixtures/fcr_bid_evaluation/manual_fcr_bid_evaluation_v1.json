@@ -1,0 +1,192 @@
+{
+  "schema_version": "oel.fcr-bid-evaluation-manual.v1",
+  "case_id": "manual-fcr-bid-evaluation-v1",
+  "authorship": {
+    "kind": "project-authored-hand-oracle",
+    "generated_by_evaluator": false,
+    "numeric_tolerance": 1e-06
+  },
+  "period": {
+    "start_utc": "2023-06-17T22:00:00Z",
+    "end_utc": "2023-06-18T02:00:00Z",
+    "local_start": "2023-06-18T00:00:00+02:00",
+    "local_end": "2023-06-18T04:00:00+02:00",
+    "market_timezone": "Europe/Paris",
+    "interval_convention": "start-inclusive/end-exclusive"
+  },
+  "grids": {
+    "activation_resolution": "PT30M",
+    "checkpoint_resolution": "PT30M",
+    "energy_resolution": "PT1H",
+    "fcr_resolution": "PT4H",
+    "activation_count": 8,
+    "checkpoint_count": 8,
+    "energy_count": 4,
+    "fcr_count": 1
+  },
+  "mapping": {
+    "reference_power_sign": "positive is discharge",
+    "library_power_sign": "positive is charge",
+    "reference_x0_kw": [-1.0, 0.0, 0.0, 1.0],
+    "library_baseline_formula": "library_baseline_kw = -reference_x0_kw",
+    "library_baseline_kw": [1.0, 0.0, 0.0, -1.0],
+    "reference_xr_kw": [1.0],
+    "library_fcr_formula": "library_fcr_capacity_kw = reference_xr_kw",
+    "library_fcr_capacity_kw": [1.0],
+    "requested_fcr_formula": "requested_fcr_kw = -activation * capacity_kw",
+    "requested_combined_formula": "requested_combined_kw = baseline_kw + requested_fcr_kw"
+  },
+  "battery": {
+    "name": "manual-fcr-oracle-battery",
+    "capacity_kwh": 5.0,
+    "max_charge_kw": 2.0,
+    "max_discharge_kw": 2.0,
+    "charge_efficiency": 0.8,
+    "discharge_efficiency": 0.8,
+    "initial_soc": 0.5,
+    "min_soc": 0.0,
+    "max_soc": 1.0,
+    "initial_stored_energy_kwh": 2.5
+  },
+  "energy_schedule": {
+    "power_kw": [1.0, 0.0, 0.0, -1.0],
+    "prices_eur_per_mwh": [50.0, 60.0, 70.0, 100.0],
+    "intervals": [
+      {"start_utc": "2023-06-17T22:00:00Z", "end_utc": "2023-06-17T23:00:00Z", "power_kw": 1.0, "price_eur_per_mwh": 50.0},
+      {"start_utc": "2023-06-17T23:00:00Z", "end_utc": "2023-06-18T00:00:00Z", "power_kw": 0.0, "price_eur_per_mwh": 60.0},
+      {"start_utc": "2023-06-18T00:00:00Z", "end_utc": "2023-06-18T01:00:00Z", "power_kw": 0.0, "price_eur_per_mwh": 70.0},
+      {"start_utc": "2023-06-18T01:00:00Z", "end_utc": "2023-06-18T02:00:00Z", "power_kw": -1.0, "price_eur_per_mwh": 100.0}
+    ]
+  },
+  "fcr_schedule": {
+    "capacity_kw": [1.0],
+    "capacity_price_eur_per_kw_block": [0.08],
+    "intervals": [
+      {"start_utc": "2023-06-17T22:00:00Z", "end_utc": "2023-06-18T02:00:00Z", "capacity_kw": 1.0, "price_eur_per_kw_block": 0.08}
+    ]
+  },
+  "activation": {
+    "values": [1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0, -1.0],
+    "sign_semantics": "positive is upward/discharge",
+    "intervals": [
+      {"start_utc": "2023-06-17T22:00:00Z", "end_utc": "2023-06-17T22:30:00Z", "value": 1.0},
+      {"start_utc": "2023-06-17T22:30:00Z", "end_utc": "2023-06-17T23:00:00Z", "value": 0.0},
+      {"start_utc": "2023-06-17T23:00:00Z", "end_utc": "2023-06-17T23:30:00Z", "value": -1.0},
+      {"start_utc": "2023-06-17T23:30:00Z", "end_utc": "2023-06-18T00:00:00Z", "value": 0.0},
+      {"start_utc": "2023-06-18T00:00:00Z", "end_utc": "2023-06-18T00:30:00Z", "value": 0.0},
+      {"start_utc": "2023-06-18T00:30:00Z", "end_utc": "2023-06-18T01:00:00Z", "value": 0.0},
+      {"start_utc": "2023-06-18T01:00:00Z", "end_utc": "2023-06-18T01:30:00Z", "value": 1.0},
+      {"start_utc": "2023-06-18T01:30:00Z", "end_utc": "2023-06-18T02:00:00Z", "value": -1.0}
+    ]
+  },
+  "expected_samples": [
+    {"index": 0, "baseline_power_kw": 1.0, "activation": 1.0, "requested_fcr_power_kw": -1.0, "requested_combined_power_kw": 0.0, "delivered_fcr_power_kw": -1.0, "delivered_combined_power_kw": 0.0, "charge_energy_kwh": 0.0, "discharge_energy_kwh": 0.0, "stored_energy_before_kwh": 2.5, "stored_energy_after_kwh": 2.5},
+    {"index": 1, "baseline_power_kw": 1.0, "activation": 0.0, "requested_fcr_power_kw": 0.0, "requested_combined_power_kw": 1.0, "delivered_fcr_power_kw": 0.0, "delivered_combined_power_kw": 1.0, "charge_energy_kwh": 0.5, "discharge_energy_kwh": 0.0, "stored_energy_before_kwh": 2.5, "stored_energy_after_kwh": 2.9},
+    {"index": 2, "baseline_power_kw": 0.0, "activation": -1.0, "requested_fcr_power_kw": 1.0, "requested_combined_power_kw": 1.0, "delivered_fcr_power_kw": 1.0, "delivered_combined_power_kw": 1.0, "charge_energy_kwh": 0.5, "discharge_energy_kwh": 0.0, "stored_energy_before_kwh": 2.9, "stored_energy_after_kwh": 3.3},
+    {"index": 3, "baseline_power_kw": 0.0, "activation": 0.0, "requested_fcr_power_kw": 0.0, "requested_combined_power_kw": 0.0, "delivered_fcr_power_kw": 0.0, "delivered_combined_power_kw": 0.0, "charge_energy_kwh": 0.0, "discharge_energy_kwh": 0.0, "stored_energy_before_kwh": 3.3, "stored_energy_after_kwh": 3.3},
+    {"index": 4, "baseline_power_kw": 0.0, "activation": 0.0, "requested_fcr_power_kw": 0.0, "requested_combined_power_kw": 0.0, "delivered_fcr_power_kw": 0.0, "delivered_combined_power_kw": 0.0, "charge_energy_kwh": 0.0, "discharge_energy_kwh": 0.0, "stored_energy_before_kwh": 3.3, "stored_energy_after_kwh": 3.3},
+    {"index": 5, "baseline_power_kw": 0.0, "activation": 0.0, "requested_fcr_power_kw": 0.0, "requested_combined_power_kw": 0.0, "delivered_fcr_power_kw": 0.0, "delivered_combined_power_kw": 0.0, "charge_energy_kwh": 0.0, "discharge_energy_kwh": 0.0, "stored_energy_before_kwh": 3.3, "stored_energy_after_kwh": 3.3},
+    {"index": 6, "baseline_power_kw": -1.0, "activation": 1.0, "requested_fcr_power_kw": -1.0, "requested_combined_power_kw": -2.0, "delivered_fcr_power_kw": -1.0, "delivered_combined_power_kw": -2.0, "charge_energy_kwh": 0.0, "discharge_energy_kwh": 1.0, "stored_energy_before_kwh": 3.3, "stored_energy_after_kwh": 2.05},
+    {"index": 7, "baseline_power_kw": -1.0, "activation": -1.0, "requested_fcr_power_kw": 1.0, "requested_combined_power_kw": 0.0, "delivered_fcr_power_kw": 1.0, "delivered_combined_power_kw": 0.0, "charge_energy_kwh": 0.0, "discharge_energy_kwh": 0.0, "stored_energy_before_kwh": 2.05, "stored_energy_after_kwh": 2.05}
+  ],
+  "expected": {
+    "stored_energy_kwh": {"initial": 2.5, "minimum": 2.05, "maximum": 3.3, "terminal": 2.05},
+    "soc_fraction": {"initial": 0.5, "minimum": 0.41, "maximum": 0.66, "terminal": 0.41},
+    "requested_power_kw": {"minimum": -2.0, "maximum": 1.0},
+    "delivered_power_kw": {"minimum": -2.0, "maximum": 1.0},
+    "requested_fcr_energy_kwh": {"upward_discharge": 1.0, "downward_charge": 1.0, "signed_net_charge_positive": 0.0},
+    "delivered_fcr_energy_kwh": {"upward_discharge": 1.0, "downward_charge": 1.0, "signed_net_charge_positive": 0.0},
+    "charge_energy_kwh": 1.0,
+    "discharge_energy_kwh": 1.0,
+    "throughput_kwh": 2.0,
+    "signed_tracking_error_kw_sum": 0.0,
+    "absolute_tracking_error_kw_sum": 0.0,
+    "non_delivery_energy_kwh": 0.0,
+    "saturation_sample_count": 0,
+    "saturation_event_count": 0,
+    "settlement": {
+      "profile_id": "robust-storage-bidding-reference-settlement-v1",
+      "day_ahead_revenue_eur": 0.05,
+      "fcr_capacity_revenue_eur": 0.08,
+      "activation_energy_revenue_eur": -0.005,
+      "penalty_rule_id": "no_penalty_rule",
+      "penalty_eur": 0.0,
+      "total_profit_eur": 0.125,
+      "unavailable_components": ["intraday", "imbalance", "degradation", "terminal_value"]
+    }
+  },
+  "dynamic_saturation_case": {
+    "description": "valid static headroom followed by minimum-SOC-limited upward delivery",
+    "battery": {
+      "capacity_kwh": 2.0,
+      "max_charge_kw": 2.0,
+      "max_discharge_kw": 2.0,
+      "charge_efficiency": 1.0,
+      "discharge_efficiency": 1.0,
+      "initial_soc": 0.25,
+      "min_soc": 0.0,
+      "max_soc": 1.0
+    },
+    "energy_baseline_kw": [0.0, 0.0, 0.0, 0.0],
+    "fcr_capacity_kw": [1.0],
+    "activation": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+    "day_ahead_prices_eur_per_mwh": [100.0, 100.0, 100.0, 100.0],
+    "fcr_capacity_prices_eur_per_kw_block": [0.08],
+    "penalty_rule": {
+      "rule_id": "authored-non-delivery-penalty-v1",
+      "measure": "absolute_fcr_non_delivery_energy_kwh",
+      "rate": 0.02,
+      "rate_unit": "EUR/kWh",
+      "application": "sum per activation interval"
+    },
+    "expected": {
+      "stored_energy_kwh": {"initial": 0.5, "minimum": 0.0, "maximum": 0.5, "terminal": 0.0},
+      "requested_power_kw": {"minimum": -1.0, "maximum": -1.0},
+      "delivered_power_kw": {"minimum": -1.0, "maximum": 0.0},
+      "requested_fcr_energy_kwh": {"upward_discharge": 4.0, "downward_charge": 0.0, "signed_net_charge_positive": -4.0},
+      "delivered_fcr_energy_kwh": {"upward_discharge": 0.5, "downward_charge": 0.0, "signed_net_charge_positive": -0.5},
+      "signed_tracking_error_kw_sum": -7.0,
+      "absolute_tracking_error_kw_sum": 7.0,
+      "non_delivery_energy_kwh": 3.5,
+      "charge_energy_kwh": 0.0,
+      "discharge_energy_kwh": 0.5,
+      "throughput_kwh": 0.5,
+      "saturation_sample_count": 7,
+      "saturation_duration_hours": 3.5,
+      "saturation_event_count": 1,
+      "saturation_event": {"event_id": "saturation-0000", "cause": "minimum_soc_limit", "start_sample": 1, "end_sample": 7, "sample_count": 7, "duration_hours": 3.5, "undelivered_energy_kwh": 3.5},
+      "settlement": {
+        "day_ahead_revenue_eur": 0.0,
+        "fcr_capacity_revenue_eur": 0.08,
+        "activation_energy_revenue_eur": 0.05,
+        "combined_fcr_revenue_eur": 0.13,
+        "penalty_eur": 0.07,
+        "total_profit_eur": 0.06
+      }
+    }
+  },
+  "invalid_static_headroom_case": {
+    "energy_baseline_kw": [1.0, 0.0, 0.0, -1.0],
+    "fcr_capacity_kw": [2.0],
+    "battery_max_charge_kw": 2.0,
+    "battery_max_discharge_kw": 2.0,
+    "expected_status": "validation_failed",
+    "expected_diagnostic_codes": ["charge_power_headroom_insufficient", "discharge_power_headroom_insufficient"],
+    "expected_trace": null,
+    "expected_settlement": null,
+    "expected_profit": null,
+    "diagnostic_replay_status": "invalid_commitment_diagnostic",
+    "diagnostic_replay_expected_saturation": {"sample_index": 6, "cause": "discharge_power_limit"}
+  },
+  "fingerprints": {
+    "status": "pinned_after_independent_numeric_oracle_passed",
+    "plan": "a8475b98eeb31f1d7e4b1b1863682a2a24e134a17efc251909248a7ce2ccd3d2",
+    "evaluation_input": "0be7a2ad901320c2a4150633aa51cf5c1ff60a55d566545b048e77a599278b17",
+    "trace": "30970a8c93c623f5ce52cff87dc41b4ec0af5b36db2a40819db6b8fde589159b",
+    "settlement": "efacd60ecb9a697ad73df90cbb5b6bfccf8ad35b25d63346152d5b7437362c1c",
+    "result": "4c0ce836577a4fde5eef704429ee7cfb8d065099c2ac6556a4bfb7556de20c6f",
+    "dynamic_saturation_result": "80d1545156e42299bc175a963cb7dff11661c99316d24415190b0609e1a83fef",
+    "failed_report": "c0e4106ffcdef627ddc503bed0c0bec966480c154cb001220b4dd11feb94e745",
+    "diagnostic_replay": "8a72f85034ca57338dc2b895695369b538d6a29f9bd48b1ad809ee18356f62ef"
+  }
+}

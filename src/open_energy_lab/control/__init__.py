@@ -10,6 +10,15 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from .fcr_bid_plan import (
+        BidPlanProducer,
+        FCRBidPlanValidationError,
+        FixedFCRBidPlan,
+        OptimizationMetric,
+        PlanDiagnostic,
+        SerializedScheduleReference,
+        build_fixed_fcr_bid_plan,
+    )
     from ._config import (
         PVSelfConsumptionConfig,
         PriceThresholdConfig,
@@ -51,6 +60,22 @@ if TYPE_CHECKING:
 
 
 _EXPORT_MAP = {
+    "BidPlanProducer": (".fcr_bid_plan", "BidPlanProducer"),
+    "FCRBidPlanValidationError": (
+        ".fcr_bid_plan",
+        "FCRBidPlanValidationError",
+    ),
+    "FixedFCRBidPlan": (".fcr_bid_plan", "FixedFCRBidPlan"),
+    "OptimizationMetric": (".fcr_bid_plan", "OptimizationMetric"),
+    "PlanDiagnostic": (".fcr_bid_plan", "PlanDiagnostic"),
+    "SerializedScheduleReference": (
+        ".fcr_bid_plan",
+        "SerializedScheduleReference",
+    ),
+    "build_fixed_fcr_bid_plan": (
+        ".fcr_bid_plan",
+        "build_fixed_fcr_bid_plan",
+    ),
     "PVSelfConsumptionConfig": ("._config", "PVSelfConsumptionConfig"),
     "PVSelfConsumptionController": (
         ".pv_self_consumption",
@@ -147,12 +172,17 @@ __all__ = [
     "AFRRBaselineMode",
     "ArbitrageOnlyBaselineConfig",
     "BaselineScheduleBundle",
+    "BidPlanProducer",
     "DirectionalCapacityCommitmentInterval",
     "DirectionalCapacitySchedule",
+    "FCRBidPlanValidationError",
+    "FixedFCRBidPlan",
     "MFRRBaselineConfig",
     "MFRRBaselineMode",
+    "OptimizationMetric",
     "PVSelfConsumptionConfig",
     "PVSelfConsumptionController",
+    "PlanDiagnostic",
     "PriceThresholdConfig",
     "PriceThresholdController",
     "RegulationOnlyBaselineConfig",
@@ -161,6 +191,7 @@ __all__ = [
     "RestorationControlValidationError",
     "RestorationEnergyBaselineInterval",
     "RestorationEnergyBaselineSchedule",
+    "SerializedScheduleReference",
     "SocGuardrailConfig",
     "SocGuardrailController",
     "StackedBaselineValidationError",
@@ -169,6 +200,7 @@ __all__ = [
     "build_afrr_baseline_config",
     "build_afrr_directional_capacity_schedule",
     "build_arbitrage_only_baseline",
+    "build_fixed_fcr_bid_plan",
     "build_mfrr_baseline",
     "build_mfrr_baseline_config",
     "build_mfrr_directional_capacity_schedule",

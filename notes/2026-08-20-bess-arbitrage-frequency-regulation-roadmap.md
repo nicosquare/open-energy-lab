@@ -1,35 +1,31 @@
-# Roadmap Note: From TPM Planning to BESS Stacked Services
+# Roadmap Note: From BESS Service Environments To TPM FCR Bidding
 
-**Date:** 2026-08-20  
-**Updated:** 2026-08-21  
-**Status:** Discussion summary and proposed feature direction
+**Date:** 2026-08-20
+**Updated:** 2026-08-25
+**Status:** Current capability assessment and granular feature roadmap
 
 ## Purpose
 
-This note summarizes the discussion about what Open Energy Lab should develop
-after feature `009-tpm-planning`, given the longer-term objective of studying a
-battery energy storage system (BESS) participating in both energy arbitrage and
-frequency regulation.
+This note records the path from the completed TPM planning, FCR, aFRR, and mFRR
+vertical slices to the longer-term objective: reproduce in Python the principal
+results of
+[Storage Participation in Electricity Markets: Time Discretization through Robust Optimization](https://arxiv.org/abs/2510.10856),
+then develop and compare a TPM-based bidding alternative on the same evaluation
+environment.
 
-The central conclusion is that feature 009 supplies the reusable probabilistic
-planning machinery needed for that direction. The next capability should define
-and validate the physical and market semantics of stacked BESS services before
-adding forecast-aware MPC or learned controllers.
+Features `010-bess-stacked-services` and `011-afrr-mfrr-services` now provide
+the market-artifact, fixed-commitment, physical replay, and product-settlement
+boundaries that were prospective in the original version of this note. The
+next work should not widen restoration-product scope. It should make the
+existing FCR environment sufficient for paper-result parity, implement the
+reference robust bidder against that boundary, and only then introduce the TPM
+bidder.
 
-That capability should not be limited to synthetic market fixtures. Feature 010
-should introduce an authenticated ENTSO-E Transparency Platform adapter as a
-library-owned market-data producer, use a selected historical period for its
-real-data demonstration, and preserve a small deterministic scenario for
-equation-level validation. Live retrieval and offline reproducibility are
-complementary requirements: simulations consume a versioned local market-data
-artifact, while an explicit retrieval operation creates or refreshes that
-artifact from ENTSO-E.
-
-FCR should remain the deliberately narrow first balancing product. The next
-feature should extend the same market-data, dispatch, and settlement boundaries
-to automatic Frequency Restoration Reserve (aFRR) and manual Frequency
-Restoration Reserve (mFRR). These products should be added as explicit market
-profiles rather than treated as interchangeable regulation-signal columns.
+The comparison must hold the environment constant. The reference robust method
+and the TPM method should receive equivalent market and battery information,
+emit the same typed hourly energy and four-hour FCR schedules, and be evaluated
+by identical replay, settlement, and backtest code. Only the method that chooses
+the bids should differ.
 
 ## What Feature 009 Now Enables
 
@@ -67,6 +63,14 @@ for the intended roadmap.
 Feature 009 should therefore be treated as a reusable decision-under-uncertainty
 engine rather than the end of the planning work.
 
+Its current planning integration is nevertheless narrower than the proposed
+bidding use case. It optimizes categorical battery and solar design choices
+under one chance-constrained target; it does not yet represent 24 hourly energy
+bids, six FCR bids, causal intraday adjustments, or sequence-valued decisions.
+The reusable assets are the fit, persistence, query, SPN-to-MIO compilation,
+Pyomo handoff, and native probabilistic verification layers—not the existing
+battery-and-solar decision schema.
+
 ## Clarification About Oracle Forecasts
 
 A full-horizon look-ahead oracle that receives the realized future and optimizes
@@ -97,9 +101,13 @@ Joint arbitrage and frequency regulation naturally separates into four layers:
 | Market scheduling | Allocate power and state-of-charge headroom between the energy market and regulation commitments. |
 | Real-time tracking | Follow the regulation activation signal while respecting battery and market constraints. |
 
-Feature 009 substantially supports the investment-planning layer. The market
-scheduling and real-time tracking layers are not yet modeled, and there is not
-yet a first-class European market-data producer for them.
+Feature 009 substantially supports the investment-planning layer. Feature 010
+now supplies the French day-ahead/FCR market-data producer, fixed hourly and
+four-hour schedules, high-resolution FCR tracking, battery replay, and realized
+audit outputs. Feature 011 adds separate aFRR and mFRR vertical slices. The
+remaining FCR work is bid selection, paper-compatible profit accounting,
+rolling backtest orchestration, and intraday recourse—not basic battery or
+market-product semantics.
 
 For a stacked service, realized battery power is conceptually the combination
 of an energy-market baseline and a regulation response:
@@ -113,31 +121,29 @@ SOC, efficiency, grid, and service-delivery constraints. Regulation headroom is
 therefore coupled to arbitrage: power or energy committed to one service may no
 longer be available to the other.
 
-The term "frequency regulation" also needs an explicit scope decision. An ISO
-or system-operator ancillary-service product driven by an AGC/regulation signal
-has different control, settlement, and performance semantics from autonomous
-frequency-deviation or droop response. A market-neutral base contract can
-support either direction, but the first concrete reference scenario should
-select one.
+The reference scope is now explicit: European symmetric FCR driven by a
+normalized frequency-derived activation trace. It remains distinct from the
+aFRR trajectory and mFRR event semantics implemented by Feature 011 and from
+autonomous behind-the-meter droop control.
 
-## ENTSO-E Market-Data Integration Vision
+## Implemented ENTSO-E FCR Market-Data Boundary
 
-Feature 010 should add a narrow, reusable module such as
-`open_energy_lab.market.entsoe`. Its responsibility is to access the
+Feature 010 added the narrow, reusable
+`open_energy_lab.market.entsoe` module. Its responsibility is to access the
 [ENTSO-E Transparency Platform REST API](https://documenter.getpostman.com/view/7009892/2s93JtP3F6),
 normalize the returned XML documents, validate their temporal coverage, and
 write a canonical market-data artifact. The stacked-service simulator should
 depend on that artifact contract, not on ENTSO-E networking or XML response
 types.
 
-The first adapter profile should target France and the data needed by the
+The implemented France profile provides the data boundary needed by the
 robust-storage-bidding reference case:
 
 | Required series | ENTSO-E document type | Initial treatment |
 | --- | --- | --- |
 | Day-ahead energy prices | `A44` price document | Required real-data input. |
-| Contracted reserve capacity | `A81` contracted reserves | Retrieve and validate FCR coverage for the selected French period. |
-| Contracted reserve prices | `A89` contracted reserve prices | Preferred source for FCR capacity remuneration, with RTE data as an explicit alternative if platform coverage is incomplete. |
+| Contracted reserve capacity | combined `A81` contracted reserves | Required symmetric-FCR volume with exact product and period semantics. |
+| Contracted reserve prices | combined `A81` procurement price | Required capacity remuneration from the same accepted FCR document and points. |
 | Activated balancing quantities | `A83` activated balancing quantities | Evaluate as supporting validation data; do not assume it is the required 10-second normalized FCR signal. |
 | Activated balancing prices | `A84` activated balancing prices | Optional when the chosen settlement profile pays activation energy. |
 
@@ -169,9 +175,9 @@ The interval boundary convention should be explicit, preferably start-inclusive
 and end-exclusive.
 
 This is not a streaming, real-time control feed. ENTSO-E publishes market and
-balancing documents that can be polled, but a simulation should not make an
+balancing documents that can be polled, but a simulation does not make an
 uncontrolled network request on every execution. Three explicit access modes
-are preferable:
+are implemented:
 
 | Mode | Behavior | Intended use |
 | --- | --- | --- |
@@ -210,9 +216,9 @@ optimization, TPM-dataset generation, notebooks, and regression tests. It also
 allows later sources to implement the same artifact contract without adding
 source-specific logic to battery or market-settlement code.
 
-### First Demonstration And Offline Validation
+### Implemented Demonstration And Offline Validation
 
-The feature should include both:
+The feature includes both:
 
 1. a very small deterministic scenario whose expected SOC and revenue can be
    verified by hand; and
@@ -226,17 +232,17 @@ provenanced artifact; an optional credentialed integration check should fetch a
 small period and compare its schema and invariants without making network
 availability a condition of every simulation or test run.
 
-## Expansion Beyond FCR: aFRR And mFRR
+## Implemented Expansion Beyond FCR: aFRR And mFRR
 
-After the FCR reference profile is validated, the library should add aFRR and
-mFRR as the next market profiles. ENTSO-E identifies
+Feature 011 added aFRR and mFRR as separate restoration-service profiles after
+the FCR reference profile was validated. ENTSO-E identifies
 [PICASSO](https://www.entsoe.eu/network_codes/eb/picasso/) as the European
 platform for balancing energy from reserves with automatic activation and
 [MARI](https://www.entsoe.eu/network_codes/eb/mari/) as the corresponding initiative
 for reserves with manual activation.
 
-They should not be folded into Feature 010 because their operational contracts
-are materially different:
+They were not folded into Feature 010 because their operational contracts are
+materially different:
 
 | Product | Primary response | Simulator implication |
 | --- | --- | --- |
@@ -244,20 +250,17 @@ are materially different:
 | aFRR | Automatically dispatched restoration response | Directional bids, automatic activation trajectory, activation-energy settlement, and tracking-performance semantics. |
 | mFRR | Manually requested scheduled or direct restoration response | Discrete activation events, requested start/duration, ramp and delivery validation, and event-based settlement. |
 
-Feature 011 should reuse the ENTSO-E producer and canonical artifact boundary,
-adding only the product-specific capacity, bid, price, activation, and
-settlement fields required by aFRR and mFRR. The Transparency Platform's
-balancing documents can provide contracted reserves and prices, accepted
-offers, activated quantities, and activated prices, but coverage and resolution
-must be verified for the selected area and period. The implementation must not
-infer an activation signal from a price or aggregated energy series.
+Feature 011 reused the canonical artifact and battery boundaries while adding
+RTE-specific acquisition, directional commitments, distinct aFRR trajectory
+and mFRR event types, product-specific replay, and component-wise settlement.
+It preserves the rule that an activation signal cannot be inferred from a
+price or an insufficiently resolved aggregate energy series.
 
-The first aFRR/mFRR release should remain simulation-focused: ingest historical
-market periods, accept fixed valid commitments and activation inputs, replay
-battery response, and calculate product-specific delivery and settlement.
-Joint bidding optimization across FCR, aFRR, and mFRR should follow only after
-all three market profiles have independent deterministic and real-data
-validation.
+The first aFRR/mFRR release remains simulation-focused: it ingests bounded
+historical market periods, accepts fixed valid commitments and activation
+inputs, replays battery response, and calculates product-specific delivery and
+settlement. Joint multi-product bidding remains outside the present objective;
+the next bidding work should stay on the paper-compatible FCR profile.
 
 ## Alignment With The Robust Storage Bidding Baseline
 
@@ -282,6 +285,27 @@ The external repository remains reference evidence rather than a runtime
 dependency. Reusable behavior should be implemented natively under
 `src/open_energy_lab`, with exact source URLs and version provenance recorded
 in fixtures and migration notes.
+
+### Bidder-Neutral Interaction Boundary
+
+The environment should not know whether bids came from the paper's robust
+formulation, a TPM, a heuristic, or a recorded fixture. Every bidder receives a
+validated market artifact, battery state, product/time contract, and explicit
+information cutoff, and emits the same two existing schedule types:
+
+- an hourly `EnergyBaselineSchedule`; and
+- a four-hour symmetric `FCRCapacitySchedule`.
+
+An optional lightweight `FCRBidPlan` result may reference those schedules plus
+the bidder identity, input fingerprints, decision timestamp, objective value,
+bound, solve status, and diagnostics. It should not duplicate observations or
+move battery physics into the optimizer. Initially, a protocol or result type
+wrapping the two existing schedules is sufficient; a new persisted aggregate
+is not required merely to rename them.
+
+This boundary is necessary for experimental control: robust and TPM bids must
+be replayed and settled by the identical environment so that differences in
+profit, feasibility, SOC, and throughput are attributable to bid selection.
 
 ### Reference Variables And Library Mapping
 
@@ -391,28 +415,42 @@ committing capacity to FCR.
 
 ### Activation Uncertainty Set
 
-Pointwise power headroom is not sufficient because a sustained activation can
-also exhaust the battery's energy headroom. The baseline uses a
-market-inspired activation budget with maximum normalized activation duration
-$\gamma$ over a recovery cycle $\Gamma$. A useful abstract representation is
+Pointwise power headroom is not sufficient because sustained activation can
+also exhaust the battery's energy headroom. The paper uses two related sets
+that must remain distinct in code. Its non-intraday model uses the horizon-wide
+functional set
 
 $$
-\mathcal U_{\gamma,\Gamma}
+\Xi_{\gamma}
+=
+\left\{
+\xi:
+|\xi(t)|\le1,
+\quad \int_0^T|\xi(t)|\,dt\le\gamma
+\right\}.
+$$
+
+Its exact EU-inspired recovery-window set for intraday analysis is
+
+$$
+\Xi'_{\gamma',\Gamma'}
 =
 \left\{
 \xi:
 |\xi(t)|\le1,
 \quad
-\int_{a}^{a+\Gamma}|\xi(t)|\,dt\le\gamma
-\quad\text{for every admissible window }a
+\int_{[t-\Gamma']^+}^{t}|\xi(\tau)|\,d\tau\le\gamma'
+\quad\forall t
 \right\}.
 $$
 
-The reference defaults are $\gamma=0.25$ hours and
-$\Gamma=2+\gamma=2.25$ hours. The exact window/budget semantics implemented in
-Open Energy Lab must be fixed by tests against the cited reference functions;
-the equation above records the intended contract rather than authorizing a
-looser interpretation.
+For the reference profile, $\gamma'=0.25$ hours and
+$\Gamma'=2+\gamma'=2.25$ hours. Without intraday trading, equation (16) in the
+paper derives the conservative horizon budget $\gamma=2.75$ hours for a
+24-hour horizon so that $\Xi'\subseteq\Xi$. With intraday adjustments, the
+model uses the smaller $\gamma'$ together with tightened power constraints.
+The names, derivation, and set containment must be tested explicitly; the two
+budgets must not be collapsed into one configuration field.
 
 Robust SOC feasibility is then
 
@@ -423,7 +461,7 @@ y_k(x^0,x^a,x^r,\xi)
 \le
 \overline{y},
 \qquad
-\forall \xi\in\mathcal U_{\gamma,\Gamma},
+\forall \xi\in\Xi_{\gamma},
 \quad \forall k.
 $$
 
@@ -512,8 +550,9 @@ case rather than its full four-year backtest:
 | Robust timestep | 0.25 hours |
 | Regulation replay timestep | $1/360$ hour (10 seconds) |
 | FCR bid duration | 4 hours |
-| Activation budget $\gamma$ | 0.25 hours |
-| Recovery cycle $\Gamma$ | 2.25 hours |
+| Exact-window activation budget $\gamma'$ | 0.25 hours |
+| Exact recovery window $\Gamma'$ | 2.25 hours |
+| Derived 24-hour non-intraday budget $\gamma$ | 2.75 hours |
 
 The initial SOC and terminal target should use the efficiency-aware centering
 rule preserved by the reference configuration:
@@ -525,15 +564,312 @@ y^{\mathrm{center}}
 {1+\eta_c\eta_d}.
 $$
 
-Historical day-ahead and reserve-market data should be supported by the
-library-owned ENTSO-E adapter described above. The initial real-data reference
-case should use a bounded historical period rather than the baseline's complete
-multi-year dataset. Its persisted artifact must have explicit provenance and
-redistribution status. The high-resolution regulation trace remains a separate
-source contract until the resolution and meaning of relevant ENTSO-E balancing
-documents are proven equivalent to the required FCR activation signal.
+Historical day-ahead and reserve-market data are supported by the library-owned
+ENTSO-E adapter described above. The existing real-data replay uses a bounded
+historical period rather than the baseline's complete multi-year dataset. Its
+persisted artifact has explicit provenance and redistribution status. The
+high-resolution regulation trace remains a separate source contract until the
+resolution and meaning of relevant ENTSO-E balancing documents are proven
+equivalent to the required FCR activation signal.
 
-## Recommended Next Features
+## Current Baseline Before New Features
+
+| Feature | Status | Reusable result |
+| --- | --- | --- |
+| `009-tpm-planning` | Complete | TPM/SPN fit, query, persistence, MIO compilation, Pyomo solve, and native verification. |
+| `010-bess-stacked-services` | Complete | French day-ahead/FCR artifacts, fixed schedules, 10-second replay, battery physics, and partial FCR settlement. |
+| `011-afrr-mfrr-services` | Complete | Separate restoration-product acquisition, commitments, replay, and settlement; not part of the immediate FCR bidding objective. |
+
+The existing FCR environment is sufficient to evaluate one fixed bid plan
+physically. It is not yet sufficient to reproduce the paper's reported profit
+and rolling/intraday experiments because activation-energy settlement, daily
+state carry-over, reference formulations, and causal intraday adjustments are
+missing.
+
+## Granular Next Features
+
+### 1. FCR Bid-Evaluation Parity
+
+**Suggested identifier:** `012-fcr-bid-evaluation-parity`
+
+**Goal:** Make the existing simulator a bidder-neutral evaluator for one
+paper-compatible 24-hour bid plan before implementing any bidder.
+
+Implement:
+
+- a small bidder result/protocol that references one existing
+  `EnergyBaselineSchedule` and one existing `FCRCapacitySchedule` and records
+  bidder identity, input fingerprints, information cutoff, solve status,
+  objective value, bound, and diagnostics;
+- an explicit reference-sign adapter from positive-discharge paper bids to the
+  charge-positive library convention;
+- realized FCR activation-energy settlement at the aligned day-ahead price,
+  kept separate from accepted day-ahead revenue and FCR availability revenue;
+- paper-style daily metrics: total and component profit, charge energy,
+  discharge energy, energy output/throughput, minimum and maximum SOC, minimum
+  and maximum power, terminal SOC, and violations;
+- an importer or fixture builder for fixed schedules produced by the reference
+  implementation; and
+- one hand-calculable case plus one 24-hour/8,640-sample parity fixture.
+
+Acceptance requires the same fixed bids and activation trace to produce the
+expected per-step SOC and daily metrics within declared tolerances. No robust
+optimization, TPM fitting, intraday trading, or multi-day orchestration belongs
+in this feature.
+
+### 2. Single-Day Reference Robust Bidding Core
+
+**Suggested identifier:** `013-reference-robust-fcr-bidding`
+
+**Goal:** Reproduce the paper's non-intraday bid-selection method in Python for
+one 24-hour day and emit the Feature 012 bidder result.
+
+Implement:
+
+- typed reference inputs for battery bounds, efficiencies, 96 planning
+  intervals, 24 hourly energy blocks, six FCR blocks, terminal rule, and solver
+  tolerances;
+- distinct typed contracts for the horizon-wide set $\Xi_\gamma$ and the exact
+  recovery-window set $\Xi'_{\gamma',\Gamma'}$, including equation (16)'s
+  derived-budget calculation;
+- Pyomo formulations of the mixed-binary linear restriction and relaxation;
+- common schedule extraction into `EnergyBaselineSchedule` and
+  `FCRCapacitySchedule`;
+- post-solve replay through Feature 012 rather than a second battery model;
+- solver-neutral metadata, with HiGHS available for MILP validation and Gurobi
+  treated as an optional compatible backend; and
+- optional small-case exact bilinear verification when a suitable licensed
+  Gurobi environment is available.
+
+Acceptance requires equation-level oracles, feasible restriction replay, and
+the profit-maximization bound order
+$z_{\mathrm{restriction}}\le z_{\mathrm{exact}}\le
+z_{\mathrm{relaxation}}$ wherever all three values are available. The realized
+activation trace must not enter bid selection.
+
+### 3. Rolling Historical Backtest Parity
+
+**Suggested identifier:** `014-fcr-rolling-backtest-parity`
+
+**Goal:** Reproduce the paper's non-intraday daily experiments and aggregate
+reported metrics without changing the bidder or simulator equations.
+
+Implement:
+
+- a versioned backtest-study manifest referencing day-ahead prices, FCR prices,
+  activation data, included/excluded dates, battery parameters, bidder profile,
+  solver configuration, and source revisions;
+- deterministic daily iteration with optional previous-day terminal-SOC
+  carry-over;
+- midnight and 08:00 information-cutoff profiles, including the current-day SOC
+  state required by early bidding;
+- experiment switches for relaxation versus restriction, FCR enabled/disabled,
+  perfect versus lossy efficiency, and coupled versus reset daily SOC;
+- immutable per-day results and deterministic aggregate summaries; and
+- comparison against the paper's experiments 1--5 on a small date subset first,
+  with the full 2020-07-01 through 2024-06-30 run remaining explicit and
+  opt-in.
+
+Routine CI should use a small representative subset. The companion repository
+reports that the complete nine-experiment sweep is computationally expensive,
+so full-history parity is a release or research-workstation gate rather than a
+unit-test requirement.
+
+### 4. Causal Intraday Adjustment And Remaining Paper Experiments
+
+**Suggested identifier:** `015-fcr-intraday-recourse`
+
+**Goal:** Reproduce the paper's intraday experiments without giving the bidder
+future activation information.
+
+Implement:
+
+- an `IntradayAdjustmentSchedule` or equivalent causal policy output on the
+  15-minute grid, separate from accepted day-ahead bids;
+- exact decision timestamps and observed-activation cutoffs;
+- the paper's recovery adjustment and tightened power constraints under
+  $\Xi'_{\gamma',\Gamma'}$;
+- separate intraday settlement, defaulting to the paper's assumption that
+  intraday prices equal day-ahead prices while allowing an explicit independent
+  series later;
+- replay composition of day-ahead baseline, intraday adjustment, and FCR
+  response; and
+- experiment profiles corresponding to the paper's experiments 6--9.
+
+Acceptance requires no-lookahead tests, component-wise profit reconciliation,
+and explicit reporting of the small realized SOC violations discussed by the
+paper rather than silently clipping them out of the comparison.
+
+Completion of Features 012--015 establishes reference-result reproduction.
+Historical numerical equality is evaluated only when the exact released input
+data and versioned experiment profile are available; library-fabricated cases
+are methodological replications, not reproductions of the published totals.
+
+### 5. Seeded FCR Market Scenario Families
+
+**Suggested identifier:** `016-fcr-market-scenario-families`
+
+**Goal:** Fabricate reproducible market and activation cases on which robust
+and TPM bidders can be compared beyond the historical sample.
+
+Implement:
+
+- a fitted, versioned model for aligned hourly day-ahead prices and four-hour
+  FCR availability prices;
+- a separate fitted or explicitly synthetic generator for 10-second normalized
+  activation traces;
+- family seeds, scenario indices, absolute time alignment, artifact
+  fingerprints, and train/calibration/test partitions;
+- validation of pointwise activation bounds plus separate reporting of
+  $\Xi_\gamma$ and $\Xi'_{\gamma',\Gamma'}$ membership and budget use;
+- controlled stress overlays for price spikes, activation bias, sustained
+  activation, efficiency changes, and initial-SOC shifts; and
+- paired evaluation so every bidder sees the same scenario identities.
+
+Do not reuse weather or demand families as implicit market models, and do not
+label fabricated activation as an observed operator command.
+
+### 6. Bid-Study Dataset For TPM Fitting
+
+**Suggested identifier:** `017-tpm-fcr-bidding-dataset`
+
+**Goal:** Convert bidder/environment evaluations into a leakage-free dataset
+that the existing TPM stack can fit and query.
+
+Each row or normalized linked record should retain:
+
+- scenario identity and observable market-context features available at the
+  decision time;
+- initial battery state and fixed battery parameters;
+- bidder/policy identity and a compact bid-plan representation;
+- uncertainty-budget parameters and whether the realized trace lies inside the
+  modeled sets;
+- profit components, throughput, SOC extrema, tracking error, and terminal SOC;
+- explicit binary events such as non-delivery, SOC violation, and profit below
+  a declared threshold; and
+- complete lineage to market, activation, bid-plan, replay, and settlement
+  fingerprints.
+
+Generate candidate plans from deterministic grids, heuristics, and the
+reference bidder, but do not train and evaluate on the same scenario identities.
+Acceptance requires deterministic regeneration, paired scenario coverage,
+split-integrity tests, fit/query success, and held-out calibration reporting.
+
+### 7. Discrete TPM FCR Bid Selection
+
+**Suggested identifier:** `018-tpm-fcr-bid-selection`
+
+**Goal:** Deliver the first genuine TPM bidding alternative using the current
+categorical decision and SPN/MIO strengths before attempting continuous
+sequence optimization.
+
+Implement:
+
+- a finite, explicitly generated catalog of complete daily bid plans or policy
+  templates;
+- TPM conditional estimates for service-failure probability and profit bins
+  given observable market context, battery state, and candidate plan;
+- selection of the highest-value candidate satisfying a declared service-risk
+  limit, with deterministic tie-breaking;
+- Pyomo/MIO selection where supported and native TPM verification of the
+  selected candidate; and
+- held-out comparison with the reference restriction, arbitrage-only,
+  regulation-only, and stacked-heuristic bidders.
+
+The initial claim should be limited to selecting among a finite catalog. It
+must not be described as continuous optimal bidding. Acceptance metrics should
+include profit, non-delivery rate, SOC violations, throughput, solve time,
+calibration, and regret relative to the reference bidder on identical cases.
+
+### 8. Structured Or Continuous TPM Bidding
+
+**Suggested identifier:** `019-tpm-structured-fcr-bidding`
+
+**Goal:** Move beyond catalog selection only after Feature 018 establishes that
+the TPM signal is useful out of sample.
+
+Candidate approaches include autoregressive block decisions, quantized
+hour/block vectors with refinement, or an extension of the SPN-to-MIO compiler
+for bounded continuous bid variables. Whichever representation is selected
+must preserve schedule completeness, power headroom, causal information, and
+native TPM verification. This feature should be specified only after the
+Feature 018 evidence identifies the dimensionality and approximation bottleneck.
+
+## Required Dependency Order
+
+```text
+completed: 009 TPM foundation
+completed: 010 FCR environment
+completed: 011 aFRR/mFRR environment
+                 |
+                 v
+012 bid-evaluation parity
+                 |
+                 v
+013 single-day reference robust bidder
+                 |
+                 v
+014 rolling non-intraday backtest
+                 |
+                 v
+015 intraday parity -------- reference reproduction gate
+                 |
+                 v
+016 seeded FCR market scenario families
+                 |
+                 v
+017 TPM bidding dataset
+                 |
+                 v
+018 discrete TPM bid selection --- first TPM alternative
+                 |
+                 v
+019 structured/continuous TPM bidding
+```
+
+Feature 016 may begin after Feature 012 if parallel work is useful, but its
+public contract should not be frozen until the reference backtest identifies
+all required market and activation fields. Features 017 and 018 require the
+Feature 012 evaluation outputs, not the implementation internals of the
+reference bidder.
+
+## Comparison Contract
+
+Every comparison must hold constant:
+
+- market and activation scenario identities;
+- battery configuration and initial state;
+- information cutoff and forecast inputs;
+- accepted schedule types and sign/unit conversions;
+- physical replay, settlement, and metric definitions; and
+- numeric tolerances and failure handling.
+
+The robust and TPM methods may differ only in how they choose bids and represent
+uncertainty. Report at least profit and its components, non-delivery, SOC
+violations, throughput, solve time, and out-of-sample calibration. A robust
+guarantee applies only to its declared uncertainty set; TPM performance applies
+only to the evaluated data distribution and held-out evidence.
+
+## Explicitly Deferred Work
+
+The following should not interrupt the reference-to-TPM path:
+
+- joint FCR/aFRR/mFRR bid optimization;
+- learned or reinforcement-learning controllers;
+- multi-site or network-constrained participation;
+- detailed electrochemical degradation;
+- live or continuous market ingestion; and
+- investment sizing coupled to operational bidding.
+
+These remain plausible later consumers of the same environment, but they are
+not prerequisites for demonstrating a TPM alternative to the reference paper.
+
+## Historical Roadmap (Superseded By The Sequence Above)
+
+The following sections preserve the original proposal that led to Features
+010 and 011. They are historical context, not the current implementation order.
+
+### Original Recommended Features
 
 ### 1. BESS FCR Stacked-Service Market and Simulator
 
@@ -710,7 +1046,7 @@ settlement, and evaluation episodes as the rolling robust bidder. Federated or
 multi-site learning should follow only after a multi-site simulator contract
 exists.
 
-## Recommended Dependency Order
+### Original Recommended Dependency Order
 
 ```text
 ENTSO-E API -----> 010 market-data producer and stacked-service simulator
@@ -739,7 +1075,7 @@ simulation path is trustworthy. A later optimization feature may stack all
 three reserve products once their individual settlement and activation
 contracts are validated.
 
-## Initial Validation Priorities
+### Original Validation Priorities
 
 Before adding rolling/intraday optimization or TPM fitting, the stacked-service
 simulator should prove:
@@ -777,7 +1113,7 @@ prove:
 5. missing or insufficiently resolved ENTSO-E series fail with source and
    period diagnostics rather than being imputed as operational signals.
 
-## Decision Summary
+### Original Decision Summary
 
 - Feature 009 conceptually reproduces the paper's simulator-SPN-MILP planning
   method and is sufficient as the probabilistic planning foundation.

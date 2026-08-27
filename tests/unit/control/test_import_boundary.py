@@ -28,12 +28,17 @@ EXPECTED_ROOT_EXPORTS = [
     "AFRRBaselineMode",
     "ArbitrageOnlyBaselineConfig",
     "BaselineScheduleBundle",
+    "BidPlanProducer",
     "DirectionalCapacityCommitmentInterval",
     "DirectionalCapacitySchedule",
+    "FCRBidPlanValidationError",
+    "FixedFCRBidPlan",
     "MFRRBaselineConfig",
     "MFRRBaselineMode",
+    "OptimizationMetric",
     "PVSelfConsumptionConfig",
     "PVSelfConsumptionController",
+    "PlanDiagnostic",
     "PriceThresholdConfig",
     "PriceThresholdController",
     "RegulationOnlyBaselineConfig",
@@ -42,6 +47,7 @@ EXPECTED_ROOT_EXPORTS = [
     "RestorationControlValidationError",
     "RestorationEnergyBaselineInterval",
     "RestorationEnergyBaselineSchedule",
+    "SerializedScheduleReference",
     "SocGuardrailConfig",
     "SocGuardrailController",
     "StackedBaselineValidationError",
@@ -50,6 +56,7 @@ EXPECTED_ROOT_EXPORTS = [
     "build_afrr_baseline_config",
     "build_afrr_directional_capacity_schedule",
     "build_arbitrage_only_baseline",
+    "build_fixed_fcr_bid_plan",
     "build_mfrr_baseline",
     "build_mfrr_baseline_config",
     "build_mfrr_directional_capacity_schedule",
@@ -188,6 +195,44 @@ def test_control_root_exports_resolve_from_expected_modules(
     export = getattr(module, export_name)
 
     assert export.__module__ == module_name
+
+
+def test_feature_012_plan_exports_are_lazy_and_owned_by_fcr_bid_plan() -> None:
+    module = importlib.import_module("open_energy_lab.control")
+    expected = {
+        "BidPlanProducer",
+        "FCRBidPlanValidationError",
+        "FixedFCRBidPlan",
+        "OptimizationMetric",
+        "PlanDiagnostic",
+        "SerializedScheduleReference",
+        "build_fixed_fcr_bid_plan",
+    }
+
+    assert expected.issubset(module.__all__)
+    assert {
+        getattr(module, name).__module__
+        for name in expected
+    } == {"open_energy_lab.control.fcr_bid_plan"}
+
+
+def test_feature_012_plan_import_loads_no_reference_or_research_runtime() -> None:
+    _run_isolated_python(
+        """
+        import sys
+
+        import open_energy_lab.control.fcr_bid_plan
+
+        forbidden_roots = {
+            "IPython", "baselines", "citylearn", "docplex", "gurobipy",
+            "highspy", "jupyter", "legacy", "pandas", "pyomo", "spflow",
+            "torch", "torchrl", "wandb",
+        }
+        loaded_roots = {name.split(".", 1)[0] for name in sys.modules}
+        assert forbidden_roots.isdisjoint(loaded_roots)
+        assert "open_energy_lab.market.reference_fcr" not in sys.modules
+        """
+    )
 
 
 @pytest.mark.parametrize(

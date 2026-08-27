@@ -34,6 +34,8 @@ notebook = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/open_energy_lab"]
 exclude = [
+    "/artifacts/**",
+    "/baselines/**",
     "/tests/fixtures/restoration/france_2026-08-20_afrr_market_v1.json",
     "/tests/fixtures/restoration/france_2026-08-20_afrr_scenario_v1.json",
     "/tests/fixtures/restoration/france_2026-08-15_mfrr_market_v1.json",
@@ -43,6 +45,8 @@ exclude = [
 
 [tool.hatch.build.targets.sdist]
 exclude = [
+    "/artifacts/**",
+    "/baselines/**",
     "/tests/fixtures/market/france_2022-08-19_market_v1.json",
     "/tests/fixtures/market/france_2022-08-19_activation_v1.json",
     "/tests/fixtures/market/france_2022-08-19_expected_replay_v1.json",
@@ -61,4 +65,5 @@ markers = [
     "live_entsoe: explicitly selected credentialed ENTSO-E compatibility checks (excluded from routine offline validation)",
     "live_rte: explicitly selected credentialed RTE compatibility checks (excluded from routine offline validation)",
     "reference_benchmark: explicitly selected reference-host performance checks (excluded from routine correctness validation)",
+    "external_reference_data: explicitly selected checks requiring caller-installed reference data (excluded from routine offline validation)",
 ]

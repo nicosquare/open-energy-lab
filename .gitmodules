@@ -4,3 +4,6 @@
 [submodule "legacy/fed_trpo"]
 	path = legacy/fed_trpo
 	url = git@github.com:Optimization-and-Machine-Learning-Lab/energy_fed_trpo.git
+[submodule "baselines/robust_storage_bidding"]
+	path = baselines/robust_storage_bidding
+	url = git@github.com:lauinger/robust-storage-bidding.git
