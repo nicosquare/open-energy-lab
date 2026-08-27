@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+import math
 from numbers import Real
 
+from .domains import TPMFeatureDomain, TPMNormalizationSpec, TPMTrainingSupport
 from .features import TPMFeatureSpec, infer_feature_role
 
 
@@ -42,7 +44,12 @@ class TPMTrainingData:
         )
 
 
-def normalize_training_data(rows: Sequence[Mapping[str, object]]) -> TPMTrainingData:
+def normalize_training_data(
+    rows: Sequence[Mapping[str, object]],
+    *,
+    feature_domains: Mapping[str, TPMFeatureDomain] | None = None,
+    feature_roles: Mapping[str, str] | None = None,
+) -> TPMTrainingData:
     """Validate and normalize training rows into a deterministic TPM payload."""
 
     if isinstance(rows, Mapping) or isinstance(rows, (str, bytes)):
@@ -62,8 +69,24 @@ def normalize_training_data(rows: Sequence[Mapping[str, object]]) -> TPMTraining
         _canonicalize_row(row, column_order=column_order, row_index=index)
         for index, row in enumerate(rows)
     )
+    resolved_domains = _validated_feature_domains(
+        feature_domains,
+        column_order=column_order,
+    )
+    resolved_roles = _validated_feature_roles(
+        feature_roles,
+        column_order=column_order,
+    )
     feature_schema = tuple(
-        _infer_feature_spec(column_name, [row[column_name] for row in canonical_rows])
+        _resolve_feature_spec(
+            column_name,
+            [row[column_name] for row in canonical_rows],
+            feature_role=resolved_roles.get(
+                column_name,
+                infer_feature_role(column_name),
+            ),
+            mathematical_domain=resolved_domains.get(column_name),
+        )
         for column_name in column_order
     )
     normalized_rows = tuple(
@@ -173,6 +196,219 @@ def _infer_feature_spec(
         modifiable=modifiable,
         discrete_values=discrete_values,
     )
+
+
+def _resolve_feature_spec(
+    feature_name: str,
+    values: Sequence[object],
+    *,
+    feature_role: str,
+    mathematical_domain: TPMFeatureDomain | None,
+) -> TPMFeatureSpec:
+    if mathematical_domain is None:
+        inferred = _infer_feature_spec(feature_name, values)
+        if inferred.feature_type == "mixed":
+            return TPMFeatureSpec(
+                feature_name=feature_name,
+                feature_type="mixed",
+                feature_role=feature_role,
+                modifiable=feature_role == "decision",
+                bounds=inferred.bounds,
+                discrete_values=inferred.discrete_values,
+                ordering=inferred.ordering,
+                normalization_rule=inferred.normalization_rule,
+            )
+        mathematical_domain = TPMFeatureDomain(
+            feature_name=feature_name,
+            feature_kind=inferred.feature_type,
+            purpose=(
+                "decision-domain"
+                if feature_role == "decision"
+                else "distribution-support"
+            ),
+            shape="unknown",
+            origin="omitted",
+        )
+        training_support = _derive_training_support(
+            feature_name,
+            values,
+            feature_kind=inferred.feature_type,
+        )
+        normalization = _legacy_normalization(
+            feature_name=feature_name,
+            feature_kind=inferred.feature_type,
+            inferred=inferred,
+        )
+    else:
+        if mathematical_domain.feature_name != feature_name:
+            raise ValueError(
+                f"feature_domains mapping key {feature_name!r} does not match "
+                f"declaration feature_name {mathematical_domain.feature_name!r}"
+            )
+        training_support = _derive_training_support(
+            feature_name,
+            values,
+            feature_kind=mathematical_domain.feature_kind,
+        )
+        for value in values:
+            mathematical_domain.validate_value(value)
+        normalization = _declared_normalization(mathematical_domain)
+
+    return TPMFeatureSpec(
+        feature_name=feature_name,
+        feature_type=mathematical_domain.feature_kind,
+        feature_role=feature_role,
+        modifiable=feature_role == "decision",
+        mathematical_domain=mathematical_domain,
+        training_support=training_support,
+        normalization=normalization,
+    )
+
+
+def _derive_training_support(
+    feature_name: str,
+    values: Sequence[object],
+    *,
+    feature_kind: str,
+) -> TPMTrainingSupport:
+    if feature_kind == "continuous":
+        numeric_values: list[float] = []
+        for value in values:
+            if not _is_numeric_scalar(value):
+                raise ValueError(
+                    f"{feature_name} physical observations must be finite numeric values"
+                )
+            numeric_value = float(value)
+            if not math.isfinite(numeric_value):
+                raise ValueError(
+                    f"{feature_name} physical observations must be finite numeric values"
+                )
+            numeric_values.append(numeric_value)
+        return TPMTrainingSupport(
+            feature_name=feature_name,
+            feature_kind="continuous",
+            minimum=min(numeric_values),
+            maximum=max(numeric_values),
+        )
+
+    observed_values = _stable_unique(values)
+    return TPMTrainingSupport(
+        feature_name=feature_name,
+        feature_kind=feature_kind,
+        observed_values=observed_values,
+    )
+
+
+def _declared_normalization(domain: TPMFeatureDomain) -> TPMNormalizationSpec:
+    if domain.feature_kind == "continuous":
+        if domain.shape != "finite":
+            return TPMNormalizationSpec(
+                feature_name=domain.feature_name,
+                feature_kind="continuous",
+                kind="identity",
+                origin="caller-declared",
+            )
+        return TPMNormalizationSpec(
+            feature_name=domain.feature_name,
+            feature_kind="continuous",
+            kind=(
+                "fixed-zero" if domain.lower == domain.upper else "min-max"
+            ),
+            origin="caller-declared",
+            lower=domain.lower,
+            upper=domain.upper,
+        )
+    return TPMNormalizationSpec(
+        feature_name=domain.feature_name,
+        feature_kind=domain.feature_kind,
+        kind="ordered-index",
+        origin="caller-declared",
+        ordering=domain.ordering,
+    )
+
+
+def _legacy_normalization(
+    *,
+    feature_name: str,
+    feature_kind: str,
+    inferred: TPMFeatureSpec,
+) -> TPMNormalizationSpec:
+    if feature_kind == "continuous":
+        lower, upper = inferred.bounds
+        return TPMNormalizationSpec(
+            feature_name=feature_name,
+            feature_kind="continuous",
+            kind="fixed-zero" if lower == upper else "min-max",
+            origin="legacy-inferred",
+            lower=lower,
+            upper=upper,
+        )
+    return TPMNormalizationSpec(
+        feature_name=feature_name,
+        feature_kind=feature_kind,
+        kind="ordered-index",
+        origin="legacy-inferred",
+        ordering=inferred.ordering,
+    )
+
+
+def _validated_feature_domains(
+    feature_domains: Mapping[str, TPMFeatureDomain] | None,
+    *,
+    column_order: tuple[str, ...],
+) -> dict[str, TPMFeatureDomain]:
+    if feature_domains is None:
+        return {}
+    if not isinstance(feature_domains, Mapping):
+        raise TypeError("feature_domains must be a mapping")
+    normalized: dict[str, TPMFeatureDomain] = {}
+    for key, domain in feature_domains.items():
+        feature_name = str(key)
+        if not isinstance(domain, TPMFeatureDomain):
+            raise TypeError(
+                f"feature_domains[{feature_name!r}] must be a TPMFeatureDomain"
+            )
+        if domain.feature_name != feature_name:
+            raise ValueError(
+                f"feature_domains mapping key {feature_name!r} does not match "
+                f"declaration feature_name {domain.feature_name!r}"
+            )
+        normalized[feature_name] = domain
+    unknown = sorted(set(normalized) - set(column_order))
+    if unknown:
+        raise ValueError(
+            "feature_domains reference unknown or unselected columns: "
+            + ", ".join(unknown)
+        )
+    return normalized
+
+
+def _validated_feature_roles(
+    feature_roles: Mapping[str, str] | None,
+    *,
+    column_order: tuple[str, ...],
+) -> dict[str, str]:
+    if feature_roles is None:
+        return {}
+    if not isinstance(feature_roles, Mapping):
+        raise TypeError("feature_roles must be a mapping")
+    normalized = {str(name): str(role) for name, role in feature_roles.items()}
+    unknown = sorted(set(normalized) - set(column_order))
+    if unknown:
+        raise ValueError(
+            "feature_roles reference unknown columns: " + ", ".join(unknown)
+        )
+    if any(not name or not role for name, role in normalized.items()):
+        raise ValueError("feature_roles must contain non-empty names and roles")
+    return normalized
+
+
+def _stable_unique(values: Sequence[object]) -> tuple[object, ...]:
+    observed: list[object] = []
+    for value in values:
+        if value not in observed:
+            observed.append(value)
+    return tuple(observed)
 
 
 def _is_numeric_scalar(value: object) -> bool:

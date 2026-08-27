@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import inspect
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -12,11 +13,13 @@ from open_energy_lab.planning import load_planning_dataset
 import open_energy_lab.tpm.fit as fit_module
 import open_energy_lab.tpm.optional_spflow as optional_spflow_module
 from open_energy_lab.tpm.artifact import load_tpm_artifact
+from open_energy_lab.tpm.domains import TPMFeatureDomain
 from open_energy_lab.tpm.fit import (
     TPMArtifactBuildRequest,
     TPMFitConfig,
     fit_tpm_artifact,
     fit_tpm_artifact_from_rows,
+    fit_tpm_artifact_from_study_manifest,
 )
 from open_energy_lab.tpm.optional_spflow import (
     SPFlowDependencyUnavailableError,
@@ -341,3 +344,232 @@ def test_leaf_parameter_stabilization_keeps_constant_binary_slices_finite() -> N
     assert 0.0 < float(leaf.probs.detach().reshape(-1)[0]) < 1.0
     assert bool(torch.isfinite(normal.scale).all())
     assert bool((normal.scale > 0.0).all())
+
+
+def _declared_generic_rows() -> tuple[dict[str, object], ...]:
+    return (
+        {
+            "x": 60.0,
+            "tariff_plan": "flat",
+            "demand": 72.0,
+        },
+        {
+            "x": 140.0,
+            "tariff_plan": "peak",
+            "demand": 134.0,
+        },
+    )
+
+
+def _declared_generic_domains() -> dict[str, TPMFeatureDomain]:
+    return {
+        "x": TPMFeatureDomain(
+            feature_name="x",
+            feature_kind="continuous",
+            purpose="decision-domain",
+            shape="finite",
+            lower=40.0,
+            upper=160.0,
+        ),
+        "demand": TPMFeatureDomain(
+            feature_name="demand",
+            feature_kind="continuous",
+            purpose="distribution-support",
+            shape="unbounded",
+        ),
+    }
+
+
+def _declared_generic_request(
+    *,
+    feature_domains: dict[str, TPMFeatureDomain] | None = None,
+) -> TPMArtifactBuildRequest:
+    return TPMArtifactBuildRequest(
+        artifact_id="declared-generic-artifact",
+        dataset_reference="declared-generic-dataset",
+        decision_features=("x", "tariff_plan"),
+        target_name="demand",
+        target_threshold=100.0,
+        feature_domains=(
+            _declared_generic_domains()
+            if feature_domains is None
+            else feature_domains
+        ),
+    )
+
+
+def test_build_request_preserves_one_shared_feature_domain_mapping_type() -> None:
+    request = _declared_generic_request()
+
+    assert tuple(request.feature_domains) == ("x", "demand")
+    assert request.feature_domains["x"].shape == "finite"
+    assert request.feature_domains["demand"].shape == "unbounded"
+
+
+def test_generic_fit_uses_declarations_and_classifies_omitted_features(
+    tmp_path: Path,
+) -> None:
+    artifact = fit_tpm_artifact_from_rows(
+        _declared_generic_rows(),
+        build_request=_declared_generic_request(),
+        output_path=tmp_path / "declared-generic.json",
+        spflow_backend=_FakeAdapter(),
+    )
+    specs = {spec.feature_name: spec for spec in artifact.feature_specs}
+
+    assert artifact.schema_version == "v3"
+    assert specs["x"].mathematical_domain.shape == "finite"
+    assert specs["x"].bounds == (40.0, 160.0)
+    assert specs["demand"].mathematical_domain.shape == "unbounded"
+    assert specs["demand"].normalization.kind == "identity"
+    assert specs["tariff_plan"].mathematical_domain.shape == "unknown"
+    assert specs["tariff_plan"].mathematical_domain.origin == "omitted"
+    assert specs["tariff_plan"].normalization.origin == "legacy-inferred"
+
+
+def test_planning_fit_accepts_optional_feature_domains_without_reading_dataset_metadata_as_domains(
+    tmp_path: Path,
+) -> None:
+    artifact = fit_tpm_artifact(
+        _planning_dataset(),
+        output_path=tmp_path / "declared-planning.json",
+        feature_domains={
+            "battery_capacity_kwh": TPMFeatureDomain(
+                feature_name="battery_capacity_kwh",
+                feature_kind="continuous",
+                purpose="decision-domain",
+                shape="finite",
+                lower=0.0,
+                upper=20.0,
+            )
+        },
+        spflow_backend=_FakeAdapter(),
+    )
+    specs = {spec.feature_name: spec for spec in artifact.feature_specs}
+
+    assert artifact.schema_version == "v3"
+    assert specs["battery_capacity_kwh"].mathematical_domain.shape == "finite"
+    assert specs["solar_capacity_kw"].mathematical_domain.shape == "unknown"
+    assert specs["solar_capacity_kw"].mathematical_domain.origin == "omitted"
+
+
+def test_all_public_fit_carriers_expose_keyword_only_feature_domains() -> None:
+    assert "feature_domains" in inspect.signature(fit_tpm_artifact).parameters
+    study_parameter = inspect.signature(
+        fit_tpm_artifact_from_study_manifest
+    ).parameters["feature_domains"]
+
+    assert study_parameter.kind is inspect.Parameter.KEYWORD_ONLY
+    assert study_parameter.default is None
+
+
+def test_build_request_rejects_mapping_key_owned_by_another_feature() -> None:
+    with pytest.raises(ValueError, match="mapping key|feature_name"):
+        _declared_generic_request(
+            feature_domains={"other": _declared_generic_domains()["x"]}
+        )
+
+
+@pytest.mark.parametrize(
+    "feature_domains",
+    [
+        {
+            "unknown": TPMFeatureDomain(
+                feature_name="unknown",
+                feature_kind="continuous",
+                purpose="decision-domain",
+                shape="finite",
+                lower=0.0,
+                upper=1.0,
+            )
+        },
+        {
+            "demand": TPMFeatureDomain(
+                feature_name="demand",
+                feature_kind="continuous",
+                purpose="decision-domain",
+                shape="finite",
+                lower=0.0,
+                upper=200.0,
+            )
+        },
+    ],
+)
+def test_generic_fit_rejects_unknown_or_role_ambiguous_declarations_before_backend_use(
+    feature_domains: dict[str, TPMFeatureDomain],
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        fit_module,
+        "_fit_and_persist_spflow_model",
+        lambda *_args, **_kwargs: pytest.fail("backend must not be invoked"),
+    )
+
+    with pytest.raises(ValueError, match="unknown|unselected|purpose|role"):
+        fit_tpm_artifact_from_rows(
+            _declared_generic_rows(),
+            build_request=_declared_generic_request(feature_domains=feature_domains),
+            output_path=tmp_path / "must-not-publish.json",
+            spflow_backend=_FakeAdapter(),
+        )
+
+
+@pytest.mark.parametrize(
+    "feature_domains",
+    [
+        {
+            "x": TPMFeatureDomain(
+                feature_name="x",
+                feature_kind="continuous",
+                purpose="decision-domain",
+                shape="finite",
+                lower=80.0,
+                upper=160.0,
+            ),
+            "demand": _declared_generic_domains()["demand"],
+        },
+        {
+            "x": _declared_generic_domains()["x"],
+            "demand": TPMFeatureDomain(
+                feature_name="demand",
+                feature_kind="continuous",
+                purpose="distribution-support",
+                shape="finite",
+                lower=0.0,
+                upper=100.0,
+            ),
+        },
+    ],
+)
+def test_invalid_declared_physical_rows_fail_before_backend_and_publish_nothing(
+    feature_domains: dict[str, TPMFeatureDomain],
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    output_path = tmp_path / "invalid-declared-fit.json"
+    backend_calls: list[object] = []
+
+    def _unexpected_backend(*args, **kwargs):
+        backend_calls.append((args, kwargs))
+        pytest.fail("backend must not be invoked for invalid physical evidence")
+
+    monkeypatch.setattr(
+        fit_module,
+        "_fit_and_persist_spflow_model",
+        _unexpected_backend,
+    )
+
+    with pytest.raises(ValueError, match="decision-domain|distribution-support|outside"):
+        fit_tpm_artifact_from_rows(
+            _declared_generic_rows(),
+            build_request=_declared_generic_request(feature_domains=feature_domains),
+            output_path=output_path,
+            spflow_backend=_FakeAdapter(),
+        )
+
+    assert backend_calls == []
+    assert not output_path.exists()
+    assert not output_path.with_name(
+        f"{output_path.stem}.spn_payload.pkl"
+    ).exists()

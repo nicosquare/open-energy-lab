@@ -17,7 +17,7 @@ from .features import TPMFeatureSpec, dump_feature_schema, load_feature_schema
 from .piecewise import load_piecewise_metadata
 
 FEATURE_NAME = "009-tpm-planning"
-SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS = ("v2",)
+SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS = ("v2", "v3")
 SUPPORTED_TPM_EXECUTION_MODES = ("production", "fixture_replay")
 TPM_ARTIFACT_REQUIRED_KEYS = (
     "artifact_id",
@@ -126,7 +126,10 @@ class TPMArtifact:
     def feature_specs(self) -> tuple[TPMFeatureSpec, ...]:
         """Load the persisted feature schema into validated feature specs."""
 
-        return load_feature_schema(self.feature_schema)
+        return load_feature_schema(
+            self.feature_schema,
+            schema_version=self.schema_version,
+        )
 
     def to_dict(self) -> dict[str, object]:
         """Serialize the TPM artifact into its persisted JSON shape."""
@@ -136,7 +139,12 @@ class TPMArtifact:
             "schema_version": self.schema_version,
             "created_at": _persisted_created_at(self.created_at),
             "dataset_reference": self.dataset_reference,
-            "feature_schema": list(dump_feature_schema(self.feature_specs)),
+            "feature_schema": list(
+                dump_feature_schema(
+                    self.feature_specs,
+                    schema_version=self.schema_version,
+                )
+            ),
             "target_definition": dict(self.target_definition),
             "fit_configuration": dict(self.fit_configuration),
             "backend_generation": self.backend_generation,
@@ -221,7 +229,10 @@ class TPMArtifact:
         if not dataset_reference:
             raise ValueError("dataset_reference must be non-empty")
 
-        feature_schema = load_feature_schema(_sequence_of_mappings(data["feature_schema"]))
+        feature_schema = load_feature_schema(
+            _sequence_of_mappings(data["feature_schema"]),
+            schema_version=schema_version,
+        )
         if not feature_schema:
             raise ValueError("feature_schema must not be empty")
 
@@ -281,7 +292,10 @@ class TPMArtifact:
             schema_version=schema_version,
             created_at=created_at,
             dataset_reference=dataset_reference,
-            feature_schema=dump_feature_schema(feature_schema),
+            feature_schema=dump_feature_schema(
+                feature_schema,
+                schema_version=schema_version,
+            ),
             target_definition=target_definition,
             fit_configuration=fit_configuration,
             backend_generation=backend_generation,
@@ -384,7 +398,7 @@ def _validate_schema_version(schema_version: object) -> str:
         raise LegacyTPMArtifactVersionError(
             "legacy TPM artifact schema_version 'v1' is incompatible with the "
             "current SPFlow backend; refit the source planning dataset to create "
-            "a schema-v2 artifact"
+            "a schema-v3 artifact"
         )
     if normalized_version not in SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS:
         raise UnsupportedTPMArtifactVersionError(

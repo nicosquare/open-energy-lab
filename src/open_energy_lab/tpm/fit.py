@@ -13,6 +13,11 @@ from typing import Any
 
 from .artifact import FEATURE_NAME, TPMArtifact, write_tpm_model_sidecar
 from .data import TPMTrainingData, normalize_training_data
+from .domains import (
+    TPMFeatureDomain,
+    TPMNormalizationSpec,
+    TPMTrainingSupport,
+)
 from .features import (
     TPMFeatureSpec,
     build_spflow_leaf_modules,
@@ -143,6 +148,7 @@ class TPMArtifactBuildRequest:
     supported_query_mode: str = "exceedance-probability"
     numeric_tolerance: float = 1e-9
     feature_roles: Mapping[str, str] = field(default_factory=dict)
+    feature_domains: Mapping[str, TPMFeatureDomain] = field(default_factory=dict)
     provenance: Mapping[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -198,6 +204,23 @@ class TPMArtifactBuildRequest:
             raise ValueError("feature_roles must not contain empty role names")
         object.__setattr__(self, "feature_roles", feature_roles)
 
+        if not isinstance(self.feature_domains, Mapping):
+            raise TypeError("feature_domains must be a mapping")
+        feature_domains: dict[str, TPMFeatureDomain] = {}
+        for name, domain in self.feature_domains.items():
+            feature_name = str(name)
+            if not isinstance(domain, TPMFeatureDomain):
+                raise TypeError(
+                    f"feature_domains[{feature_name!r}] must be a TPMFeatureDomain"
+                )
+            if domain.feature_name != feature_name:
+                raise ValueError(
+                    f"feature_domains mapping key {feature_name!r} does not match "
+                    f"declaration feature_name {domain.feature_name!r}"
+                )
+            feature_domains[feature_name] = domain
+        object.__setattr__(self, "feature_domains", feature_domains)
+
         provenance = {str(key): value for key, value in dict(self.provenance).items()}
         object.__setattr__(self, "provenance", provenance)
 
@@ -214,6 +237,8 @@ class _SPFlowFitResult:
     determinism_configuration: Mapping[str, object]
     fit_summary: Mapping[str, object]
     source_path: str
+    staged_sidecar_path: Path
+    published_sidecar_path: Path
 
 
 def translate_spflow_fit_configuration(
@@ -292,6 +317,7 @@ def fit_tpm_artifact(
     *,
     output_path: str | Path | None = None,
     fit_config: TPMFitConfig | None = None,
+    feature_domains: Mapping[str, TPMFeatureDomain] | None = None,
     spflow_backend: Any | None = None,
 ) -> TPMArtifact:
     """Fit and optionally persist a first-release TPM artifact."""
@@ -299,9 +325,18 @@ def fit_tpm_artifact(
     dataset = _load_planning_dataset_artifact(source)
     dataset_source_path = _source_dataset_path(source)
     config = fit_config or TPMFitConfig()
-    training_data = normalize_training_data(dataset.rows)
     canonical_target_name = str(dataset.target_metadata["target_name"])
     event_target_name = str(dataset.target_metadata["event_target_name"])
+    feature_roles = _planning_feature_roles(
+        dataset=dataset,
+        canonical_target_name=canonical_target_name,
+        event_target_name=event_target_name,
+    )
+    training_data = normalize_training_data(
+        dataset.rows,
+        feature_domains=feature_domains,
+        feature_roles=feature_roles,
+    )
     training_random_seed = _resolved_training_random_seed(
         dataset.provenance,
         configured_seed=config.training_random_seed,
@@ -311,6 +346,10 @@ def fit_tpm_artifact(
         training_data=training_data,
         canonical_target_name=canonical_target_name,
         event_target_name=event_target_name,
+    )
+    training_data = _training_data_with_feature_schema(
+        training_data,
+        feature_schema=feature_schema,
     )
     fit_result = _fit_and_persist_spflow_model(
         training_data,
@@ -332,10 +371,10 @@ def fit_tpm_artifact(
 
     artifact = TPMArtifact(
         artifact_id=f"tpm-artifact:{dataset.dataset_id}",
-        schema_version="v2",
+        schema_version="v3",
         created_at=_created_at_utc(),
         dataset_reference=dataset.dataset_id,
-        feature_schema=dump_feature_schema(feature_schema),
+        feature_schema=dump_feature_schema(feature_schema, schema_version="v3"),
         target_definition=dict(dataset.target_metadata),
         fit_configuration=_persisted_fit_configuration(
             config=config,
@@ -365,8 +404,11 @@ def fit_tpm_artifact(
         ),
         source_path=fit_result.source_path,
     )
-    if output_path is not None:
-        artifact.write_json(output_path)
+    _publish_validated_fit(
+        artifact,
+        fit_result=fit_result,
+        output_path=output_path,
+    )
     return artifact
 
 
@@ -385,7 +427,14 @@ def fit_tpm_artifact_from_rows(
         build_request=build_request,
     )
     config = fit_config or TPMFitConfig()
-    training_data = normalize_training_data(prepared_rows)
+    training_data = normalize_training_data(
+        prepared_rows,
+        feature_domains=build_request.feature_domains,
+        feature_roles=_generic_feature_roles(
+            column_order=tuple(prepared_rows[0]),
+            build_request=build_request,
+        ),
+    )
     training_random_seed = _resolved_training_random_seed(
         build_request.provenance,
         configured_seed=config.training_random_seed,
@@ -393,6 +442,10 @@ def fit_tpm_artifact_from_rows(
     feature_schema = _build_generic_feature_schema(
         training_data=training_data,
         build_request=build_request,
+    )
+    training_data = _training_data_with_feature_schema(
+        training_data,
+        feature_schema=feature_schema,
     )
     fit_result = _fit_and_persist_spflow_model(
         training_data,
@@ -412,10 +465,10 @@ def fit_tpm_artifact_from_rows(
     )
     artifact = TPMArtifact(
         artifact_id=build_request.artifact_id,
-        schema_version="v2",
+        schema_version="v3",
         created_at=_created_at_utc(),
         dataset_reference=build_request.dataset_reference,
-        feature_schema=dump_feature_schema(feature_schema),
+        feature_schema=dump_feature_schema(feature_schema, schema_version="v3"),
         target_definition=_generic_target_definition(
             build_request=build_request,
             event_was_derived=event_was_derived,
@@ -445,8 +498,11 @@ def fit_tpm_artifact_from_rows(
         ),
         source_path=fit_result.source_path,
     )
-    if output_path is not None:
-        artifact.write_json(output_path)
+    _publish_validated_fit(
+        artifact,
+        fit_result=fit_result,
+        output_path=output_path,
+    )
     return artifact
 
 
@@ -457,6 +513,7 @@ def fit_tpm_artifact_from_study_manifest(
     fit_feature_names: Sequence[str] | None = None,
     max_tensor_bytes: int = 1_073_741_824,
     fit_config: TPMFitConfig | None = None,
+    feature_domains: Mapping[str, TPMFeatureDomain] | None = None,
     spflow_backend: Any | None = None,
 ) -> TPMArtifact:
     """Fit a compact TPM from a file-backed schema-v2 planning-study manifest."""
@@ -545,6 +602,7 @@ def fit_tpm_artifact_from_study_manifest(
                 target_name: "target",
                 event_target_name: "target",
             },
+            feature_domains=dict(feature_domains or {}),
             provenance={
                 "study_manifest_path": resolved.source_path.as_posix(),
                 "study_semantic_sha256": resolved.semantic_sha256,
@@ -593,6 +651,26 @@ def _fit_argument_mapping(
     return {str(key): item for key, item in value.items()}
 
 
+def _training_data_with_feature_schema(
+    training_data: TPMTrainingData,
+    *,
+    feature_schema: tuple[TPMFeatureSpec, ...],
+) -> TPMTrainingData:
+    normalized_rows = tuple(
+        {
+            spec.feature_name: spec.normalize_value(row[spec.feature_name])
+            for spec in feature_schema
+        }
+        for row in training_data.rows
+    )
+    return TPMTrainingData(
+        column_order=training_data.column_order,
+        rows=training_data.rows,
+        feature_schema=feature_schema,
+        normalized_rows=normalized_rows,
+    )
+
+
 def _merge_legacy_fit_argument(
     *,
     source: Mapping[str, object],
@@ -621,6 +699,7 @@ def _fit_and_persist_spflow_model(
     output_path: str | Path | None,
 ) -> _SPFlowFitResult:
     sidecar_path = _spn_payload_output_path(output_path=output_path)
+    staged_sidecar_path = _staged_sidecar_output_path(sidecar_path)
     source_path = _artifact_source_path(
         output_path=output_path,
         sidecar_path=sidecar_path,
@@ -654,6 +733,7 @@ def _fit_and_persist_spflow_model(
         )
         current_payload = {
             "payload_kind": "current-spflow-model-sidecar",
+            "artifact_schema_version": "v3",
             "backend_module": "spflow",
             "backend_version": REQUIRED_SPFLOW_VERSION,
             "backend_adapter_name": CURRENT_SPFLOW_ADAPTER_NAME,
@@ -667,7 +747,9 @@ def _fit_and_persist_spflow_model(
             "determinism_configuration": dict(determinism_configuration),
             "learn_spn_kwargs": dict(translated_kwargs),
             "column_order": list(training_data.column_order),
-            "feature_schema": [spec.to_dict() for spec in feature_schema],
+            "feature_schema": [
+                spec.to_dict(schema_version="v3") for spec in feature_schema
+            ],
             "normalized_rows": (
                 [dict(row) for row in training_data.normalized_rows]
                 if config.persist_training_rows
@@ -716,7 +798,10 @@ def _fit_and_persist_spflow_model(
             staging_path.unlink(missing_ok=True)
         if not isinstance(deserialized_payload, Mapping):
             raise TypeError("persisted SPFlow sidecar payload must be a mapping")
-    _, payload_hash = write_tpm_model_sidecar(sidecar_path, deserialized_payload)
+    _, payload_hash = write_tpm_model_sidecar(
+        staged_sidecar_path,
+        deserialized_payload,
+    )
 
     normalized_payload = dict(spn_payload) if isinstance(spn_payload, Mapping) else {}
     normalized_payload.update(
@@ -753,6 +838,8 @@ def _fit_and_persist_spflow_model(
         determinism_configuration=determinism_configuration,
         fit_summary=fit_summary,
         source_path=source_path.as_posix(),
+        staged_sidecar_path=staged_sidecar_path,
+        published_sidecar_path=sidecar_path,
     )
 
 
@@ -1061,6 +1148,53 @@ def _resolved_training_random_seed(
     return CANONICAL_TPM_RANDOM_SEED
 
 
+def _planning_feature_roles(
+    *,
+    dataset: object,
+    canonical_target_name: str,
+    event_target_name: str,
+) -> dict[str, str]:
+    decision_names = {
+        str(feature["feature_name"]) for feature in dataset.design_feature_schema
+    }
+    roles: dict[str, str] = {}
+    for feature_name in dataset.column_order:
+        normalized_name = str(feature_name)
+        if normalized_name in decision_names:
+            roles[normalized_name] = "decision"
+        elif normalized_name == event_target_name:
+            roles[normalized_name] = "target"
+        elif normalized_name == canonical_target_name:
+            roles[normalized_name] = "metric_target"
+        else:
+            roles[normalized_name] = "context"
+    return roles
+
+
+def _generic_feature_roles(
+    *,
+    column_order: tuple[str, ...],
+    build_request: TPMArtifactBuildRequest,
+) -> dict[str, str]:
+    roles: dict[str, str] = {}
+    for feature_name in column_order:
+        if feature_name in build_request.decision_features:
+            roles[feature_name] = build_request.feature_roles.get(
+                feature_name,
+                "decision",
+            )
+        elif feature_name == build_request.event_target_name:
+            roles[feature_name] = "target"
+        elif feature_name == build_request.target_name:
+            roles[feature_name] = "metric_target"
+        else:
+            roles[feature_name] = build_request.feature_roles.get(
+                feature_name,
+                "context",
+            )
+    return roles
+
+
 def _build_feature_schema(
     *,
     dataset: object,
@@ -1074,8 +1208,6 @@ def _build_feature_schema(
     feature_specs: list[TPMFeatureSpec] = []
     for inferred_spec in training_data.feature_schema:
         feature_name = inferred_spec.feature_name
-        feature_role = "context"
-        modifiable = False
         if feature_name in design_feature_schema:
             declared_feature = design_feature_schema[feature_name]
             declared_type = str(declared_feature["feature_type"])
@@ -1085,9 +1217,7 @@ def _build_feature_schema(
                     f"{feature_name!r}: expected {declared_type!r}, "
                     f"inferred {inferred_spec.feature_type!r}"
                 )
-            feature_role = str(declared_feature.get("feature_role", "decision"))
-            modifiable = feature_role == "decision"
-        elif feature_name == event_target_name:
+        if feature_name == event_target_name:
             feature_specs.append(
                 _binary_event_target_spec(
                     feature_name=feature_name,
@@ -1096,23 +1226,7 @@ def _build_feature_schema(
                 )
             )
             continue
-        elif feature_name == canonical_target_name:
-            feature_role = "metric_target"
-            modifiable = False
-
-        feature_specs.append(
-            TPMFeatureSpec(
-                feature_name=feature_name,
-                feature_type=inferred_spec.feature_type,
-                feature_role=feature_role,
-                modifiable=modifiable,
-                monotonicity=inferred_spec.monotonicity,
-                bounds=inferred_spec.bounds,
-                discrete_values=inferred_spec.discrete_values,
-                ordering=inferred_spec.ordering,
-                normalization_rule=inferred_spec.normalization_rule,
-            )
-        )
+        feature_specs.append(inferred_spec)
 
     feature_names = {spec.feature_name for spec in feature_specs}
     if canonical_target_name not in feature_names:
@@ -1187,6 +1301,39 @@ def _spn_payload_output_path(
     return temporary_directory / "tpm-artifact.spn_payload.pkl"
 
 
+def _staged_sidecar_output_path(sidecar_path: Path) -> Path:
+    sidecar_path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        dir=sidecar_path.parent,
+        prefix=f".{sidecar_path.name}.",
+        suffix=".validated-stage",
+        delete=False,
+    ) as staging_file:
+        staging_path = Path(staging_file.name)
+    staging_path.unlink()
+    return staging_path
+
+
+def _publish_validated_fit(
+    artifact: TPMArtifact,
+    *,
+    fit_result: _SPFlowFitResult,
+    output_path: str | Path | None,
+) -> None:
+    staged_sidecar_path = fit_result.staged_sidecar_path
+    try:
+        # Exercise the complete schema-aware serialization before publishing
+        # either sidecar or manifest under its durable name.
+        artifact.to_dict()
+        fit_result.published_sidecar_path.parent.mkdir(parents=True, exist_ok=True)
+        staged_sidecar_path.replace(fit_result.published_sidecar_path)
+        if output_path is not None:
+            artifact.write_json(output_path)
+    except BaseException:
+        staged_sidecar_path.unlink(missing_ok=True)
+        raise
+
+
 def _artifact_source_path(
     *,
     output_path: str | Path | None,
@@ -1218,7 +1365,9 @@ def _prepare_generic_rows(
         )
     decision_features = set(build_request.decision_features)
     missing_decision_features = [
-        feature_name for feature_name in build_request.decision_features if feature_name not in row_keys
+        feature_name
+        for feature_name in build_request.decision_features
+        if feature_name not in row_keys
     ]
     if missing_decision_features:
         raise ValueError(
@@ -1246,7 +1395,8 @@ def _prepare_generic_rows(
             target_value = normalized_row[build_request.target_name]
             if not isinstance(target_value, Real) or isinstance(target_value, bool):
                 raise ValueError(
-                    f"rows[{index}].{build_request.target_name} must be numeric to derive the event target"
+                    f"rows[{index}].{build_request.target_name} must be numeric "
+                    "to derive the event target"
                 )
             normalized_row[build_request.event_target_name] = int(
                 float(target_value) > float(build_request.target_threshold)
@@ -1263,12 +1413,7 @@ def _build_generic_feature_schema(
     feature_specs: list[TPMFeatureSpec] = []
     for inferred_spec in training_data.feature_schema:
         feature_name = inferred_spec.feature_name
-        feature_role = build_request.feature_roles.get(feature_name, "context")
-        modifiable = False
-        if feature_name in build_request.decision_features:
-            feature_role = build_request.feature_roles.get(feature_name, "decision")
-            modifiable = feature_role == "decision"
-        elif feature_name == build_request.event_target_name:
+        if feature_name == build_request.event_target_name:
             feature_specs.append(
                 _binary_event_target_spec(
                     feature_name=feature_name,
@@ -1277,22 +1422,7 @@ def _build_generic_feature_schema(
                 )
             )
             continue
-        elif feature_name == build_request.target_name:
-            feature_role = "metric_target"
-
-        feature_specs.append(
-            TPMFeatureSpec(
-                feature_name=feature_name,
-                feature_type=inferred_spec.feature_type,
-                feature_role=feature_role,
-                modifiable=modifiable,
-                monotonicity=inferred_spec.monotonicity,
-                bounds=inferred_spec.bounds,
-                discrete_values=inferred_spec.discrete_values,
-                ordering=inferred_spec.ordering,
-                normalization_rule=inferred_spec.normalization_rule,
-            )
-        )
+        feature_specs.append(inferred_spec)
 
     feature_names = {spec.feature_name for spec in feature_specs}
     if build_request.target_name not in feature_names:
@@ -1359,14 +1489,17 @@ def _binary_event_target_spec(
     inferred_spec: TPMFeatureSpec,
     rows: Sequence[Mapping[str, object]],
 ) -> TPMFeatureSpec:
-    observed_values = {
-        float(row[feature_name])
-        for row in rows
-        if isinstance(row.get(feature_name), Real) and not isinstance(row.get(feature_name), bool)
-    }
+    observed_values = tuple(
+        dict.fromkeys(
+            float(row[feature_name])
+            for row in rows
+            if isinstance(row.get(feature_name), Real)
+            and not isinstance(row.get(feature_name), bool)
+        )
+    )
     if not observed_values:
         raise ValueError(f"event target {feature_name!r} must contain numeric values")
-    if not observed_values.issubset({0.0, 1.0}):
+    if not set(observed_values).issubset({0.0, 1.0}):
         raise ValueError(
             f"event target {feature_name!r} must use the binary domain {{0.0, 1.0}}"
         )
@@ -1376,6 +1509,24 @@ def _binary_event_target_spec(
         feature_role="target",
         modifiable=False,
         monotonicity=inferred_spec.monotonicity,
-        discrete_values=(0.0, 1.0),
-        ordering=(0.0, 1.0),
+        mathematical_domain=TPMFeatureDomain(
+            feature_name=feature_name,
+            feature_kind="binary",
+            purpose="distribution-support",
+            values=(0.0, 1.0),
+            ordering=(0.0, 1.0),
+            origin="internal-exact-target",
+        ),
+        training_support=TPMTrainingSupport(
+            feature_name=feature_name,
+            feature_kind="binary",
+            observed_values=observed_values,
+        ),
+        normalization=TPMNormalizationSpec(
+            feature_name=feature_name,
+            feature_kind="binary",
+            kind="ordered-index",
+            origin="internal-exact-target",
+            ordering=(0.0, 1.0),
+        ),
     )

@@ -160,6 +160,21 @@ class TPMFeatureDomain:
         values: tuple[object, ...],
         ordering: tuple[object, ...],
     ) -> None:
+        if self.origin == "omitted":
+            if self.shape != "unknown" or values or ordering:
+                raise ValueError(
+                    f"omitted {feature_kind} domain must have shape 'unknown' "
+                    "without declared values"
+                )
+            if self.lower is not None or self.upper is not None:
+                raise ValueError(
+                    f"omitted {feature_kind} domain must not contain numeric endpoints"
+                )
+            object.__setattr__(self, "shape", "unknown")
+            object.__setattr__(self, "lower", None)
+            object.__setattr__(self, "upper", None)
+            return
+
         if self.shape is not None or self.lower is not None or self.upper is not None:
             raise ValueError(
                 f"{feature_kind} domain must not contain a continuous shape or endpoints"
@@ -188,6 +203,37 @@ class TPMFeatureDomain:
         object.__setattr__(self, "lower", None)
         object.__setattr__(self, "upper", None)
         object.__setattr__(self, "ordering", resolved_ordering)
+
+    def validate_value(self, value: object) -> None:
+        """Validate one exact physical value against this mathematical meaning."""
+
+        if self.feature_kind == "continuous":
+            numeric_value = _finite_float(
+                value,
+                field_name=f"{self.feature_name} physical value",
+            )
+            if self.shape == "finite":
+                is_valid = self.lower <= numeric_value <= self.upper
+            elif self.shape == "lower-bounded":
+                is_valid = numeric_value >= self.lower
+            elif self.shape == "upper-bounded":
+                is_valid = numeric_value <= self.upper
+            else:
+                is_valid = True
+            if not is_valid:
+                raise ValueError(
+                    f"{self.feature_name} value {numeric_value!r} is outside its "
+                    f"declared {self.purpose} ({self.shape})"
+                )
+            return
+
+        if self.shape == "unknown":
+            return
+        if value not in self.values:
+            raise ValueError(
+                f"{self.feature_name} value {value!r} is outside its declared "
+                f"{self.purpose} values {self.ordering!r}"
+            )
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-compatible semantic payload without numeric infinity."""
@@ -313,6 +359,28 @@ class TPMTrainingSupport:
         else:
             payload["observed_values"] = list(self.observed_values)
         return payload
+
+    def validate_legacy_value(self, value: object) -> None:
+        """Apply a visibly legacy-inferred operational support restriction."""
+
+        if self.feature_kind == "continuous":
+            numeric_value = _finite_float(
+                value,
+                field_name=f"{self.feature_name} physical value",
+            )
+            if not self.minimum <= numeric_value <= self.maximum:
+                raise ValueError(
+                    f"{self.feature_name} value {numeric_value!r} is outside the "
+                    "legacy-inferred observed operational range "
+                    f"[{self.minimum!r}, {self.maximum!r}]"
+                )
+            return
+        if value not in self.observed_values:
+            raise ValueError(
+                f"{self.feature_name} value {value!r} is outside the "
+                "legacy-inferred observed values "
+                f"{self.observed_values!r}"
+            )
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> TPMTrainingSupport:
@@ -456,6 +524,57 @@ class TPMNormalizationSpec:
             payload["ordering"] = list(self.ordering)
         return payload
 
+    def normalize_value(self, value: object) -> float:
+        """Transform one validated physical value to its model coordinate."""
+
+        if self.kind == "ordered-index":
+            if value not in self.ordering:
+                raise ValueError(
+                    f"{self.feature_name} value {value!r} is not in normalization "
+                    f"ordering {self.ordering!r}"
+                )
+            return float(self.ordering.index(value))
+
+        numeric_value = _finite_float(
+            value,
+            field_name=f"{self.feature_name} physical value",
+        )
+        if self.kind == "identity":
+            return numeric_value
+        if self.kind == "fixed-zero":
+            if numeric_value != self.lower:
+                raise ValueError(
+                    f"{self.feature_name} fixed-zero normalization accepts only "
+                    f"the physical value {self.lower!r}"
+                )
+            return 0.0
+        return (numeric_value - self.lower) / (self.upper - self.lower)
+
+    def denormalize_value(self, coordinate: object) -> object:
+        """Invert one finite model coordinate into its physical representation."""
+
+        numeric_coordinate = _finite_float(
+            coordinate,
+            field_name=f"{self.feature_name} model coordinate",
+        )
+        if self.kind == "identity":
+            return numeric_coordinate
+        if self.kind == "fixed-zero":
+            if numeric_coordinate != 0.0:
+                raise ValueError(
+                    f"{self.feature_name} fixed-zero model coordinate must equal 0"
+                )
+            return self.lower
+        if self.kind == "min-max":
+            return self.lower + numeric_coordinate * (self.upper - self.lower)
+        index = int(numeric_coordinate)
+        if numeric_coordinate != float(index) or not 0 <= index < len(self.ordering):
+            raise ValueError(
+                f"{self.feature_name} ordered-index model coordinate must be an "
+                f"integer from 0 through {len(self.ordering) - 1}"
+            )
+        return self.ordering[index]
+
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> TPMNormalizationSpec:
         """Load and strictly validate persisted normalization meaning."""
@@ -527,6 +646,13 @@ def _optional_finite_float(value: object, *, field_name: str) -> float | None:
     normalized = float(value)
     if not math.isfinite(normalized):
         raise ValueError(f"{field_name} must be a finite numeric value")
+    return normalized
+
+
+def _finite_float(value: object, *, field_name: str) -> float:
+    normalized = _optional_finite_float(value, field_name=field_name)
+    if normalized is None:
+        raise TypeError(f"{field_name} must be a finite numeric value")
     return normalized
 
 

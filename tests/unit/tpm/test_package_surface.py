@@ -95,7 +95,7 @@ def test_tpm_root_reserves_only_documented_public_exports() -> None:
 def test_tpm_root_exposes_current_backend_and_artifact_contracts() -> None:
     module = importlib.import_module(TPM_PACKAGE)
 
-    assert module.SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS == ("v2",)
+    assert module.SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS == ("v2", "v3")
     assert module.SUPPORTED_TPM_EXECUTION_MODES == ("production", "fixture_replay")
     assert module.REQUIRED_SPFLOW_VERSION == "1.1.0"
     assert module.CURRENT_SPFLOW_BACKEND_GENERATION == "current-spflow"

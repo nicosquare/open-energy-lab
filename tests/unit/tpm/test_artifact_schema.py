@@ -5,7 +5,9 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import pickle
 from pathlib import Path
+from copy import deepcopy
 
 import pytest
 
@@ -14,6 +16,7 @@ from open_energy_lab.tpm.artifact import (
     UnsupportedTPMArtifactVersionError,
     load_tpm_artifact,
 )
+from open_energy_lab.tpm.optional_spflow import load_spflow_payload
 
 
 SIDECAR_BYTES = b"deterministic-spflow-1.1-sidecar\n"
@@ -129,6 +132,122 @@ def _artifact_payload(
     }
 
 
+def _v3_feature_schema() -> list[dict[str, object]]:
+    return [
+        {
+            "feature_name": "x",
+            "feature_role": "decision",
+            "feature_type": "continuous",
+            "bounds": [40.0, 160.0],
+            "modifiable": True,
+            "normalization_rule": "minmax",
+            "mathematical_domain": {
+                "feature_name": "x",
+                "feature_kind": "continuous",
+                "purpose": "decision-domain",
+                "shape": "finite",
+                "lower": 40.0,
+                "upper": 160.0,
+                "origin": "caller-declared",
+            },
+            "training_support": {
+                "feature_name": "x",
+                "feature_kind": "continuous",
+                "minimum": 60.0,
+                "maximum": 140.0,
+                "origin": "physical-training-rows",
+            },
+            "normalization": {
+                "feature_name": "x",
+                "feature_kind": "continuous",
+                "kind": "min-max",
+                "origin": "caller-declared",
+                "lower": 40.0,
+                "upper": 160.0,
+            },
+        },
+        {
+            "feature_name": "demand",
+            "feature_role": "metric_target",
+            "feature_type": "continuous",
+            "modifiable": False,
+            "normalization_rule": "identity",
+            "mathematical_domain": {
+                "feature_name": "demand",
+                "feature_kind": "continuous",
+                "purpose": "distribution-support",
+                "shape": "unbounded",
+                "origin": "caller-declared",
+            },
+            "training_support": {
+                "feature_name": "demand",
+                "feature_kind": "continuous",
+                "minimum": 72.0,
+                "maximum": 134.0,
+                "origin": "physical-training-rows",
+            },
+            "normalization": {
+                "feature_name": "demand",
+                "feature_kind": "continuous",
+                "kind": "identity",
+                "origin": "caller-declared",
+            },
+        },
+        {
+            "feature_name": "demand_event",
+            "feature_role": "target",
+            "feature_type": "binary",
+            "modifiable": False,
+            "discrete_values": [0.0, 1.0],
+            "ordering": [0.0, 1.0],
+            "normalization_rule": "binary_index",
+            "mathematical_domain": {
+                "feature_name": "demand_event",
+                "feature_kind": "binary",
+                "purpose": "distribution-support",
+                "values": [0.0, 1.0],
+                "ordering": [0.0, 1.0],
+                "origin": "internal-exact-target",
+            },
+            "training_support": {
+                "feature_name": "demand_event",
+                "feature_kind": "binary",
+                "observed_values": [0.0, 1.0],
+                "origin": "physical-training-rows",
+            },
+            "normalization": {
+                "feature_name": "demand_event",
+                "feature_kind": "binary",
+                "kind": "ordered-index",
+                "origin": "internal-exact-target",
+                "ordering": [0.0, 1.0],
+            },
+        },
+    ]
+
+
+def _v3_artifact_payload(
+    *,
+    locator: str = "sidecars/tpm-artifact-unit.spflow",
+    payload_hash: str | None = None,
+) -> dict[str, object]:
+    payload = _artifact_payload(locator=locator, payload_hash=payload_hash)
+    payload["artifact_id"] = "tpm-artifact-domains-v3-unit"
+    payload["schema_version"] = "v3"
+    payload["feature_schema"] = _v3_feature_schema()
+    payload["target_definition"] = {
+        "target_name": "demand",
+        "event_target_name": "demand_event",
+        "threshold_default": 100.0,
+        "supported_query_mode": "exceedance-probability",
+    }
+    payload["query_configuration"] = {
+        "supported_output_modes": ["conditional_probability", "log_likelihood"],
+        "required_decision_features": ["x"],
+    }
+    return payload
+
+
 def _write_manifest(
     tmp_path: Path,
     *,
@@ -150,8 +269,8 @@ def _write_manifest(
     return manifest_path
 
 
-def test_supported_tpm_artifact_versions_select_schema_v2() -> None:
-    assert SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS == ("v2",)
+def test_supported_tpm_artifact_versions_include_v2_compatibility_and_v3_semantics() -> None:
+    assert SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS == ("v2", "v3")
 
 
 def test_load_schema_v2_preserves_backend_mode_and_sidecar_metadata(tmp_path: Path) -> None:
@@ -270,3 +389,141 @@ def test_loaded_tpm_artifact_rejects_invalid_feature_assignments(tmp_path: Path)
 
     with pytest.raises(ValueError, match="battery_capacity_kwh|bounds|21"):
         artifact.validate_feature_assignments({"battery_capacity_kwh": 21.0})
+
+
+@pytest.mark.parametrize(
+    ("shape", "lower", "upper", "support", "normalization_kind"),
+    [
+        ("finite", 40.0, 160.0, (60.0, 140.0), "min-max"),
+        ("finite", 100.0, 100.0, (100.0, 100.0), "fixed-zero"),
+        ("lower-bounded", 40.0, None, (60.0, 140.0), "identity"),
+        ("upper-bounded", None, 160.0, (60.0, 140.0), "identity"),
+        ("unbounded", None, None, (60.0, 140.0), "identity"),
+        ("unknown", None, None, (60.0, 140.0), "identity"),
+    ],
+)
+def test_schema_v3_round_trips_every_continuous_domain_shape(
+    shape: str,
+    lower: float | None,
+    upper: float | None,
+    support: tuple[float, float],
+    normalization_kind: str,
+) -> None:
+    payload = _v3_artifact_payload()
+    x_feature = payload["feature_schema"][0]
+    domain = x_feature["mathematical_domain"]
+    domain["shape"] = shape
+    domain.pop("lower", None)
+    domain.pop("upper", None)
+    if lower is not None:
+        domain["lower"] = lower
+    if upper is not None:
+        domain["upper"] = upper
+    x_feature["training_support"]["minimum"] = support[0]
+    x_feature["training_support"]["maximum"] = support[1]
+    normalization = x_feature["normalization"]
+    normalization["kind"] = normalization_kind
+    normalization.pop("lower", None)
+    normalization.pop("upper", None)
+    x_feature.pop("bounds", None)
+    x_feature["normalization_rule"] = {
+        "min-max": "minmax",
+        "fixed-zero": "minmax",
+        "identity": "identity",
+    }[normalization_kind]
+    if normalization_kind != "identity":
+        normalization["lower"] = lower
+        normalization["upper"] = upper
+        x_feature["bounds"] = [lower, upper]
+
+    artifact = load_tpm_artifact(payload)
+    reloaded = load_tpm_artifact(artifact.to_dict())
+    spec = reloaded.feature_specs[0]
+
+    assert spec.mathematical_domain.shape == shape
+    assert spec.mathematical_domain.lower == lower
+    assert spec.mathematical_domain.upper == upper
+    assert spec.training_support.minimum == support[0]
+    assert spec.training_support.maximum == support[1]
+    assert spec.normalization.kind == normalization_kind
+
+
+def test_schema_v3_rejects_non_finite_semantic_numeric_values() -> None:
+    payload = _v3_artifact_payload()
+    payload["feature_schema"][0]["mathematical_domain"]["lower"] = float("inf")
+
+    with pytest.raises(ValueError, match="finite numeric"):
+        load_tpm_artifact(payload)
+
+
+def test_schema_v2_adapter_exposes_unknown_domain_and_legacy_operational_meaning() -> None:
+    artifact = load_tpm_artifact(_artifact_payload())
+    continuous = artifact.feature_specs[0]
+    discrete = artifact.feature_specs[1]
+
+    assert continuous.mathematical_domain.shape == "unknown"
+    assert continuous.mathematical_domain.origin == "omitted"
+    assert continuous.training_support.minimum == pytest.approx(0.0)
+    assert continuous.training_support.maximum == pytest.approx(20.0)
+    assert continuous.normalization.origin == "legacy-inferred"
+    assert continuous.normalization.kind == "min-max"
+    assert discrete.mathematical_domain.shape == "unknown"
+    assert discrete.mathematical_domain.origin == "omitted"
+    assert discrete.training_support.observed_values == ("disabled", "enabled")
+    assert discrete.normalization.origin == "legacy-inferred"
+
+    serialized = artifact.to_dict()
+    assert serialized["schema_version"] == "v2"
+    assert all(
+        "mathematical_domain" not in feature
+        and "training_support" not in feature
+        and "normalization" not in feature
+        for feature in serialized["feature_schema"]
+    )
+
+
+def test_schema_v3_sidecar_feature_semantics_match_manifest_after_reload(
+    tmp_path: Path,
+) -> None:
+    runtime_payload = {
+        "artifact_schema_version": "v3",
+        "feature_schema": _v3_feature_schema(),
+        "query_strategy": "table",
+        "raw_rows": [],
+    }
+    sidecar_payload = pickle.dumps(runtime_payload)
+    manifest_path = _write_manifest(
+        tmp_path,
+        sidecar_payload=sidecar_payload,
+        payload=_v3_artifact_payload(payload_hash=_sidecar_hash(sidecar_payload)),
+    )
+
+    loaded = load_spflow_payload(load_tpm_artifact(manifest_path))
+
+    assert loaded is not None
+    assert loaded["artifact_schema_version"] == "v3"
+
+
+def test_schema_v3_rejects_manifest_and_sidecar_feature_semantic_disagreement(
+    tmp_path: Path,
+) -> None:
+    sidecar_schema = deepcopy(_v3_feature_schema())
+    sidecar_schema[0]["bounds"] = [20.0, 160.0]
+    sidecar_schema[0]["mathematical_domain"]["lower"] = 20.0
+    sidecar_schema[0]["normalization"]["lower"] = 20.0
+    runtime_payload = {
+        "artifact_schema_version": "v3",
+        "feature_schema": sidecar_schema,
+        "query_strategy": "table",
+        "raw_rows": [],
+    }
+    sidecar_payload = pickle.dumps(runtime_payload)
+    manifest_path = _write_manifest(
+        tmp_path,
+        sidecar_payload=sidecar_payload,
+        payload=_v3_artifact_payload(payload_hash=_sidecar_hash(sidecar_payload)),
+    )
+    artifact = load_tpm_artifact(manifest_path)
+
+    with pytest.raises(ValueError, match="sidecar.*feature_schema|disagree"):
+        load_spflow_payload(artifact)

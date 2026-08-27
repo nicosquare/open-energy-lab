@@ -306,7 +306,8 @@ def _adapter_from_runtime_payload(runtime_payload: Mapping[str, object]) -> obje
     adapter = factory(runtime_payload)
     if not hasattr(adapter, "evaluate_runtime_query"):
         raise TypeError(
-            f"adapter factory for {adapter_name!r} must return an object with evaluate_runtime_query()"
+            f"adapter factory for {adapter_name!r} must return an object with "
+            "evaluate_runtime_query()"
         )
     return adapter
 
@@ -373,7 +374,11 @@ def fit_spflow_model(
 
     return (
         {
-            "locator": resolved_payload_path.name if payload_path is not None else resolved_payload_path.as_posix(),
+            "locator": (
+                resolved_payload_path.name
+                if payload_path is not None
+                else resolved_payload_path.as_posix()
+            ),
             "serialization": "pickle",
             "backend": "spflow",
         },
@@ -399,7 +404,9 @@ def load_spflow_payload(artifact: TPMArtifact) -> dict[str, object] | None:
     payload = pickle.loads(payload_path.read_bytes())
     if not isinstance(payload, Mapping):
         raise TypeError("persisted SPFlow payload must deserialize to a mapping")
-    return {str(key): value for key, value in payload.items()}
+    normalized = {str(key): value for key, value in payload.items()}
+    _validate_sidecar_feature_schema(artifact, normalized)
+    return normalized
 
 
 def resolve_spflow_payload_path(artifact: TPMArtifact) -> Path | None:
@@ -512,7 +519,15 @@ def build_spn_mip_payload(
 
     feature_specs = {
         spec.feature_name: spec
-        for spec in load_feature_schema(runtime_payload["feature_schema"])
+        for spec in load_feature_schema(
+            runtime_payload["feature_schema"],
+            schema_version=str(
+                runtime_payload.get(
+                    "artifact_schema_version",
+                    artifact.schema_version,
+                )
+            ),
+        )
     }
     decision_domains = {
         feature_name: list(
@@ -601,6 +616,7 @@ def _build_runtime_payload(
     capability_report = adapter.detect_capabilities()
     return {
         "payload_kind": "spflow-runtime-payload",
+        "artifact_schema_version": "v3",
         "backend_module": adapter.backend_name,
         "backend_version": adapter.backend_version,
         "backend_adapter_name": adapter.adapter_name,
@@ -613,13 +629,47 @@ def _build_runtime_payload(
         "training_random_seed": training_random_seed,
         "learn_mspn_kwargs": dict(learn_mspn_kwargs),
         "column_order": list(training_data.column_order),
-        "feature_schema": [spec.to_dict() for spec in feature_schema],
+        "feature_schema": [
+            spec.to_dict(schema_version="v3") for spec in feature_schema
+        ],
         "normalized_rows": [dict(row) for row in training_data.normalized_rows],
         "raw_rows": [dict(row) for row in training_data.rows],
         "matrix": [list(row) for row in training_data.matrix],
         "event_target_index": event_target_index,
         "query_strategy": "table",
     }
+
+
+def _validate_sidecar_feature_schema(
+    artifact: TPMArtifact,
+    runtime_payload: Mapping[str, object],
+) -> None:
+    sidecar_schema = runtime_payload.get("feature_schema")
+    sidecar_version = runtime_payload.get("artifact_schema_version")
+    if artifact.schema_version == "v2" and sidecar_version is None:
+        return
+    if str(sidecar_version) != artifact.schema_version:
+        raise ValueError(
+            "SPFlow sidecar artifact_schema_version disagrees with the manifest"
+        )
+    if not isinstance(sidecar_schema, tuple | list):
+        raise TypeError("SPFlow sidecar feature_schema must be a sequence")
+
+    from .features import dump_feature_schema, load_feature_schema
+
+    manifest_schema = dump_feature_schema(
+        artifact.feature_specs,
+        schema_version=artifact.schema_version,
+    )
+    resolved_sidecar_schema = dump_feature_schema(
+        load_feature_schema(
+            sidecar_schema,
+            schema_version=artifact.schema_version,
+        ),
+        schema_version=artifact.schema_version,
+    )
+    if resolved_sidecar_schema != manifest_schema:
+        raise ValueError("SPFlow sidecar feature_schema semantics disagree with the manifest")
 
 
 def _payload_locator(payload: object) -> str:
