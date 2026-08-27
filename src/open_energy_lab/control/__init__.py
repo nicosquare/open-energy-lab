@@ -10,6 +10,30 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from .robust_fcr_bidding import (
+        ConstraintFamilyResidual,
+        FeasibilityAudit,
+        HorizonWideActivationBudget,
+        ObjectiveBreakdown,
+        RecoveryWindowActivationBudget,
+        RobustFCRBatteryParameters,
+        RobustFCRBiddingProblem,
+        RobustFCRDecisions,
+        RobustFCRFormulationProfile,
+        RobustFCRPriceInputs,
+        RobustFCRSolvePolicy,
+        RobustFCRSolveResult,
+        RobustFCRSolverDependencyUnavailableError,
+        RobustFCRSolverUnavailableError,
+        RobustFCRTimeContract,
+        RobustFCRUncertaintyProfile,
+        RobustFCRValidationError,
+        TerminalStoredEnergyRule,
+        build_robust_fcr_bidding_problem,
+        build_robust_fcr_time_contract,
+        derive_non_intraday_horizon_budget,
+        solve_robust_fcr_bid,
+    )
     from .fcr_bid_plan import (
         BidPlanProducer,
         FCRBidPlanValidationError,
@@ -60,6 +84,73 @@ if TYPE_CHECKING:
 
 
 _EXPORT_MAP = {
+    "ConstraintFamilyResidual": (
+        ".robust_fcr_bidding",
+        "ConstraintFamilyResidual",
+    ),
+    "FeasibilityAudit": (".robust_fcr_bidding", "FeasibilityAudit"),
+    "HorizonWideActivationBudget": (
+        ".robust_fcr_bidding",
+        "HorizonWideActivationBudget",
+    ),
+    "ObjectiveBreakdown": (".robust_fcr_bidding", "ObjectiveBreakdown"),
+    "RecoveryWindowActivationBudget": (
+        ".robust_fcr_bidding",
+        "RecoveryWindowActivationBudget",
+    ),
+    "RobustFCRBatteryParameters": (
+        ".robust_fcr_bidding",
+        "RobustFCRBatteryParameters",
+    ),
+    "RobustFCRBiddingProblem": (
+        ".robust_fcr_bidding",
+        "RobustFCRBiddingProblem",
+    ),
+    "RobustFCRDecisions": (".robust_fcr_bidding", "RobustFCRDecisions"),
+    "RobustFCRFormulationProfile": (
+        ".robust_fcr_bidding",
+        "RobustFCRFormulationProfile",
+    ),
+    "RobustFCRPriceInputs": (
+        ".robust_fcr_bidding",
+        "RobustFCRPriceInputs",
+    ),
+    "RobustFCRSolvePolicy": (".robust_fcr_bidding", "RobustFCRSolvePolicy"),
+    "RobustFCRSolveResult": (".robust_fcr_bidding", "RobustFCRSolveResult"),
+    "RobustFCRSolverDependencyUnavailableError": (
+        ".robust_fcr_bidding",
+        "RobustFCRSolverDependencyUnavailableError",
+    ),
+    "RobustFCRSolverUnavailableError": (
+        ".robust_fcr_bidding",
+        "RobustFCRSolverUnavailableError",
+    ),
+    "RobustFCRTimeContract": (".robust_fcr_bidding", "RobustFCRTimeContract"),
+    "RobustFCRUncertaintyProfile": (
+        ".robust_fcr_bidding",
+        "RobustFCRUncertaintyProfile",
+    ),
+    "RobustFCRValidationError": (
+        ".robust_fcr_bidding",
+        "RobustFCRValidationError",
+    ),
+    "TerminalStoredEnergyRule": (
+        ".robust_fcr_bidding",
+        "TerminalStoredEnergyRule",
+    ),
+    "build_robust_fcr_bidding_problem": (
+        ".robust_fcr_bidding",
+        "build_robust_fcr_bidding_problem",
+    ),
+    "build_robust_fcr_time_contract": (
+        ".robust_fcr_bidding",
+        "build_robust_fcr_time_contract",
+    ),
+    "derive_non_intraday_horizon_budget": (
+        ".robust_fcr_bidding",
+        "derive_non_intraday_horizon_budget",
+    ),
+    "solve_robust_fcr_bid": (".robust_fcr_bidding", "solve_robust_fcr_bid"),
     "BidPlanProducer": (".fcr_bid_plan", "BidPlanProducer"),
     "FCRBidPlanValidationError": (
         ".fcr_bid_plan",
@@ -173,12 +264,16 @@ __all__ = [
     "ArbitrageOnlyBaselineConfig",
     "BaselineScheduleBundle",
     "BidPlanProducer",
+    "ConstraintFamilyResidual",
     "DirectionalCapacityCommitmentInterval",
     "DirectionalCapacitySchedule",
     "FCRBidPlanValidationError",
+    "FeasibilityAudit",
     "FixedFCRBidPlan",
     "MFRRBaselineConfig",
     "MFRRBaselineMode",
+    "HorizonWideActivationBudget",
+    "ObjectiveBreakdown",
     "OptimizationMetric",
     "PVSelfConsumptionConfig",
     "PVSelfConsumptionController",
@@ -186,16 +281,30 @@ __all__ = [
     "PriceThresholdConfig",
     "PriceThresholdController",
     "RegulationOnlyBaselineConfig",
+    "RecoveryWindowActivationBudget",
     "RestorationBaselineBundle",
     "RestorationCapability",
     "RestorationControlValidationError",
     "RestorationEnergyBaselineInterval",
     "RestorationEnergyBaselineSchedule",
+    "RobustFCRBatteryParameters",
+    "RobustFCRBiddingProblem",
+    "RobustFCRDecisions",
+    "RobustFCRFormulationProfile",
+    "RobustFCRPriceInputs",
+    "RobustFCRSolvePolicy",
+    "RobustFCRSolveResult",
+    "RobustFCRSolverDependencyUnavailableError",
+    "RobustFCRSolverUnavailableError",
+    "RobustFCRTimeContract",
+    "RobustFCRUncertaintyProfile",
+    "RobustFCRValidationError",
     "SerializedScheduleReference",
     "SocGuardrailConfig",
     "SocGuardrailController",
     "StackedBaselineValidationError",
     "StackedHeuristicConfig",
+    "TerminalStoredEnergyRule",
     "build_afrr_baseline",
     "build_afrr_baseline_config",
     "build_afrr_directional_capacity_schedule",
@@ -206,7 +315,11 @@ __all__ = [
     "build_mfrr_directional_capacity_schedule",
     "build_regulation_only_baseline",
     "build_restoration_capability",
+    "build_robust_fcr_bidding_problem",
+    "build_robust_fcr_time_contract",
     "build_stacked_heuristic_baseline",
+    "derive_non_intraday_horizon_budget",
+    "solve_robust_fcr_bid",
 ]
 
 

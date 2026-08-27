@@ -1,0 +1,127 @@
+"""Real Pyomo/HiGHS integration checks for Feature 013."""
+
+from __future__ import annotations
+
+from dataclasses import replace
+
+from open_energy_lab.control.robust_fcr_bidding import (
+    RobustFCRBatteryParameters,
+    RobustFCRPriceInputs,
+    TerminalStoredEnergyRule,
+    solve_robust_fcr_bid,
+)
+from tests.robust_fcr_case_utils import build_authored_problem
+
+
+def _presolve_zero_problem(*, problem_id: str = "feature-013-presolve-zero"):
+    base = build_authored_problem(time_limit_seconds=30.0)
+    battery = RobustFCRBatteryParameters(
+        maximum_charge_power_kw=10.0,
+        maximum_discharge_power_kw=10.0,
+        minimum_stored_energy_kwh=0.0,
+        maximum_stored_energy_kwh=20.0,
+        initial_stored_energy_kwh=0.0,
+        charge_efficiency=0.92,
+        discharge_efficiency=0.92,
+    )
+    prices = RobustFCRPriceInputs(
+        day_ahead_energy_prices_eur_per_kwh=(1.0,) * 24,
+        fcr_capacity_prices_eur_per_kw_block=(-1.0,) * 6,
+        energy_interval_refs=base.prices.energy_interval_refs,
+        fcr_interval_refs=base.prices.fcr_interval_refs,
+    )
+    terminal = TerminalStoredEnergyRule(
+        minimum_terminal_stored_energy_kwh=0.0,
+        allow_penalized_shortfall=False,
+        shortfall_penalty_eur_per_kwh=100.0,
+        rule_id="presolve-zero-terminal-v1",
+    )
+    return replace(
+        base,
+        problem_id=problem_id,
+        battery=battery,
+        prices=prices,
+        terminal_rule=terminal,
+    )
+
+
+def _terminal_shortfall_problem(*, allow_shortfall: bool):
+    base = _presolve_zero_problem(
+        problem_id=(
+            "feature-013-terminal-slack"
+            if allow_shortfall
+            else "feature-013-infeasible-terminal"
+        )
+    )
+    battery = RobustFCRBatteryParameters(
+        maximum_charge_power_kw=0.1,
+        maximum_discharge_power_kw=0.1,
+        minimum_stored_energy_kwh=0.0,
+        maximum_stored_energy_kwh=20.0,
+        initial_stored_energy_kwh=0.0,
+        charge_efficiency=0.92,
+        discharge_efficiency=0.92,
+    )
+    terminal = TerminalStoredEnergyRule(
+        minimum_terminal_stored_energy_kwh=20.0,
+        allow_penalized_shortfall=allow_shortfall,
+        shortfall_penalty_eur_per_kwh=100.0,
+        rule_id="shortfall-terminal-v1",
+    )
+    return replace(base, battery=battery, terminal_rule=terminal)
+
+
+def test_real_highs_public_restriction_emits_presolve_simple_plan() -> None:
+    result = solve_robust_fcr_bid(_presolve_zero_problem())
+
+    assert result.formulation.kind == "restriction"
+    assert result.solver.solve_status == "optimal"
+    assert result.solver.solver_name == "highs"
+    assert result.solver.pyomo_version == "6.10.1"
+    assert result.solver.highspy_version == "1.15.1"
+    assert result.solver.objective_value_eur == 0.0
+    assert result.solver.best_upper_bound_eur == 0.0
+    assert result.solver.absolute_gap_eur == 0.0
+    assert result.solver.relative_gap == 0.0
+    assert result.feasibility_audit.passes_deployability_audit is True
+    assert result.deployable_plan is not None
+    assert result.decisions.energy_baseline_charge_positive_kw == (0.0,) * 24
+    assert result.decisions.fcr_capacity_kw == (0.0,) * 6
+
+
+def test_real_highs_reports_infeasible_restriction_without_incumbent() -> None:
+    result = solve_robust_fcr_bid(
+        _terminal_shortfall_problem(allow_shortfall=False)
+    )
+    assert result.solver.solve_status == "infeasible"
+    assert result.solver.has_incumbent is False
+    assert result.decisions is None
+    assert result.feasibility_audit is None
+    assert result.deployable_plan is None
+
+
+def test_real_highs_reports_terminal_slack_but_does_not_deploy() -> None:
+    result = solve_robust_fcr_bid(
+        _terminal_shortfall_problem(allow_shortfall=True)
+    )
+    assert result.solver.solve_status == "optimal"
+    assert result.feasibility_audit.modeled_slacks["terminal_end_kwh"] > 1e-6
+    assert result.feasibility_audit.passes_deployability_audit is False
+    assert result.deployable_plan is None
+    assert "feasibility_audit_failed" in result.deployability_reasons
+
+
+def test_real_highs_repeated_semantic_evidence_is_exactly_identical() -> None:
+    problem = _presolve_zero_problem(problem_id="feature-013-repeatability")
+    first = solve_robust_fcr_bid(problem)
+    second = solve_robust_fcr_bid(problem)
+
+    assert first.solver.objective_value_eur == second.solver.objective_value_eur
+    assert first.solver.best_upper_bound_eur == second.solver.best_upper_bound_eur
+    assert first.solver.absolute_gap_eur == second.solver.absolute_gap_eur
+    assert first.solver.relative_gap == second.solver.relative_gap
+    assert first.decisions == second.decisions
+    assert first.feasibility_audit == second.feasibility_audit
+    assert first.diagnostics == second.diagnostics
+    assert first.deployable_plan.plan_fingerprint == second.deployable_plan.plan_fingerprint
+    assert first.semantic_result_fingerprint == second.semantic_result_fingerprint

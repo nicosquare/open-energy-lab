@@ -7,6 +7,10 @@ from dataclasses import dataclass, field
 from importlib import import_module
 from types import MappingProxyType
 from typing import Any
+import math
+import time
+
+from ._robust_fcr_formulation import AssembledRobustFCRModel
 
 from .robust_fcr_bidding import (
     RobustFCRSolverDependencyUnavailableError,
@@ -185,10 +189,249 @@ def require_highs_backend() -> SolverBackendModules:
     )
 
 
+def _finite_backend_value(value: object, *, field_name: str) -> float:
+    try:
+        normalized = float(value)
+    except (TypeError, ValueError) as exc:
+        raise RobustFCRSolverUnavailableError(
+            f"solver returned a non-numeric {field_name}"
+        ) from exc
+    if not math.isfinite(normalized):
+        raise RobustFCRSolverUnavailableError(
+            f"solver returned a non-finite {field_name}"
+        )
+    return 0.0 if normalized == 0.0 else normalized
+
+
+def _component_values(component: Any, indices: tuple[Any, ...], pyo: Any) -> tuple[float, ...]:
+    return tuple(
+        _finite_backend_value(
+            pyo.value(component[index]),
+            field_name=f"witness variable {component.name}[{index}]",
+        )
+        for index in indices
+    )
+
+
+def _extract_complete_witness(
+    assembled: AssembledRobustFCRModel,
+    pyo: Any,
+) -> Mapping[str, object]:
+    handles = assembled.variable_handles
+    index_sets = assembled.handoff.model_input.index_sets
+    planning = index_sets.planning_indices
+    energy = index_sets.energy_indices
+    fcr = index_sets.fcr_indices
+    strict = planning[:-1]
+    witness: dict[str, object] = {
+        "x0": _component_values(handles["x0"], energy, pyo),
+        "xr": _component_values(handles["xr"], fcr, pyo),
+        "xa": _component_values(handles["xa"], planning, pyo),
+        "symin": _component_values(handles["symin"], planning, pyo),
+        "symax": _component_values(handles["symax"], planning, pyo),
+        "syK": _component_values(handles["syK"], (0, 1), pyo),
+        "alpha": _component_values(handles["alpha"], planning, pyo),
+        "beta": _component_values(handles["beta"], planning, pyo),
+        "lambda_l": _component_values(handles["lambda_l"], planning, pyo),
+        "lambda_h": _component_values(handles["lambda_h"], planning, pyo),
+        "Lambda_l": tuple(
+            tuple(
+                _finite_backend_value(
+                    pyo.value(handles["Lambda_l"][outer, inner]),
+                    field_name=f"witness variable Lambda_l[{outer},{inner}]",
+                )
+                for inner in range(outer + 1)
+            )
+            for outer in planning
+        ),
+        "Lambda_h": tuple(
+            tuple(
+                _finite_backend_value(
+                    pyo.value(handles["Lambda_h"][outer, inner]),
+                    field_name=f"witness variable Lambda_h[{outer},{inner}]",
+                )
+                for inner in range(outer + 1)
+            )
+            for outer in planning
+        ),
+        "u1": _component_values(handles["u1"], strict, pyo),
+        "u2": _component_values(handles["u2"], strict, pyo),
+    }
+    if "v_res" in handles:
+        witness["v_res"] = _component_values(handles["v_res"], strict, pyo)
+    return MappingProxyType(witness)
+
+
+def _termination_text(results: Any) -> str:
+    value = getattr(results.solver, "termination_condition", "unknown")
+    return str(value).strip().lower().replace(" ", "_")
+
+
+def _has_solver_confirmed_solution(results: Any) -> bool:
+    try:
+        return len(results.solution) > 0
+    except (AttributeError, TypeError):
+        return False
+
+
+def _normalized_status(termination: str, *, has_incumbent: bool) -> str:
+    compact = termination.replace("_", "")
+    if compact == "optimal":
+        return "optimal" if has_incumbent else "failed"
+    if "infeasible" in compact and "unbounded" not in compact:
+        return "infeasible"
+    if compact == "unbounded":
+        return "unbounded"
+    if any(
+        token in compact
+        for token in (
+            "timelimit",
+            "maxtimelimit",
+            "iterationlimit",
+            "maxiterations",
+            "userinterrupt",
+            "resourceinterrupt",
+            "interrupted",
+        )
+    ):
+        return "feasible" if has_incumbent else "no_solution"
+    return "feasible" if has_incumbent else "failed"
+
+
+def _result_upper_bound(results: Any) -> float | None:
+    candidates: list[object] = []
+    problem = getattr(results, "problem", None)
+    if problem is not None:
+        candidates.append(getattr(problem, "upper_bound", None))
+        try:
+            candidates.append(getattr(problem[0], "upper_bound", None))
+        except (IndexError, KeyError, TypeError):
+            pass
+    for candidate in candidates:
+        if candidate is None:
+            continue
+        try:
+            normalized = float(candidate)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(normalized):
+            return 0.0 if normalized == 0.0 else normalized
+    return None
+
+
+def _highs_options(policy: Any) -> dict[str, object]:
+    return {
+        "time_limit": policy.time_limit_seconds,
+        "threads": policy.threads,
+        "random_seed": policy.random_seed,
+        "primal_feasibility_tolerance": policy.primal_feasibility_tolerance,
+        "dual_feasibility_tolerance": policy.dual_feasibility_tolerance,
+        "mip_feasibility_tolerance": policy.mip_feasibility_tolerance,
+        "mip_rel_gap": policy.relative_mip_gap,
+        "parallel": "off",
+        "log_to_console": False,
+    }
+
+
+def solve_assembled_model(
+    assembled: AssembledRobustFCRModel,
+    policy: Any,
+    *,
+    backend: SolverBackendModules,
+) -> RawRobustFCRSolveResult:
+    """Execute one assembled routine model without implicit solution loading."""
+
+    if policy.solver_name != "highs":
+        raise RobustFCRSolverUnavailableError(
+            "restriction and relaxation require solver_name='highs'"
+        )
+    pyo = backend.pyomo_environ
+    solver = pyo.SolverFactory("highs")
+    options = _highs_options(policy)
+    for name, value in options.items():
+        solver.options[name] = value
+    started = time.perf_counter()
+    try:
+        results = solver.solve(
+            assembled.model,
+            tee=False,
+            load_solutions=False,
+        )
+    except Exception as exc:
+        raise RobustFCRSolverUnavailableError(
+            f"HiGHS execution failed for {assembled.handoff.formulation_kind}: {exc}"
+        ) from exc
+    runtime = time.perf_counter() - started
+    termination = _termination_text(results)
+    confirmed = _has_solver_confirmed_solution(results)
+    diagnostics: list[Mapping[str, object]] = []
+    witness: Mapping[str, object] | None = None
+    objective: float | None = None
+    if confirmed:
+        try:
+            assembled.model.solutions.load_from(results)
+            witness = _extract_complete_witness(assembled, pyo)
+            objective = _finite_backend_value(
+                pyo.value(assembled.model.objective),
+                field_name="objective value",
+            )
+        except Exception as exc:
+            diagnostics.append(
+                {
+                    "code": "incomplete_or_nonfinite_incumbent",
+                    "severity": "error",
+                    "message": str(exc),
+                }
+            )
+            confirmed = False
+            witness = None
+            objective = None
+    status = _normalized_status(termination, has_incumbent=confirmed)
+    upper_bound = _result_upper_bound(results)
+    if status == "optimal" and objective is not None and upper_bound is None:
+        upper_bound = objective
+        diagnostics.append(
+            {
+                "code": "optimal_bound_fallback",
+                "severity": "info",
+                "message": (
+                    "backend omitted a best bound for proven optimal termination; "
+                    "the incumbent objective is the normalized bound"
+                ),
+            }
+        )
+    return RawRobustFCRSolveResult(
+        solve_status=status,
+        termination_status=termination,
+        has_incumbent=confirmed,
+        objective_value_eur=objective,
+        best_upper_bound_eur=upper_bound,
+        witness=witness,
+        solver_name="highs",
+        solver_version=backend.highspy_version,
+        pyomo_version=backend.pyomo_version,
+        highspy_version=backend.highspy_version,
+        configured_options={
+            **options,
+            "load_solutions": False,
+            "solve_policy_fingerprint": policy.solve_policy_fingerprint,
+        },
+        model_cardinality=assembled.handoff.cardinality,
+        diagnostics=tuple(diagnostics),
+        runtime_seconds=runtime,
+        runtime_metadata={
+            "elapsed_seconds": runtime,
+            "tee": False,
+            "temporary_logs_retained": False,
+        },
+    )
+
+
 __all__ = [
     "REQUIRED_HIGHSPY_VERSION",
     "REQUIRED_PYOMO_VERSION",
     "RawRobustFCRSolveResult",
     "SolverBackendModules",
     "require_highs_backend",
+    "solve_assembled_model",
 ]
