@@ -166,3 +166,40 @@ and objective certificate. A different native schedule is called an
 alternative optimum only when native feasibility, joint source feasibility,
 and common objective equivalence all pass. Unsupported source fields remain
 `unavailable`, and unexplained differences remain `mismatch`.
+
+## Selected validation records
+
+### External Feature 012 replay (2026-08-27)
+
+The explicitly selected `external_reference_data` gate found the governed CSV
+at its ignored path, validated all 528,805,941 bytes and SHA-256, and passed in
+634.85 seconds. Bid selection completed before the CSV was opened. The distinct
+`native-reference-external-replay-highs-v1` policy used a 600-second limit and
+explicit feasible-incumbent opt-in; its policy fingerprint was
+`f99c91a2afff96667c11797c47ea95e04a37756c0cddbcbef19bf7617c5a863c`.
+The accepted restriction incumbent was independently audited, had status
+`feasible`, objective `9.859189984425477 EUR`, and same-solve upper bound
+`12.256713420445767 EUR`. These values are not an optimality claim.
+
+Both plans used activation artifact fingerprint
+`8f36b8ac32987e6d8a7c055e150560873cd9252aa8e842d6c2cc0bf3f523dae7`
+and the same 24/6/96/8,640 Feature 012 mappings. Recorded fingerprints were:
+
+- plan `6bbbf946b8d12762971e5b369d4f63fa57b0a17d8977ca84de4655927bf36f11`;
+- physical trace `f292f4990d99f6ca4aa7bb12c304b70751396e3c2005544577c58ceb153573f6`;
+- settlement `8e5382463fd8e9bd110214fa4cd87be7539ae0fab70eb4ead0bb2b55cbbf72ca`;
+- result `6aa9c1e75101354523432adecbf6b8dfb7fa946211151ebcfc7e767575777bb3`;
+  and realized profit `10.748929939607164 EUR`.
+
+Native fingerprints were:
+
+- plan `3ef3d2ac8f8e5028d9ef7199e7afcb614f32a0a775a1bd2ca72821d6b6842a79`;
+- physical trace `0612d26460bcfb10d69cc20b391dc44b3ed5786083374ff45fa06b13f00b769f`;
+- settlement `9b6100295e3ece76b5e317050d7375cdf95b19842d7098950672a17f2a52b937`;
+- result `1465d37034271f00c0823cdc74f6ece139382719af378d39d7da12512695fe56`;
+  and realized profit `9.61415456889596 EUR`.
+
+Different trace, settlement, and profit values are expected because this gate
+replays different accepted schedules. It demonstrates one common evaluator and
+activation input; it does not establish schedule equality or Julia optimization
+parity.

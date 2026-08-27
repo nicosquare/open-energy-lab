@@ -1921,6 +1921,36 @@ class RobustFCRSolveResult:
             ),
             "formulation": self.formulation.to_dict(),
             "solver": self.solver.semantic_dict(),
+            "value_semantics": {
+                "optimization_objective_eur": {
+                    "value": self.solver.objective_value_eur,
+                    "availability": (
+                        "available"
+                        if self.solver.objective_value_eur is not None
+                        else "unavailable"
+                    ),
+                    "meaning": "ex_ante_bid_selection_objective",
+                },
+                "best_upper_bound_eur": {
+                    "value": self.solver.best_upper_bound_eur,
+                    "availability": (
+                        "available"
+                        if self.solver.best_upper_bound_eur is not None
+                        else "unavailable"
+                    ),
+                    "meaning": "ex_ante_solver_bound_for_maximization",
+                },
+                "feature_012_realized_settlement_eur": {
+                    "value": None,
+                    "availability": "evaluation_only_not_in_bid_result",
+                    "meaning": "ex_post_realized_settlement",
+                },
+                "feature_012_realized_profit_eur": {
+                    "value": None,
+                    "availability": "evaluation_only_not_in_bid_result",
+                    "meaning": "ex_post_realized_profit",
+                },
+            },
             "raw_objective": (
                 self.raw_objective.to_dict() if self.raw_objective is not None else None
             ),

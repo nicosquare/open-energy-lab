@@ -209,16 +209,16 @@ the selected test skips actionably.
 
 ### Tests for User Story 5
 
-- [ ] T058 [P] [US5] Add an authored post-acceptance integration test that passes `RobustFCRSolveResult.deployable_plan` unchanged to the existing Feature 012 evaluator and asserts ordinary physical, settlement, and lineage behavior in `tests/integration/simulator/test_robust_fcr_feature_012_replay.py`
-- [ ] T059 [P] [US5] Add an explicitly marked external-data test that evaluates native and recorded schedules through Feature 012, injects only `artifacts/reference/robust_storage_bidding/regulation_signal.csv` after bid selection, and skips actionably when absent in `tests/integration/simulator/test_robust_fcr_external_reference_replay.py`
+- [X] T058 [P] [US5] Add an authored post-acceptance integration test that passes `RobustFCRSolveResult.deployable_plan` unchanged to the existing Feature 012 evaluator and asserts ordinary physical, settlement, and lineage behavior in `tests/integration/simulator/test_robust_fcr_feature_012_replay.py`
+- [X] T059 [P] [US5] Add an explicitly marked external-data test that evaluates native and recorded schedules through Feature 012, injects only `artifacts/reference/robust_storage_bidding/regulation_signal.csv` after bid selection, and skips actionably when absent in `tests/integration/simulator/test_robust_fcr_external_reference_replay.py`
 
 ### Implementation for User Story 5
 
-- [ ] T060 [US5] Add shared post-acceptance market, accepted-volume, battery, and activation binding helpers that consume an existing plan without optimizer-specific replay logic in `tests/integration/simulator/robust_fcr_replay_utils.py`
-- [ ] T061 [US5] Ensure solve-result serialization and example labels keep `optimization_objective_eur`, `best_upper_bound_eur`, and Feature 012 realized settlement/profit fields distinct in `src/open_energy_lab/control/robust_fcr_bidding.py` and `examples/robust_fcr_bidding/run_small_case.py`
-- [ ] T062 [US5] Document the solve-then-accept-then-evaluate flow, the absence of a replay wrapper, and the optional explicit external-data command in `examples/robust_fcr_bidding/README.md` and `specs/013-reference-robust-fcr-bidding/quickstart.md`
-- [ ] T063 [US5] Run the routine replay gate with `uv run pytest tests/integration/simulator/test_robust_fcr_feature_012_replay.py -m "not external_reference_data" -q` and verify no Feature 013 production file under `src/open_energy_lab/control/` imports `RegulationActivationTrace`
-- [ ] T064 [US5] Run `uv run pytest tests/integration/simulator/test_robust_fcr_external_reference_replay.py -m external_reference_data -q -s` and record either passing fingerprints or the actionable missing-file skip in `docs/migration/reference-robust-fcr-bidding.md`
+- [X] T060 [US5] Add shared post-acceptance market, accepted-volume, battery, and activation binding helpers that consume an existing plan without optimizer-specific replay logic in `tests/integration/simulator/robust_fcr_replay_utils.py`
+- [X] T061 [US5] Ensure solve-result serialization and example labels keep `optimization_objective_eur`, `best_upper_bound_eur`, and Feature 012 realized settlement/profit fields distinct in `src/open_energy_lab/control/robust_fcr_bidding.py` and `examples/robust_fcr_bidding/run_small_case.py`
+- [X] T062 [US5] Document the solve-then-accept-then-evaluate flow, the absence of a replay wrapper, and the optional explicit external-data command in `examples/robust_fcr_bidding/README.md` and `specs/013-reference-robust-fcr-bidding/quickstart.md`
+- [X] T063 [US5] Run the routine replay gate with `uv run pytest tests/integration/simulator/test_robust_fcr_feature_012_replay.py -m "not external_reference_data" -q` and verify no Feature 013 production file under `src/open_energy_lab/control/` imports `RegulationActivationTrace`
+- [X] T064 [US5] Run `uv run pytest tests/integration/simulator/test_robust_fcr_external_reference_replay.py -m external_reference_data -q -s` and record either passing fingerprints or the actionable missing-file skip in `docs/migration/reference-robust-fcr-bidding.md`
 
 **Checkpoint**: Robust, manual, heuristic, and future TPM plans share Feature
 012 physics and accounting; activation remains evaluation-only information.

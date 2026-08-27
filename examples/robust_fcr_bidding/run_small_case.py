@@ -107,6 +107,27 @@ def _print_problem_evidence(problem) -> None:
 
 
 def _print_result_evidence(restriction, relaxation) -> None:
+    _print_table(
+        "value-semantics table",
+        ("field", "value", "unit", "when known", "meaning"),
+        tuple(
+            (
+                field,
+                evidence["value"],
+                "EUR",
+                (
+                    "before delivery"
+                    if field in {
+                        "optimization_objective_eur",
+                        "best_upper_bound_eur",
+                    }
+                    else "after Feature 012 evaluation"
+                ),
+                evidence["meaning"],
+            )
+            for field, evidence in restriction.to_dict()["value_semantics"].items()
+        ),
+    )
     if restriction.raw_objective is not None:
         objective = restriction.raw_objective
         _print_table(
@@ -261,9 +282,9 @@ def main() -> int:
         relaxation,
         exact=exact,
     )
-    print("restriction solver evidence")
+    print("restriction ex-ante optimization solver evidence")
     print(json.dumps(restriction.solver.to_dict(), indent=2, sort_keys=True))
-    print("relaxation solver evidence")
+    print("relaxation ex-ante upper-bound solver evidence")
     print(json.dumps(relaxation.solver.to_dict(), indent=2, sort_keys=True))
     print("bound comparison")
     print(json.dumps(comparison.to_dict(), indent=2, sort_keys=True))

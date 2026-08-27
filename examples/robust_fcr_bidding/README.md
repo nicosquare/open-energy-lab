@@ -32,6 +32,14 @@ unchanged `FixedFCRBidPlan` to Feature 012 together with accepted-volume,
 battery, price, and realized-activation evidence. Feature 013 adds no battery
 replay or settlement implementation.
 
+The sequence is therefore explicit: solve the restriction, accept its emitted
+plan, and only then bind market acceptance and realized activation to an
+ordinary `FCRBidEvaluationRequest`. There is no Feature 013 replay wrapper;
+both native and recorded plans use Feature 012's existing physical and
+settlement evaluator. The bid result serializes `optimization_objective_eur`
+and `best_upper_bound_eur` as ex-ante evidence while its Feature 012 realized
+settlement and profit entries remain unavailable until that separate replay.
+
 The full Julia/Gurobi comparison uses a small normalized fixture committed
 under `tests/fixtures/fcr_bidding/`. Routine code never imports from or reads
 `baselines/*` or `legacy/*`. The complete historical solve is excluded from
@@ -44,3 +52,18 @@ data acquisition, and full-history paper experiments remain out of scope.
 
 The exact commands and interpretation rules are maintained in the
 [Feature 013 quickstart](../../specs/013-reference-robust-fcr-bidding/quickstart.md).
+
+With the governed activation CSV installed explicitly, run only the optional
+external replay with:
+
+```bash
+uv run pytest \
+  tests/integration/simulator/test_robust_fcr_external_reference_replay.py \
+  -m external_reference_data -q -s
+```
+
+That selected replay has its own 600-second, feasible-incumbent-opt-in policy
+so it can answer the ex-post physical question without claiming an optimization
+proof. Any accepted incumbent still must pass the unchanged restriction audit;
+the separate one-hour reference benchmark keeps feasible-incumbent opt-in
+disabled.

@@ -23,6 +23,7 @@ uv run pytest \
   tests/unit/control/test_robust_fcr_problem.py \
   tests/unit/control/test_robust_fcr_equations.py \
   tests/unit/control/test_robust_fcr_solver.py \
+  tests/unit/control/test_robust_fcr_backend_compatibility.py \
   tests/unit/control/test_robust_fcr_reference.py \
   tests/unit/control/test_robust_fcr_import_boundary.py \
   tests/integration/control/test_robust_fcr_highs.py \
@@ -70,9 +71,14 @@ The example prints, in separate sections:
 - deployable Feature 012 plan and schedule fingerprints; and
 - relaxation upper-bound evidence without a deployable plan.
 
-The authored example contains no `RegulationActivationTrace`. A separate
-authored Feature 012 example may bind its successful plan to accepted-bid,
-market, battery, and activation inputs after bid selection.
+The authored bidding example contains no `RegulationActivationTrace`. The
+integration path is deliberately three-stage: solve the restriction, accept
+the unchanged emitted `FixedFCRBidPlan`, then construct an ordinary Feature 012
+request with accepted-bid, market, battery, and realized-activation evidence.
+Feature 013 implements no replay wrapper and no second battery or settlement
+model. In serialized bid evidence, `optimization_objective_eur` and
+`best_upper_bound_eur` are ex-ante quantities; Feature 012 realized settlement
+and profit remain unavailable until the third stage.
 
 ## 4. Inspect normalized reference evidence
 
@@ -224,10 +230,20 @@ uv run pytest \
   -q -s
 ```
 
-The test supplies the path only to Feature 012 after bid selection. It evaluates
-the native and recorded schedules through the same physical and settlement
-boundary. If the file is absent, the selected wrapper skips with the exact
-installation path; routine optimization and parity remain complete.
+The test supplies the path only after native bid selection. It then evaluates
+the native and recorded schedules through the same existing Feature 012
+physical and settlement boundary—there is no bidder-owned replay wrapper. If
+the file is absent, the selected test skips with the exact installation path;
+routine optimization and parity remain complete.
+
+This replay uses the separately named
+`native-reference-external-replay-highs-v1` policy: the same deterministic
+HiGHS tolerances, one thread, and seed as the benchmark, a 600-second limit,
+and `allow_feasible_incumbent_plan=true`. A time-limited incumbent is replayed
+only after the ordinary restriction audit passes every `1e-6` deployability
+gate. Its bound/gap remain visible and it is not promoted to optimality or used
+as the Feature 013 optimization-parity benchmark; the latter retains the
+3,600-second policy with incumbent opt-in disabled.
 
 ## 8. Run compatibility and isolation checks
 
