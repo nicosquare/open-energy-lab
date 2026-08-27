@@ -42,12 +42,12 @@ boundaries required by every user story.
 can run without importing a mathematical-programming backend and the private
 adapter can identify the required backend versions actionably.
 
-- [ ] T005 [P] Add failing import-boundary and source-contract tests proving Feature 013 pure imports do not load Pyomo, HiGHS, Gurobi, Julia, pandas, `baselines`, `legacy`, network clients, or credentials in `tests/unit/control/test_robust_fcr_import_boundary.py`
-- [ ] T006 Implement Feature 013 semantic-version constants, validation exceptions, finite/deep-freeze helpers, canonical JSON, UTC normalization, and SHA-256 primitives in `src/open_energy_lab/control/robust_fcr_bidding.py`
-- [ ] T007 [P] Define private normalized index sets, immutable model-input/handoff records, source-equation identifiers, and model-cardinality helpers without importing Pyomo in `src/open_energy_lab/control/_robust_fcr_formulation.py`
-- [ ] T008 [P] Implement lazy Pyomo/HiGHS version detection, required-versus-optional backend errors, and backend-neutral raw solve-result records without importing a solver at module import time in `src/open_energy_lab/control/_robust_fcr_solver.py`
-- [ ] T009 Extend repository no-reference-import coverage to the new control modules and tests, including runtime-read guards for `baselines/*`, `legacy/*`, and the regulation CSV, in `tests/unit/test_no_legacy_imports.py`
-- [ ] T010 Run the foundational boundary checks with `uv run pytest tests/unit/control/test_robust_fcr_import_boundary.py tests/unit/test_no_legacy_imports.py -q` and resolve failures only in `src/open_energy_lab/control/robust_fcr_bidding.py`, `src/open_energy_lab/control/_robust_fcr_formulation.py`, and `src/open_energy_lab/control/_robust_fcr_solver.py`
+- [X] T005 [P] Add failing import-boundary and source-contract tests proving Feature 013 pure imports do not load Pyomo, HiGHS, Gurobi, Julia, pandas, `baselines`, `legacy`, network clients, or credentials in `tests/unit/control/test_robust_fcr_import_boundary.py`
+- [X] T006 Implement Feature 013 semantic-version constants, validation exceptions, finite/deep-freeze helpers, canonical JSON, UTC normalization, and SHA-256 primitives in `src/open_energy_lab/control/robust_fcr_bidding.py`
+- [X] T007 [P] Define private normalized index sets, immutable model-input/handoff records, source-equation identifiers, and model-cardinality helpers without importing Pyomo in `src/open_energy_lab/control/_robust_fcr_formulation.py`
+- [X] T008 [P] Implement lazy Pyomo/HiGHS version detection, required-versus-optional backend errors, and backend-neutral raw solve-result records without importing a solver at module import time in `src/open_energy_lab/control/_robust_fcr_solver.py`
+- [X] T009 Extend repository no-reference-import coverage to the new control modules and tests, including runtime-read guards for `baselines/*`, `legacy/*`, and the regulation CSV, in `tests/unit/test_no_legacy_imports.py`
+- [X] T010 Run the foundational boundary checks with `uv run pytest tests/unit/control/test_robust_fcr_import_boundary.py tests/unit/test_no_legacy_imports.py -q` and resolve failures only in `src/open_energy_lab/control/robust_fcr_bidding.py`, `src/open_energy_lab/control/_robust_fcr_formulation.py`, and `src/open_energy_lab/control/_robust_fcr_solver.py`
 
 **Checkpoint**: Feature 013 modules exist, pure imports are lightweight, and
 required/optional solver boundaries are explicit before domain behavior is

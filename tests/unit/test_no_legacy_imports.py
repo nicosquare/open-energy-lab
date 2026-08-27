@@ -27,6 +27,11 @@ FEATURE_012_OFFLINE_MODULES = (
     TARGET_PACKAGE / "simulator" / "fcr_bid_evaluation.py",
     TARGET_PACKAGE / "simulator" / "fcr_settlement.py",
 )
+FEATURE_013_OFFLINE_MODULES = (
+    TARGET_PACKAGE / "control" / "robust_fcr_bidding.py",
+    TARGET_PACKAGE / "control" / "_robust_fcr_formulation.py",
+    TARGET_PACKAGE / "control" / "_robust_fcr_solver.py",
+)
 FEATURE_012_FORBIDDEN_IMPORTS = {
     "IPython",
     "aiohttp",
@@ -44,6 +49,10 @@ FEATURE_012_FORBIDDEN_IMPORTS = {
     "socket",
     "subprocess",
     "urllib",
+}
+FEATURE_013_FORBIDDEN_IMPORTS = FEATURE_012_FORBIDDEN_IMPORTS | {
+    "highspy",
+    "pandas",
 }
 FEATURE_011_FORBIDDEN_IMPORTS = {
     "IPython",
@@ -175,6 +184,39 @@ def test_feature_012_offline_modules_import_no_baseline_solver_network_or_notebo
                 for blocked in FEATURE_012_FORBIDDEN_IMPORTS
             )
         )
+        if forbidden:
+            violations[path.as_posix()] = forbidden
+
+    assert violations == {}
+
+
+def test_feature_013_pure_modules_import_no_reference_solver_or_external_data_code() -> None:
+    violations: dict[str, list[str]] = {}
+    runtime_read_tokens = (
+        "regulation_signal.csv",
+        "Path(\"baselines",
+        "Path('baselines",
+        "Path(\"legacy",
+        "Path('legacy",
+        "open(\"baselines",
+        "open('baselines",
+        "open(\"legacy",
+        "open('legacy",
+    )
+
+    for path in FEATURE_013_OFFLINE_MODULES:
+        assert path.is_file(), f"missing Feature 013 offline module: {path}"
+        imported = _imported_modules(path)
+        forbidden = sorted(
+            name
+            for name in imported
+            if any(
+                name == blocked or name.startswith(f"{blocked}.")
+                for blocked in FEATURE_013_FORBIDDEN_IMPORTS
+            )
+        )
+        source = path.read_text(encoding="utf-8")
+        forbidden.extend(token for token in runtime_read_tokens if token in source)
         if forbidden:
             violations[path.as_posix()] = forbidden
 
