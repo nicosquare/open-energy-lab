@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import builtins
 import hashlib
 import json
+import os
 from pathlib import Path
+import socket
+import subprocess
 
 import pytest
 
@@ -84,8 +88,13 @@ def _zero_witness() -> dict[str, object]:
     }
 
 
-def _native_result(*, objective: float = 11.028, match_decisions: bool = True):
-    fixture = load_robust_fcr_reference_fixture(FIXTURE_PATH)
+def _native_result(
+    *,
+    objective: float = 11.028,
+    match_decisions: bool = True,
+    fixture=None,
+):
+    fixture = fixture or load_robust_fcr_reference_fixture(FIXTURE_PATH)
     problem = build_robust_fcr_reference_problem(
         fixture,
         solve_policy=_native_policy(),
@@ -316,6 +325,88 @@ def test_fixture_loader_reads_only_the_explicit_selected_path(
     fixture = load_robust_fcr_reference_fixture(selected)
     assert fixture.fixture_id == "robust-storage-bidding-2023-06-18-restriction-v1"
     assert reads == [selected.resolve()]
+
+
+def test_routine_reference_path_is_guarded_offline_and_local_only(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    selected = tmp_path / "selected-reference-fixture.json"
+    selected.write_bytes(FIXTURE_PATH.read_bytes())
+    original_read_bytes = Path.read_bytes
+    original_open = Path.open
+    allowed_path = selected.resolve()
+    reads: list[Path] = []
+
+    def guarded_read_bytes(path: Path) -> bytes:
+        resolved = path.resolve()
+        reads.append(resolved)
+        if resolved != allowed_path:
+            raise AssertionError(f"unexpected routine reference read: {resolved}")
+        return original_read_bytes(path)
+
+    def guarded_open(path: Path, *args, **kwargs):
+        resolved = path.resolve()
+        if resolved != allowed_path:
+            raise AssertionError(f"unexpected routine reference open: {resolved}")
+        return original_open(path, *args, **kwargs)
+
+    def forbidden(action: str):
+        def fail(*args, **kwargs):
+            raise AssertionError(f"routine reference path attempted {action}")
+
+        return fail
+
+    class GuardedEnvironment(dict):
+        def __getitem__(self, key):
+            raise AssertionError(f"routine reference path read environment key {key}")
+
+        def get(self, key, default=None):
+            raise AssertionError(f"routine reference path inspected environment key {key}")
+
+        def __contains__(self, key):
+            raise AssertionError(f"routine reference path tested environment key {key}")
+
+    original_import = builtins.__import__
+
+    def guarded_import(name, *args, **kwargs):
+        if name == "gurobipy" or name.startswith("gurobipy."):
+            raise AssertionError("routine reference path attempted Gurobi access")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_bytes", guarded_read_bytes)
+    monkeypatch.setattr(Path, "open", guarded_open)
+    monkeypatch.setattr(socket, "socket", forbidden("socket creation"))
+    monkeypatch.setattr(
+        socket,
+        "create_connection",
+        forbidden("network connection"),
+    )
+    monkeypatch.setattr(subprocess, "run", forbidden("subprocess execution"))
+    monkeypatch.setattr(subprocess, "Popen", forbidden("subprocess execution"))
+    monkeypatch.setattr(os, "getenv", forbidden("environment inspection"))
+    monkeypatch.setattr(os, "environ", GuardedEnvironment())
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
+
+    fixture = load_robust_fcr_reference_fixture(selected)
+    problem = build_robust_fcr_reference_problem(
+        fixture,
+        solve_policy=_native_policy(),
+    )
+    native = _native_result(fixture=fixture)
+    request = build_reference_certification_request(fixture, native)
+    monkeypatch.setattr(
+        "open_energy_lab.control.robust_fcr_reference._certify_reference_decision_box",
+        lambda fixture, native_result, request: _certificate(request),
+    )
+    comparison = compare_robust_fcr_reference(fixture, native)
+
+    assert problem.producer_input_fingerprints["reference_fixture"] == (
+        fixture.fixture_fingerprint
+    )
+    assert comparison.status_counts["mismatch"] == 0
+    assert request.fixture_fingerprint == fixture.fixture_fingerprint
+    assert reads == [allowed_path]
 
 
 def test_reference_problem_requires_a_separate_complete_native_policy() -> None:
@@ -559,3 +650,39 @@ def test_public_comparison_reports_mismatch_when_joint_certificate_fails(
     assert comparison.overall_status == "mismatch"
     assert comparison.status_counts["mismatch"] > 0
     assert comparison.joint_certificate.joint_feasible is False
+
+
+def test_result_certificate_and_comparison_fingerprints_exclude_runtime_paths(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fixture = load_robust_fcr_reference_fixture(FIXTURE_PATH)
+    first_native = _native_result(fixture=fixture)
+    second_native = replace(
+        first_native,
+        runtime_metadata={
+            "runtime_seconds": 999.0,
+            "backend": {
+                "temporary_log": "/different/machine/highs.log",
+                "temporary_path": "/different/machine/tmp",
+            },
+        },
+    )
+    assert first_native.semantic_result_fingerprint == (
+        second_native.semantic_result_fingerprint
+    )
+
+    monkeypatch.setattr(
+        "open_energy_lab.control.robust_fcr_reference._certify_reference_decision_box",
+        lambda fixture, native_result, request: _certificate(request),
+    )
+    first = compare_robust_fcr_reference(fixture, first_native)
+    second = compare_robust_fcr_reference(fixture, second_native)
+
+    assert first.certification_request.request_fingerprint == (
+        second.certification_request.request_fingerprint
+    )
+    assert first.joint_certificate.certificate_fingerprint == (
+        second.joint_certificate.certificate_fingerprint
+    )
+    assert first.field_results == second.field_results
+    assert first.comparison_fingerprint == second.comparison_fingerprint

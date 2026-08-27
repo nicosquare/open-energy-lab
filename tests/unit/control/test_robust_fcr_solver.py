@@ -3,14 +3,23 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from types import SimpleNamespace
 
 import pytest
 
-from open_energy_lab.control._robust_fcr_solver import RawRobustFCRSolveResult
+from open_energy_lab.control._robust_fcr_solver import (
+    RawRobustFCRSolveResult,
+    _normalized_status,
+    require_highs_backend,
+    unavailable_exact_raw_result,
+)
 from open_energy_lab.control.robust_fcr_bidding import (
     DEPLOYABILITY_THRESHOLD,
     RobustFCRBoundComparison,
     RobustFCRFormulationProfile,
+    RobustFCRSolverDependencyUnavailableError,
+    _canonicalize_kw,
+    _canonicalize_witness_decisions,
     _finalize_solve_result,
     _normalize_maximization_gap,
     compare_robust_fcr_bounds,
@@ -142,6 +151,77 @@ def test_non_solution_statuses_never_expose_decisions_or_plan(
     assert result.deployability_status == "blocked"
 
 
+@pytest.mark.parametrize(
+    ("termination", "has_incumbent", "expected"),
+    (
+        ("optimal", True, "optimal"),
+        ("optimal", False, "failed"),
+        ("maxTimeLimit", True, "feasible"),
+        ("time_limit", False, "no_solution"),
+        ("userInterrupt", True, "feasible"),
+        ("resource_interrupted", False, "no_solution"),
+        ("infeasible", False, "infeasible"),
+        ("unbounded", False, "unbounded"),
+        ("solverFailure", False, "failed"),
+        ("unknown_but_incumbent", True, "feasible"),
+    ),
+)
+def test_backend_termination_matrix_is_solver_neutral(
+    termination: str,
+    has_incumbent: bool,
+    expected: str,
+) -> None:
+    assert _normalized_status(
+        termination,
+        has_incumbent=has_incumbent,
+    ) == expected
+
+
+def test_incompatible_required_backend_is_actionable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_pyomo = SimpleNamespace(__version__="0.0-incompatible")
+
+    def fake_import(name: str):
+        if name == "pyomo":
+            return fake_pyomo
+        if name == "pyomo.environ":
+            return SimpleNamespace()
+        raise AssertionError(f"unexpected backend import: {name}")
+
+    monkeypatch.setattr(
+        "open_energy_lab.control._robust_fcr_solver.import_module",
+        fake_import,
+    )
+    with pytest.raises(
+        RobustFCRSolverDependencyUnavailableError,
+        match=r"requires Pyomo 6\.10\.1.*0\.0-incompatible",
+    ):
+        require_highs_backend()
+
+
+def test_unavailable_optional_exact_is_structured_not_a_required_failure() -> None:
+    problem = build_authored_problem()
+    raw = unavailable_exact_raw_result(
+        "licensed Gurobi evidence was not selected",
+        problem.solve_policy,
+    )
+    result = _finalize_solve_result(
+        problem,
+        RobustFCRFormulationProfile.for_kind("exact"),
+        raw,
+    )
+
+    assert result.solver.solve_status == "unavailable"
+    assert result.solver.termination_status == "optional_backend_unavailable"
+    assert result.decisions is None
+    assert result.deployability_status == "not_applicable"
+    assert result.deployable_plan is None
+    assert [value.code for value in result.diagnostics] == [
+        "optional_exact_unavailable"
+    ]
+
+
 def test_positive_terminal_slack_is_audited_and_blocks_plan() -> None:
     slack = DEPLOYABILITY_THRESHOLD * 10.0
     penalty = 100.0 * slack
@@ -220,6 +300,101 @@ def test_runtime_metadata_does_not_change_semantic_result_identity() -> None:
     second = _finalize(_raw_result(witness=_zero_witness(), runtime_seconds=9.9))
     assert first.runtime_metadata != second.runtime_metadata
     assert first.semantic_result_fingerprint == second.semantic_result_fingerprint
+    assert first.solver.semantic_dict() == second.solver.semantic_dict()
+    assert first.decisions == second.decisions
+    assert first.feasibility_audit == second.feasibility_audit
+    assert first.to_dict()["value_semantics"] == second.to_dict()["value_semantics"]
+
+
+def test_decision_canonicalization_uses_half_even_and_normalizes_signed_zero() -> None:
+    assert _canonicalize_kw(1.0000000005) == 1.0
+    assert _canonicalize_kw(1.0000000015) == 1.000000002
+    assert _canonicalize_kw(-1.0000000005) == -1.0
+    normalized_zero = _canonicalize_kw(-0.0000000005)
+    assert normalized_zero == 0.0
+    assert str(normalized_zero) == "0.0"
+
+
+def test_canonical_decisions_reaudit_the_unchanged_auxiliary_witness() -> None:
+    witness = _zero_witness()
+    witness["x0"] = (4e-10,) + (0.0,) * 23
+    decisions, canonical = _canonicalize_witness_decisions(witness)
+
+    assert decisions.energy_baseline_charge_positive_kw[0] == 0.0
+    assert canonical["x0"][0] == 0.0
+    for key in set(witness) - {"x0", "xr"}:
+        assert canonical[key] is witness[key]
+
+    objective = 0.05 * 4e-10
+    result = _finalize(
+        _raw_result(
+            witness=witness,
+            objective=objective,
+            bound=objective,
+        )
+    )
+    assert result.feasibility_audit.raw_witness_fingerprint != (
+        result.feasibility_audit.canonical_witness_fingerprint
+    )
+    assert result.feasibility_audit.passes_deployability_audit is True
+    assert result.deployable_plan is not None
+
+
+def test_diagnostics_are_canonically_ordered_not_backend_ordered() -> None:
+    raw = replace(
+        _raw_result(witness=_zero_witness()),
+        diagnostics=(
+            {
+                "code": "zeta",
+                "severity": "warning",
+                "field_path": "solver.z",
+                "message": "second by field path",
+            },
+            {
+                "code": "beta",
+                "severity": "info",
+                "field_path": "solver.a",
+                "message": "second by code",
+            },
+            {
+                "code": "alpha",
+                "severity": "info",
+                "field_path": "solver.a",
+                "message": "first by code",
+            },
+        ),
+    )
+    result = _finalize(raw)
+
+    assert [value.code for value in result.diagnostics] == [
+        "alpha",
+        "beta",
+        "zeta",
+    ]
+
+
+def test_serialized_bid_values_are_distinct_from_feature_012_realized_values() -> None:
+    result = _finalize(
+        _raw_result(witness=_zero_witness(), objective=0.0, bound=0.25)
+    )
+    semantics = result.to_dict()["value_semantics"]
+
+    assert semantics["optimization_objective_eur"] == {
+        "value": 0.0,
+        "availability": "available",
+        "meaning": "ex_ante_bid_selection_objective",
+    }
+    assert semantics["best_upper_bound_eur"] == {
+        "value": 0.25,
+        "availability": "available",
+        "meaning": "ex_ante_solver_bound_for_maximization",
+    }
+    assert semantics["feature_012_realized_settlement_eur"]["value"] is None
+    assert semantics["feature_012_realized_profit_eur"]["value"] is None
+    assert {
+        semantics["feature_012_realized_settlement_eur"]["availability"],
+        semantics["feature_012_realized_profit_eur"]["availability"],
+    } == {"evaluation_only_not_in_bid_result"}
 
 
 def test_raw_objective_mismatch_is_diagnostic_and_blocks_plan() -> None:

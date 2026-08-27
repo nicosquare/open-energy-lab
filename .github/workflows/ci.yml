@@ -64,16 +64,26 @@ jobs:
           PY
 
       # Required jobs intentionally have no condition or continue-on-error.
-      # Legacy/fake-backend, fixture-contract, and optional Gurobi tests are
-      # excluded; new real SPFlow/HiGHS integration tests are collected.
-      - name: Run focused TPM and planning suite (120-second limit)
+      # Legacy/fake-backend, selected historical/external-data, and optional
+      # Gurobi tests are excluded; bounded real SPFlow/HiGHS tests are collected.
+      - name: Run focused TPM, planning, and robust FCR suite (120-second limit)
         run: |
           timeout --signal=TERM --kill-after=10s 120s \
             uv run --locked --no-sync pytest \
               tests/unit/tpm \
               tests/unit/planning \
+              tests/unit/control/test_robust_fcr_backend_compatibility.py \
+              tests/unit/control/test_robust_fcr_equations.py \
+              tests/unit/control/test_robust_fcr_import_boundary.py \
+              tests/unit/control/test_robust_fcr_problem.py \
+              tests/unit/control/test_robust_fcr_reference.py \
+              tests/unit/control/test_robust_fcr_solver.py \
+              tests/unit/control/test_robust_fcr_source_documentation.py \
               tests/integration/tpm \
               tests/integration/planning \
+              tests/integration/control/test_robust_fcr_highs.py \
+              tests/integration/control/test_robust_fcr_reference_normalization.py \
+              tests/integration/simulator/test_robust_fcr_feature_012_replay.py \
               --ignore=tests/integration/tpm/test_backend_adapter_workflow.py \
               --ignore=tests/integration/tpm/test_generic_rows_workflow.py \
               --ignore=tests/integration/tpm/test_mio_solver.py \
@@ -84,6 +94,8 @@ jobs:
               --ignore=tests/integration/planning/test_spn_mio_gurobi.py \
               --ignore=tests/integration/planning/test_tpm_fit_workflow.py \
               --ignore=tests/integration/planning/test_tpm_fixture_schema.py \
+              --ignore=tests/integration/control/test_robust_fcr_optional_gurobi.py \
+              -m "not reference_benchmark and not external_reference_data" \
               --strict-markers \
               -ra
 
@@ -122,11 +134,14 @@ jobs:
               tests/unit/demand \
               tests/integration/weather \
               tests/integration/demand \
+              tests/integration/control/test_robust_fcr_highs.py \
+              tests/integration/control/test_robust_fcr_reference_normalization.py \
               tests/integration/simulator \
               tests/unit/test_ci_workflow.py \
               tests/unit/test_lazy_dependency_boundaries.py \
               tests/unit/test_import_contract.py \
               tests/unit/test_no_legacy_imports.py \
-              -m "not external_reference_data" \
+              --ignore=tests/integration/control/test_robust_fcr_optional_gurobi.py \
+              -m "not reference_benchmark and not external_reference_data" \
               --strict-markers \
               -ra

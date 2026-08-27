@@ -263,6 +263,56 @@ def test_problem_fingerprint_covers_policy_and_deep_frozen_lineage() -> None:
         default.provenance["new"] = "value"  # type: ignore[index]
 
 
+def test_problem_fingerprint_is_independent_of_mapping_insertion_order() -> None:
+    base = build_authored_problem()
+    common = {
+        "problem_id": "canonical-input-order-v1",
+        "battery": base.battery,
+        "time_contract": base.time_contract,
+        "prices": base.prices,
+        "uncertainty": base.uncertainty,
+        "terminal_rule": base.terminal_rule,
+        "solve_policy": base.solve_policy,
+        "information_cutoff_utc": base.information_cutoff_utc,
+    }
+    forward = build_robust_fcr_bidding_problem(
+        **common,
+        producer_input_fingerprints={"alpha": "1" * 64, "omega": "2" * 64},
+        provenance={"alpha": 1, "omega": {"left": 2, "right": 3}},
+    )
+    reversed_order = build_robust_fcr_bidding_problem(
+        **common,
+        producer_input_fingerprints={"omega": "2" * 64, "alpha": "1" * 64},
+        provenance={"omega": {"right": 3, "left": 2}, "alpha": 1},
+    )
+
+    assert forward == reversed_order
+    assert forward.problem_fingerprint == reversed_order.problem_fingerprint
+    assert forward.to_dict() == reversed_order.to_dict()
+
+
+def test_nondecision_numeric_change_changes_identity_despite_wide_comparison_tolerance() -> None:
+    base = build_authored_problem(
+        objective_comparison_absolute_tolerance_eur=1.0,
+    )
+    delta = 5e-7
+    changed = replace(
+        base,
+        battery=replace(
+            base.battery,
+            maximum_charge_power_kw=(
+                base.battery.maximum_charge_power_kw + delta
+            ),
+        ),
+    )
+
+    assert base.solve_policy.objective_comparison_allowance(0.0, delta) == 1.0
+    assert base.problem_fingerprint != changed.problem_fingerprint
+    assert base.comparison_problem_fingerprint != (
+        changed.comparison_problem_fingerprint
+    )
+
+
 def test_price_values_from_shared_mapping_are_not_mutated() -> None:
     values = authored_price_mapping()
     original = dict(values)

@@ -79,6 +79,35 @@ Bid generation, robust optimization, and TPM selection remain outside Feature
 `source_precision_compatible` and `unavailable` recorded explicitly; complete
 ten-second Julia trace parity is not claimed.
 
+## Reference Robust FCR Bidding Notes
+
+Feature `013-reference-robust-fcr-bidding` reuses the already locked Pyomo
+`6.10.1` and `highspy` `1.15.1` dependencies. It adds no project dependency.
+Routine validation is CPU-local and offline after `uv sync --dev`; importing
+`open_energy_lab.control` or either robust-FCR contract module must remain lazy
+and must not load either backend until an explicit solve or certificate.
+
+- HiGHS is the required restriction/relaxation backend. A missing or
+  incompatible Pyomo/HiGHS stack is a required-backend failure, never a skip.
+- Gurobi is optional licensed evidence for the explicitly selected exact
+  bilinear check. Its package, binary, or license may be unavailable without
+  weakening the required HiGHS inequalities.
+- The normalized optimization fixture is committed and always available to
+  routine tests. It owns no native solve policy: each full native benchmark
+  supplies and fingerprints the complete
+  `native-reference-benchmark-highs-v1` mapping separately.
+- The full 2023-06-18 optimization is marked `reference_benchmark` and excluded
+  from routine CI because its 96-step MILP has a separate resource budget.
+- Julia, the reference checkout, network access, credentials, live services,
+  and external activation data are blocked from routine bidding validation.
+  The optional Feature 012 replay alone accepts the explicitly installed
+  ignored CSV under the `external_reference_data` marker, and only after bid
+  selection.
+
+The expected environment is a single CPU process with deterministic one-thread
+HiGHS options. GPU, SLURM, W&B, notebooks, commercial licenses, and network
+services are not assumptions of the routine Feature 013 gate.
+
 ## TPM-Backed Planning Notes
 
 The `009-tpm-planning` feature keeps the same minimal conda bootstrap while uv

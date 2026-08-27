@@ -300,7 +300,7 @@ _EXPORT_MAP = {
     "build_mfrr_baseline": (".restoration_service", "build_mfrr_baseline"),
 }
 
-__all__ = [
+__all__ = sorted([
     "AFRRBaselineConfig",
     "AFRRBaselineMode",
     "ArbitrageOnlyBaselineConfig",
@@ -312,10 +312,10 @@ __all__ = [
     "FCRBidPlanValidationError",
     "FeasibilityAudit",
     "FixedFCRBidPlan",
-    "MFRRBaselineConfig",
-    "MFRRBaselineMode",
     "HorizonWideActivationBudget",
     "JointReferenceCertificate",
+    "MFRRBaselineConfig",
+    "MFRRBaselineMode",
     "ObjectiveBreakdown",
     "OptimizationMetric",
     "PVSelfConsumptionConfig",
@@ -364,13 +364,13 @@ __all__ = [
     "build_robust_fcr_bidding_problem",
     "build_robust_fcr_reference_problem",
     "build_robust_fcr_time_contract",
+    "build_stacked_heuristic_baseline",
     "compare_robust_fcr_bounds",
     "compare_robust_fcr_reference",
-    "build_stacked_heuristic_baseline",
     "derive_non_intraday_horizon_budget",
     "load_robust_fcr_reference_fixture",
     "solve_robust_fcr_bid",
-]
+])
 
 
 def __getattr__(name: str) -> Any:
