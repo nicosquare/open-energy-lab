@@ -35,9 +35,9 @@ changing the TPM representation.
 **Critical**: Complete this phase before story implementation so later code cannot introduce a
 second representation of domains, support, or normalization.
 
-- [ ] T004 Add failing unit contracts for continuous finite/fixed/lower/upper/unbounded/unknown states, purpose and origin, exact finite endpoint validation, single-feature declaration structure, rejection of coupled constraint payloads, declared binary ordering, categorical completeness, training support, normalization metadata, and JSON round trips in `tests/unit/tpm/test_domains.py`
-- [ ] T005 Implement immutable, JSON-compatible `TPMFeatureDomain`, `TPMTrainingSupport`, and `TPMNormalizationSpec` records with strict invariants and no SPFlow/Pyomo imports in `src/open_energy_lab/tpm/domains.py`
-- [ ] T006 Expose only the intended declaration types through the lazy TPM package surface and prove imports remain lazy in `src/open_energy_lab/tpm/__init__.py`, `tests/unit/tpm/test_package_surface.py`, and `tests/unit/tpm/test_import_boundary.py`
+- [X] T004 Add failing unit contracts for continuous finite/fixed/lower/upper/unbounded/unknown states, purpose and origin, exact finite endpoint validation, single-feature declaration structure, rejection of coupled constraint payloads, declared binary ordering, categorical completeness, training support, normalization metadata, and JSON round trips in `tests/unit/tpm/test_domains.py`
+- [X] T005 Implement immutable, JSON-compatible `TPMFeatureDomain`, `TPMTrainingSupport`, and `TPMNormalizationSpec` records with strict invariants and no SPFlow/Pyomo imports in `src/open_energy_lab/tpm/domains.py`
+- [X] T006 Expose only the intended declaration types through the lazy TPM package surface and prove imports remain lazy in `src/open_energy_lab/tpm/__init__.py`, `tests/unit/tpm/test_package_surface.py`, and `tests/unit/tpm/test_import_boundary.py`
 
 **Checkpoint**: Domain meaning, observation evidence, and normalization provenance have one tested,
 import-light representation.

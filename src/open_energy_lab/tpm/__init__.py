@@ -20,6 +20,11 @@ if TYPE_CHECKING:
         load_tpm_artifact,
     )
     from .data import TPMTrainingData, normalize_training_data
+    from .domains import (
+        TPMFeatureDomain,
+        TPMNormalizationSpec,
+        TPMTrainingSupport,
+    )
     from .features import (
         TPMFeatureSpec,
         dump_feature_schema,
@@ -95,6 +100,9 @@ _EXPORT_MAP = {
     "load_tpm_artifact": (".artifact", "load_tpm_artifact"),
     "TPMTrainingData": (".data", "TPMTrainingData"),
     "normalize_training_data": (".data", "normalize_training_data"),
+    "TPMFeatureDomain": (".domains", "TPMFeatureDomain"),
+    "TPMNormalizationSpec": (".domains", "TPMNormalizationSpec"),
+    "TPMTrainingSupport": (".domains", "TPMTrainingSupport"),
     "TPMFeatureSpec": (".features", "TPMFeatureSpec"),
     "dump_feature_schema": (".features", "dump_feature_schema"),
     "infer_feature_role": (".features", "infer_feature_role"),
@@ -198,6 +206,9 @@ __all__ = [
     "load_tpm_artifact",
     "TPMTrainingData",
     "normalize_training_data",
+    "TPMFeatureDomain",
+    "TPMNormalizationSpec",
+    "TPMTrainingSupport",
     "TPMFeatureSpec",
     "dump_feature_schema",
     "infer_feature_role",
