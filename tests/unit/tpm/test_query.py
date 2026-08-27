@@ -512,6 +512,10 @@ def test_assignment_diagnostics_distinguish_support_discrete_and_legacy_sources(
             validate_spflow_feature_assignments((spec,), assignments)
         assert exc_info.value.reason == reason
         assert exc_info.value.semantic_source == semantic_source
+        if semantic_source == "legacy-inferred":
+            assert exc_info.value.reason != "decision_domain_violation"
+            assert exc_info.value.expected_domain == (60.0, 140.0)
+            assert "legacy-inferred" in str(exc_info.value).lower()
 
 
 def test_explicit_unknown_native_assignment_accepts_any_finite_physical_value() -> None:

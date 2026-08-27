@@ -424,7 +424,18 @@ def test_generic_fit_uses_declarations_and_classifies_omitted_features(
     assert specs["demand"].normalization.kind == "identity"
     assert specs["tariff_plan"].mathematical_domain.shape == "unknown"
     assert specs["tariff_plan"].mathematical_domain.origin == "omitted"
+    assert specs["tariff_plan"].training_support.observed_values == ("flat", "peak")
+    assert specs["tariff_plan"].ordering == ("flat", "peak")
     assert specs["tariff_plan"].normalization.origin == "legacy-inferred"
+    assert "unobserved" not in specs["tariff_plan"].ordering
+
+    reloaded = load_tpm_artifact(artifact.source_path)
+    reloaded_tariff = {
+        spec.feature_name: spec for spec in reloaded.feature_specs
+    }["tariff_plan"]
+    assert reloaded.schema_version == "v3"
+    assert reloaded_tariff.mathematical_domain.origin == "omitted"
+    assert reloaded_tariff.training_support.observed_values == ("flat", "peak")
 
 
 def test_planning_fit_accepts_optional_feature_domains_without_reading_dataset_metadata_as_domains(

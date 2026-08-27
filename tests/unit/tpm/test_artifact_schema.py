@@ -482,6 +482,46 @@ def test_schema_v2_adapter_exposes_unknown_domain_and_legacy_operational_meaning
     )
 
 
+def test_schema_v2_mixed_feature_and_repeated_reserialization_remain_v2_only() -> None:
+    original_payload = _artifact_payload()
+    artifact = load_tpm_artifact(original_payload)
+    mixed = {
+        spec.feature_name: spec for spec in artifact.feature_specs
+    }["solar_tilt_choice"]
+
+    assert mixed.feature_type == "mixed"
+    assert mixed.bounds == (0.0, 45.0)
+    assert mixed.discrete_values == ("roof-flat", "roof-pitched")
+    assert mixed.mathematical_domain is None
+    first = artifact.to_dict()
+    second = load_tpm_artifact(first).to_dict()
+    third = load_tpm_artifact(second).to_dict()
+
+    assert first == second == third
+    assert third["schema_version"] == "v2"
+    mixed_payload = third["feature_schema"][3]
+    assert mixed_payload == original_payload["feature_schema"][3] | {
+        "monotonicity": "none",
+        "normalization_rule": "mixed_index_minmax",
+        "ordering": ["roof-flat", "roof-pitched"],
+    }
+    assert "legacy_mixed_semantics" not in mixed_payload
+
+
+def test_loading_v2_manifest_and_sidecar_is_byte_stable(tmp_path: Path) -> None:
+    manifest_path = _write_manifest(tmp_path)
+    sidecar_path = manifest_path.parent / "sidecars/tpm-artifact-unit.spflow"
+    manifest_before = manifest_path.read_bytes()
+    sidecar_before = sidecar_path.read_bytes()
+
+    first = load_tpm_artifact(manifest_path)
+    second = load_tpm_artifact(manifest_path)
+
+    assert first.to_dict() == second.to_dict()
+    assert manifest_path.read_bytes() == manifest_before
+    assert sidecar_path.read_bytes() == sidecar_before
+
+
 def test_schema_v3_sidecar_feature_semantics_match_manifest_after_reload(
     tmp_path: Path,
 ) -> None:

@@ -255,6 +255,39 @@ def test_explicit_unknown_uses_identity_while_omission_keeps_legacy_inference() 
     assert omitted.normalize_value(100.0) == pytest.approx(0.5)
 
 
+def test_declaration_free_fit_preserves_observed_support_without_fabrication() -> None:
+    normalized = normalize_training_data(
+        (
+            {"fixed_x": 5.0, "activation": "off", "tier": "standard"},
+            {"fixed_x": 5.0, "activation": "on", "tier": "economy"},
+            {"fixed_x": 5.0, "activation": "off", "tier": "standard"},
+        ),
+        feature_roles={
+            "fixed_x": "decision",
+            "activation": "decision",
+            "tier": "decision",
+        },
+    )
+    specs = {spec.feature_name: spec for spec in normalized.feature_schema}
+
+    assert specs["fixed_x"].mathematical_domain.shape == "unknown"
+    assert specs["fixed_x"].mathematical_domain.origin == "omitted"
+    assert specs["fixed_x"].training_support.minimum == 5.0
+    assert specs["fixed_x"].training_support.maximum == 5.0
+    assert specs["fixed_x"].normalization.kind == "fixed-zero"
+    assert all(row["fixed_x"] == 0.0 for row in normalized.normalized_rows)
+    assert specs["activation"].feature_type == "binary"
+    assert specs["activation"].ordering == ("off", "on")
+    assert specs["activation"].training_support.observed_values == ("off", "on")
+    assert specs["tier"].feature_type == "categorical"
+    assert specs["tier"].ordering == ("economy", "standard")
+    assert specs["tier"].training_support.observed_values == (
+        "standard",
+        "economy",
+    )
+    assert "priority" not in specs["tier"].training_support.observed_values
+
+
 def test_exact_declared_endpoints_are_valid_physical_observations() -> None:
     normalized = normalize_training_data(
         ({"x": 40.0}, {"x": 160.0}),

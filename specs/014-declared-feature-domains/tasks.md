@@ -158,19 +158,19 @@ validity.
 
 ### Tests for User Story 4
 
-- [ ] T042 [P] [US4] Extend the foundational v2 adapter tests with unchanged mixed-feature loading, safe sidecar/integrity behavior, byte-stable source loading, and repeated schema-aware v2 reserialization in `tests/unit/tpm/test_artifact_schema.py`
-- [ ] T043 [P] [US4] Add declaration-free fit tests for observed-extrema min-max, fixed legacy ranges, existing discrete inference/order/encoding, explicit-unknown separation, and no fabricated unobserved value in `tests/unit/tpm/test_data_handler.py` and `tests/unit/tpm/test_fit.py`
-- [ ] T044 [P] [US4] Add native-query tests proving legacy out-of-observed-range rejection is labelled operational compatibility behavior and cannot be reported as a mathematical-domain violation in `tests/unit/tpm/test_query.py`
-- [ ] T045 [P] [US4] Add production-v2 manifest/sidecar load and query checks that snapshot bytes and preserve current normalization results in `tests/integration/tpm/test_spflow_v1_persistence.py` and `tests/integration/tpm/test_spflow_v1_query.py`
-- [ ] T046 [P] [US4] Add compiled-v1 tests proving normalized-only payloads remain evaluable but never acquire inferred physical validity in `tests/unit/tpm/test_mio.py`
+- [X] T042 [P] [US4] Extend the foundational v2 adapter tests with unchanged mixed-feature loading, safe sidecar/integrity behavior, byte-stable source loading, and repeated schema-aware v2 reserialization in `tests/unit/tpm/test_artifact_schema.py`
+- [X] T043 [P] [US4] Add declaration-free fit tests for observed-extrema min-max, fixed legacy ranges, existing discrete inference/order/encoding, explicit-unknown separation, and no fabricated unobserved value in `tests/unit/tpm/test_data_handler.py` and `tests/unit/tpm/test_fit.py`
+- [X] T044 [P] [US4] Add native-query tests proving legacy out-of-observed-range rejection is labelled operational compatibility behavior and cannot be reported as a mathematical-domain violation in `tests/unit/tpm/test_query.py`
+- [X] T045 [P] [US4] Add production-v2 manifest/sidecar load and query checks that snapshot bytes and preserve current normalization results in `tests/integration/tpm/test_spflow_v1_persistence.py` and `tests/integration/tpm/test_spflow_v1_query.py`
+- [X] T046 [P] [US4] Add compiled-v1 tests proving normalized-only payloads remain evaluable but never acquire inferred physical validity in `tests/unit/tpm/test_mio.py`
 
 ### Implementation for User Story 4
 
-- [ ] T047 [US4] Harden the foundational v2 adapter for mixed-feature fixtures, integrity-checked sidecars, byte-stable loading, and repeatable v2-only reserialization without adding v3 semantics in `src/open_energy_lab/tpm/artifact.py`
-- [ ] T048 [US4] Harden and regression-test the foundational omission classification for continuous and discrete features, preserving unknown mathematical meaning plus legacy-inferred training/normalization behavior while keeping explicit unknown on identity normalization, in `src/open_energy_lab/tpm/data.py`, `src/open_energy_lab/tpm/features.py`, and `src/open_energy_lab/tpm/fit.py`
-- [ ] T049 [US4] Preserve legacy assignment limits with source-aware diagnostics that distinguish operational compatibility restrictions from mathematical-domain failures in `src/open_energy_lab/tpm/query.py`
-- [ ] T050 [US4] Preserve compiled v1 normalized evaluation and planning consumption without deriving physical intervals or routing it through compiled-v2 validity rules, and regression-test that compatibility never promotes compiled-v1 payloads to physical validity, in `src/open_energy_lab/tpm/mio.py` and `src/open_energy_lab/planning/piecewise.py`
-- [ ] T051 [US4] Run `uv run --locked --no-sync pytest tests/unit/tpm/test_artifact_schema.py tests/unit/tpm/test_data_handler.py tests/unit/tpm/test_fit.py tests/unit/tpm/test_query.py tests/unit/tpm/test_mio.py tests/integration/tpm/test_spflow_v1_persistence.py tests/integration/tpm/test_spflow_v1_query.py` and confirm `tests/fixtures/tpm/tpm_artifact_v2.json` plus its sidecars are byte-unchanged
+- [X] T047 [US4] Harden the foundational v2 adapter for mixed-feature fixtures, integrity-checked sidecars, byte-stable loading, and repeatable v2-only reserialization without adding v3 semantics in `src/open_energy_lab/tpm/artifact.py`
+- [X] T048 [US4] Harden and regression-test the foundational omission classification for continuous and discrete features, preserving unknown mathematical meaning plus legacy-inferred training/normalization behavior while keeping explicit unknown on identity normalization, in `src/open_energy_lab/tpm/data.py`, `src/open_energy_lab/tpm/features.py`, and `src/open_energy_lab/tpm/fit.py`
+- [X] T049 [US4] Preserve legacy assignment limits with source-aware diagnostics that distinguish operational compatibility restrictions from mathematical-domain failures in `src/open_energy_lab/tpm/query.py`
+- [X] T050 [US4] Preserve compiled v1 normalized evaluation and planning consumption without deriving physical intervals or routing it through compiled-v2 validity rules, and regression-test that compatibility never promotes compiled-v1 payloads to physical validity, in `src/open_energy_lab/tpm/mio.py` and `src/open_energy_lab/planning/piecewise.py`
+- [X] T051 [US4] Run `uv run --locked --no-sync pytest tests/unit/tpm/test_artifact_schema.py tests/unit/tpm/test_data_handler.py tests/unit/tpm/test_fit.py tests/unit/tpm/test_query.py tests/unit/tpm/test_mio.py tests/integration/tpm/test_spflow_v1_persistence.py tests/integration/tpm/test_spflow_v1_query.py` and confirm `tests/fixtures/tpm/tpm_artifact_v2.json` plus its sidecars are byte-unchanged
 
 **Checkpoint**: All representative pre-feature fitted-artifact behavior remains usable and visibly
 legacy-inferred, v2-only reserialization remains intact, and already-persisted compiled-v1 payloads

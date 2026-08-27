@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import copy
+import math
 
 import pyomo.environ as pyo
 import pytest
@@ -12,6 +14,7 @@ from open_energy_lab.tpm.mio import (
     build_spn_chance_model,
     build_spn_chance_model_from_artifact,
     build_spn_modeling_terms,
+    evaluate_compiled_spflow_probability,
     infer_max_sum_terms,
 )
 from open_energy_lab.tpm.artifact import LegacyTPMArtifactVersionError
@@ -154,6 +157,38 @@ def _artifact_payload(locator: str) -> dict[str, object]:
     }
 
 
+def _normalized_only_compiled_v1() -> dict[str, object]:
+    return {
+        "schema_version": "v1",
+        "compiler_version": "spflow-v1-mio-v1",
+        "feature_schema": [
+            {
+                "feature_name": "legacy_x",
+                "feature_role": "decision",
+                "feature_type": "continuous",
+                "bounds": [60.0, 140.0],
+                "modifiable": True,
+            }
+        ],
+        "root_id": 0,
+        "nodes": [
+            {
+                "id": 0,
+                "type": "normal",
+                "scope": [0],
+                "curves": [
+                    {
+                        "scope": 0,
+                        "feature_name": "legacy_x",
+                        "breakpoints": [0.0, 0.5, 1.0],
+                        "log_values": [-1.0, -0.5, -1.0],
+                    }
+                ],
+            }
+        ],
+    }
+
+
 @pytest.mark.parametrize("sum_encoding_mode", ["max", "piecewise"])
 def test_build_spn_chance_model_supports_only_valid_sum_encodings(
     sum_encoding_mode: str,
@@ -193,6 +228,25 @@ def test_build_spn_chance_model_supports_only_valid_sum_encodings(
     else:
         assert hasattr(model.numerator_spn, "sum_log_piecewise_7")
         assert hasattr(model.denominator_spn, "sum_log_piecewise_13")
+
+
+def test_compiled_v1_remains_normalized_only_without_physical_promotion() -> None:
+    compiled = _normalized_only_compiled_v1()
+    before = copy.deepcopy(compiled)
+
+    probability = evaluate_compiled_spflow_probability(
+        compiled,
+        normalized_evidence={"legacy_x": 0.5},
+    )
+
+    assert probability == pytest.approx(math.exp(-0.5))
+    assert compiled == before
+    assert "compiled_validity" not in compiled
+    with pytest.raises(ValueError, match="compiled-v1.*normalized_evidence only"):
+        evaluate_compiled_spflow_probability(
+            compiled,
+            physical_evidence={"legacy_x": 100.0},
+        )
 
 
 def test_categorical_spn_uses_exact_compiled_risk_lookup() -> None:

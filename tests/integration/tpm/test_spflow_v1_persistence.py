@@ -11,7 +11,10 @@ from open_energy_lab.tpm.artifact import (
     TPMArtifactIntegrityError,
     load_tpm_artifact,
 )
-from tests.integration.planning.fixture_utils import TPM_ARTIFACT_V1_FIXTURE_PATH
+from tests.integration.planning.fixture_utils import (
+    TPM_ARTIFACT_V1_FIXTURE_PATH,
+    TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH,
+)
 from tests.integration.tpm.spflow_v1_test_support import (
     fit_real_artifact,
     load_current_model_payload,
@@ -45,6 +48,26 @@ def test_corrupt_current_model_sidecar_fails_manifest_integrity_check(tmp_path) 
 
     with pytest.raises(TPMArtifactIntegrityError, match=r"SHA-256|integrity"):
         load_tpm_artifact(manifest_path)
+
+
+def test_committed_production_v2_load_is_byte_stable_and_legacy_classified() -> None:
+    manifest_before = TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH.read_bytes()
+    first = load_tpm_artifact(TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH)
+    sidecar_before = first.sidecar_path.read_bytes()
+
+    second = load_tpm_artifact(TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH)
+    battery = {
+        spec.feature_name: spec for spec in second.feature_specs
+    }["battery_capacity_kwh"]
+
+    assert first.to_dict() == second.to_dict()
+    assert second.schema_version == "v2"
+    assert battery.mathematical_domain.shape == "unknown"
+    assert battery.mathematical_domain.origin == "omitted"
+    assert battery.normalization.origin == "legacy-inferred"
+    assert battery.normalize_value(4.0) == pytest.approx(0.2)
+    assert TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH.read_bytes() == manifest_before
+    assert second.sidecar_path.read_bytes() == sidecar_before
 
 
 def test_pre_v1_spflow_artifact_is_rejected_with_refit_guidance() -> None:
