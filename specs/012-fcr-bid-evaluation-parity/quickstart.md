@@ -125,10 +125,12 @@ tmp/fcr-bid-evaluation-notebook/figures
 ```
 
 When the explicit external-reference branch is enabled, the notebook adds a
-sixth figure with separate EUR, kWh, and kW panels. Each panel places the Julia
-expected value beside the Open Energy Lab actual value, shows available expected
-and actual precision intervals, and colors the comparison by exact,
-source-precision-compatible, or mismatch status.
+sixth figure with separate EUR, kWh, and kW rows. The left column places the
+Julia expected value and Open Energy Lab actual value on the same categorical
+field row in the native unit and shows their available precision intervals. The
+right column reports the signed difference divided by the allowed precision
+envelope; the shaded `-1` to `+1` region is source-precision compatible. Colors
+still distinguish exact, source-precision-compatible, and mismatch status.
 
 Run the source and default execution contracts with:
 

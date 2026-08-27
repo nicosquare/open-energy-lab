@@ -171,6 +171,9 @@ def test_external_replay_and_figure_export_are_explicit_and_disabled() -> None:
     assert 'parity_units = ("EUR", "kWh", "kW")' in parity_plot
     assert 'row["expected_interval"]' in parity_plot
     assert 'row["actual_interval"]' in parity_plot
+    assert "[categorical_y, categorical_y]" in parity_plot
+    assert 'external_reference_parity_plot_table["normalized_deviation"]' in parity_plot
+    assert "deviation_axis.axvspan(-1.0, 1.0" in parity_plot
     assert 'generated_figures["external_reference_parity"]' in parity_plot
     assert "if RUN_EXTERNAL_REFERENCE:" in parity_plot
     assert "if EXPORT_FIGURES:" in export
