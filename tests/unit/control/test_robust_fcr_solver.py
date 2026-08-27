@@ -116,8 +116,10 @@ def test_feasible_incumbent_is_blocked_by_default_and_allowed_only_by_opt_in() -
     blocked = _finalize(raw)
     allowed = _finalize(raw, allow_feasible_incumbent_plan=True)
 
+    assert blocked.solver.incumbent_accepted is True
     assert blocked.deployable_plan is None
     assert "feasible_incumbent_not_opted_in" in blocked.deployability_reasons
+    assert allowed.solver.incumbent_accepted is True
     assert allowed.deployable_plan is not None
     assert allowed.deployable_plan.solve_status == "feasible"
     assert allowed.solver.relative_gap == 1.0

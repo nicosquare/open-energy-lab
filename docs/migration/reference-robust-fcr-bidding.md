@@ -171,7 +171,7 @@ and common objective equivalence all pass. Unsupported source fields remain
 
 ### Routine offline gate (2026-08-27)
 
-The exact quickstart selection passed 131 tests in 146.46 seconds on Python
+The final exact quickstart selection passed 131 tests in 92.63 seconds on Python
 3.14.6 with Pyomo 6.10.1 and highspy/HiGHS 1.15.1. Repeated same-environment
 tests proved identical decisions, objective/bound/gap semantic payloads,
 diagnostics, audits, certificates, comparisons, and result fingerprints while
@@ -208,11 +208,83 @@ The authored zero-bid restriction/relaxation record is:
   plus satisfied bound-comparison fingerprint
   `2f0eee49feae804ea133e28c0ad2523e4ff014f75c4d7ae785135a6534b8d023`.
 
+### Selected full reference benchmark (2026-08-27)
+
+The explicitly selected `reference_benchmark` used the complete caller-owned
+`native-reference-benchmark-highs-v1` policy. It selected HiGHS, a 3,600-second
+limit, one thread, random seed `13`, primal and dual tolerances of `1e-7`, MIP
+feasibility and relative-gap tolerances of `1e-6`, objective-comparison
+tolerances of `1e-6 EUR` absolute and `1e-9` relative, no feasible-incumbent
+plan opt-in, and `solver-output-kw-1e-9-half-even-v1` canonicalization. The
+policy fingerprint was
+`d4d8934676fce6755f525ef8844f796669e0ec49158a2107515b2dee29b682ed`.
+These settings are native benchmark evidence and are not attributed to Julia.
+
+HiGHS 1.15.1 with Pyomo 6.10.1 reached `maxtimelimit` with a complete,
+independently audited incumbent after 3,601.84 seconds. The selected pytest
+gate exited successfully with one actionable resource-limit skip after
+3,603.13 seconds. The native status was
+`feasible`, not `optimal`; objective and same-solve upper bound were
+`9.859189984425477 EUR` and `12.053002643603337 EUR`, producing an absolute gap
+of `2.19381265917786 EUR` and relative gap `0.18201378727334314`. The result
+therefore emitted no plan under the default policy. Stable identities were:
+
+- semantic result
+  `752861b52725f493b20134f5ab367cef7fd8d4445f791e685121e2821bf5003e`;
+- decision vector
+  `8347e2dd0c72664f610185a87ed0f482955cbf8b0c2b7eb7237a8a13c9ad36c0`;
+- independent audit
+  `cab62ebe16f804f0326e97eddcc56783acbd24925529cc789ec585b7a53ccec7`;
+- certification request
+  `ec98f78880b51da8a6817e45432c4e7ff803d0076338e148354654b2ac49badd`;
+- joint certificate
+  `781736f31e4e79666123fd9c1c852c4f0fa4c5f589f9f58d0c5170c3d9f78216`;
+  and
+- comparison
+  `b81c3cc88b6b10e8d6a662a3e5e0d8c50d0c9e6f60e12ca9ce14f46d8b05ec26`.
+
+The comparison produced `1 exact`, `15 source_precision_compatible`,
+`0 alternative_optimum_compatible`, `21 mismatch`, and `7 unavailable` fields,
+so its overall status is `mismatch`. Native positive-discharge comparison-frame
+fingerprints were energy
+`76971271b34b4cf8ed331bb9afe39194b5c0e6c56fd3b8920d867d28812b772f`, FCR
+`b7c6bc3eec6441eda96a8da3da6fadb204627b7cd7a1d118edfc16c082653c4a`, and
+combined
+`5a97699bad69aec559a676de60fa7274eb907c2fd32dda0e1ddfc4de749158cd`.
+Source counterparts were
+`736a4b28e05e7a6d9e625fe060bb1df021081d618ae6509f283dc89d4b9162de`,
+`928a73a53d00bbc798f1ea7f599dc1e695c0ca2516071e72bb3929559e011f61`,
+and `df898785797d80ae9d19c584400553bb30f997db90a3ee3bf83d2cb4a2df011b`.
+Producer-specific schedule and plan fingerprints are unavailable because the
+native non-optimal incumbent was not eligible for a plan and the Julia record
+contains no Feature 012 producer envelopes.
+
+The normalized source reports rounded objective and bound `11.028 EUR`, a
+1,070.788-second Gurobi run, and three-decimal decisions. It does not report
+termination, primal/dual status, exact gap or proof, solver tolerances or
+versions, unrounded decisions, equation residuals, or restriction bilinear
+evidence. The native objective band therefore does not intersect the source
+objective interval, and no joint objective-equivalent rounded source schedule
+was certified. This resource-limited result is retained as incomplete
+comparison evidence; it neither establishes Julia parity nor identifies a
+formulation discrepancy by itself, and it does not weaken routine acceptance.
+
+### Optional exact Gurobi evidence (2026-08-27)
+
+The explicitly selected optional exact-bilinear gate completed with one passed
+test and one actionable skip in 0.57 seconds. `gurobipy` is not installed in
+the selected environment, so no licensed exact solve or three-way
+`restriction <= exact <= relaxation` claim is available. The test confirmed
+that an exact request selects Gurobi explicitly, never falls back to HiGHS,
+never emits a plan, and reports the missing backend without weakening the
+required HiGHS restriction/relaxation evidence.
+
 ### External Feature 012 replay (2026-08-27)
 
 The explicitly selected `external_reference_data` gate found the governed CSV
-at its ignored path, validated all 528,805,941 bytes and SHA-256, and passed in
-634.85 seconds. Bid selection completed before the CSV was opened. The distinct
+at its ignored path, validated all 528,805,941 bytes and SHA-256, and passed on
+the final rerun in 624.80 seconds. Bid selection completed before the CSV was
+opened. The distinct
 `native-reference-external-replay-highs-v1` policy used a 600-second limit and
 explicit feasible-incumbent opt-in; its policy fingerprint was
 `f99c91a2afff96667c11797c47ea95e04a37756c0cddbcbef19bf7617c5a863c`.

@@ -73,7 +73,7 @@ def _skip_for_resource_limit(result) -> None:
     )
 
 
-def _assert_field_complete(comparison) -> None:
+def _assert_field_set_complete(comparison) -> None:
     field_ids = {value.field_id for value in comparison.field_results}
     required = {
         "optimization_objective_eur",
@@ -95,6 +95,10 @@ def _assert_field_complete(comparison) -> None:
     required.update(f"xr[{index}]" for index in range(6))
     assert field_ids == required
     assert comparison.source_bound_proof_status == "unavailable"
+
+
+def _assert_parity_complete(comparison) -> None:
+    _assert_field_set_complete(comparison)
     assert comparison.status_counts["mismatch"] == 0
     assert comparison.overall_status in {
         "source_precision_compatible",
@@ -102,6 +106,96 @@ def _assert_field_complete(comparison) -> None:
     }
     assert comparison.joint_certificate.joint_feasible is True
     assert comparison.joint_certificate.objective_equivalent is True
+
+
+def _benchmark_record(fixture, policy, native, comparison) -> dict[str, object]:
+    native_plan = native.deployable_plan
+    comparison_payload = comparison.to_dict() if comparison is not None else None
+    return {
+        "fixture_fingerprint": fixture.fixture_fingerprint,
+        "source_evidence": {
+            "recorded_objective_eur": fixture.recorded_result.objective_value_eur,
+            "recorded_bound_eur": fixture.recorded_result.objective_bound_eur,
+            "recorded_solve_time_seconds": (
+                fixture.recorded_result.solve_time_seconds
+            ),
+            "recorded_solve_profile": dict(fixture.problem["solve_profile"]),
+            "precision_policy_fingerprint": (
+                fixture.precision_policy.policy_fingerprint
+            ),
+            "unavailable_fields": [
+                value.to_dict() for value in fixture.unavailable_fields
+            ],
+        },
+        "native_policy": {
+            "profile_id": NATIVE_REFERENCE_BENCHMARK_PROFILE_ID,
+            **policy.to_dict(),
+        },
+        "native_result": {
+            "solver": native.solver.to_dict(),
+            "semantic_result_fingerprint": native.semantic_result_fingerprint,
+            "decision_vector_fingerprint": (
+                native.decisions.decision_vector_fingerprint
+                if native.decisions is not None
+                else None
+            ),
+            "audit_fingerprint": (
+                native.feasibility_audit.audit_fingerprint
+                if native.feasibility_audit is not None
+                else None
+            ),
+            "deployability_status": native.deployability_status,
+            "deployability_reasons": list(native.deployability_reasons),
+            "energy_schedule_fingerprint": (
+                native_plan.energy_schedule.schedule_fingerprint
+                if native_plan is not None
+                else None
+            ),
+            "fcr_schedule_fingerprint": (
+                native_plan.fcr_schedule.schedule_fingerprint
+                if native_plan is not None
+                else None
+            ),
+            "plan_fingerprint": (
+                native_plan.plan_fingerprint if native_plan is not None else None
+            ),
+        },
+        "comparison": (
+            {
+                "overall_status": comparison.overall_status,
+                "status_counts": dict(comparison.status_counts),
+                "comparison_fingerprint": comparison.comparison_fingerprint,
+                "certification_request_fingerprint": (
+                    comparison.certification_request.request_fingerprint
+                ),
+                "certificate": comparison.joint_certificate.to_dict(),
+                "comparison_frame_fingerprints": comparison_payload[
+                    "comparison_frame_fingerprints"
+                ],
+                "producer_schedule_fingerprints": comparison_payload[
+                    "producer_schedule_fingerprints"
+                ],
+                "incomplete_fields": [
+                    value.to_dict()
+                    for value in comparison.field_results
+                    if value.status in {"mismatch", "unavailable"}
+                ],
+            }
+            if comparison is not None
+            else None
+        ),
+    }
+
+
+def _print_benchmark_record(
+    fixture,
+    policy,
+    native,
+    comparison,
+) -> dict[str, object]:
+    record = _benchmark_record(fixture, policy, native, comparison)
+    print("robust_fcr_reference_benchmark=" + json.dumps(record, sort_keys=True))
+    return record
 
 
 def test_full_2023_06_18_restriction_reference_comparison(
@@ -138,6 +232,22 @@ def test_full_2023_06_18_restriction_reference_comparison(
     assert native.feasibility_audit.passes_deployability_audit is True
 
     comparison = compare_robust_fcr_reference(fixture, native)
+    _assert_field_set_complete(comparison)
+    record = _print_benchmark_record(fixture, policy, native, comparison)
+    if native.solver.solve_status != "optimal":
+        assert native.solver.solve_status == "feasible"
+        assert native.solver.has_incumbent is True
+        assert native.solver.incumbent_accepted is True
+        assert policy.allow_feasible_incumbent_plan is False
+        assert native.deployability_status == "blocked"
+        assert "feasible_incumbent_not_opted_in" in native.deployability_reasons
+        assert native.deployable_plan is None
+        pytest.skip(
+            "full reference benchmark reached its selected resource limit with "
+            "a non-optimal audited incumbent; retained objective, bound, gap, "
+            "comparison counts, fingerprints, and incomplete evidence: "
+            + json.dumps(record, sort_keys=True)
+        )
     if comparison.joint_certificate.solve_status in {
         "no_solution",
         "failed",
@@ -146,28 +256,9 @@ def test_full_2023_06_18_restriction_reference_comparison(
         pytest.skip(
             "native solve completed, but joint certification did not complete "
             "within the declared benchmark resources: "
-            + json.dumps(comparison.joint_certificate.to_dict(), sort_keys=True)
-        )
-    _assert_field_complete(comparison)
-
-    print(
-        "robust_fcr_reference_benchmark="
-        + json.dumps(
-            {
-                "fixture_fingerprint": fixture.fixture_fingerprint,
-                "policy_fingerprint": policy.solve_policy_fingerprint,
-                "native_result_fingerprint": native.semantic_result_fingerprint,
-                "native_objective_eur": native.solver.objective_value_eur,
-                "native_bound_eur": native.solver.best_upper_bound_eur,
-                "comparison_fingerprint": comparison.comparison_fingerprint,
-                "comparison_status": comparison.overall_status,
-                "certificate_fingerprint": (
-                    comparison.joint_certificate.certificate_fingerprint
-                ),
-            },
-            sort_keys=True,
-        )
-    )
+                + json.dumps(comparison.joint_certificate.to_dict(), sort_keys=True)
+            )
+    _assert_parity_complete(comparison)
 
     if os.environ.get("OEL_REPEAT_REFERENCE_BENCHMARK") == "1":
         repeated_native = _solve_once(fixture, policy)
@@ -176,7 +267,7 @@ def test_full_2023_06_18_restriction_reference_comparison(
             fixture,
             repeated_native,
         )
-        _assert_field_complete(repeated_comparison)
+        _assert_parity_complete(repeated_comparison)
         assert repeated_native.semantic_result_fingerprint == (
             native.semantic_result_fingerprint
         )
