@@ -22,9 +22,9 @@ compiler validity, and compatibility can be reviewed as separate increments.
 **Purpose**: Establish reviewable U-Bounds inputs and protect existing artifact evidence before
 changing the TPM representation.
 
-- [ ] T001 Add the scalar decision, unbounded demand, declared discrete domains, physical training rows, exact endpoint/adjacent-outside query probes, and compiler probes to `tests/fixtures/tpm/declared_feature_domains_v1.json` without embedding generated model output or treating existing tolerances as domain tolerances
-- [ ] T002 Document the new fixture's provenance and refresh policy, and identify the existing v1/v2 manifests and sidecars as immutable compatibility anchors, in `tests/fixtures/tpm/README.md`
-- [ ] T003 Add fixture-loading, semantic-comparison, and source-byte snapshot helpers for later real-backend tests in `tests/integration/tpm/declared_domains_test_support.py`
+- [X] T001 Add the scalar decision, unbounded demand, declared discrete domains, physical training rows, exact endpoint/adjacent-outside query probes, and compiler probes to `tests/fixtures/tpm/declared_feature_domains_v1.json` without embedding generated model output or treating existing tolerances as domain tolerances
+- [X] T002 Document the new fixture's provenance and refresh policy, and identify the existing v1/v2 manifests and sidecars as immutable compatibility anchors, in `tests/fixtures/tpm/README.md`
+- [X] T003 Add fixture-loading, semantic-comparison, and source-byte snapshot helpers for later real-backend tests in `tests/integration/tpm/declared_domains_test_support.py`
 
 ---
 

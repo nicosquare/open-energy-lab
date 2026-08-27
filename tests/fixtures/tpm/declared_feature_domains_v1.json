@@ -1,0 +1,286 @@
+{
+  "fixture_name": "declared_feature_domains_v1",
+  "fixture_status": "active-input",
+  "purpose": "Reviewable physical inputs and declared feature domains for offline U-Bounds fitting, query, persistence, and compiler validation.",
+  "spec_feature": "014-declared-feature-domains",
+  "provenance": {
+    "author": "OpenAI Codex",
+    "origin": "Manually reviewed scalar-domain evidence derived from the U-Bounds mathematical contract; it contains no fitted model output.",
+    "legacy_evidence_paths": [],
+    "generation_command": "uv run --locked --no-sync python -m json.tool tests/fixtures/tpm/declared_feature_domains_v1.json",
+    "random_seed": 13,
+    "refresh_policy": "Change only when the declared-domain contract or its focused physical probes intentionally change; review every row and probe in the same change."
+  },
+  "planned_contracts": [
+    "specs/014-declared-feature-domains/contracts/feature-domain-contract.md",
+    "specs/014-declared-feature-domains/contracts/training-normalization-query-contract.md",
+    "specs/014-declared-feature-domains/contracts/compiler-validity-contract.md",
+    "specs/014-declared-feature-domains/contracts/validation-contract.md"
+  ],
+  "notes": [
+    "Decision observations cover only [60,140], a strict subset of the declared mathematical domain [40,160].",
+    "Demand is declared fully unbounded even though every committed observation is finite.",
+    "The declared service tier 'priority' is absent from physical training rows and remains domain-valid without fabricated evidence.",
+    "Domain membership is exact; numerical tolerances below apply only to approximate result assertions."
+  ],
+  "schema_version": "v1",
+  "fit_case": {
+    "artifact_id": "tpm-artifact:declared-feature-domains-v3",
+    "dataset_reference": "declared-feature-domains-v1",
+    "decision_features": [
+      "x",
+      "activation",
+      "service_tier"
+    ],
+    "target_name": "demand",
+    "event_target_name": "demand_above_100",
+    "target_threshold": 100.0,
+    "training_random_seed": 13
+  },
+  "feature_order": [
+    "x",
+    "activation",
+    "service_tier",
+    "demand",
+    "demand_above_100"
+  ],
+  "feature_declarations": {
+    "x": {
+      "feature_kind": "continuous",
+      "purpose": "decision-domain",
+      "shape": "finite",
+      "lower": 40.0,
+      "upper": 160.0,
+      "origin": "caller-declared"
+    },
+    "activation": {
+      "feature_kind": "binary",
+      "purpose": "decision-domain",
+      "values": [
+        "off",
+        "on"
+      ],
+      "origin": "caller-declared"
+    },
+    "service_tier": {
+      "feature_kind": "categorical",
+      "purpose": "decision-domain",
+      "values": [
+        "economy",
+        "standard",
+        "priority"
+      ],
+      "ordering": [
+        "economy",
+        "standard",
+        "priority"
+      ],
+      "origin": "caller-declared"
+    },
+    "demand": {
+      "feature_kind": "continuous",
+      "purpose": "distribution-support",
+      "shape": "unbounded",
+      "origin": "caller-declared"
+    }
+  },
+  "physical_training_rows": [
+    {
+      "x": 60.0,
+      "activation": "off",
+      "service_tier": "economy",
+      "demand": 72.0
+    },
+    {
+      "x": 70.0,
+      "activation": "on",
+      "service_tier": "standard",
+      "demand": 88.0
+    },
+    {
+      "x": 80.0,
+      "activation": "off",
+      "service_tier": "standard",
+      "demand": 105.0
+    },
+    {
+      "x": 90.0,
+      "activation": "on",
+      "service_tier": "economy",
+      "demand": 117.0
+    },
+    {
+      "x": 100.0,
+      "activation": "off",
+      "service_tier": "economy",
+      "demand": 96.0
+    },
+    {
+      "x": 110.0,
+      "activation": "on",
+      "service_tier": "standard",
+      "demand": 134.0
+    },
+    {
+      "x": 120.0,
+      "activation": "off",
+      "service_tier": "standard",
+      "demand": 82.0
+    },
+    {
+      "x": 130.0,
+      "activation": "on",
+      "service_tier": "economy",
+      "demand": 109.0
+    },
+    {
+      "x": 140.0,
+      "activation": "off",
+      "service_tier": "economy",
+      "demand": 100.0
+    },
+    {
+      "x": 60.0,
+      "activation": "on",
+      "service_tier": "standard",
+      "demand": 65.0
+    },
+    {
+      "x": 70.0,
+      "activation": "off",
+      "service_tier": "standard",
+      "demand": 91.0
+    },
+    {
+      "x": 80.0,
+      "activation": "on",
+      "service_tier": "economy",
+      "demand": 122.0
+    },
+    {
+      "x": 90.0,
+      "activation": "off",
+      "service_tier": "economy",
+      "demand": 78.0
+    },
+    {
+      "x": 100.0,
+      "activation": "on",
+      "service_tier": "standard",
+      "demand": 113.0
+    },
+    {
+      "x": 110.0,
+      "activation": "off",
+      "service_tier": "standard",
+      "demand": 99.0
+    },
+    {
+      "x": 120.0,
+      "activation": "on",
+      "service_tier": "economy",
+      "demand": 128.0
+    },
+    {
+      "x": 130.0,
+      "activation": "off",
+      "service_tier": "economy",
+      "demand": 85.0
+    },
+    {
+      "x": 140.0,
+      "activation": "on",
+      "service_tier": "standard",
+      "demand": 104.0
+    }
+  ],
+  "query_probes": [
+    {
+      "probe_name": "decision-lower-endpoint",
+      "feature_name": "x",
+      "physical_value": 40.0,
+      "expected_domain_membership": true,
+      "expected_model_coordinate": 0.0
+    },
+    {
+      "probe_name": "decision-upper-endpoint",
+      "feature_name": "x",
+      "physical_value": 160.0,
+      "expected_domain_membership": true,
+      "expected_model_coordinate": 1.0
+    },
+    {
+      "probe_name": "decision-adjacent-below",
+      "feature_name": "x",
+      "physical_value": 39.99999999999999,
+      "generated_by": "math.nextafter(40.0, -math.inf)",
+      "expected_domain_membership": false
+    },
+    {
+      "probe_name": "decision-adjacent-above",
+      "feature_name": "x",
+      "physical_value": 160.00000000000003,
+      "generated_by": "math.nextafter(160.0, math.inf)",
+      "expected_domain_membership": false
+    },
+    {
+      "probe_name": "declared-unobserved-category",
+      "feature_name": "service_tier",
+      "physical_value": "priority",
+      "expected_domain_membership": true,
+      "expected_model_coordinate": 2.0
+    },
+    {
+      "probe_name": "unbounded-demand-probe",
+      "feature_name": "demand",
+      "physical_value": 250.0,
+      "expected_domain_membership": true,
+      "expected_model_coordinate": 250.0
+    }
+  ],
+  "compiler_probes": {
+    "feature_name": "x",
+    "encoding": "piecewise-log-density",
+    "source": "declared-feature-domains-v1",
+    "physical_interval": [
+      60.0,
+      140.0
+    ],
+    "expected_model_coordinate_interval": [
+      0.16666666666666666,
+      0.8333333333333334
+    ],
+    "evaluation_points": [
+      {
+        "physical_value": 60.0,
+        "expected_model_coordinate": 0.16666666666666666,
+        "expected_validity_membership": true
+      },
+      {
+        "physical_value": 100.0,
+        "expected_model_coordinate": 0.5,
+        "expected_validity_membership": true
+      },
+      {
+        "physical_value": 140.0,
+        "expected_model_coordinate": 0.8333333333333334,
+        "expected_validity_membership": true
+      },
+      {
+        "physical_value": 59.99999999999999,
+        "generated_by": "math.nextafter(60.0, -math.inf)",
+        "expected_validity_membership": false
+      },
+      {
+        "physical_value": 140.00000000000003,
+        "generated_by": "math.nextafter(140.0, math.inf)",
+        "expected_validity_membership": false
+      }
+    ]
+  },
+  "assertion_tolerances": {
+    "domain_membership": "exact",
+    "model_coordinate": 1e-12,
+    "native_probability": 1e-6
+  }
+}

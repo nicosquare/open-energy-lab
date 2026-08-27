@@ -7,6 +7,9 @@ record a SHA-256 digest.
 
 ## Active Fixture Set
 
+- `declared_feature_domains_v1.json`: reviewable U-Bounds declarations,
+  physical training rows, and exact domain/compiler probes without fitted
+  model output.
 - `planning_dataset_v1.json`: supported planning-dataset artifact.
 - `tpm_artifact_spflow_v1.json`: reproducibly fitted schema-v2 production
   manifest for required current SPFlow 1.1 validation.
@@ -64,6 +67,14 @@ feature, or query validation.
 supplementary deterministic evidence and must never be reported as production
 current-SPFlow evidence.
 
+`declared_feature_domains_v1.json` is the source-input contract for feature
+`014-declared-feature-domains`. It declares scalar decision $x\in[40,160]$,
+fully unbounded demand support, an ordered binary decision, and a complete
+categorical decision whose `priority` value is deliberately unobserved. Its
+physical rows cover only $x\in[60,140]$. Endpoint, adjacent-outside, identity,
+unobserved-category, and compiler-validity probes are mathematical expectations,
+not generated SPFlow or MIO results.
+
 ## Required Provenance Fields
 
 Every top-level TPM fixture keeps:
@@ -90,6 +101,20 @@ by `open_energy_lab.tpm.load_tpm_artifact`. Query fixtures retain the
 `TPMQueryRequest` fields and exact expected response.
 
 ## Fixture Records
+
+`declared_feature_domains_v1.json`
+
+- status: active model-output-free input fixture
+- validation target: declaration resolution, physical support, exact domain
+  membership, stable transforms, native querying, and explicit compiler
+  validity
+- seed: fitting seed `13`; the committed physical rows themselves are
+  reviewable source evidence rather than generated output
+- refresh policy: update only with an intentional U-Bounds contract change;
+  review declarations, rows, probes, and assertion-tolerance purposes together
+- domain membership: exact, with no borrowed numerical tolerance
+- future production refresh command:
+  `uv run --locked --no-sync python examples/tpm_planning/run_declared_domains_pipeline.py --regenerate-fixture`
 
 `planning_dataset_v1.json`
 
@@ -170,6 +195,34 @@ uv run python examples/tpm_planning/run_generic_rows_pipeline.py --verify-fixtur
 
 Both commands require the locked SPFlow 1.1 installation. They do not use the
 network, notebooks, legacy runtimes, Pyomo, HiGHS, Gurobi, or external data.
+
+After the declared-domain pipeline is implemented, regenerate or verify its
+separate schema-v3 production evidence with:
+
+```bash
+uv run --locked --no-sync python \
+  examples/tpm_planning/run_declared_domains_pipeline.py --regenerate-fixture
+uv run --locked --no-sync python \
+  examples/tpm_planning/run_declared_domains_pipeline.py --verify-fixture
+```
+
+These commands must consume `declared_feature_domains_v1.json`; the notebook,
+network, GPU, and commercial-solver paths are not part of this fixture.
+
+## U-Bounds Compatibility Freeze
+
+The following pre-feature evidence files are immutable compatibility anchors:
+
+- `tpm_artifact_v1.json`
+- `tpm_artifact_v2.json`
+- `sidecars/tpm_artifact_v2.fixture.json`
+- `tpm_artifact_spflow_v1.json`
+- `sidecars/tpm_artifact_spflow_v1.spn_payload.pkl`
+- `tpm_artifact_unsupported_version.json`
+
+U-Bounds tests may snapshot, load, query, and compare these files, but must not
+rewrite or regenerate them into schema v3. A changed byte requires a separate,
+explicit compatibility review; loading alone never authorizes a refresh.
 
 ## Replay Integrity Refresh
 
