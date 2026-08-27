@@ -173,6 +173,11 @@ assert external_reference_result["mismatch_count"] == 0
 assert len(external_reference_comparison_table) == len(external_comparison.fields)
 assert {{"field_id", "status", "actual_value", "expected_value", "unit"}} <= set(external_reference_comparison_table.columns)
 assert "mismatch" not in set(external_reference_comparison_table["status"])
+assert set(external_reference_parity_plot_table["unit"]) == {{"EUR", "kWh", "kW"}}
+assert external_reference_parity_plot_table[["actual_value", "expected_value"]].notna().all().all()
+assert len(generated_figures) == 6
+assert generated_figures["external_reference_parity"] is external_reference_parity_figure
+assert len(external_reference_parity_figure.axes) == 3
 assert external_reference_result["trace_fingerprint"] == {EXPECTED_EXTERNAL_TRACE_FINGERPRINT!r}
 assert external_reference_result["settlement_fingerprint"] == {EXPECTED_EXTERNAL_SETTLEMENT_FINGERPRINT!r}
 assert external_reference_result["comparison_fingerprint"] == {EXPECTED_EXTERNAL_COMPARISON_FINGERPRINT!r}

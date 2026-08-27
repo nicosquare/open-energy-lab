@@ -124,6 +124,12 @@ Figure files are written only when explicitly enabled and only below:
 tmp/fcr-bid-evaluation-notebook/figures
 ```
 
+When the explicit external-reference branch is enabled, the notebook adds a
+sixth figure with separate EUR, kWh, and kW panels. Each panel places the Julia
+expected value beside the Open Energy Lab actual value, shows available expected
+and actual precision intervals, and colors the comparison by exact,
+source-precision-compatible, or mismatch status.
+
 Run the source and default execution contracts with:
 
 ```bash

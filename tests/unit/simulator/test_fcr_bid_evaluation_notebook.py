@@ -37,6 +37,7 @@ EXPECTED_CELL_IDS = (
     "display-fingerprint",
     "optional-reference-heading",
     "optional-reference-replay",
+    "plot-external-reference-parity",
     "optional-figure-export",
     "conclusions-and-limits",
 )
@@ -152,6 +153,7 @@ def test_notebook_uses_only_supported_source_boundaries() -> None:
 def test_external_replay_and_figure_export_are_explicit_and_disabled() -> None:
     config = _cell_source("offline-configuration")
     external = _cell_source("optional-reference-replay")
+    parity_plot = _cell_source("plot-external-reference-parity")
     export = _cell_source("optional-figure-export")
 
     assert "RUN_EXTERNAL_REFERENCE = False" in config
@@ -166,6 +168,11 @@ def test_external_replay_and_figure_export_are_explicit_and_disabled() -> None:
     assert "compare_reference_evaluation" in external
     assert "external_comparison.fields" in external
     assert 'external_comparison_payload["field_results"]' not in external
+    assert 'parity_units = ("EUR", "kWh", "kW")' in parity_plot
+    assert 'row["expected_interval"]' in parity_plot
+    assert 'row["actual_interval"]' in parity_plot
+    assert 'generated_figures["external_reference_parity"]' in parity_plot
+    assert "if RUN_EXTERNAL_REFERENCE:" in parity_plot
     assert "if EXPORT_FIGURES:" in export
     assert "mkdir" not in _source(cell_type="code").replace(export, "")
 
