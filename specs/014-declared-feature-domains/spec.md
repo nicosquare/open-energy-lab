@@ -28,7 +28,7 @@ boundaries that training data cover sparsely.
   label it legacy-inferred, and keep the mathematical domain unknown.
 - Q: Which coordinate system should be authoritative when a caller declares a compiler
   approximation interval? → A: Declare it in physical units and persist both the authoritative
-  physical interval and its derived normalized interval.
+  physical interval and its derived model-coordinate interval.
 - Q: May one feature carry both a decision-domain declaration and a distribution-support
   declaration at the same time? → A: No. Each feature has one role-appropriate mathematical
   declaration; decision-sampling policy is not distribution support, and training support remains
@@ -55,16 +55,46 @@ boundaries that training data cover sparsely.
 - Q: When a caller declares the two values of a binary feature, how should their normalized order be
   determined? → A: Preserve the caller-declared ordered pair; map its first value to $0$ and its
   second value to $1$ across normalization, persistence, querying, and binary decision linking.
+- Q: How do declarations reach the three existing public fit entry points? → A: Generic-row fitting
+  carries `feature_domains` in `TPMArtifactBuildRequest`; planning-dataset and study-manifest fitting
+  accept the same optional keyword mapping. All three use one resolver, reject declarations for
+  unknown or unselected columns, and never reinterpret existing planning metadata as declarations.
+- Q: What happens when a loaded v2 artifact is written again? → A: It remains schema v2 and emits
+  only its original v2 representation. New fits write v3, and obtaining v3 semantics from v2
+  requires refitting rather than an in-place upgrade.
+- Q: Does U-Bounds apply a floating-point boundary tolerance? → A: No. Mathematical-domain
+  membership uses exact closed comparisons. Existing workflow tolerances retain their existing
+  purpose and provenance but are not repurposed as domain tolerances.
+- Q: What does the compiler call a transformed feature value? → A: A model coordinate. The
+  compiler's derived model-coordinate interval is the same quantity previously described as the
+  derived normalized interval, including when identity normalization leaves it in physical units.
+- Q: Can one domain declaration encode a budget, capacity, or other coupled constraint? → A: No.
+  Each declaration belongs to exactly one feature; multi-feature references or constraint
+  expressions are rejected as malformed declaration input.
+- Q: Can a loaded v2 fitted artifact be used to produce a new compiled-v2 approximation? → A:
+  No. New compiled-v2 output requires a v3 fitted artifact whose retained continuous decision
+  features have finite declared mathematical domains. A v2 artifact has only unknown mathematical
+  meaning plus legacy-inferred operational ranges; refitting with declarations is the route to v3.
+  Already-persisted compiled-v1 payloads remain evaluable through their normalized-only legacy
+  path.
 
 ## Scope Classification *(mandatory)*
 
 - **Feature type**: New library capability with compatibility validation
 - **Target surface**: Public TPM feature declarations; fitting, normalization, native-query, and
-  compiler behavior; persisted TPM and compiled-result metadata; focused validation fixtures
+  compiler behavior; persisted TPM and compiled-result metadata; minimal planning adapters that
+  marginalize before compilation, forward approximation requests, or validate compiled metadata;
+  focused validation fixtures and one offline fixture-regeneration/verification command
 - **Legacy reference paths**: None. Existing OEL TPM artifacts and fixtures are the compatibility
   baseline; `legacy/*` is not a runtime dependency or migration target for this feature.
-- **New-code location**: The existing `src/open_energy_lab/tpm` package and corresponding focused
-  validation under `tests/unit/tpm` and `tests/integration/tpm`
+- **New-code location**: The existing `src/open_energy_lab/tpm` package; only
+  `src/open_energy_lab/planning/workflow.py`, `src/open_energy_lab/planning/problem.py`, and
+  `src/open_energy_lab/planning/piecewise.py` as minimal pass-through, ordering, and validation
+  adapters with no objective, benchmark-constraint, or planning-model redesign; corresponding
+  focused validation under `tests/unit/tpm`, `tests/integration/tpm`, and
+  `tests/integration/planning`; and
+  `examples/tpm_planning/run_declared_domains_pipeline.py` solely as a fixture-maintenance command
+  with no reusable domain logic or benchmark workflow
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -78,17 +108,19 @@ for theoretical truth.
 knowing whether a range represents feasibility, uncertainty support, observed coverage, or
 approximation validity.
 
-**Independent Test**: A reviewer can build and reload feature descriptions for a finitely bounded
+**Independent Test**: A reviewer can fit and reload feature descriptions for a finitely bounded
 scalar decision, an explicitly unbounded normal uncertainty, one-sided continuous supports,
 declared binary and categorical domains, and an unknown domain, then verify that each mathematical
-meaning and its provenance remain distinct from observed training support.
+meaning governs pre-backend validation and normalization while its provenance remains distinct
+from observed training support.
 
 **Acceptance Scenarios**:
 
 1. **Given** scalar decision $x$ with declared domain $[40,160]$ and normal demand $D$ with fully
-   unbounded support, **When** their feature descriptions are validated and persisted, **Then** the
-   decision domain and distribution support retain their different purposes and demand has no
-   fabricated finite endpoints.
+   unbounded support, **When** fitting validates, normalizes, and persists their feature
+   descriptions, **Then** $x$ uses its declared affine coordinates, demand retains physical-unit
+   identity coordinates, their purposes remain distinct, and demand has no fabricated finite
+   endpoints.
 2. **Given** finite, lower-bounded, upper-bounded, fully unbounded, and unknown continuous-domain
    declarations, **When** each is persisted and reloaded, **Then** its shape and meaning round trip
    without serializing numeric infinity and unknown never becomes explicitly unbounded.
@@ -108,11 +140,12 @@ meaning and its provenance remain distinct from observed training support.
 
 ---
 
-### User Story 2 - Normalize and Query Against Declared Meaning (Priority: P1)
+### User Story 2 - Query and Validate Declared Meaning (Priority: P1)
 
-As a TPM consumer, I need normalization and assignment validation to follow declared mathematical
-domains rather than a particular sample so that equivalent studies use stable coordinates and
-valid decisions are not rejected merely because they were unobserved during training.
+As a TPM consumer, I need native assignment validation to follow declared mathematical domains and
+the normalization meaning already used during fitting so that equivalent studies use stable
+coordinates and valid decisions are not rejected merely because they were unobserved during
+training.
 
 **Why this priority**: Sample-dependent normalization changes model inputs across seeds and can
 exclude legitimate boundary decisions. Stable declared semantics are the principal user-visible
@@ -166,7 +199,7 @@ An optimizer can otherwise exploit extrapolation beyond the interval that was ac
 assessed.
 
 **Independent Test**: A small continuous-decision compilation records a caller-selected finite
-approximation interval, maps physical and normalized decision values consistently, and rejects
+approximation interval, maps physical and model-coordinate decision values consistently, and rejects
 evaluation outside that interval. A missing interval fails only when the selected approximation
 requires one.
 
@@ -174,11 +207,11 @@ requires one.
 
 1. **Given** a continuous decision domain $[40,160]$ and an explicitly selected approximation
    interval $[60,140]$, **When** an approximation is compiled, **Then** the result records the
-   authoritative physical interval, its derived normalized interval, its declared source, and the
+   authoritative physical interval, its derived model-coordinate interval, its declared source, and the
    encoding it qualifies without changing the fitted feature's decision domain or normalization.
 2. **Given** an approximation that requires a finite validity interval but none is declared,
    **When** compilation is requested, **Then** compilation fails rather than substituting training
-   extrema, distribution support, or a default normalized interval.
+   extrema, distribution support, or a default model-coordinate $[0,1]$ interval.
 3. **Given** an approximation interval extending outside a decision feature's mathematical domain,
    **When** compilation validates it, **Then** the incompatible declaration is rejected.
 4. **Given** a compiled result with a recorded approximation interval, **When** evaluation is
@@ -186,6 +219,10 @@ requires one.
 5. **Given** a marginalized feature or a feature treatment that is exact and needs no finite
    approximation region, **When** compilation occurs, **Then** no artificial approximation domain
    is required or recorded for that feature.
+6. **Given** a loaded v2 fitted artifact whose finite ranges are only legacy-inferred, **When** new
+   compiled-v2 output is requested, **Then** compilation fails and directs the caller to refit with
+   finite declared decision domains rather than accepting an approximation interval against the
+   legacy range.
 
 ---
 
@@ -199,9 +236,11 @@ silently rewriting prior evidence or causing an avoidable compatibility break.
 planning. Compatibility is required, but reproducing old behavior must not turn observed ranges
 into new theoretical claims.
 
-**Independent Test**: Representative pre-feature artifacts load without mutation, retain their
-existing normalization results, and expose their finite ranges as legacy-inferred rather than as
-declared decision domains, bounded distribution support, or compiler approximation domains.
+**Independent Test**: Representative pre-feature fitted artifacts load and query without mutation,
+retain their existing normalization results, expose their finite ranges as legacy-inferred rather
+than as declared mathematical or compiler domains, and reserialize only as v2. Separately, an
+already-persisted compiled-v1 payload remains evaluable through its normalized-only compatibility
+path without acquiring physical validity.
 
 **Acceptance Scenarios**:
 
@@ -210,9 +249,9 @@ declared decision domains, bounded distribution support, or compiler approximati
    identified as legacy-inferred training information.
 2. **Given** a pre-feature artifact, **When** it is loaded or queried, **Then** its persisted source
    bytes are not rewritten and no new mathematical-domain claim is added to it implicitly.
-3. **Given** an artifact with only an unknown domain or legacy-inferred range, **When** an operation
-   requires a finite mathematical decision domain or approximation interval, **Then** that
-   operation fails with the missing semantic requirement identified.
+3. **Given** an already-persisted compiled-v1 payload, **When** it is evaluated or consumed by an
+   existing planning path, **Then** it remains usable through its normalized-only compatibility
+   behavior and no physical validity interval is inferred for it.
 4. **Given** an existing caller that omits declarations, **When** it fits and reloads an artifact,
    **Then** observed-extrema min-max normalization remains available, the mathematical domain stays
    unknown, and the transform is visibly labelled legacy-inferred rather than caller-declared.
@@ -259,8 +298,8 @@ declared decision domains, bounded distribution support, or compiler approximati
   a decision, uncertainty, or context feature.
 - An explicitly declared but unobserved binary or categorical value remains valid for native
   queries; its fitted probability may be weak, absent, smoothed, or otherwise backend-dependent.
-- An existing workflow has a documented numerical tolerance at a finite boundary, while another
-  workflow has no such tolerance.
+- A value lies exactly on a finite endpoint or one representable step outside it; U-Bounds applies
+  exact closed membership without borrowing an unrelated fit, query, or approximation tolerance.
 
 ## Requirements *(mandatory)*
 
@@ -317,19 +356,21 @@ declared decision domains, bounded distribution support, or compiler approximati
 - **FR-020**: Validation failures MUST identify the feature, supplied value or declaration, violated
   domain meaning, and expected condition without clamping, truncating, widening, or rewriting the
   declaration.
-- **FR-021**: This feature MUST NOT introduce a new fixed global boundary tolerance. A workflow
-  that already declares a numerical tolerance MAY apply it consistently to floating-point boundary
-  noise and MUST retain enough context to reproduce that interpretation.
+- **FR-021**: Mathematical-domain membership MUST use exact closed comparisons. This feature MUST
+  NOT introduce or infer a domain-boundary tolerance, and existing fit, query, or approximation
+  tolerances MUST retain their existing purpose and provenance rather than being repurposed for
+  domain membership.
 - **FR-022**: Any approximation that requires a finite validity region MUST require an explicit
   finite approximation-domain declaration.
-- **FR-023**: A decision feature's approximation domain MUST lie within its declared mathematical
-  decision domain and MAY equal the entire domain or a deliberate subset.
+- **FR-023**: New compiled-v2 output MUST be constructed from a v3 fitted artifact. A retained
+  continuous decision feature's approximation domain MUST lie within its finite declared
+  mathematical decision domain and MAY equal the entire domain or a deliberate subset.
 - **FR-024**: Selecting the entire decision domain as an approximation domain MUST be an explicit
   caller choice rather than a silent default.
 - **FR-025**: Training support and distribution support MUST NOT be substituted for a missing
   approximation domain.
 - **FR-026**: Approximation domains MUST be declared in physical feature units. A compiled result
-  MUST retain the authoritative physical interval, its derived normalized interval, the declared
+  MUST retain the authoritative physical interval, its derived model-coordinate interval, the declared
   source, and the encoding whose validity it qualifies.
 - **FR-027**: Compiled evaluation outside a recorded approximation domain MUST fail rather than
   extrapolate or clip.
@@ -353,7 +394,10 @@ declared decision domains, bounded distribution support, or compiler approximati
   but that range MUST NOT be presented as a declared decision domain, bounded distribution support,
   or approximation-validity claim.
 - **FR-032**: An operation requiring a finite mathematical domain or approximation domain MUST fail
-  clearly when an artifact supplies only unknown or legacy-inferred range information.
+  clearly when an artifact supplies only unknown or legacy-inferred range information. In
+  particular, a loaded v2 fitted artifact MUST fail new compiled-v2 compilation rather than using
+  its legacy range or a caller-supplied interval as a substitute; already-persisted compiled-v1
+  payloads remain evaluable only through their separate normalized-coordinate compatibility path.
 - **FR-033**: The feature MUST preserve existing mixed-feature artifact loading and compatibility
   behavior without adding new mixed-domain semantics.
 - **FR-034**: The feature MUST NOT introduce integer feature semantics; finite numeric intervals may
@@ -361,7 +405,7 @@ declared decision domains, bounded distribution support, or compiler approximati
 - **FR-035**: Persisted domain, support, normalization, and approximation information MUST round trip
   through the new reader without loss of meaning or provenance. A new artifact MUST NOT discard or
   disguise these meanings merely to resemble a pre-feature representation.
-- **FR-036**: Required fitting, native-query, and physical-to-normalized compiler validation MUST be
+- **FR-036**: Required fitting, native-query, and physical-to-model-coordinate compiler validation MUST be
   reproducible offline on CPU using the project's existing production dependency boundaries.
 - **FR-037**: Heavy or environment-sensitive dependencies MUST remain isolated at their existing
   workflow boundaries; importing the base library MUST NOT initiate those dependencies.
@@ -371,6 +415,9 @@ declared decision domains, bounded distribution support, or compiler approximati
   fitting configuration and seeds where fitting occurs, normalization meaning, approximation
   request and encoding identity where compilation occurs, dependency context, and open-solver
   assumptions needed to reproduce each result.
+- **FR-040**: Every mathematical declaration MUST describe exactly one named feature. Declaration
+  input containing multi-feature references, budget or capacity expressions, or other coupled
+  feasibility logic MUST fail validation rather than being interpreted as coordinate bounds.
 
 ### Out of Scope
 
@@ -409,7 +456,7 @@ declared decision domains, bounded distribution support, or compiler approximati
   legacy-inferred normalization applies.
 - **Approximation Domain Declaration**: A caller-selected finite interval associated with one
   compiler request for a feature treatment that needs bounded validity.
-- **Compiled Validity Record**: The authoritative physical interval, its derived normalized
+- **Compiled Validity Record**: The authoritative physical interval, its derived model-coordinate
   interval, source, encoding identity, and feature association that delimit where a compiled
   approximation may be evaluated.
 - **Legacy-Inferred Range**: A pre-feature or compatibility range derived from observed data whose
@@ -453,9 +500,9 @@ declared decision domains, bounded distribution support, or compiler approximati
   unsupported native-query fixture is rejected with the same distinction and no missing discrete
   value is fabricated.
 - **SC-008**: Every compiler acceptance fixture that needs approximation bounds records matching
-  physical and derived normalized intervals, rejects a missing or incompatible interval, and
+  physical and derived model-coordinate intervals, rejects a missing or incompatible interval, and
   rejects every tested evaluation outside the authoritative physical interval.
-- **SC-009**: One small physical-to-normalized decision-linking workflow completes offline on CPU
+- **SC-009**: One small physical-to-model-coordinate decision-linking workflow completes offline on CPU
   through the open solver path without network access or a commercial license.
 - **SC-010**: Importing the base library continues to complete without activating fitting,
   compiler, or solver dependencies.
@@ -469,6 +516,7 @@ declared decision domains, bounded distribution support, or compiler approximati
   and preserves declarations but does not choose benchmark bounds or probability distributions.
 - Finite and one-sided endpoints are closed. A finite declaration with equal endpoints represents
   a fixed physical feature value.
+- Domain membership comparisons are exact. Existing workflow tolerances are not domain tolerances.
 - Training support is derived from raw physical values before normalization.
 - A declared but unobserved category remains a valid mathematical value even when fitted evidence
   for that category is weak or absent.
