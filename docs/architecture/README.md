@@ -42,3 +42,23 @@ This is a bidder-independent evaluator, not a bid optimizer. Reference-result
 parity is limited to the aggregate evidence exported by the pinned reference
 implementation and its field-specific source-precision bounds; no complete
 ten-second Julia trace parity is claimed.
+
+## Feature 013 reference robust-FCR bidding map
+
+- Contracts and native bidder: immutable problem/result/reference contracts,
+  Pyomo formulation handoff, lazy HiGHS/Gurobi adapters, equation audit, and
+  bidder-neutral plan extraction in
+  [`control`](../../src/open_energy_lab/control).
+- Downstream owner: Feature 012's existing
+  [`simulator`](../../src/open_energy_lab/simulator) evaluator alone owns
+  post-acceptance activation replay and realized settlement.
+- Design: [Feature 013 implementation plan](../../specs/013-reference-robust-fcr-bidding/plan.md),
+  [migration/equation ledger](../migration/reference-robust-fcr-bidding.md),
+  and [review quickstart](../../specs/013-reference-robust-fcr-bidding/quickstart.md).
+- Examples: [authored solve, explicit historical benchmark, and fixture-normalization paths](../../examples/robust_fcr_bidding/README.md).
+
+The deployable restriction and upper-bound relaxation preserve the pinned
+single-day, non-intraday 24/96/6 formulation. Bid selection cannot access
+realized activation. The normalized Julia result supports rounded-decision and
+objective comparison with explicit precision/certification categories, not
+unrounded solver-proof or full-trace equality.

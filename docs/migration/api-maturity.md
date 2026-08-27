@@ -54,6 +54,36 @@ The fixed public maturity is intentionally narrower than robust bidding. These
 APIs accept or build deterministic fixed schedules and replay one BESS; they do
 not optimize bids, inspect future activation, or claim robust SOC feasibility.
 
+## Stable Public v1 Reference Robust-FCR Bidding Surface
+
+Feature `013-reference-robust-fcr-bidding` promotes its immutable contracts,
+constructors, solve functions, and reference-comparison entry points as stable
+lazy exports from `open_energy_lab.control`. The complete symbol list is pinned
+by `specs/013-reference-robust-fcr-bidding/contracts/python-api.md` and the
+exact package export contract tests.
+
+The stable scope is one ordinary delivery day, the 24/96/6 non-intraday
+restriction/relaxation, HiGHS solve evidence, independent equation audit,
+charge-positive `FixedFCRBidPlan` extraction, and bounded normalized-reference
+comparison. Exact Gurobi is optional evidence. Rolling horizons, multi-day SOC
+carry-over, intraday recourse, scenarios, TPM bid selection, degradation, live
+data, and broader reserve products are not part of this API.
+
+Feature 013 reuses Feature 009's locked Pyomo/HiGHS dependency versions but
+does not extend or call `open_energy_lab.planning`, consume TPM artifacts, or
+change planning solver behavior. Its only operational handoff is to Feature
+012: an eligible restriction returns the already public bidder-neutral
+`FixedFCRBidPlan`, after which the existing evaluator alone owns activation,
+physics, and realized settlement.
+
+Reference statuses are `exact`, `source_precision_compatible`,
+`alternative_optimum_compatible`, `mismatch`, and `unavailable`. They are
+evidence categories, not API maturity levels. The selected 3,600-second native
+benchmark owns the complete `native-reference-benchmark-highs-v1` policy and
+fingerprint
+`d4d8934676fce6755f525ef8844f796669e0ec49158a2107515b2dee29b682ed`;
+the source fixture owns no native policy.
+
 ### Feature 010 Single-Owner Matrix
 
 | Responsibility ID | Responsibility | Single owner |

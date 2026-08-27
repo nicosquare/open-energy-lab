@@ -169,6 +169,45 @@ and common objective equivalence all pass. Unsupported source fields remain
 
 ## Selected validation records
 
+### Routine offline gate (2026-08-27)
+
+The exact quickstart selection passed 131 tests in 146.46 seconds on Python
+3.14.6 with Pyomo 6.10.1 and highspy/HiGHS 1.15.1. Repeated same-environment
+tests proved identical decisions, objective/bound/gap semantic payloads,
+diagnostics, audits, certificates, comparisons, and result fingerprints while
+excluding elapsed time and temporary paths.
+
+The authored zero-bid restriction/relaxation record is:
+
+- problem fingerprint
+  `b804be1a3eb44cb1091a4111f4e7091b71d6ce23f945e877e1be8b1e6f226138`;
+- comparison-problem fingerprint
+  `6d3d536ba5fc14d344f8f6472decc39505fdd7c92003c1f7cac8819d83cd7189`;
+- solve-policy fingerprint
+  `860e55d721594ae41c50154132d34148e694ca3278bc7163bac64b79ea7a13f8`;
+- objective-comparison-policy fingerprint
+  `ed18f9cbc06fca9f16555e534acf235cf542c522202aaff72597839e224606c1`;
+- restriction objective/bound/absolute gap/relative gap
+  `0.0 EUR / 0.0 EUR / 0.0 EUR / 0.0`, semantic result fingerprint
+  `c60d153b1901f36f4906f5f24a6c262a98b0d0a9039c1bd07a08ab3b21d764f6`,
+  audit fingerprint
+  `d5565b989d68e5510d8a0a48ab8c0825918e11924967be3c3dc02abd46784eb5`,
+  and plan fingerprint
+  `f8a3f310572c0676e5e70b8b773fa361bbac03b8fadf5cd1758fcc3244a57709`;
+- restriction energy/FCR schedule fingerprints
+  `649fedacdae1770ad6fdc5828a52ab9578105a48e980bdacfba6b3379374afb4`
+  and `366dec5f5172f8e28f40a8873aecccc8e554ce6201a13b030030ae718844c78e`;
+- relaxation objective/bound/absolute gap/relative gap
+  `0.0 EUR / 0.0 EUR / 0.0 EUR / 0.0`, semantic result fingerprint
+  `6e4736d49a5991983b6da4c1e6fc3f9c253347489de612e2c3ad826ef40b0445`,
+  audit fingerprint
+  `f278e5d9c41232a589b9223dc639493f3048bb8bf53eb1e63e51dfabead6a608`,
+  and no plan; and
+- common decision-vector fingerprint
+  `a00a601eb3cdd1acabf87e3c58c75233b9af3c109675c5d41af0a797bc5a180c`
+  plus satisfied bound-comparison fingerprint
+  `2f0eee49feae804ea133e28c0ad2523e4ff014f75c4d7ae785135a6534b8d023`.
+
 ### External Feature 012 replay (2026-08-27)
 
 The explicitly selected `external_reference_data` gate found the governed CSV
