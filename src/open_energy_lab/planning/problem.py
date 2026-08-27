@@ -20,12 +20,14 @@ from open_energy_lab.planning.piecewise import (
     validate_first_release_decision_features,
 )
 from open_energy_lab.tpm.artifact import TPMArtifact, load_tpm_artifact
+from open_energy_lab.tpm.domains import TPMApproximationDomain
 from open_energy_lab.tpm.mio import compile_spflow_model_to_mio, infer_max_sum_terms
 from open_energy_lab.tpm.optional_spflow import (
     build_spn_mip_payload,
     load_spflow_payload,
     supports_spn_mip,
 )
+from open_energy_lab.tpm.query import marginalize_spflow_model
 
 SUPPORTED_OBJECTIVE_DIRECTIONS = ("minimize",)
 SUPPORTED_PLANNING_BACKENDS = ("pyomo",)
@@ -518,10 +520,39 @@ def _build_solver_facing_spn_payload(
         raise ValueError(
             "production current-SPFlow planning requires a persisted model sidecar"
         )
-    compiled = compile_spflow_model_to_mio(
-        runtime_payload["model"],
-        feature_schema=artifact.feature_specs,
+    retained_names = {
+        *problem_definition.decision_features,
+        str(artifact.target_definition["event_target_name"]),
+    }
+    marginalized_indices = tuple(
+        index
+        for index, spec in enumerate(artifact.feature_specs)
+        if spec.feature_name not in retained_names
     )
+    compilation_model = (
+        marginalize_spflow_model(runtime_payload["model"], marginalized_indices)
+        if marginalized_indices
+        else runtime_payload["model"]
+    )
+    approximation_domains = _approximation_domains_from_contract(
+        problem_definition.approximation_contract
+    )
+    if artifact.schema_version == "v3":
+        compiled = compile_spflow_model_to_mio(
+            compilation_model,
+            fitted_artifact=artifact,
+            approximation_domains=approximation_domains,
+        )
+    else:
+        if approximation_domains:
+            raise ValueError(
+                "physical approximation domains require refitting the source artifact "
+                "as schema v3 with declared domains"
+            )
+        compiled = compile_spflow_model_to_mio(
+            compilation_model,
+            feature_schema=artifact.feature_specs,
+        )
     return build_current_spflow_planning_payload(
         compiled,
         approximation_metadata=artifact.approximation_metadata,
@@ -531,6 +562,28 @@ def _build_solver_facing_spn_payload(
         shortfall_threshold=problem_definition.shortfall_threshold,
         payload_locator=artifact.payload_locator,
     )
+
+
+def _approximation_domains_from_contract(
+    approximation_contract: Mapping[str, object],
+) -> tuple[TPMApproximationDomain, ...]:
+    raw_domains = approximation_contract.get("approximation_domains", ())
+    if isinstance(raw_domains, Mapping) or isinstance(raw_domains, (str, bytes)):
+        raise TypeError("approximation_contract.approximation_domains must be a sequence")
+    if not isinstance(raw_domains, Sequence):
+        raise TypeError("approximation_contract.approximation_domains must be a sequence")
+    domains: list[TPMApproximationDomain] = []
+    for index, raw_domain in enumerate(raw_domains):
+        if isinstance(raw_domain, TPMApproximationDomain):
+            domains.append(raw_domain)
+        elif isinstance(raw_domain, Mapping):
+            domains.append(TPMApproximationDomain.from_dict(raw_domain))
+        else:
+            raise TypeError(
+                "approximation_contract.approximation_domains entries must be "
+                f"TPMApproximationDomain records or mappings; found index {index}"
+            )
+    return tuple(domains)
 
 
 def _pyomo_is_available() -> bool:

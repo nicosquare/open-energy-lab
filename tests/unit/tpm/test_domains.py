@@ -9,6 +9,8 @@ import math
 import pytest
 
 from open_energy_lab.tpm.domains import (
+    TPMApproximationDomain,
+    TPMCompiledValidityRecord,
     TPMFeatureDomain,
     TPMNormalizationSpec,
     TPMTrainingSupport,
@@ -375,3 +377,113 @@ def test_semantic_record_loaders_reject_incomplete_payloads(
 ) -> None:
     with pytest.raises(ValueError, match="missing required field"):
         record_type.from_dict(payload)
+
+
+def test_approximation_domain_derives_auditable_physical_and_model_validity() -> None:
+    request = TPMApproximationDomain(
+        feature_name="x",
+        lower=60.0,
+        upper=140.0,
+        source="scalar-diagnostic",
+    )
+    normalization = TPMNormalizationSpec(
+        feature_name="x",
+        feature_kind="continuous",
+        kind="min-max",
+        origin="caller-declared",
+        lower=40.0,
+        upper=160.0,
+    )
+
+    validity = request.derive_validity(
+        feature_index=0,
+        normalization=normalization,
+        relative_breakpoints=(0.0, 0.25, 0.5, 0.75, 1.0),
+        compiler_version="spflow-v1-mio-v2",
+        payload_schema_version="v2",
+    )
+
+    assert validity.physical_breakpoints == (60.0, 80.0, 100.0, 120.0, 140.0)
+    assert validity.model_lower == pytest.approx(1.0 / 6.0)
+    assert validity.model_upper == pytest.approx(5.0 / 6.0)
+    assert validity.model_breakpoints == pytest.approx(
+        (1.0 / 6.0, 1.0 / 3.0, 0.5, 2.0 / 3.0, 5.0 / 6.0)
+    )
+    assert validity.encoding == "piecewise-log-density"
+    assert TPMApproximationDomain.from_dict(request.to_dict()) == request
+    assert TPMCompiledValidityRecord.from_dict(validity.to_dict()) == validity
+    json.dumps(validity.to_dict(), allow_nan=False)
+
+
+def test_identity_approximation_coordinates_remain_in_physical_units() -> None:
+    request = TPMApproximationDomain(
+        feature_name="demand",
+        lower=60.0,
+        upper=140.0,
+        source="compiler-tail-window",
+    )
+    validity = request.derive_validity(
+        feature_index=1,
+        normalization=TPMNormalizationSpec(
+            feature_name="demand",
+            feature_kind="continuous",
+            kind="identity",
+            origin="caller-declared",
+        ),
+        relative_breakpoints=(0.0, 0.5, 1.0),
+        compiler_version="spflow-v1-mio-v2",
+        payload_schema_version="v2",
+    )
+
+    assert validity.model_breakpoints == validity.physical_breakpoints
+
+
+@pytest.mark.parametrize(
+    ("lower", "upper"),
+    [
+        (math.nan, 1.0),
+        (0.0, math.inf),
+        (1.0, 1.0),
+        (2.0, 1.0),
+    ],
+)
+def test_approximation_domain_requires_finite_positive_width(
+    lower: float,
+    upper: float,
+) -> None:
+    with pytest.raises((TypeError, ValueError), match="finite|strictly less"):
+        TPMApproximationDomain(
+            feature_name="x",
+            lower=lower,
+            upper=upper,
+            source="invalid-test",
+        )
+
+
+def test_compiled_validity_rejects_mutated_model_coordinates() -> None:
+    request = TPMApproximationDomain(
+        feature_name="x",
+        lower=60.0,
+        upper=140.0,
+        source="scalar-diagnostic",
+    )
+    normalization = TPMNormalizationSpec(
+        feature_name="x",
+        feature_kind="continuous",
+        kind="min-max",
+        origin="caller-declared",
+        lower=40.0,
+        upper=160.0,
+    )
+    payload = request.derive_validity(
+        feature_index=0,
+        normalization=normalization,
+        relative_breakpoints=(0.0, 0.5, 1.0),
+        compiler_version="spflow-v1-mio-v2",
+        payload_schema_version="v2",
+    ).to_dict()
+    payload["model_breakpoints"] = [0.0, 0.5, 1.0]
+    payload["model_interval"] = [0.0, 1.0]
+
+    with pytest.raises(ValueError, match="derived"):
+        TPMCompiledValidityRecord.from_dict(payload)

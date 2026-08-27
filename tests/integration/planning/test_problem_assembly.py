@@ -9,6 +9,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import open_energy_lab.planning.problem as problem_module
 
 from open_energy_lab.planning import load_planning_dataset
 from open_energy_lab.planning.problem import (
@@ -320,3 +321,18 @@ def test_assemble_planning_problem_uses_spn_mip_when_serialized_conditional_mode
     assert assembled.risk_evaluation_mode == "spn_mip"
     assert assembled.spn_mip_payload["source"] == "spflow_backend"
     assert assembled.solver_metadata["spn_payload_source"] == "spflow_backend"
+
+
+def test_v3_planning_requires_interval_for_retained_continuous_decision_only() -> None:
+    artifact = load_tpm_artifact(
+        "tests/fixtures/tpm/tpm_artifact_domains_v3.json"
+    )
+    definition = SimpleNamespace(
+        decision_features=("x", "activation"),
+        shortfall_threshold=100.0,
+        chance_limit_epsilon=0.9,
+        approximation_contract={},
+    )
+
+    with pytest.raises(ValueError, match="missing explicit approximation domain.*x"):
+        problem_module._build_solver_facing_spn_payload(definition, artifact=artifact)

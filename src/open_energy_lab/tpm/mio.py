@@ -11,6 +11,10 @@ from pathlib import Path
 from typing import Any
 
 from .artifact import TPMArtifact, load_tpm_artifact
+from .domains import (
+    TPMApproximationDomain,
+    TPMCompiledValidityRecord,
+)
 from .features import TPMFeatureSpec, dump_feature_schema, load_feature_schema
 from .optional_spflow import (
     CURRENT_SPFLOW_BACKEND_GENERATION,
@@ -24,8 +28,10 @@ from .piecewise import load_piecewise_metadata
 
 _SUM_BIG_M = 100.0
 _DEFAULT_EXP_DOMAIN_FLOOR = -500.0
-_SPFLOW_MIO_SCHEMA_VERSION = "v1"
-_SPFLOW_MIO_COMPILER_VERSION = "spflow-v1-mio-v1"
+_LEGACY_SPFLOW_MIO_SCHEMA_VERSION = "v1"
+_LEGACY_SPFLOW_MIO_COMPILER_VERSION = "spflow-v1-mio-v1"
+_SPFLOW_MIO_SCHEMA_VERSION = "v2"
+_SPFLOW_MIO_COMPILER_VERSION = "spflow-v1-mio-v2"
 _CANONICAL_BREAKPOINT_COUNT = 5
 _MINIMUM_BREAKPOINT_COUNT = 3
 _DEFAULT_MIO_EPSILON = 1e-6
@@ -61,7 +67,12 @@ class UnsupportedSPFlowModuleError(ValueError):
 def compile_spflow_model_to_mio(
     model: object,
     *,
-    feature_schema: Sequence[TPMFeatureSpec | Mapping[str, object]],
+    feature_schema: Sequence[TPMFeatureSpec | Mapping[str, object]] | None = None,
+    fitted_artifact: TPMArtifact | str | Path | Mapping[str, Any] | None = None,
+    approximation_domains: Sequence[
+        TPMApproximationDomain | Mapping[str, object]
+    ]
+    | None = None,
     breakpoint_count: int = _CANONICAL_BREAKPOINT_COUNT,
     breakpoints: Sequence[float] | None = None,
     breakpoint_overrides: Mapping[str | int, Sequence[float]] | None = None,
@@ -80,7 +91,32 @@ def compile_spflow_model_to_mio(
 
     require_spflow_backend()
     bindings = _load_spflow_mio_bindings()
-    schema = _resolve_compiler_feature_schema(feature_schema)
+    compiled_v2 = fitted_artifact is not None or approximation_domains is not None
+    artifact = None if fitted_artifact is None else _load_artifact(fitted_artifact)
+    if compiled_v2:
+        if artifact is None:
+            raise ValueError(
+                "compiled-v2 requires a fitted v3 artifact; refit with declared domains"
+            )
+        if artifact.schema_version != "v3":
+            raise ValueError(
+                "compiled-v2 requires a fitted artifact with schema_version 'v3'; "
+                "refit legacy evidence with declared domains"
+            )
+        schema = artifact.feature_specs
+        if feature_schema is not None:
+            supplied_schema = _resolve_compiler_feature_schema(feature_schema)
+            if dump_feature_schema(
+                supplied_schema,
+                schema_version="v3",
+            ) != dump_feature_schema(schema, schema_version="v3"):
+                raise ValueError(
+                    "feature_schema must exactly match the fitted v3 artifact schema"
+                )
+    else:
+        if feature_schema is None:
+            raise ValueError("feature_schema is required for compiled-v1 compatibility")
+        schema = _resolve_compiler_feature_schema(feature_schema)
     resolved_policy, feature_breakpoints, resolved_epsilon = _resolve_compiler_policy(
         schema=schema,
         breakpoint_count=breakpoint_count,
@@ -89,6 +125,23 @@ def compile_spflow_model_to_mio(
         breakpoint_policy=breakpoint_policy,
         mio_epsilon=mio_epsilon,
     )
+    validity_records: dict[int, TPMCompiledValidityRecord] = {}
+    if compiled_v2:
+        validity_records = _resolve_compiled_v2_validity(
+            model=model,
+            schema=schema,
+            approximation_domains=approximation_domains,
+            relative_breakpoints=feature_breakpoints,
+        )
+        feature_breakpoints = {
+            index: validity.model_breakpoints
+            for index, validity in validity_records.items()
+        }
+        resolved_policy = {
+            **resolved_policy,
+            "policy_name": "physical-interval-relative-v2",
+            "relative_breakpoints": resolved_policy.pop("breakpoints"),
+        }
 
     nodes: list[dict[str, object]] = []
     seen_modules: set[int] = set()
@@ -143,6 +196,7 @@ def compile_spflow_model_to_mio(
                 module,
                 schema=schema,
                 feature_breakpoints=feature_breakpoints,
+                validity_records=validity_records,
                 mio_epsilon=resolved_epsilon,
             )
             node["id"] = len(nodes)
@@ -189,11 +243,21 @@ def compile_spflow_model_to_mio(
             ),
         )
 
-    return {
-        "schema_version": _SPFLOW_MIO_SCHEMA_VERSION,
+    schema_version = (
+        _SPFLOW_MIO_SCHEMA_VERSION
+        if compiled_v2
+        else _LEGACY_SPFLOW_MIO_SCHEMA_VERSION
+    )
+    compiler_version = (
+        _SPFLOW_MIO_COMPILER_VERSION
+        if compiled_v2
+        else _LEGACY_SPFLOW_MIO_COMPILER_VERSION
+    )
+    payload = {
+        "schema_version": schema_version,
         "payload_format": "open-energy-lab-spflow-mio",
-        "compiler_version": _SPFLOW_MIO_COMPILER_VERSION,
-        "backend_compiler_version": _SPFLOW_MIO_COMPILER_VERSION,
+        "compiler_version": compiler_version,
+        "backend_compiler_version": compiler_version,
         "backend_generation": CURRENT_SPFLOW_BACKEND_GENERATION,
         "backend_api_version": REQUIRED_SPFLOW_VERSION,
         "supported_module_types": list(_SUPPORTED_SPFLOW_MODULE_TYPES),
@@ -203,38 +267,103 @@ def compile_spflow_model_to_mio(
         "sum_encoding_mode": "weighted-logsumexp",
         "output_channels": 1,
         "num_repetitions": 1,
-        "feature_schema": list(dump_feature_schema(schema)),
+        "feature_schema": list(
+            dump_feature_schema(
+                schema,
+                schema_version="v3" if compiled_v2 else "v2",
+            )
+        ),
         "breakpoint_policy": resolved_policy,
         "mio_epsilon": resolved_epsilon,
         "root_id": root_id,
         "nodes": nodes,
     }
+    if compiled_v2:
+        payload["fitted_artifact"] = {
+            "artifact_id": artifact.artifact_id,
+            "schema_version": artifact.schema_version,
+            "payload_hash": artifact.payload_hash,
+        }
+        payload["compiled_validity"] = [
+            validity_records[index].to_dict() for index in sorted(validity_records)
+        ]
+    return payload
 
 
 def evaluate_compiled_spflow_probability(
     compiled: Mapping[str, object],
     *,
-    normalized_evidence: Sequence[float] | Mapping[str, float],
+    normalized_evidence: Sequence[float] | Mapping[str, float] | None = None,
+    physical_evidence: Sequence[object] | Mapping[str, object] | None = None,
+    model_coordinate_evidence: Sequence[float] | Mapping[str, float] | None = None,
 ) -> float:
-    """Evaluate one solver-neutral compiler payload without importing SPFlow."""
+    """Evaluate one solver-neutral payload through its versioned evidence contract."""
 
     payload = _mapping(compiled, field_name="compiled")
-    if payload.get("schema_version") != _SPFLOW_MIO_SCHEMA_VERSION:
+    schema_version = payload.get("schema_version")
+    if schema_version not in {
+        _LEGACY_SPFLOW_MIO_SCHEMA_VERSION,
+        _SPFLOW_MIO_SCHEMA_VERSION,
+    }:
         raise ValueError(
-            "compiled schema_version must be "
-            f"{_SPFLOW_MIO_SCHEMA_VERSION!r}, found {payload.get('schema_version')!r}"
+            "compiled schema_version must be one of "
+            f"{(_LEGACY_SPFLOW_MIO_SCHEMA_VERSION, _SPFLOW_MIO_SCHEMA_VERSION)!r}, "
+            f"found {schema_version!r}"
         )
-    if payload.get("compiler_version") != _SPFLOW_MIO_COMPILER_VERSION:
+    expected_compiler_version = (
+        _LEGACY_SPFLOW_MIO_COMPILER_VERSION
+        if schema_version == _LEGACY_SPFLOW_MIO_SCHEMA_VERSION
+        else _SPFLOW_MIO_COMPILER_VERSION
+    )
+    if payload.get("compiler_version") != expected_compiler_version:
         raise ValueError(
             "compiled compiler_version must be "
-            f"{_SPFLOW_MIO_COMPILER_VERSION!r}, found {payload.get('compiler_version')!r}"
+            f"{expected_compiler_version!r}, found {payload.get('compiler_version')!r}"
         )
 
     schema = load_feature_schema(
-        _sequence_of_mappings(payload.get("feature_schema"), field_name="feature_schema")
+        _sequence_of_mappings(payload.get("feature_schema"), field_name="feature_schema"),
+        schema_version="v3" if schema_version == _SPFLOW_MIO_SCHEMA_VERSION else "v2",
     )
-    evidence = _resolve_normalized_evidence(normalized_evidence, schema=schema)
     nodes = _sequence_of_mappings(payload.get("nodes"), field_name="nodes")
+    if schema_version == _LEGACY_SPFLOW_MIO_SCHEMA_VERSION:
+        if physical_evidence is not None or model_coordinate_evidence is not None:
+            raise ValueError(
+                "compiled-v1 supports normalized_evidence only and has no physical validity"
+            )
+        if normalized_evidence is None:
+            raise ValueError("compiled-v1 requires normalized_evidence")
+        evidence = _resolve_normalized_evidence(normalized_evidence, schema=schema)
+    else:
+        if normalized_evidence is not None:
+            raise ValueError(
+                "compiled-v2 requires physical_evidence or model_coordinate_evidence; "
+                "normalized_evidence is the compiled-v1 compatibility path"
+            )
+        supplied = tuple(
+            value is not None for value in (physical_evidence, model_coordinate_evidence)
+        )
+        if sum(supplied) != 1:
+            raise ValueError(
+                "compiled-v2 requires exactly one of physical_evidence or "
+                "model_coordinate_evidence"
+            )
+        validity = _load_compiled_validity(payload)
+        active_indices = _compiled_feature_indices(nodes)
+        if physical_evidence is not None:
+            evidence = _resolve_compiled_v2_physical_evidence(
+                physical_evidence,
+                schema=schema,
+                active_indices=active_indices,
+                validity=validity,
+            )
+        else:
+            evidence = _resolve_compiled_v2_model_evidence(
+                model_coordinate_evidence,
+                schema=schema,
+                active_indices=active_indices,
+                validity=validity,
+            )
     node_by_id = {int(node["id"]): node for node in nodes}
     if len(node_by_id) != len(nodes):
         raise ValueError("compiled nodes must use unique integer ids")
@@ -312,6 +441,132 @@ def _resolve_compiler_feature_schema(
     if len(set(names)) != len(names):
         raise ValueError("feature_schema feature_name values must be unique")
     return tuple(schema)
+
+
+def _resolve_compiled_v2_validity(
+    *,
+    model: object,
+    schema: Sequence[TPMFeatureSpec],
+    approximation_domains: Sequence[
+        TPMApproximationDomain | Mapping[str, object]
+    ]
+    | None,
+    relative_breakpoints: Mapping[int, tuple[float, ...]],
+) -> dict[int, TPMCompiledValidityRecord]:
+    model_scope = _spflow_module_scope(model)
+    if model_scope is None:
+        raise ValueError(
+            "compiled-v2 requires a model with an auditable retained feature scope"
+        )
+    if any(index < 0 or index >= len(schema) for index in model_scope):
+        raise ValueError("compiled-v2 model scope is outside the fitted artifact schema")
+    for feature_index in model_scope:
+        spec = schema[feature_index]
+        domain = spec.mathematical_domain
+        if (
+            domain is None
+            or domain.origin == "omitted"
+            or domain.shape == "unknown"
+        ):
+            raise ValueError(
+                f"retained feature {spec.feature_name!r} has unknown or legacy-inferred "
+                "mathematical meaning; refit or declare its domain before compiled-v2"
+            )
+
+    requests: dict[str, TPMApproximationDomain] = {}
+    raw_requests: object = () if approximation_domains is None else approximation_domains
+    if isinstance(raw_requests, Mapping) or isinstance(raw_requests, (str, bytes)):
+        raise TypeError("approximation_domains must be a sequence")
+    if not isinstance(raw_requests, Sequence):
+        raise TypeError("approximation_domains must be a sequence")
+    for index, item in enumerate(raw_requests):
+        if isinstance(item, TPMApproximationDomain):
+            request = item
+        elif isinstance(item, Mapping):
+            request = TPMApproximationDomain.from_dict(item)
+        else:
+            raise TypeError(
+                f"approximation_domains[{index}] must be a TPMApproximationDomain or mapping"
+            )
+        if request.feature_name in requests:
+            raise ValueError(
+                f"duplicate approximation domain for feature {request.feature_name!r}"
+            )
+        requests[request.feature_name] = request
+
+    schema_by_name = {spec.feature_name: (index, spec) for index, spec in enumerate(schema)}
+    for feature_name in requests:
+        if feature_name not in schema_by_name:
+            raise ValueError(f"unknown approximation-domain feature {feature_name!r}")
+        feature_index, spec = schema_by_name[feature_name]
+        if spec.feature_type != "continuous":
+            raise ValueError(
+                f"approximation-domain feature {feature_name!r} must be continuous"
+            )
+        if feature_index not in model_scope:
+            raise ValueError(
+                f"approximation-domain feature {feature_name!r} is unused or marginalized"
+            )
+
+    continuous_indices = tuple(
+        index for index in model_scope if schema[index].feature_type == "continuous"
+    )
+    validity: dict[int, TPMCompiledValidityRecord] = {}
+    for feature_index in continuous_indices:
+        spec = schema[feature_index]
+        domain = spec.mathematical_domain
+        normalization = spec.normalization
+        if domain is None or normalization is None:
+            raise ValueError(
+                f"compiled-v2 feature {spec.feature_name!r} lacks v3 declared semantics; "
+                "refit with declared domains"
+            )
+        if domain.origin != "caller-declared" or domain.shape == "unknown":
+            raise ValueError(
+                f"retained continuous feature {spec.feature_name!r} requires explicit "
+                "mathematical domain semantics; unknown or legacy-inferred meaning "
+                "cannot qualify compiled-v2"
+            )
+        if (
+            spec.feature_role == "decision"
+            and domain.shape == "finite"
+            and domain.lower == domain.upper
+        ):
+            raise ValueError(
+                f"fixed decision feature {spec.feature_name!r} must be fixed or conditioned "
+                "before piecewise compilation"
+            )
+        request = requests.get(spec.feature_name)
+        if request is None:
+            raise ValueError(
+                f"missing explicit approximation domain for retained continuous feature "
+                f"{spec.feature_name!r}; no fallback is permitted"
+            )
+        if spec.feature_role == "decision":
+            if (
+                domain.purpose != "decision-domain"
+                or domain.origin != "caller-declared"
+                or domain.shape != "finite"
+                or domain.lower is None
+                or domain.upper is None
+            ):
+                raise ValueError(
+                    f"retained continuous decision {spec.feature_name!r} requires a finite "
+                    "caller-declared decision domain; refit with declared domains"
+                )
+            if request.lower < domain.lower or request.upper > domain.upper:
+                raise ValueError(
+                    f"approximation domain for {spec.feature_name!r} must lie within its "
+                    f"declared decision domain [{domain.lower}, {domain.upper}]"
+                )
+        validity[feature_index] = request.derive_validity(
+            feature_index=feature_index,
+            normalization=normalization,
+            relative_breakpoints=relative_breakpoints[feature_index],
+            compiler_version=_SPFLOW_MIO_COMPILER_VERSION,
+            payload_schema_version=_SPFLOW_MIO_SCHEMA_VERSION,
+        )
+    return validity
 
 
 def _resolve_compiler_policy(
@@ -578,6 +833,7 @@ def _compile_normal_leaf(
     *,
     schema: Sequence[TPMFeatureSpec],
     feature_breakpoints: Mapping[int, tuple[float, ...]],
+    validity_records: Mapping[int, TPMCompiledValidityRecord],
     mio_epsilon: float,
 ) -> dict[str, object]:
     scope = _validate_leaf_scope(module, schema=schema, expected_type="continuous")
@@ -611,14 +867,20 @@ def _compile_normal_leaf(
             )
             for point in points
         )
-        curves.append(
-            {
-                "scope": feature_index,
-                "feature_name": schema[feature_index].feature_name,
-                "breakpoints": list(points),
-                "log_values": list(log_values),
-            }
-        )
+        curve = {
+            "scope": feature_index,
+            "feature_name": schema[feature_index].feature_name,
+            "breakpoints": list(points),
+            "log_values": list(log_values),
+        }
+        if feature_index in validity_records:
+            curve["physical_breakpoints"] = list(
+                validity_records[feature_index].physical_breakpoints
+            )
+            curve["model_breakpoints"] = list(
+                validity_records[feature_index].model_breakpoints
+            )
+        curves.append(curve)
     return {
         "type": "normal",
         "scope": list(scope),
@@ -840,6 +1102,173 @@ def _resolve_normalized_evidence(
     return values
 
 
+def _load_compiled_validity(
+    payload: Mapping[str, object],
+) -> dict[int, TPMCompiledValidityRecord]:
+    records = _sequence_of_mappings(
+        payload.get("compiled_validity"),
+        field_name="compiled_validity",
+    )
+    resolved: dict[int, TPMCompiledValidityRecord] = {}
+    for raw in records:
+        record = TPMCompiledValidityRecord.from_dict(raw)
+        if record.payload_schema_version != _SPFLOW_MIO_SCHEMA_VERSION:
+            raise ValueError(
+                f"compiled validity for {record.feature_name!r} has incompatible "
+                f"payload schema {record.payload_schema_version!r}"
+            )
+        if record.compiler_version != _SPFLOW_MIO_COMPILER_VERSION:
+            raise ValueError(
+                f"compiled validity for {record.feature_name!r} has incompatible "
+                f"compiler version {record.compiler_version!r}"
+            )
+        if record.feature_index in resolved:
+            raise ValueError("compiled validity feature indices must be unique")
+        resolved[record.feature_index] = record
+    return resolved
+
+
+def _compiled_feature_indices(
+    nodes: Sequence[Mapping[str, object]],
+) -> tuple[int, ...]:
+    indices: set[int] = set()
+    for node in nodes:
+        node_type = str(node.get("type", ""))
+        if node_type == "normal":
+            for curve in _sequence_of_mappings(
+                node.get("curves"),
+                field_name="normal.curves",
+            ):
+                indices.add(int(curve["scope"]))
+        elif node_type in {"bernoulli", "categorical"}:
+            indices.update(
+                int(value)
+                for value in _sequence(node.get("scope"), field_name=f"{node_type}.scope")
+            )
+    return tuple(sorted(indices))
+
+
+def _active_evidence_values(
+    supplied: Sequence[object] | Mapping[str, object],
+    *,
+    field_name: str,
+    schema: Sequence[TPMFeatureSpec],
+    active_indices: Sequence[int],
+) -> dict[int, object]:
+    if isinstance(supplied, Mapping):
+        active_names = tuple(schema[index].feature_name for index in active_indices)
+        missing = tuple(name for name in active_names if name not in supplied)
+        extra = tuple(str(name) for name in supplied if name not in active_names)
+        if missing or extra:
+            raise ValueError(
+                f"{field_name} keys do not match retained compiled features; "
+                f"missing={missing!r}, extra={extra!r}"
+            )
+        return {
+            index: supplied[schema[index].feature_name] for index in active_indices
+        }
+    values = _sequence(supplied, field_name=field_name)
+    if len(values) != len(schema):
+        raise ValueError(
+            f"{field_name} sequence has {len(values)} values; expected the full fitted "
+            f"schema length {len(schema)}"
+        )
+    return {index: values[index] for index in active_indices}
+
+
+def _resolve_compiled_v2_physical_evidence(
+    supplied: Sequence[object] | Mapping[str, object],
+    *,
+    schema: Sequence[TPMFeatureSpec],
+    active_indices: Sequence[int],
+    validity: Mapping[int, TPMCompiledValidityRecord],
+) -> tuple[float, ...]:
+    raw_values = _active_evidence_values(
+        supplied,
+        field_name="physical_evidence",
+        schema=schema,
+        active_indices=active_indices,
+    )
+    coordinates = [0.0] * len(schema)
+    for index, raw_value in raw_values.items():
+        spec = schema[index]
+        if spec.mathematical_domain is None or spec.normalization is None:
+            raise ValueError(
+                f"compiled-v2 feature {spec.feature_name!r} lacks persisted semantics"
+            )
+        spec.mathematical_domain.validate_value(raw_value)
+        coordinate = float(spec.normalization.normalize_value(raw_value))
+        if spec.feature_type == "continuous":
+            if index not in validity:
+                raise ValueError(
+                    f"compiled-v2 continuous feature {spec.feature_name!r} lacks validity"
+                )
+            record = validity[index]
+            physical = float(raw_value)
+            if physical < record.physical_lower or physical > record.physical_upper:
+                raise ValueError(
+                    f"physical evidence for {spec.feature_name!r} is outside compiled "
+                    f"validity [{record.physical_lower}, {record.physical_upper}]"
+                )
+            if coordinate < record.model_lower or coordinate > record.model_upper:
+                raise ValueError(
+                    f"derived model coordinate for {spec.feature_name!r} is outside compiled "
+                    f"validity [{record.model_lower}, {record.model_upper}]"
+                )
+        coordinates[index] = coordinate
+    return tuple(coordinates)
+
+
+def _resolve_compiled_v2_model_evidence(
+    supplied: Sequence[float] | Mapping[str, float] | None,
+    *,
+    schema: Sequence[TPMFeatureSpec],
+    active_indices: Sequence[int],
+    validity: Mapping[int, TPMCompiledValidityRecord],
+) -> tuple[float, ...]:
+    if supplied is None:
+        raise ValueError("model_coordinate_evidence is required")
+    raw_values = _active_evidence_values(
+        supplied,
+        field_name="model_coordinate_evidence",
+        schema=schema,
+        active_indices=active_indices,
+    )
+    coordinates = [0.0] * len(schema)
+    for index, raw_value in raw_values.items():
+        spec = schema[index]
+        try:
+            coordinate = float(raw_value)
+        except (TypeError, ValueError) as exc:
+            raise TypeError(
+                f"model coordinate for {spec.feature_name!r} must be finite numeric"
+            ) from exc
+        if not math.isfinite(coordinate):
+            raise ValueError(
+                f"model coordinate for {spec.feature_name!r} must be finite numeric"
+            )
+        if spec.feature_type == "continuous":
+            if index not in validity:
+                raise ValueError(
+                    f"compiled-v2 continuous feature {spec.feature_name!r} lacks validity"
+                )
+            record = validity[index]
+            if coordinate < record.model_lower or coordinate > record.model_upper:
+                raise ValueError(
+                    f"model coordinate for {spec.feature_name!r} is outside compiled "
+                    f"validity [{record.model_lower}, {record.model_upper}]"
+                )
+        else:
+            if spec.normalization is None or spec.mathematical_domain is None:
+                raise ValueError(
+                    f"compiled-v2 feature {spec.feature_name!r} lacks persisted semantics"
+                )
+            physical = spec.normalization.denormalize_value(coordinate)
+            spec.mathematical_domain.validate_value(physical)
+        coordinates[index] = coordinate
+    return tuple(coordinates)
+
+
 def _compiled_child_ids(node: Mapping[str, object]) -> tuple[int, ...]:
     children = tuple(
         int(value) for value in _sequence(node.get("children"), field_name="children")
@@ -987,9 +1416,19 @@ def build_spn_chance_model(
         _sequence_of_mappings(
             spn_payload.get("feature_schema"),
             field_name="feature_schema",
-        )
+        ),
+        schema_version=str(spn_payload.get("fitted_artifact_schema_version", "v2")),
     )
     feature_by_name = {spec.feature_name: spec for spec in feature_schema}
+    compiled_validity_by_name: dict[str, TPMCompiledValidityRecord] = {}
+    for raw_validity in _sequence_of_mappings(
+        spn_payload.get("compiled_validity", ()),
+        field_name="compiled_validity",
+    ):
+        validity = TPMCompiledValidityRecord.from_dict(raw_validity)
+        if validity.feature_name in compiled_validity_by_name:
+            raise ValueError("compiled validity feature names must be unique")
+        compiled_validity_by_name[validity.feature_name] = validity
     decision_features = tuple(
         str(name)
         for name in _string_sequence(
@@ -1027,6 +1466,7 @@ def build_spn_chance_model(
             feature_spec=feature_spec,
             feature_name=feature_name,
             option_costs=per_option_costs,
+            compiled_validity=compiled_validity_by_name.get(feature_name),
         )
         model._open_energy_lab_decision_variables[feature_name] = decision_payload
         model._open_energy_lab_decision_decoders[feature_name] = _decision_decoder(feature_spec)
@@ -1574,6 +2014,65 @@ def build_spn_modeling_terms(
     )
 
 
+def build_compiled_spflow_decision_link_model(
+    backend: Any,
+    *,
+    compiled_payload: Mapping[str, object],
+    decision_features: Sequence[str],
+) -> object:
+    """Build a constant-objective Pyomo model exposing compiled-v2 decision links."""
+
+    compiled = _mapping(compiled_payload, field_name="compiled_payload")
+    if compiled.get("schema_version") != _SPFLOW_MIO_SCHEMA_VERSION:
+        raise ValueError("physical decision linking requires a compiled-v2 payload")
+    if compiled.get("compiler_version") != _SPFLOW_MIO_COMPILER_VERSION:
+        raise ValueError("physical decision linking requires the current compiled-v2 compiler")
+    schema = load_feature_schema(
+        _sequence_of_mappings(compiled.get("feature_schema"), field_name="feature_schema"),
+        schema_version="v3",
+    )
+    feature_by_name = {spec.feature_name: spec for spec in schema}
+    validity_by_index = _load_compiled_validity(compiled)
+    validity_by_name = {
+        record.feature_name: record for record in validity_by_index.values()
+    }
+    normalized_decisions = tuple(str(name) for name in decision_features)
+    if not normalized_decisions or len(set(normalized_decisions)) != len(
+        normalized_decisions
+    ):
+        raise ValueError("decision_features must be non-empty and unique")
+
+    model = backend.ConcreteModel(name="compiled-spflow-decision-links")
+    model._open_energy_lab_decision_variables = {}
+    model._open_energy_lab_decision_decoders = {}
+    for feature_name in normalized_decisions:
+        if feature_name not in feature_by_name:
+            raise ValueError(f"unknown compiled decision feature {feature_name!r}")
+        feature_spec = feature_by_name[feature_name]
+        if feature_spec.feature_role != "decision" or not feature_spec.modifiable:
+            raise ValueError(
+                f"compiled feature {feature_name!r} is not a modifiable decision"
+            )
+        validity = validity_by_name.get(feature_name)
+        if feature_spec.feature_type == "continuous" and validity is None:
+            raise ValueError(
+                f"continuous decision {feature_name!r} lacks compiled-v2 validity"
+            )
+        decision_payload = _add_decision_variable(
+            backend,
+            model,
+            feature_spec=feature_spec,
+            feature_name=feature_name,
+            compiled_validity=validity,
+        )
+        model._open_energy_lab_decision_variables[feature_name] = decision_payload
+        model._open_energy_lab_decision_decoders[feature_name] = _decision_decoder(
+            feature_spec
+        )
+    model.constant_objective = backend.Objective(expr=0.0)
+    return model
+
+
 def _add_decision_variable(
     backend: Any,
     model: object,
@@ -1581,8 +2080,67 @@ def _add_decision_variable(
     feature_spec: TPMFeatureSpec,
     feature_name: str,
     option_costs: Mapping[object, float] | None = None,
+    compiled_validity: TPMCompiledValidityRecord | None = None,
 ) -> dict[str, object]:
     if feature_spec.feature_type == "continuous":
+        if compiled_validity is not None:
+            physical_var = backend.Var(
+                bounds=(
+                    compiled_validity.physical_lower,
+                    compiled_validity.physical_upper,
+                )
+            )
+            model_var = backend.Var(
+                bounds=(compiled_validity.model_lower, compiled_validity.model_upper)
+            )
+            model.add_component(f"decision_{feature_name}_physical", physical_var)
+            model.add_component(
+                f"decision_{feature_name}_model_coordinate",
+                model_var,
+            )
+            model.add_component(
+                f"decision_{feature_name}_physical_validity_lower",
+                backend.Constraint(
+                    expr=physical_var >= compiled_validity.physical_lower
+                ),
+            )
+            model.add_component(
+                f"decision_{feature_name}_physical_validity_upper",
+                backend.Constraint(
+                    expr=physical_var <= compiled_validity.physical_upper
+                ),
+            )
+            model.add_component(
+                f"decision_{feature_name}_model_validity_lower",
+                backend.Constraint(expr=model_var >= compiled_validity.model_lower),
+            )
+            model.add_component(
+                f"decision_{feature_name}_model_validity_upper",
+                backend.Constraint(expr=model_var <= compiled_validity.model_upper),
+            )
+            normalization = compiled_validity.normalization
+            if normalization.kind == "min-max":
+                link_expression = model_var == (
+                    physical_var - normalization.lower
+                ) / (normalization.upper - normalization.lower)
+            elif normalization.kind == "identity":
+                link_expression = model_var == physical_var
+            else:
+                raise ValueError(
+                    f"continuous decision {feature_name!r} uses unsupported compiled "
+                    f"normalization {normalization.kind!r}"
+                )
+            link = backend.Constraint(expr=link_expression)
+            model.add_component(f"decision_{feature_name}_coordinate_link", link)
+            return {
+                "kind": "continuous",
+                "physical_var": physical_var,
+                "model_coordinate_var": model_var,
+                "normalized_var": model_var,
+                "coordinate_link": link,
+                "cost_expression": physical_var,
+                "compiled_validity": compiled_validity,
+            }
         var = backend.Var(bounds=(0.0, 1.0))
         model.add_component(f"decision_{feature_name}", var)
         lower, upper = feature_spec.bounds or (0.0, 1.0)
@@ -1597,13 +2155,14 @@ def _add_decision_variable(
         var = backend.Var(domain=backend.Binary)
         model.add_component(f"decision_{feature_name}", var)
         discrete_values = tuple(feature_spec.ordering or feature_spec.discrete_values)
-        if discrete_values != (0.0, 1.0):
+        if len(discrete_values) != 2:
             raise ValueError(
-                f"binary decision feature {feature_name!r} must use ordering (0.0, 1.0)"
+                f"binary decision feature {feature_name!r} must declare two ordered labels"
             )
         return {
             "kind": "binary",
             "normalized_var": var,
+            "category_values": discrete_values,
             "cost_expression": var,
         }
 
@@ -1651,13 +2210,20 @@ def _decode_decision_value(
 ) -> object:
     kind = str(decision_payload["kind"])
     if kind == "continuous":
+        if "physical_var" in decision_payload:
+            return float(value_function(decision_payload["physical_var"]))
         normalized_value = float(value_function(decision_payload["normalized_var"]))
         lower, upper = feature_spec.bounds or (0.0, 1.0)
         return lower + normalized_value * (upper - lower)
 
     if kind == "binary":
         normalized_value = float(value_function(decision_payload["normalized_var"]))
-        return 1.0 if normalized_value >= 1.0 - numeric_tolerance else 0.0
+        labels = tuple(decision_payload.get("category_values", (0.0, 1.0)))
+        return (
+            labels[1]
+            if normalized_value >= 1.0 - numeric_tolerance
+            else labels[0]
+        )
 
     if kind == "categorical":
         category_values = tuple(decision_payload["category_values"])
@@ -2135,6 +2701,7 @@ __all__ = [
     "SPNSolverDependencyUnavailableError",
     "SPNSolverUnavailableError",
     "UnsupportedSPFlowModuleError",
+    "build_compiled_spflow_decision_link_model",
     "build_spn_chance_model_from_artifact",
     "build_spn_modeling_terms",
     "build_spn_chance_model",

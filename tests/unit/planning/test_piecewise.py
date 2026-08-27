@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import copy
+
 import pytest
 
 from open_energy_lab.planning.piecewise import (
@@ -18,6 +20,7 @@ from open_energy_lab.planning.piecewise import (
     validate_first_release_decision_features,
     validate_current_spflow_mio_payload,
 )
+from open_energy_lab.tpm.domains import TPMApproximationDomain, TPMNormalizationSpec
 from tests.integration.planning.fixture_utils import (
     TPM_ARTIFACT_FIXTURE_PATH,
     load_planning_fixture,
@@ -66,6 +69,66 @@ def _compiled_mio_payload() -> dict[str, object]:
             }
         ],
     }
+
+
+def _compiled_mio_v2_payload() -> dict[str, object]:
+    normalization = TPMNormalizationSpec(
+        feature_name="battery_capacity_kwh",
+        feature_kind="continuous",
+        kind="min-max",
+        origin="caller-declared",
+        lower=0.0,
+        upper=20.0,
+    )
+    validity = TPMApproximationDomain(
+        feature_name="battery_capacity_kwh",
+        lower=2.0,
+        upper=12.0,
+        source="planning-unit",
+    ).derive_validity(
+        feature_index=0,
+        normalization=normalization,
+        relative_breakpoints=(0.0, 0.5, 1.0),
+        compiler_version="spflow-v1-mio-v2",
+        payload_schema_version="v2",
+    )
+    payload = _compiled_mio_payload()
+    payload.update(
+        {
+            "schema_version": "v2",
+            "compiler_version": "spflow-v1-mio-v2",
+            "backend_compiler_version": "spflow-v1-mio-v2",
+            "feature_schema": [
+                {
+                    "feature_name": "battery_capacity_kwh",
+                    "feature_type": "continuous",
+                    "feature_role": "decision",
+                    "modifiable": True,
+                }
+            ],
+            "compiled_validity": [validity.to_dict()],
+            "nodes": [
+                {
+                    "id": 0,
+                    "type": "normal",
+                    "scope": [0],
+                    "curves": [
+                        {
+                            "scope": 0,
+                            "feature_name": "battery_capacity_kwh",
+                            "breakpoints": list(validity.model_breakpoints),
+                            "model_breakpoints": list(validity.model_breakpoints),
+                            "physical_breakpoints": list(
+                                validity.physical_breakpoints
+                            ),
+                            "log_values": [-1.0, -0.5, -1.0],
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+    return payload
 
 
 def test_build_piecewise_planning_terms_replays_committed_tpm_metadata() -> None:
@@ -268,4 +331,27 @@ def test_current_spflow_mio_payload_rejects_incompatible_metadata(
         match=field_name,
     ):
         validate_current_spflow_mio_payload(compiled)
-    build_current_spflow_planning_payload,
+
+
+def test_planning_consumer_accepts_matching_compiled_v2_validity() -> None:
+    compiled = _compiled_mio_v2_payload()
+
+    validated = validate_current_spflow_mio_payload(compiled)
+
+    assert validated["compiled_validity"] == compiled["compiled_validity"]
+
+
+def test_planning_consumer_rejects_compiled_v2_breakpoint_mismatch() -> None:
+    compiled = copy.deepcopy(_compiled_mio_v2_payload())
+    compiled["nodes"][0]["curves"][0]["breakpoints"][1] = 0.4
+
+    with pytest.raises(PlanningMIOCompatibilityError, match="model breakpoints"):
+        validate_current_spflow_mio_payload(compiled)
+
+
+def test_planning_consumer_keeps_compiled_v1_normalized_only() -> None:
+    compiled = _compiled_mio_payload()
+    compiled["compiled_validity"] = []
+
+    with pytest.raises(PlanningMIOCompatibilityError, match="normalized-only"):
+        validate_current_spflow_mio_payload(compiled)

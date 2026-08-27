@@ -47,6 +47,9 @@ SUPPORTED_TPM_NORMALIZATION_ORIGINS = (
     "legacy-inferred",
     "internal-exact-target",
 )
+SUPPORTED_TPM_APPROXIMATION_ENCODINGS = (
+    "piecewise-log-density",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -596,6 +599,275 @@ class TPMNormalizationSpec:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class TPMApproximationDomain:
+    """Caller-selected physical interval for one finite compiler approximation."""
+
+    feature_name: str
+    lower: float
+    upper: float
+    source: str
+    encoding: str = "piecewise-log-density"
+
+    _JSON_FIELDS: ClassVar[frozenset[str]] = frozenset(
+        {"feature_name", "lower", "upper", "source", "encoding"}
+    )
+    _REQUIRED_JSON_FIELDS: ClassVar[frozenset[str]] = _JSON_FIELDS
+
+    def __post_init__(self) -> None:
+        feature_name = _non_empty_string(self.feature_name, field_name="feature_name")
+        lower = _finite_float(self.lower, field_name="approximation lower")
+        upper = _finite_float(self.upper, field_name="approximation upper")
+        source = _non_empty_string(self.source, field_name="source")
+        encoding = _supported_string(
+            self.encoding,
+            field_name="encoding",
+            supported=SUPPORTED_TPM_APPROXIMATION_ENCODINGS,
+        )
+        if lower >= upper:
+            raise ValueError(
+                "approximation domain lower endpoint must be strictly less than upper endpoint"
+            )
+        object.__setattr__(self, "feature_name", feature_name)
+        object.__setattr__(self, "lower", lower)
+        object.__setattr__(self, "upper", upper)
+        object.__setattr__(self, "source", source)
+        object.__setattr__(self, "encoding", encoding)
+
+    def to_dict(self) -> dict[str, object]:
+        """Return the authoritative physical compiler request."""
+
+        return {
+            "feature_name": self.feature_name,
+            "lower": self.lower,
+            "upper": self.upper,
+            "source": self.source,
+            "encoding": self.encoding,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> TPMApproximationDomain:
+        """Load one strictly validated physical compiler request."""
+
+        data = _validated_payload(
+            payload,
+            record_name="TPM approximation domain",
+            allowed=cls._JSON_FIELDS,
+            required=cls._REQUIRED_JSON_FIELDS,
+        )
+        return cls(
+            feature_name=data["feature_name"],
+            lower=data["lower"],
+            upper=data["upper"],
+            source=data["source"],
+            encoding=data["encoding"],
+        )
+
+    def derive_validity(
+        self,
+        *,
+        feature_index: int,
+        normalization: TPMNormalizationSpec,
+        relative_breakpoints: Sequence[float],
+        compiler_version: str,
+        payload_schema_version: str,
+    ) -> TPMCompiledValidityRecord:
+        """Derive persisted physical/model coordinates from relative layout points."""
+
+        if isinstance(feature_index, bool) or not isinstance(feature_index, int):
+            raise TypeError("feature_index must be an integer")
+        if feature_index < 0:
+            raise ValueError("feature_index must be non-negative")
+        if normalization.feature_name != self.feature_name:
+            raise ValueError("approximation domain and normalization feature names must match")
+        points = _relative_breakpoint_tuple(relative_breakpoints)
+        width = self.upper - self.lower
+        physical = tuple(self.lower + point * width for point in points)
+        model = tuple(float(normalization.normalize_value(point)) for point in physical)
+        return TPMCompiledValidityRecord(
+            feature_name=self.feature_name,
+            feature_index=feature_index,
+            physical_lower=self.lower,
+            physical_upper=self.upper,
+            model_lower=model[0],
+            model_upper=model[-1],
+            physical_breakpoints=physical,
+            model_breakpoints=model,
+            source=self.source,
+            encoding=self.encoding,
+            normalization=normalization,
+            compiler_version=compiler_version,
+            payload_schema_version=payload_schema_version,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class TPMCompiledValidityRecord:
+    """Auditable physical and derived model-coordinate compiler validity."""
+
+    feature_name: str
+    feature_index: int
+    physical_lower: float
+    physical_upper: float
+    model_lower: float
+    model_upper: float
+    physical_breakpoints: tuple[float, ...]
+    model_breakpoints: tuple[float, ...]
+    source: str
+    encoding: str
+    normalization: TPMNormalizationSpec
+    compiler_version: str
+    payload_schema_version: str
+
+    _JSON_FIELDS: ClassVar[frozenset[str]] = frozenset(
+        {
+            "feature_name",
+            "feature_index",
+            "physical_interval",
+            "model_interval",
+            "physical_breakpoints",
+            "model_breakpoints",
+            "source",
+            "encoding",
+            "normalization",
+            "compiler_version",
+            "payload_schema_version",
+        }
+    )
+    _REQUIRED_JSON_FIELDS: ClassVar[frozenset[str]] = _JSON_FIELDS
+
+    def __post_init__(self) -> None:
+        feature_name = _non_empty_string(self.feature_name, field_name="feature_name")
+        if isinstance(self.feature_index, bool) or not isinstance(self.feature_index, int):
+            raise TypeError("feature_index must be an integer")
+        if self.feature_index < 0:
+            raise ValueError("feature_index must be non-negative")
+        physical_lower = _finite_float(self.physical_lower, field_name="physical lower")
+        physical_upper = _finite_float(self.physical_upper, field_name="physical upper")
+        model_lower = _finite_float(self.model_lower, field_name="model lower")
+        model_upper = _finite_float(self.model_upper, field_name="model upper")
+        if physical_lower >= physical_upper:
+            raise ValueError("physical validity interval must have positive width")
+        if model_lower >= model_upper:
+            raise ValueError("model-coordinate validity interval must have positive width")
+        physical = _finite_float_tuple(
+            self.physical_breakpoints,
+            field_name="physical_breakpoints",
+        )
+        model = _finite_float_tuple(
+            self.model_breakpoints,
+            field_name="model_breakpoints",
+        )
+        if len(physical) < 2 or len(physical) != len(model):
+            raise ValueError("physical and model breakpoints must align and contain endpoints")
+        if any(right <= left for left, right in zip(physical, physical[1:])):
+            raise ValueError("physical breakpoints must be strictly increasing")
+        if any(right <= left for left, right in zip(model, model[1:])):
+            raise ValueError("model breakpoints must be strictly increasing")
+        if physical[0] != physical_lower or physical[-1] != physical_upper:
+            raise ValueError("physical breakpoints must span the physical validity interval")
+        if model[0] != model_lower or model[-1] != model_upper:
+            raise ValueError("model breakpoints must span the model-coordinate validity interval")
+        if not isinstance(self.normalization, TPMNormalizationSpec):
+            raise TypeError("normalization must be a TPMNormalizationSpec")
+        if self.normalization.feature_name != feature_name:
+            raise ValueError("validity and normalization feature names must match")
+        expected_model = tuple(
+            float(self.normalization.normalize_value(point)) for point in physical
+        )
+        if any(
+            not math.isclose(expected, actual, rel_tol=0.0, abs_tol=1e-12)
+            for expected, actual in zip(expected_model, model, strict=True)
+        ):
+            raise ValueError(
+                "model breakpoints must be derived from physical breakpoints and normalization"
+            )
+        source = _non_empty_string(self.source, field_name="source")
+        encoding = _supported_string(
+            self.encoding,
+            field_name="encoding",
+            supported=SUPPORTED_TPM_APPROXIMATION_ENCODINGS,
+        )
+        compiler_version = _non_empty_string(
+            self.compiler_version,
+            field_name="compiler_version",
+        )
+        payload_schema_version = _non_empty_string(
+            self.payload_schema_version,
+            field_name="payload_schema_version",
+        )
+        object.__setattr__(self, "feature_name", feature_name)
+        object.__setattr__(self, "physical_lower", physical_lower)
+        object.__setattr__(self, "physical_upper", physical_upper)
+        object.__setattr__(self, "model_lower", model_lower)
+        object.__setattr__(self, "model_upper", model_upper)
+        object.__setattr__(self, "physical_breakpoints", physical)
+        object.__setattr__(self, "model_breakpoints", model)
+        object.__setattr__(self, "source", source)
+        object.__setattr__(self, "encoding", encoding)
+        object.__setattr__(self, "compiler_version", compiler_version)
+        object.__setattr__(self, "payload_schema_version", payload_schema_version)
+
+    def to_dict(self) -> dict[str, object]:
+        """Return JSON-compatible compiled validity provenance."""
+
+        return {
+            "feature_name": self.feature_name,
+            "feature_index": self.feature_index,
+            "physical_interval": [self.physical_lower, self.physical_upper],
+            "model_interval": [self.model_lower, self.model_upper],
+            "physical_breakpoints": list(self.physical_breakpoints),
+            "model_breakpoints": list(self.model_breakpoints),
+            "source": self.source,
+            "encoding": self.encoding,
+            "normalization": self.normalization.to_dict(),
+            "compiler_version": self.compiler_version,
+            "payload_schema_version": self.payload_schema_version,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> TPMCompiledValidityRecord:
+        """Load one compiled validity record and verify its coordinate derivation."""
+
+        data = _validated_payload(
+            payload,
+            record_name="TPM compiled validity record",
+            allowed=cls._JSON_FIELDS,
+            required=cls._REQUIRED_JSON_FIELDS,
+        )
+        physical_interval = _finite_float_tuple(
+            data["physical_interval"],
+            field_name="physical_interval",
+        )
+        model_interval = _finite_float_tuple(
+            data["model_interval"],
+            field_name="model_interval",
+        )
+        if len(physical_interval) != 2 or len(model_interval) != 2:
+            raise ValueError("compiled validity intervals must contain exactly two endpoints")
+        return cls(
+            feature_name=data["feature_name"],
+            feature_index=data["feature_index"],
+            physical_lower=physical_interval[0],
+            physical_upper=physical_interval[1],
+            model_lower=model_interval[0],
+            model_upper=model_interval[1],
+            physical_breakpoints=_sequence_value(
+                data["physical_breakpoints"],
+                field_name="physical_breakpoints",
+            ),
+            model_breakpoints=_sequence_value(
+                data["model_breakpoints"],
+                field_name="model_breakpoints",
+            ),
+            source=data["source"],
+            encoding=data["encoding"],
+            normalization=TPMNormalizationSpec.from_dict(data["normalization"]),
+            compiler_version=data["compiler_version"],
+            payload_schema_version=data["payload_schema_version"],
+        )
+
+
 def _validated_payload(
     payload: Mapping[str, Any],
     *,
@@ -679,18 +951,39 @@ def _json_scalar_tuple(value: object, *, field_name: str) -> tuple[object, ...]:
     return values
 
 
+def _finite_float_tuple(value: object, *, field_name: str) -> tuple[float, ...]:
+    return tuple(
+        _finite_float(item, field_name=f"{field_name} entry")
+        for item in _sequence_value(value, field_name=field_name)
+    )
+
+
+def _relative_breakpoint_tuple(value: object) -> tuple[float, ...]:
+    points = _finite_float_tuple(value, field_name="relative_breakpoints")
+    if len(points) < 2:
+        raise ValueError("relative_breakpoints must contain at least two endpoints")
+    if points[0] != 0.0 or points[-1] != 1.0:
+        raise ValueError("relative_breakpoints must span [0, 1]")
+    if any(right <= left for left, right in zip(points, points[1:])):
+        raise ValueError("relative_breakpoints must be strictly increasing")
+    return points
+
+
 def _require_unique(values: tuple[object, ...], *, field_name: str) -> None:
     if len(set(values)) != len(values):
         raise ValueError(f"{field_name} must contain distinct values")
 
 
 __all__ = [
+    "SUPPORTED_TPM_APPROXIMATION_ENCODINGS",
     "SUPPORTED_TPM_CONTINUOUS_DOMAIN_SHAPES",
     "SUPPORTED_TPM_DOMAIN_FEATURE_KINDS",
     "SUPPORTED_TPM_DOMAIN_ORIGINS",
     "SUPPORTED_TPM_DOMAIN_PURPOSES",
     "SUPPORTED_TPM_NORMALIZATION_KINDS",
     "SUPPORTED_TPM_NORMALIZATION_ORIGINS",
+    "TPMApproximationDomain",
+    "TPMCompiledValidityRecord",
     "TPMFeatureDomain",
     "TPMNormalizationSpec",
     "TPMTrainingSupport",

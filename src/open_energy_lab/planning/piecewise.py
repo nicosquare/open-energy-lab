@@ -9,11 +9,14 @@ from open_energy_lab.tpm.piecewise import (
     PiecewiseApproximationMetadata,
     load_piecewise_metadata,
 )
+from open_energy_lab.tpm.domains import TPMCompiledValidityRecord
 
 DEFAULT_EXP_PIECEWISE_DOMAIN_FLOOR = -500.0
-CURRENT_SPFLOW_MIO_SCHEMA_VERSION = "v1"
+CURRENT_SPFLOW_MIO_SCHEMA_VERSION = "v2"
+LEGACY_SPFLOW_MIO_SCHEMA_VERSION = "v1"
 CURRENT_SPFLOW_MIO_PAYLOAD_FORMAT = "open-energy-lab-spflow-mio"
-CURRENT_SPFLOW_MIO_COMPILER_VERSION = "spflow-v1-mio-v1"
+CURRENT_SPFLOW_MIO_COMPILER_VERSION = "spflow-v1-mio-v2"
+LEGACY_SPFLOW_MIO_COMPILER_VERSION = "spflow-v1-mio-v1"
 CURRENT_SPFLOW_BACKEND_API_VERSION = "1.1.0"
 CURRENT_SPFLOW_BREAKPOINT_COUNT = 5
 CURRENT_SPFLOW_MIO_EPSILON = 1e-6
@@ -40,11 +43,24 @@ def validate_current_spflow_mio_payload(
     if not isinstance(payload, Mapping):
         raise PlanningMIOCompatibilityError("compiled MIO payload must be a mapping")
     compiled = {str(key): value for key, value in payload.items()}
+    schema_version = compiled.get("schema_version")
+    if schema_version not in {
+        LEGACY_SPFLOW_MIO_SCHEMA_VERSION,
+        CURRENT_SPFLOW_MIO_SCHEMA_VERSION,
+    }:
+        raise PlanningMIOCompatibilityError(
+            "incompatible compiled MIO schema_version: expected 'v1' or 'v2', "
+            f"found {schema_version!r}"
+        )
+    compiler_version = (
+        LEGACY_SPFLOW_MIO_COMPILER_VERSION
+        if schema_version == LEGACY_SPFLOW_MIO_SCHEMA_VERSION
+        else CURRENT_SPFLOW_MIO_COMPILER_VERSION
+    )
     expected_values = {
-        "schema_version": CURRENT_SPFLOW_MIO_SCHEMA_VERSION,
         "payload_format": CURRENT_SPFLOW_MIO_PAYLOAD_FORMAT,
-        "compiler_version": CURRENT_SPFLOW_MIO_COMPILER_VERSION,
-        "backend_compiler_version": CURRENT_SPFLOW_MIO_COMPILER_VERSION,
+        "compiler_version": compiler_version,
+        "backend_compiler_version": compiler_version,
         "backend_generation": "current-spflow",
         "backend_api_version": CURRENT_SPFLOW_BACKEND_API_VERSION,
         "approximation_kind": "piecewise",
@@ -77,12 +93,90 @@ def validate_current_spflow_mio_payload(
             f"{CURRENT_SPFLOW_MIO_EPSILON}, found {compiled.get('mio_epsilon')!r}"
         )
 
-    _required_mapping_sequence(compiled.get("feature_schema"), field_name="feature_schema")
+    feature_schema = _required_mapping_sequence(
+        compiled.get("feature_schema"),
+        field_name="feature_schema",
+    )
     nodes = _required_mapping_sequence(compiled.get("nodes"), field_name="nodes")
     node_ids = {int(node["id"]) for node in nodes}
     if len(node_ids) != len(nodes) or int(compiled.get("root_id", -1)) not in node_ids:
         raise PlanningMIOCompatibilityError(
             "compiled MIO nodes must use unique ids and contain root_id"
+        )
+    if schema_version == CURRENT_SPFLOW_MIO_SCHEMA_VERSION:
+        validity_records = _required_mapping_sequence(
+            compiled.get("compiled_validity"),
+            field_name="compiled_validity",
+        )
+        try:
+            loaded_validity = tuple(
+                TPMCompiledValidityRecord.from_dict(record)
+                for record in validity_records
+            )
+        except (TypeError, ValueError) as exc:
+            raise PlanningMIOCompatibilityError(
+                f"invalid compiled-v2 validity record: {exc}"
+            ) from exc
+        if any(
+            record.payload_schema_version != CURRENT_SPFLOW_MIO_SCHEMA_VERSION
+            or record.compiler_version != CURRENT_SPFLOW_MIO_COMPILER_VERSION
+            for record in loaded_validity
+        ):
+            raise PlanningMIOCompatibilityError(
+                "compiled-v2 validity records must match payload and compiler versions"
+            )
+        validity_by_index = {
+            record.feature_index: record for record in loaded_validity
+        }
+        if len(validity_by_index) != len(loaded_validity):
+            raise PlanningMIOCompatibilityError(
+                "compiled-v2 validity feature indices must be unique"
+            )
+        continuous_curve_scopes: set[int] = set()
+        for node in nodes:
+            if node.get("type") != "normal":
+                continue
+            for curve in _required_mapping_sequence(
+                node.get("curves"),
+                field_name="normal.curves",
+            ):
+                feature_index = int(curve["scope"])
+                continuous_curve_scopes.add(feature_index)
+                if feature_index not in validity_by_index:
+                    raise PlanningMIOCompatibilityError(
+                        f"compiled-v2 normal scope {feature_index} lacks validity"
+                    )
+                record = validity_by_index[feature_index]
+                if not 0 <= feature_index < len(feature_schema):
+                    raise PlanningMIOCompatibilityError(
+                        f"compiled-v2 validity scope {feature_index} is outside feature_schema"
+                    )
+                if str(feature_schema[feature_index].get("feature_name", "")) != (
+                    record.feature_name
+                ):
+                    raise PlanningMIOCompatibilityError(
+                        "compiled-v2 validity feature identity does not match feature_schema"
+                    )
+                if tuple(curve.get("breakpoints", ())) != record.model_breakpoints:
+                    raise PlanningMIOCompatibilityError(
+                        f"compiled-v2 model breakpoints for {record.feature_name!r} "
+                        "do not match validity"
+                    )
+                if tuple(curve.get("physical_breakpoints", ())) != (
+                    record.physical_breakpoints
+                ):
+                    raise PlanningMIOCompatibilityError(
+                        f"compiled-v2 physical breakpoints for {record.feature_name!r} "
+                        "do not match validity"
+                    )
+        if set(validity_by_index) != continuous_curve_scopes:
+            raise PlanningMIOCompatibilityError(
+                "compiled-v2 validity records must correspond exactly to retained "
+                "continuous approximations"
+            )
+    elif "compiled_validity" in compiled:
+        raise PlanningMIOCompatibilityError(
+            "compiled-v1 payloads are normalized-only and must not claim physical validity"
         )
 
     if approximation_metadata is not None:
@@ -90,7 +184,10 @@ def validate_current_spflow_mio_payload(
             "compiler_version",
             approximation_metadata.get("backend_compiler_version"),
         )
-        if metadata_compiler != compiled["compiler_version"]:
+        if (
+            metadata_compiler is not None
+            and metadata_compiler != compiled["compiler_version"]
+        ):
             raise PlanningMIOCompatibilityError(
                 "artifact compiler metadata does not match the compiled MIO payload: "
                 f"expected {metadata_compiler!r}, found {compiled['compiler_version']!r}"
@@ -158,6 +255,10 @@ def build_current_spflow_planning_payload(
         "shortfall_threshold": float(shortfall_threshold),
         "event_target_name": str(event_target_name),
         "feature_schema": [dict(spec) for spec in feature_schema],
+        "fitted_artifact_schema_version": (
+            "v3" if compiled["schema_version"] == "v2" else "v2"
+        ),
+        "compiled_validity": list(compiled.get("compiled_validity", ())),
         "sum_encoding_mode": "piecewise",
         "compiler_version": compiled["compiler_version"],
         "compiler_schema_version": compiled["schema_version"],
