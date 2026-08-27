@@ -170,6 +170,9 @@ def test_notebook_executes_explicit_2023_06_18_reference_case() -> None:
 assert external_reference_result["status"] == "source_precision_compatible"
 assert external_reference_result["counts"] == {{"energy": 24, "fcr": 6, "checkpoint": 96, "activation": 8640}}
 assert external_reference_result["mismatch_count"] == 0
+assert len(external_reference_comparison_table) == len(external_comparison.fields)
+assert {{"field_id", "status", "actual_value", "expected_value", "unit"}} <= set(external_reference_comparison_table.columns)
+assert "mismatch" not in set(external_reference_comparison_table["status"])
 assert external_reference_result["trace_fingerprint"] == {EXPECTED_EXTERNAL_TRACE_FINGERPRINT!r}
 assert external_reference_result["settlement_fingerprint"] == {EXPECTED_EXTERNAL_SETTLEMENT_FINGERPRINT!r}
 assert external_reference_result["comparison_fingerprint"] == {EXPECTED_EXTERNAL_COMPARISON_FINGERPRINT!r}

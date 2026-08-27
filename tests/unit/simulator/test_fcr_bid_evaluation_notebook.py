@@ -164,6 +164,8 @@ def test_external_replay_and_figure_export_are_explicit_and_disabled() -> None:
     assert "if RUN_EXTERNAL_REFERENCE:" in external
     assert "build_reference_request" in external
     assert "compare_reference_evaluation" in external
+    assert "external_comparison.fields" in external
+    assert 'external_comparison_payload["field_results"]' not in external
     assert "if EXPORT_FIGURES:" in export
     assert "mkdir" not in _source(cell_type="code").replace(export, "")
 
