@@ -2751,6 +2751,7 @@ def _build_solver_evidence(
         highspy_version=raw.highspy_version,
         configured_options={
             **_thaw(raw.configured_options),
+            "solve_policy": problem.solve_policy.to_dict(),
             "objective_comparison_absolute_tolerance_eur": (
                 problem.solve_policy.objective_comparison_absolute_tolerance_eur
             ),

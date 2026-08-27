@@ -9,6 +9,7 @@ from types import MappingProxyType
 from typing import Any
 
 from .robust_fcr_bidding import (
+    DEPLOYABILITY_THRESHOLD,
     RobustFCRBiddingProblem,
     RobustFCRFormulationProfile,
     RobustFCRValidationError,
@@ -641,6 +642,114 @@ def assemble_robust_fcr_model(
     )
 
 
+def assemble_robust_fcr_reference_certificate(
+    problem: RobustFCRBiddingProblem,
+    request: Any,
+    *,
+    pyomo_environ: Any,
+) -> AssembledRobustFCRModel:
+    """Assemble one joint rounded-decision restriction certificate.
+
+    ``request`` is deliberately duck-typed here so the private formulation
+    module does not import the public reference module and create an import
+    cycle.  Its immutable contract is validated before this lazy boundary.
+    """
+
+    profile = RobustFCRFormulationProfile.for_kind("restriction")
+    assembled = assemble_robust_fcr_model(
+        problem,
+        profile,
+        pyomo_environ=pyomo_environ,
+    )
+    objective_interval = getattr(request, "certification_objective_interval", None)
+    decision_intervals = tuple(getattr(request, "decision_intervals", ()))
+    maximum_slack = getattr(request, "maximum_deployability_slack", None)
+    if objective_interval is None or len(decision_intervals) != 30:
+        raise RobustFCRValidationError(
+            "reference certification requires one objective interval and 30 decisions"
+        )
+    if maximum_slack != DEPLOYABILITY_THRESHOLD:
+        raise RobustFCRValidationError(
+            f"reference certification slack limit must equal {DEPLOYABILITY_THRESHOLD}"
+        )
+    model = assembled.model
+    pyo = pyomo_environ
+    constraints = dict(assembled.constraint_handles)
+    decision_box = _add_constraint_family(
+        model,
+        pyo,
+        "c_reference_decision_box",
+    )
+    for interval in decision_intervals:
+        kind = getattr(interval, "decision_kind", None)
+        index = getattr(interval, "index", None)
+        lower = float(getattr(interval, "lower"))
+        upper = float(getattr(interval, "upper"))
+        if kind == "energy_x0":
+            variable = model.x0[index]
+        elif kind == "fcr_xr":
+            variable = model.xr[index]
+        else:  # pragma: no cover - public request validation guards this path
+            raise RobustFCRValidationError(
+                "reference certificate contains an unsupported decision kind"
+            )
+        decision_box.add(variable >= lower)
+        decision_box.add(variable <= upper)
+    constraints["reference_decision_box"] = decision_box
+
+    objective_box = _add_constraint_family(
+        model,
+        pyo,
+        "c_reference_objective_box",
+    )
+    objective_expression = model.objective.expr
+    objective_box.add(objective_expression >= float(objective_interval[0]))
+    objective_box.add(objective_expression <= float(objective_interval[1]))
+    constraints["reference_objective_box"] = objective_box
+
+    slack_bounds = _add_constraint_family(
+        model,
+        pyo,
+        "c_reference_slack_bounds",
+    )
+    for index in assembled.handoff.model_input.index_sets.planning_indices:
+        slack_bounds.add(model.symin[index] <= maximum_slack)
+        slack_bounds.add(model.symax[index] <= maximum_slack)
+    for index in (0, 1):
+        slack_bounds.add(model.syK[index] <= maximum_slack)
+    constraints["reference_slack_bounds"] = slack_bounds
+
+    observed_constraints = sum(
+        1 for _ in model.component_data_objects(pyo.Constraint, active=True)
+    )
+    cardinality = dict(assembled.handoff.cardinality)
+    cardinality.update(
+        {
+            "reference_decision_box_constraints": 60,
+            "reference_objective_box_constraints": 2,
+            "reference_slack_bound_constraints": 194,
+            "reference_certification_constraints": 256,
+            "active_constraints": observed_constraints,
+        }
+    )
+    if observed_constraints != assembled.handoff.cardinality["active_constraints"] + 256:
+        raise RobustFCRValidationError(
+            "assembled reference certificate cardinality does not reconcile"
+        )
+    handoff = RobustFCRModelHandoff(
+        formulation_kind=assembled.handoff.formulation_kind,
+        equation_version=assembled.handoff.equation_version,
+        model_input=assembled.handoff.model_input,
+        cardinality=cardinality,
+    )
+    return AssembledRobustFCRModel(
+        model=model,
+        handoff=handoff,
+        variable_handles=assembled.variable_handles,
+        constraint_handles=MappingProxyType(constraints),
+    )
+
+
 __all__ = [
     "AssembledRobustFCRModel",
     "NormalizedRobustFCRIndexSets",
@@ -651,6 +760,7 @@ __all__ = [
     "build_normalized_index_sets",
     "build_model_input",
     "assemble_robust_fcr_model",
+    "assemble_robust_fcr_reference_certificate",
     "model_cardinality_basis",
     "model_cardinality_metadata",
 ]

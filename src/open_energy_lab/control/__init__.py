@@ -10,6 +10,14 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from .robust_fcr_reference import (
+        JointReferenceCertificate,
+        RobustFCRReferenceComparison,
+        RobustFCRReferenceFixture,
+        build_robust_fcr_reference_problem,
+        compare_robust_fcr_reference,
+        load_robust_fcr_reference_fixture,
+    )
     from .robust_fcr_bidding import (
         ConstraintFamilyResidual,
         FeasibilityAudit,
@@ -86,6 +94,30 @@ if TYPE_CHECKING:
 
 
 _EXPORT_MAP = {
+    "JointReferenceCertificate": (
+        ".robust_fcr_reference",
+        "JointReferenceCertificate",
+    ),
+    "RobustFCRReferenceComparison": (
+        ".robust_fcr_reference",
+        "RobustFCRReferenceComparison",
+    ),
+    "RobustFCRReferenceFixture": (
+        ".robust_fcr_reference",
+        "RobustFCRReferenceFixture",
+    ),
+    "build_robust_fcr_reference_problem": (
+        ".robust_fcr_reference",
+        "build_robust_fcr_reference_problem",
+    ),
+    "compare_robust_fcr_reference": (
+        ".robust_fcr_reference",
+        "compare_robust_fcr_reference",
+    ),
+    "load_robust_fcr_reference_fixture": (
+        ".robust_fcr_reference",
+        "load_robust_fcr_reference_fixture",
+    ),
     "ConstraintFamilyResidual": (
         ".robust_fcr_bidding",
         "ConstraintFamilyResidual",
@@ -283,6 +315,7 @@ __all__ = [
     "MFRRBaselineConfig",
     "MFRRBaselineMode",
     "HorizonWideActivationBudget",
+    "JointReferenceCertificate",
     "ObjectiveBreakdown",
     "OptimizationMetric",
     "PVSelfConsumptionConfig",
@@ -303,6 +336,8 @@ __all__ = [
     "RobustFCRDecisions",
     "RobustFCRFormulationProfile",
     "RobustFCRPriceInputs",
+    "RobustFCRReferenceComparison",
+    "RobustFCRReferenceFixture",
     "RobustFCRSolvePolicy",
     "RobustFCRSolveResult",
     "RobustFCRSolverDependencyUnavailableError",
@@ -327,10 +362,13 @@ __all__ = [
     "build_regulation_only_baseline",
     "build_restoration_capability",
     "build_robust_fcr_bidding_problem",
+    "build_robust_fcr_reference_problem",
     "build_robust_fcr_time_contract",
     "compare_robust_fcr_bounds",
+    "compare_robust_fcr_reference",
     "build_stacked_heuristic_baseline",
     "derive_non_intraday_horizon_budget",
+    "load_robust_fcr_reference_fixture",
     "solve_robust_fcr_bid",
 ]
 

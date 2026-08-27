@@ -11,6 +11,7 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from decimal import Decimal
 import json
 import math
 from pathlib import Path
@@ -132,6 +133,48 @@ def reference_decision_content_fingerprint(
             "planning_to_fcr": [index // 16 for index in range(96)],
             "rounded_x0_kw": list(x0),
             "rounded_xr_kw": list(xr),
+        }
+    )
+
+
+def reference_energy_content_fingerprint(
+    source_positive_discharge_kw: Sequence[float],
+) -> str:
+    """Fingerprint hourly energy decisions in the declared comparison frame."""
+
+    values = _finite_tuple(
+        source_positive_discharge_kw,
+        field_name="source_positive_discharge_kw",
+        count=24,
+    )
+    return _fingerprint(
+        {
+            "comparison_frame": "positive_is_discharge",
+            "resolution": "PT1H",
+            "unit": "kW",
+            "values": list(values),
+        }
+    )
+
+
+def reference_fcr_content_fingerprint(
+    symmetric_capacity_kw: Sequence[float],
+) -> str:
+    """Fingerprint four-hour symmetric FCR decisions without producer lineage."""
+
+    values = _finite_tuple(
+        symmetric_capacity_kw,
+        field_name="symmetric_capacity_kw",
+        count=6,
+    )
+    if any(value < 0.0 for value in values):
+        raise RobustFCRValidationError("symmetric_capacity_kw must be non-negative")
+    return _fingerprint(
+        {
+            "comparison_frame": "non_negative_symmetric_capacity",
+            "resolution": "PT4H",
+            "unit": "kW",
+            "values": list(values),
         }
     )
 
@@ -360,6 +403,457 @@ class RobustFCRReferenceFixture:
 
     def to_dict(self) -> dict[str, object]:
         return {**self._payload(), "fixture_fingerprint": self.fixture_fingerprint}
+
+
+@dataclass(frozen=True, slots=True)
+class ReferenceDecisionInterval:
+    """One closed source-rounding interval in the common source frame."""
+
+    field_id: str
+    decision_kind: str
+    index: int
+    displayed_value: float
+    lower: float
+    upper: float
+    unit: str = "kW"
+    interval_closure: str = "closed_outer"
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "field_id", _non_empty(self.field_id, field_name="field_id"))
+        if self.decision_kind not in {"energy_x0", "fcr_xr"}:
+            raise RobustFCRValidationError("unsupported reference decision_kind")
+        maximum_index = 23 if self.decision_kind == "energy_x0" else 5
+        if isinstance(self.index, bool) or not isinstance(self.index, int):
+            raise RobustFCRValidationError("reference decision index must be an integer")
+        if not 0 <= self.index <= maximum_index:
+            raise RobustFCRValidationError("reference decision index is out of range")
+        displayed = _finite(self.displayed_value, field_name="displayed_value")
+        lower = _finite(self.lower, field_name="lower")
+        upper = _finite(self.upper, field_name="upper")
+        if lower > displayed or displayed > upper:
+            raise RobustFCRValidationError(
+                "reference decision interval must contain its displayed value"
+            )
+        if self.decision_kind == "fcr_xr" and lower < 0.0:
+            raise RobustFCRValidationError("FCR source interval must be non-negative")
+        if self.unit != "kW" or self.interval_closure != "closed_outer":
+            raise RobustFCRValidationError("unsupported reference interval semantics")
+        object.__setattr__(self, "displayed_value", displayed)
+        object.__setattr__(self, "lower", lower)
+        object.__setattr__(self, "upper", upper)
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "field_id": self.field_id,
+            "decision_kind": self.decision_kind,
+            "index": self.index,
+            "displayed_value": self.displayed_value,
+            "lower": self.lower,
+            "upper": self.upper,
+            "unit": self.unit,
+            "interval_closure": self.interval_closure,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ReferenceCertificationRequest:
+    """Semantic inputs to one joint rounded-decision restriction certificate."""
+
+    fixture_fingerprint: str
+    native_result_fingerprint: str
+    native_policy_fingerprint: str
+    decision_intervals: tuple[ReferenceDecisionInterval, ...]
+    source_objective_interval: tuple[float, float]
+    native_objective_equivalence_band: tuple[float, float]
+    certification_objective_interval: tuple[float, float] | None
+    objective_comparison_allowance_eur: float
+    maximum_deployability_slack: float
+    objective_equivalence_possible: bool
+    request_fingerprint: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        for name in (
+            "fixture_fingerprint",
+            "native_result_fingerprint",
+            "native_policy_fingerprint",
+        ):
+            object.__setattr__(self, name, _sha256(getattr(self, name), field_name=name))
+        intervals = tuple(self.decision_intervals)
+        if len(intervals) != 30 or any(
+            not isinstance(value, ReferenceDecisionInterval) for value in intervals
+        ):
+            raise RobustFCRValidationError(
+                "certification requires exactly 30 reference decision intervals"
+            )
+        expected_ids = tuple(f"x0[{index}]" for index in range(24)) + tuple(
+            f"xr[{index}]" for index in range(6)
+        )
+        if tuple(value.field_id for value in intervals) != expected_ids:
+            raise RobustFCRValidationError(
+                "certification decision intervals must use canonical order"
+            )
+        source = _numeric_interval(
+            self.source_objective_interval,
+            field_name="source_objective_interval",
+        )
+        native = _numeric_interval(
+            self.native_objective_equivalence_band,
+            field_name="native_objective_equivalence_band",
+        )
+        certification = None
+        if self.certification_objective_interval is not None:
+            certification = _numeric_interval(
+                self.certification_objective_interval,
+                field_name="certification_objective_interval",
+            )
+            expected_intersection = (
+                max(source[0], native[0]),
+                min(source[1], native[1]),
+            )
+            if certification != expected_intersection:
+                raise RobustFCRValidationError(
+                    "certification objective interval must be the source/native intersection"
+                )
+        if self.objective_equivalence_possible != (certification is not None):
+            raise RobustFCRValidationError(
+                "objective_equivalence_possible must match interval intersection"
+            )
+        allowance = _non_negative(
+            self.objective_comparison_allowance_eur,
+            field_name="objective_comparison_allowance_eur",
+        )
+        maximum_slack = _non_negative(
+            self.maximum_deployability_slack,
+            field_name="maximum_deployability_slack",
+        )
+        if maximum_slack != DEPLOYABILITY_THRESHOLD:
+            raise RobustFCRValidationError(
+                f"maximum_deployability_slack must equal {DEPLOYABILITY_THRESHOLD}"
+            )
+        object.__setattr__(self, "decision_intervals", intervals)
+        object.__setattr__(self, "source_objective_interval", source)
+        object.__setattr__(self, "native_objective_equivalence_band", native)
+        object.__setattr__(self, "certification_objective_interval", certification)
+        object.__setattr__(self, "objective_comparison_allowance_eur", allowance)
+        object.__setattr__(self, "maximum_deployability_slack", maximum_slack)
+        object.__setattr__(self, "request_fingerprint", _fingerprint(self._payload()))
+
+    def _payload(self) -> dict[str, object]:
+        return {
+            "fixture_fingerprint": self.fixture_fingerprint,
+            "native_result_fingerprint": self.native_result_fingerprint,
+            "native_policy_fingerprint": self.native_policy_fingerprint,
+            "decision_intervals": [value.to_dict() for value in self.decision_intervals],
+            "source_objective_interval": list(self.source_objective_interval),
+            "native_objective_equivalence_band": list(
+                self.native_objective_equivalence_band
+            ),
+            "certification_objective_interval": (
+                list(self.certification_objective_interval)
+                if self.certification_objective_interval is not None
+                else None
+            ),
+            "objective_comparison_allowance_eur": (
+                self.objective_comparison_allowance_eur
+            ),
+            "maximum_deployability_slack": self.maximum_deployability_slack,
+            "objective_equivalence_possible": self.objective_equivalence_possible,
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return {**self._payload(), "request_fingerprint": self.request_fingerprint}
+
+
+@dataclass(frozen=True, slots=True)
+class JointReferenceCertificate:
+    """Audited evidence for one simultaneous decision/objective box."""
+
+    request_fingerprint: str
+    solve_status: str
+    joint_feasible: bool
+    objective_equivalent: bool
+    maximum_slack: float | None
+    maximum_residual: float | None
+    certified_objective_value_eur: float | None
+    witness_fingerprint: str | None
+    unavailable_reason: str | None
+    certificate_fingerprint: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "request_fingerprint",
+            _sha256(self.request_fingerprint, field_name="request_fingerprint"),
+        )
+        if self.solve_status not in {
+            "optimal",
+            "feasible",
+            "no_solution",
+            "infeasible",
+            "unbounded",
+            "failed",
+            "unavailable",
+        }:
+            raise RobustFCRValidationError("unsupported certificate solve_status")
+        if not isinstance(self.joint_feasible, bool) or not isinstance(
+            self.objective_equivalent, bool
+        ):
+            raise RobustFCRValidationError("certificate booleans must be explicit")
+        if not self.joint_feasible:
+            if self.objective_equivalent:
+                raise RobustFCRValidationError(
+                    "an infeasible certificate cannot be objective-equivalent"
+                )
+            if any(
+                value is not None
+                for value in (
+                    self.maximum_slack,
+                    self.maximum_residual,
+                    self.certified_objective_value_eur,
+                    self.witness_fingerprint,
+                )
+            ):
+                raise RobustFCRValidationError(
+                    "a non-feasible certificate cannot carry witness evidence"
+                )
+        else:
+            if self.solve_status not in {"optimal", "feasible"}:
+                raise RobustFCRValidationError(
+                    "a feasible certificate requires an accepted solve status"
+                )
+            slack = _non_negative(self.maximum_slack, field_name="maximum_slack")
+            residual = _non_negative(
+                self.maximum_residual,
+                field_name="maximum_residual",
+            )
+            if slack > DEPLOYABILITY_THRESHOLD:
+                raise RobustFCRValidationError(
+                    "certificate deployability slack exceeds the 1e-6 limit"
+                )
+            if residual > DEPLOYABILITY_THRESHOLD:
+                raise RobustFCRValidationError(
+                    "certificate maximum residual exceeds the 1e-6 limit"
+                )
+            objective = _finite(
+                self.certified_objective_value_eur,
+                field_name="certified_objective_value_eur",
+            )
+            witness = _sha256(
+                self.witness_fingerprint,
+                field_name="witness_fingerprint",
+            )
+            object.__setattr__(self, "maximum_slack", slack)
+            object.__setattr__(self, "maximum_residual", residual)
+            object.__setattr__(self, "certified_objective_value_eur", objective)
+            object.__setattr__(self, "witness_fingerprint", witness)
+        if self.solve_status == "unavailable":
+            object.__setattr__(
+                self,
+                "unavailable_reason",
+                _non_empty(self.unavailable_reason, field_name="unavailable_reason"),
+            )
+        elif self.unavailable_reason is not None:
+            raise RobustFCRValidationError(
+                "unavailable_reason is valid only for unavailable certification"
+            )
+        object.__setattr__(
+            self,
+            "certificate_fingerprint",
+            _fingerprint(self._payload()),
+        )
+
+    def _payload(self) -> dict[str, object]:
+        return {
+            "request_fingerprint": self.request_fingerprint,
+            "solve_status": self.solve_status,
+            "joint_feasible": self.joint_feasible,
+            "objective_equivalent": self.objective_equivalent,
+            "maximum_slack": self.maximum_slack,
+            "maximum_residual": self.maximum_residual,
+            "certified_objective_value_eur": self.certified_objective_value_eur,
+            "witness_fingerprint": self.witness_fingerprint,
+            "unavailable_reason": self.unavailable_reason,
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            **self._payload(),
+            "certificate_fingerprint": self.certificate_fingerprint,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class RobustFCRReferenceFieldResult:
+    """One visible native/source comparison without hidden coercion."""
+
+    field_id: str
+    status: str
+    native_value: object | None
+    source_value: object | None
+    delta: float | None
+    source_interval: tuple[float, float] | None
+    source_evidence_role: str
+    reason: str | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "field_id", _non_empty(self.field_id, field_name="field_id"))
+        if self.status not in REFERENCE_COMPARISON_STATUSES:
+            raise RobustFCRValidationError("unsupported reference field status")
+        object.__setattr__(
+            self,
+            "source_evidence_role",
+            _non_empty(self.source_evidence_role, field_name="source_evidence_role"),
+        )
+        if self.delta is not None:
+            object.__setattr__(self, "delta", _finite(self.delta, field_name="delta"))
+        if self.source_interval is not None:
+            object.__setattr__(
+                self,
+                "source_interval",
+                _numeric_interval(self.source_interval, field_name="source_interval"),
+            )
+        if self.status == "unavailable":
+            object.__setattr__(
+                self,
+                "reason",
+                _non_empty(self.reason, field_name="unavailable reason"),
+            )
+        elif self.reason is not None:
+            object.__setattr__(self, "reason", _non_empty(self.reason, field_name="reason"))
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "field_id": self.field_id,
+            "status": self.status,
+            "native_value": self.native_value,
+            "source_value": self.source_value,
+            "delta": self.delta,
+            "source_interval": (
+                list(self.source_interval) if self.source_interval is not None else None
+            ),
+            "source_evidence_role": self.source_evidence_role,
+            "reason": self.reason,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class RobustFCRReferenceComparison:
+    """Complete offline comparison against the normalized Julia evidence."""
+
+    fixture_fingerprint: str
+    native_result_fingerprint: str
+    native_policy_fingerprint: str
+    certification_request: ReferenceCertificationRequest
+    joint_certificate: JointReferenceCertificate
+    field_results: tuple[RobustFCRReferenceFieldResult, ...]
+    source_bound_proof_status: str
+    comparison_frame_fingerprints: Mapping[str, object]
+    producer_schedule_fingerprints: Mapping[str, object]
+    overall_status: str
+    status_counts: Mapping[str, int] = field(init=False)
+    comparison_fingerprint: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        for name in (
+            "fixture_fingerprint",
+            "native_result_fingerprint",
+            "native_policy_fingerprint",
+        ):
+            object.__setattr__(self, name, _sha256(getattr(self, name), field_name=name))
+        if not isinstance(self.certification_request, ReferenceCertificationRequest):
+            raise RobustFCRValidationError("certification_request has the wrong type")
+        if not isinstance(self.joint_certificate, JointReferenceCertificate):
+            raise RobustFCRValidationError("joint_certificate has the wrong type")
+        if (
+            self.joint_certificate.request_fingerprint
+            != self.certification_request.request_fingerprint
+        ):
+            raise RobustFCRValidationError("certificate/request fingerprint mismatch")
+        fields = tuple(self.field_results)
+        if not fields or any(
+            not isinstance(value, RobustFCRReferenceFieldResult) for value in fields
+        ):
+            raise RobustFCRValidationError("field_results must be non-empty")
+        if len({value.field_id for value in fields}) != len(fields):
+            raise RobustFCRValidationError("reference field IDs must be unique")
+        if self.source_bound_proof_status != "unavailable":
+            raise RobustFCRValidationError(
+                "the rounded source record does not contain source bound proof"
+            )
+        if self.overall_status != _overall_reference_status(
+            tuple(value.status for value in fields)
+        ):
+            raise RobustFCRValidationError("overall reference status is inconsistent")
+        counts = Counter(value.status for value in fields)
+        object.__setattr__(self, "field_results", fields)
+        object.__setattr__(
+            self,
+            "comparison_frame_fingerprints",
+            _deep_freeze(
+                self.comparison_frame_fingerprints,
+                field_name="comparison_frame_fingerprints",
+            ),
+        )
+        object.__setattr__(
+            self,
+            "producer_schedule_fingerprints",
+            _deep_freeze(
+                self.producer_schedule_fingerprints,
+                field_name="producer_schedule_fingerprints",
+            ),
+        )
+        object.__setattr__(
+            self,
+            "status_counts",
+            MappingProxyType(
+                {name: int(counts.get(name, 0)) for name in REFERENCE_COMPARISON_STATUSES}
+            ),
+        )
+        object.__setattr__(self, "comparison_fingerprint", _fingerprint(self._payload()))
+
+    def _payload(self) -> dict[str, object]:
+        return {
+            "fixture_fingerprint": self.fixture_fingerprint,
+            "native_result_fingerprint": self.native_result_fingerprint,
+            "native_policy_fingerprint": self.native_policy_fingerprint,
+            "certification_request": self.certification_request.to_dict(),
+            "joint_certificate": self.joint_certificate.to_dict(),
+            "field_results": [value.to_dict() for value in self.field_results],
+            "source_bound_proof_status": self.source_bound_proof_status,
+            "comparison_frame_fingerprints": _thaw(
+                self.comparison_frame_fingerprints
+            ),
+            "producer_schedule_fingerprints": _thaw(
+                self.producer_schedule_fingerprints
+            ),
+            "overall_status": self.overall_status,
+            "status_counts": dict(self.status_counts),
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            **self._payload(),
+            "comparison_fingerprint": self.comparison_fingerprint,
+        }
+
+
+def _numeric_interval(
+    value: Sequence[float],
+    *,
+    field_name: str,
+) -> tuple[float, float]:
+    values = _finite_tuple(value, field_name=field_name, count=2)
+    if values[0] > values[1]:
+        raise RobustFCRValidationError(f"{field_name} lower bound exceeds upper bound")
+    return values
+
+
+def _decimal_outer_interval(value: float, half_unit: float) -> tuple[float, float]:
+    """Form a decimal rounding envelope without binary-arithmetic widening."""
+
+    center = Decimal(str(_finite(value, field_name="interval center")))
+    half = Decimal(str(_non_negative(half_unit, field_name="interval half unit")))
+    return float(center - half), float(center + half)
 
 
 def _validate_provenance(raw: object) -> dict[str, object]:
@@ -652,6 +1146,21 @@ def _parse_recorded_result(raw: object) -> ReferenceRecordedResult:
         solve_time_seconds=value["solve_time_seconds"],
         recorded_slacks=value["recorded_slacks"],
     )
+    _expected(
+        result.objective_value_eur,
+        11.028,
+        field_name="recorded_result.objective_value_eur",
+    )
+    _expected(
+        result.objective_bound_eur,
+        11.028,
+        field_name="recorded_result.objective_bound_eur",
+    )
+    _expected(
+        result.solve_time_seconds,
+        1070.788,
+        field_name="recorded_result.solve_time_seconds",
+    )
     if value["decision_content_fingerprint"] != result.decision_content_fingerprint:
         raise RobustFCRValidationError("recorded decision_content_fingerprint mismatch")
     return result
@@ -747,6 +1256,23 @@ def load_robust_fcr_reference_fixture(
         )
         for index, item in enumerate(unavailable_raw)
     )
+    required_unavailable = {
+        "source.termination_status",
+        "source.primal_status",
+        "source.dual_status",
+        "source.optimality_proof",
+        "source.exact_optimality_gap",
+        "source.unrounded_decisions",
+        "source.constraint_residuals",
+        "source.solver_tolerances",
+        "source.actual_solver_versions",
+        "source.restriction_bilinear_evidence",
+    }
+    found_unavailable = {value.field_id for value in unavailable}
+    if not required_unavailable.issubset(found_unavailable):
+        raise RobustFCRValidationError(
+            "reference fixture omits required unavailable source evidence"
+        )
     redistribution = _exact_mapping(
         top["redistribution_status"],
         field_name="redistribution_status",
@@ -891,3 +1417,628 @@ def build_robust_fcr_reference_problem(
             "native_solve_policy_ownership": "caller_supplied",
         },
     )
+
+
+def build_reference_decision_intervals(
+    fixture: RobustFCRReferenceFixture,
+) -> tuple[ReferenceDecisionInterval, ...]:
+    """Expand every displayed source decision into its closed rounding interval."""
+
+    if not isinstance(fixture, RobustFCRReferenceFixture):
+        raise RobustFCRValidationError("fixture has the wrong contract type")
+    half_unit = fixture.precision_policy.decision_half_unit_kw
+    intervals: list[ReferenceDecisionInterval] = []
+    for index, displayed in enumerate(fixture.recorded_result.rounded_x0_kw):
+        lower, upper = _decimal_outer_interval(displayed, half_unit)
+        intervals.append(
+            ReferenceDecisionInterval(
+                field_id=f"x0[{index}]",
+                decision_kind="energy_x0",
+                index=index,
+                displayed_value=displayed,
+                lower=lower,
+                upper=upper,
+            )
+        )
+    for index, displayed in enumerate(fixture.recorded_result.rounded_xr_kw):
+        lower, upper = _decimal_outer_interval(displayed, half_unit)
+        intervals.append(
+            ReferenceDecisionInterval(
+                field_id=f"xr[{index}]",
+                decision_kind="fcr_xr",
+                index=index,
+                displayed_value=displayed,
+                lower=max(0.0, lower),
+                upper=upper,
+            )
+        )
+    return tuple(intervals)
+
+
+def _native_policy_evidence(native_result: RobustFCRSolveResult) -> tuple[str, Mapping[str, object]]:
+    options = native_result.solver.configured_options
+    fingerprint = _sha256(
+        options.get("solve_policy_fingerprint"),
+        field_name="native solve_policy_fingerprint",
+    )
+    raw_policy = options.get("solve_policy")
+    if not isinstance(raw_policy, Mapping):
+        raise RobustFCRValidationError(
+            "native result must retain its complete separately supplied solve policy"
+        )
+    policy = dict(raw_policy)
+    if policy.get("solve_policy_fingerprint") != fingerprint:
+        raise RobustFCRValidationError("native solve policy evidence is inconsistent")
+    return fingerprint, policy
+
+
+def build_reference_certification_request(
+    fixture: RobustFCRReferenceFixture,
+    native_result: RobustFCRSolveResult,
+) -> ReferenceCertificationRequest:
+    """Build the fixed source interval/native objective-band intersection."""
+
+    if not isinstance(fixture, RobustFCRReferenceFixture):
+        raise RobustFCRValidationError("fixture has the wrong contract type")
+    if not isinstance(native_result, RobustFCRSolveResult):
+        raise RobustFCRValidationError("native_result has the wrong contract type")
+    if native_result.formulation.kind != "restriction":
+        raise RobustFCRValidationError("reference comparison requires a restriction result")
+    objective = native_result.solver.objective_value_eur
+    if objective is None or native_result.decisions is None:
+        raise RobustFCRValidationError(
+            "reference certification requires a complete native incumbent"
+        )
+    policy_fingerprint, policy = _native_policy_evidence(native_result)
+    try:
+        absolute = _non_negative(
+            policy["objective_comparison_absolute_tolerance_eur"],
+            field_name="native objective absolute tolerance",
+        )
+        relative = _non_negative(
+            policy["objective_comparison_relative_tolerance"],
+            field_name="native objective relative tolerance",
+        )
+    except KeyError as exc:
+        raise RobustFCRValidationError(
+            "native solve policy is missing objective comparison fields"
+        ) from exc
+    source_value = fixture.recorded_result.objective_value_eur
+    source_half = fixture.precision_policy.objective_half_unit_eur
+    source_interval = _decimal_outer_interval(source_value, source_half)
+    allowance = max(
+        absolute,
+        relative
+        * max(
+            abs(objective),
+            abs(source_interval[0]),
+            abs(source_interval[1]),
+            1.0,
+        ),
+    )
+    native_band = (objective - allowance, objective + allowance)
+    lower = max(source_interval[0], native_band[0])
+    upper = min(source_interval[1], native_band[1])
+    intersection = (lower, upper) if lower <= upper else None
+    return ReferenceCertificationRequest(
+        fixture_fingerprint=fixture.fixture_fingerprint,
+        native_result_fingerprint=native_result.semantic_result_fingerprint,
+        native_policy_fingerprint=policy_fingerprint,
+        decision_intervals=build_reference_decision_intervals(fixture),
+        source_objective_interval=source_interval,
+        native_objective_equivalence_band=native_band,
+        certification_objective_interval=intersection,
+        objective_comparison_allowance_eur=allowance,
+        maximum_deployability_slack=DEPLOYABILITY_THRESHOLD,
+        objective_equivalence_possible=intersection is not None,
+    )
+
+
+def _compare_reference_numeric_field(
+    *,
+    field_id: str,
+    native_value: float | None,
+    source_value: float | None,
+    source_half_unit: float | None,
+    source_exact: bool,
+    alternative_optimum_compatible: bool,
+    source_evidence_role: str,
+    unavailable_reason: str | None = None,
+) -> RobustFCRReferenceFieldResult:
+    """Classify one numeric field while retaining its visible delta."""
+
+    if native_value is None or source_value is None or source_half_unit is None:
+        return RobustFCRReferenceFieldResult(
+            field_id=field_id,
+            status="unavailable",
+            native_value=native_value,
+            source_value=source_value,
+            delta=None,
+            source_interval=None,
+            source_evidence_role=source_evidence_role,
+            reason=unavailable_reason or "numeric comparison evidence is unavailable",
+        )
+    native = _finite(native_value, field_name=f"{field_id} native_value")
+    source = _finite(source_value, field_name=f"{field_id} source_value")
+    half = _non_negative(source_half_unit, field_name=f"{field_id} source_half_unit")
+    interval = (source - half, source + half)
+    delta = native - source
+    if source_exact and native == source:
+        status = "exact"
+    elif interval[0] <= native <= interval[1]:
+        status = "source_precision_compatible"
+    elif alternative_optimum_compatible:
+        status = "alternative_optimum_compatible"
+    else:
+        status = "mismatch"
+    return RobustFCRReferenceFieldResult(
+        field_id=field_id,
+        status=status,
+        native_value=native,
+        source_value=source,
+        delta=delta,
+        source_interval=interval,
+        source_evidence_role=source_evidence_role,
+        reason=None,
+    )
+
+
+def _overall_reference_status(statuses: Sequence[str]) -> str:
+    """Reduce ordered field statuses under the declared evidence precedence."""
+
+    values = tuple(statuses)
+    if not values or any(value not in REFERENCE_COMPARISON_STATUSES for value in values):
+        raise RobustFCRValidationError("reference statuses are empty or unsupported")
+    precedence = {
+        "exact": 0,
+        "unavailable": 1,
+        "source_precision_compatible": 2,
+        "alternative_optimum_compatible": 3,
+        "mismatch": 4,
+    }
+    return max(values, key=precedence.__getitem__)
+
+
+def _status_field(
+    *,
+    field_id: str,
+    status: str,
+    native_value: object | None,
+    source_value: object | None,
+    source_evidence_role: str,
+    reason: str | None = None,
+) -> RobustFCRReferenceFieldResult:
+    return RobustFCRReferenceFieldResult(
+        field_id=field_id,
+        status=status,
+        native_value=native_value,
+        source_value=source_value,
+        delta=None,
+        source_interval=None,
+        source_evidence_role=source_evidence_role,
+        reason=reason,
+    )
+
+
+def _comparison_frame_payloads(
+    fixture: RobustFCRReferenceFixture,
+    native_result: RobustFCRSolveResult,
+) -> dict[str, object]:
+    if native_result.decisions is None:  # guarded by request construction
+        raise RobustFCRValidationError("native decisions are unavailable")
+    source_x0 = fixture.recorded_result.rounded_x0_kw
+    source_xr = fixture.recorded_result.rounded_xr_kw
+    native_x0 = tuple(
+        -value
+        for value in native_result.decisions.energy_baseline_charge_positive_kw
+    )
+    native_xr = native_result.decisions.fcr_capacity_kw
+    return {
+        "comparison_frame": "positive_is_discharge",
+        "source": {
+            "energy": reference_energy_content_fingerprint(source_x0),
+            "fcr": reference_fcr_content_fingerprint(source_xr),
+            "combined": reference_decision_content_fingerprint(source_x0, source_xr),
+        },
+        "native": {
+            "energy": reference_energy_content_fingerprint(native_x0),
+            "fcr": reference_fcr_content_fingerprint(native_xr),
+            "combined": reference_decision_content_fingerprint(native_x0, native_xr),
+        },
+    }
+
+
+def _producer_schedule_fingerprints(
+    native_result: RobustFCRSolveResult,
+) -> dict[str, object]:
+    native_plan = native_result.deployable_plan
+    if native_plan is None:
+        native = {
+            "energy_schedule_fingerprint": None,
+            "fcr_schedule_fingerprint": None,
+            "plan_fingerprint": None,
+            "unavailable_reason": "native result did not emit an eligible plan",
+        }
+    else:
+        native = {
+            "energy_schedule_fingerprint": native_plan.energy_schedule.schedule_fingerprint,
+            "fcr_schedule_fingerprint": native_plan.fcr_schedule.schedule_fingerprint,
+            "plan_fingerprint": native_plan.plan_fingerprint,
+            "unavailable_reason": None,
+        }
+    return {
+        "native": native,
+        "source": {
+            "energy_schedule_fingerprint": None,
+            "fcr_schedule_fingerprint": None,
+            "plan_fingerprint": None,
+            "unavailable_reason": (
+                "the Julia record contains rounded decisions but no Feature 012 "
+                "producer IDs or schedule/plan envelopes"
+            ),
+        },
+        "comparison_rule": (
+            "producer-specific fingerprints are reported but never numerically equated"
+        ),
+    }
+
+
+def compare_robust_fcr_reference(
+    fixture: RobustFCRReferenceFixture,
+    native_result: RobustFCRSolveResult,
+) -> RobustFCRReferenceComparison:
+    """Compare a native restriction with normalized rounded Julia evidence."""
+
+    request = build_reference_certification_request(fixture, native_result)
+    certificate = _certify_reference_decision_box(fixture, native_result, request)
+    audit = native_result.feasibility_audit
+    native_feasible = bool(audit is not None and audit.passes_deployability_audit)
+    alternative_compatible = bool(
+        request.objective_equivalence_possible
+        and native_feasible
+        and certificate.joint_feasible
+        and certificate.objective_equivalent
+    )
+    source = fixture.recorded_result
+    native_decisions = native_result.decisions
+    if native_decisions is None:  # guarded by request construction
+        raise RobustFCRValidationError("native decisions are unavailable")
+    native_x0 = tuple(
+        -value for value in native_decisions.energy_baseline_charge_positive_kw
+    )
+    fields: list[RobustFCRReferenceFieldResult] = [
+        _compare_reference_numeric_field(
+            field_id="optimization_objective_eur",
+            native_value=native_result.solver.objective_value_eur,
+            source_value=source.objective_value_eur,
+            source_half_unit=fixture.precision_policy.objective_half_unit_eur,
+            source_exact=False,
+            alternative_optimum_compatible=alternative_compatible,
+            source_evidence_role="rounded_objective",
+        ),
+        RobustFCRReferenceFieldResult(
+            field_id="source_solver_bound_eur",
+            status="unavailable",
+            native_value=native_result.solver.best_upper_bound_eur,
+            source_value=source.objective_bound_eur,
+            delta=(
+                native_result.solver.best_upper_bound_eur - source.objective_bound_eur
+                if native_result.solver.best_upper_bound_eur is not None
+                else None
+            ),
+            source_interval=(
+                source.objective_bound_eur
+                - fixture.precision_policy.objective_half_unit_eur,
+                source.objective_bound_eur
+                + fixture.precision_policy.objective_half_unit_eur,
+            ),
+            source_evidence_role="rounded_bound_metadata_without_proof",
+            reason=(
+                "equal displayed source objective and bound do not prove optimality, "
+                "an exact gap, or source termination"
+            ),
+        ),
+    ]
+    fields.extend(
+        _compare_reference_numeric_field(
+            field_id=f"x0[{index}]",
+            native_value=native_x0[index],
+            source_value=source.rounded_x0_kw[index],
+            source_half_unit=fixture.precision_policy.decision_half_unit_kw,
+            source_exact=False,
+            alternative_optimum_compatible=alternative_compatible,
+            source_evidence_role="rounded_decision",
+        )
+        for index in range(24)
+    )
+    fields.extend(
+        _compare_reference_numeric_field(
+            field_id=f"xr[{index}]",
+            native_value=native_decisions.fcr_capacity_kw[index],
+            source_value=source.rounded_xr_kw[index],
+            source_half_unit=fixture.precision_policy.decision_half_unit_kw,
+            source_exact=False,
+            alternative_optimum_compatible=alternative_compatible,
+            source_evidence_role="rounded_decision",
+        )
+        for index in range(6)
+    )
+    frame = _comparison_frame_payloads(fixture, native_result)
+    numeric_status = _overall_reference_status(
+        tuple(value.status for value in fields if value.field_id.startswith(("x0[", "xr[")))
+    )
+    for name in ("energy", "fcr", "combined"):
+        fields.append(
+            _status_field(
+                field_id=f"decision_content_fingerprint.{name}",
+                status=numeric_status,
+                native_value=frame["native"][name],
+                source_value=frame["source"][name],
+                source_evidence_role="canonical_positive_discharge_content",
+                reason=(
+                    "fingerprints retain exact payload identity; compatibility is "
+                    "classified from the interval-aware numeric evidence"
+                ),
+            )
+        )
+    if audit is None:
+        fields.append(
+            _status_field(
+                field_id="native_feasibility_audit",
+                status="unavailable",
+                native_value=None,
+                source_value=None,
+                source_evidence_role="native_independent_audit",
+                reason="native result contains no feasibility audit",
+            )
+        )
+    else:
+        fields.append(
+            _status_field(
+                field_id="native_feasibility_audit",
+                status="exact" if native_feasible else "mismatch",
+                native_value=audit.audit_fingerprint,
+                source_value="required_pass",
+                source_evidence_role="native_independent_audit",
+                reason=None if native_feasible else "native deployability audit failed",
+            )
+        )
+    certificate_status = (
+        "exact"
+        if certificate.joint_feasible
+        else ("unavailable" if certificate.solve_status == "unavailable" else "mismatch")
+    )
+    fields.append(
+        _status_field(
+            field_id="joint_reference_feasibility",
+            status=certificate_status,
+            native_value=certificate.joint_feasible,
+            source_value="required_joint_feasible",
+            source_evidence_role="joint_restriction_certificate",
+            reason=(
+                certificate.unavailable_reason
+                if certificate_status == "unavailable"
+                else (
+                    None
+                    if certificate_status == "exact"
+                    else "the simultaneous rounded-decision box is infeasible"
+                )
+            ),
+        )
+    )
+    fields.append(
+        _status_field(
+            field_id="objective_equivalence",
+            status=(
+                "exact"
+                if certificate.objective_equivalent
+                else ("unavailable" if certificate.solve_status == "unavailable" else "mismatch")
+            ),
+            native_value=certificate.certified_objective_value_eur,
+            source_value=(
+                list(request.certification_objective_interval)
+                if request.certification_objective_interval is not None
+                else None
+            ),
+            source_evidence_role="joint_objective_interval_certificate",
+            reason=(
+                certificate.unavailable_reason
+                if certificate.solve_status == "unavailable"
+                else (
+                    None
+                    if certificate.objective_equivalent
+                    else "no jointly feasible objective-equivalent witness was certified"
+                )
+            ),
+        )
+    )
+    producer = _producer_schedule_fingerprints(native_result)
+    for producer_name in ("native", "source"):
+        for fingerprint_name in (
+            "energy_schedule_fingerprint",
+            "fcr_schedule_fingerprint",
+            "plan_fingerprint",
+        ):
+            value = producer[producer_name][fingerprint_name]
+            fields.append(
+                _status_field(
+                    field_id=f"{producer_name}.{fingerprint_name}",
+                    status="unavailable",
+                    native_value=value if producer_name == "native" else None,
+                    source_value=value if producer_name == "source" else None,
+                    source_evidence_role="producer_specific_identity",
+                    reason=producer[producer_name]["unavailable_reason"]
+                    or "producer-specific identities are not parity criteria",
+                )
+            )
+    overall = _overall_reference_status(tuple(value.status for value in fields))
+    return RobustFCRReferenceComparison(
+        fixture_fingerprint=fixture.fixture_fingerprint,
+        native_result_fingerprint=native_result.semantic_result_fingerprint,
+        native_policy_fingerprint=request.native_policy_fingerprint,
+        certification_request=request,
+        joint_certificate=certificate,
+        field_results=tuple(fields),
+        source_bound_proof_status="unavailable",
+        comparison_frame_fingerprints=frame,
+        producer_schedule_fingerprints=producer,
+        overall_status=overall,
+    )
+
+
+def _certify_reference_decision_box(
+    fixture: RobustFCRReferenceFixture,
+    native_result: RobustFCRSolveResult,
+    request: ReferenceCertificationRequest,
+) -> JointReferenceCertificate:
+    """Solve the auxiliary certificate lazily; implemented at the solver boundary."""
+
+    if not request.objective_equivalence_possible:
+        return JointReferenceCertificate(
+            request_fingerprint=request.request_fingerprint,
+            solve_status="infeasible",
+            joint_feasible=False,
+            objective_equivalent=False,
+            maximum_slack=None,
+            maximum_residual=None,
+            certified_objective_value_eur=None,
+            witness_fingerprint=None,
+            unavailable_reason=None,
+        )
+    try:
+        policy_payload = dict(native_result.solver.configured_options["solve_policy"])
+        policy_payload.pop("solve_policy_fingerprint", None)
+        policy = RobustFCRSolvePolicy(**policy_payload)
+        problem = build_robust_fcr_reference_problem(fixture, solve_policy=policy)
+        from ._robust_fcr_formulation import assemble_robust_fcr_reference_certificate
+        from ._robust_fcr_solver import require_highs_backend, solve_assembled_model
+
+        backend = require_highs_backend()
+        assembled = assemble_robust_fcr_reference_certificate(
+            problem,
+            request,
+            pyomo_environ=backend.pyomo_environ,
+        )
+        raw = solve_assembled_model(assembled, policy, backend=backend)
+    except Exception as exc:
+        return JointReferenceCertificate(
+            request_fingerprint=request.request_fingerprint,
+            solve_status="unavailable",
+            joint_feasible=False,
+            objective_equivalent=False,
+            maximum_slack=None,
+            maximum_residual=None,
+            certified_objective_value_eur=None,
+            witness_fingerprint=None,
+            unavailable_reason=f"joint reference certification is unavailable: {exc}",
+        )
+    if raw.solve_status not in {"optimal", "feasible"} or raw.witness is None:
+        return JointReferenceCertificate(
+            request_fingerprint=request.request_fingerprint,
+            solve_status=raw.solve_status,
+            joint_feasible=False,
+            objective_equivalent=False,
+            maximum_slack=None,
+            maximum_residual=None,
+            certified_objective_value_eur=None,
+            witness_fingerprint=None,
+            unavailable_reason=None,
+        )
+    from .robust_fcr_bidding import _audit_witness
+
+    audit = _audit_witness(
+        problem,
+        RobustFCRFormulationProfile.for_kind("restriction"),
+        raw.witness,
+        reported_objective_eur=raw.objective_value_eur,
+    )
+    common_maximum_residual = max(
+        (value.maximum_positive_violation for value in audit.constraint_families),
+        default=0.0,
+    )
+    maximum_slack = max(audit.modeled_slacks.values(), default=0.0)
+    objective = raw.objective_value_eur
+    objective_interval = request.certification_objective_interval
+    source_x0 = tuple(float(value) for value in raw.witness["x0"])
+    source_xr = tuple(float(value) for value in raw.witness["xr"])
+    decision_box_residual = 0.0
+    for interval in request.decision_intervals:
+        value = (
+            source_x0[interval.index]
+            if interval.decision_kind == "energy_x0"
+            else source_xr[interval.index]
+        )
+        decision_box_residual = max(
+            decision_box_residual,
+            interval.lower - value,
+            value - interval.upper,
+        )
+    objective_box_residual = (
+        max(
+            objective_interval[0] - objective,
+            objective - objective_interval[1],
+            0.0,
+        )
+        if objective is not None and objective_interval is not None
+        else math.inf
+    )
+    maximum_residual = max(
+        common_maximum_residual,
+        decision_box_residual,
+        objective_box_residual,
+    )
+    objective_equivalent = bool(
+        objective is not None
+        and objective_interval is not None
+        and objective_interval[0] - DEPLOYABILITY_THRESHOLD
+        <= objective
+        <= objective_interval[1] + DEPLOYABILITY_THRESHOLD
+    )
+    joint_feasible = bool(
+        audit.passes
+        and maximum_slack <= DEPLOYABILITY_THRESHOLD
+        and maximum_residual <= DEPLOYABILITY_THRESHOLD
+        and objective_equivalent
+    )
+    if not joint_feasible:
+        return JointReferenceCertificate(
+            request_fingerprint=request.request_fingerprint,
+            solve_status="infeasible",
+            joint_feasible=False,
+            objective_equivalent=False,
+            maximum_slack=None,
+            maximum_residual=None,
+            certified_objective_value_eur=None,
+            witness_fingerprint=None,
+            unavailable_reason=None,
+        )
+    return JointReferenceCertificate(
+        request_fingerprint=request.request_fingerprint,
+        solve_status=raw.solve_status,
+        joint_feasible=True,
+        objective_equivalent=True,
+        maximum_slack=maximum_slack,
+        maximum_residual=maximum_residual,
+        certified_objective_value_eur=objective,
+        witness_fingerprint=audit.witness_fingerprint,
+        unavailable_reason=None,
+    )
+
+
+__all__ = [
+    "JointReferenceCertificate",
+    "REFERENCE_FIXTURE_SCHEMA_VERSION",
+    "ReferenceCertificationRequest",
+    "ReferenceDecisionInterval",
+    "RobustFCRReferenceComparison",
+    "RobustFCRReferenceFieldResult",
+    "RobustFCRReferenceFixture",
+    "build_reference_certification_request",
+    "build_reference_decision_intervals",
+    "build_robust_fcr_reference_problem",
+    "compare_robust_fcr_reference",
+    "load_robust_fcr_reference_fixture",
+    "reference_decision_content_fingerprint",
+    "reference_energy_content_fingerprint",
+    "reference_fcr_content_fingerprint",
+]

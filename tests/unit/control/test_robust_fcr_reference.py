@@ -124,10 +124,15 @@ def _native_result(*, objective: float = 11.028, match_decisions: bool = True):
         absolute_gap_eur=0.0,
         relative_gap=0.0,
     )
+    feasibility_audit = replace(
+        base.feasibility_audit,
+        passes_deployability_audit=True,
+    )
     return replace(
         base,
         solver=solver,
         decisions=decisions,
+        feasibility_audit=feasibility_audit,
         deployability_status="blocked",
         deployability_reasons=("controlled_reference_test",),
         deployable_plan=None,
@@ -452,6 +457,36 @@ def test_certification_request_scales_relative_allowance_from_both_endpoints() -
     )
     assert request.certification_objective_interval is None
     assert request.objective_equivalence_possible is False
+
+
+def test_joint_certification_model_adds_one_simultaneous_box_and_slack_caps() -> None:
+    import pyomo.environ as pyo
+
+    from open_energy_lab.control._robust_fcr_formulation import (
+        assemble_robust_fcr_reference_certificate,
+    )
+
+    fixture = load_robust_fcr_reference_fixture(FIXTURE_PATH)
+    native = _native_result()
+    request = build_reference_certification_request(fixture, native)
+    problem = build_robust_fcr_reference_problem(
+        fixture,
+        solve_policy=_native_policy(),
+    )
+    assembled = assemble_robust_fcr_reference_certificate(
+        problem,
+        request,
+        pyomo_environ=pyo,
+    )
+
+    assert assembled.handoff.cardinality["reference_decision_box_constraints"] == 60
+    assert assembled.handoff.cardinality["reference_objective_box_constraints"] == 2
+    assert assembled.handoff.cardinality["reference_slack_bound_constraints"] == 194
+    assert assembled.handoff.cardinality["reference_certification_constraints"] == 256
+    assert len(assembled.constraint_handles["reference_decision_box"]) == 60
+    assert len(assembled.constraint_handles["reference_objective_box"]) == 2
+    assert len(assembled.constraint_handles["reference_slack_bounds"]) == 194
+    assert assembled.handoff.cardinality["active_constraints"] == 33_899
 
 
 def test_joint_certificate_rejects_false_feasibility_evidence() -> None:

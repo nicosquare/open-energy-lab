@@ -7,7 +7,7 @@ remain under the separate Feature 012 fixture boundary.
 
 ## Ownership and provenance
 
-The planned
+The committed
 `robust_storage_bidding_2023-06-18_restriction_v1.json` fixture is a normalized
 derived manifest, not a copy of the source result. It is governed by:
 
@@ -48,8 +48,33 @@ the pinned digest. The normalizer never starts Julia, Gurobi, HiGHS, or a
 network client. It writes candidate output and an ordered semantic diff only
 below ignored `artifacts/`; it refuses committed destinations.
 
+From the repository root, regenerate the review candidate explicitly:
+
+```bash
+uv run python examples/robust_fcr_bidding/normalize_reference_fixture.py \
+  --source-json baselines/robust_storage_bidding/results/02/2023-06-18.json \
+  --expected-sha256 8c13f8318d533c35755e90e4e45bcef336cb7b31c09afccbe616844acbddc1e6 \
+  --destination-dir artifacts/reference/robust_fcr_bidding
+```
+
+The reviewed candidate must load through
+`load_robust_fcr_reference_fixture`, report 24 hourly energy and six four-hour
+FCR decisions, retain the exact `53.327556325823224 kWh` terminal target, and
+produce an empty semantic diff against this committed fixture. Candidate files
+are ignored and are never promoted automatically.
+
 After inspecting provenance, schema validation, source-precision intervals,
 all semantic differences, and byte stability, a maintainer may deliberately
 promote the candidate in a separate reviewed change. Production code and
 routine tests never refresh fixtures, and no refresh operation may modify
 `baselines/robust_storage_bidding` or `legacy/*`.
+
+## Evidence limits
+
+The fixture supports exact input reconstruction and interval-aware comparison
+of the displayed objective and all 30 market decisions. Its three-decimal
+values do not establish exact schedule equality. The recorded equal objective
+and bound do not prove source termination, optimality, an exact gap, solver
+tolerances, unrounded feasibility, residuals, or actual solver versions. Those
+fields remain explicitly unavailable, and the caller supplies the complete
+native solve policy separately.
