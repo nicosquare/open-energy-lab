@@ -45,6 +45,79 @@ read by production or routine-test code.
   optimistic upper-objective formulation, and optional exact bilinear evidence
   from `code/02_model.jl:220-224`.
 
+## Preserved equation ledger
+
+The native formulation uses the following pinned source ranges directly. The
+line references are evidence identifiers: production code never opens these
+paths at runtime.
+
+| Equation family | Pinned source | Native interpretation and unit |
+| --- | --- | --- |
+| Variables, domains, fixed intraday adjustment, and binaries | `baselines/robust_storage_bidding/code/02_model.jl:86-135` | `x0`, `xr`, auxiliaries, kWh slacks, and dimensionless case binaries |
+| Pointwise charge and discharge headroom | `baselines/robust_storage_bidding/code/02_model.jl:170-174` | `x0 - xr >= x_min` and `x0 + xr <= x_max`, in kW |
+| Lower/coupling/upper robust stored energy | `baselines/robust_storage_bidding/code/02_model.jl:183-188` | prefix robust counterparts, in kWh; the horizon budget is in hours |
+| Charge/discharge efficiency epigraphs | `baselines/robust_storage_bidding/code/02_model.jl:191-197` | maximum of the charging-efficiency and inverse-discharge-efficiency branches, in kW |
+| Diagonal and common mixed-binary upper counterpart | `baselines/robust_storage_bidding/code/02_model.jl:199-219` | triangular `LambdaHigh` bounds, in kW |
+| Optional exact relation | `baselines/robust_storage_bidding/code/02_model.jl:220-224` | nonconvex bilinear evidence only |
+| Restriction classification and conservative tightening | `baselines/robust_storage_bidding/code/02_model.jl:225-230` | restriction-only lower-bound families, in kW |
+| Ex-ante objective and terminal lower bound | `baselines/robust_storage_bidding/code/02_model.jl:252-263` | EUR objective components and terminal kWh requirement |
+| Horizon covering budget | `baselines/robust_storage_bidding/code/02_model.jl:293-305` | 24/0.25/2.25 hours derive 2.75 hours |
+
+The source parameter declaration at
+`baselines/robust_storage_bidding/code/01_datastruct.jl:3-49` establishes the
+positive-discharge battery convention, efficiency fields, window parameters,
+prices, slacks, formulations, and solver settings. The complete Experiment 2
+profile at `baselines/robust_storage_bidding/code/12.jl:27-95` fixes the
+24/96/6 grid and the migrated numerical inputs.
+
+### Sign and multi-rate adapters
+
+The conversion at the public boundary is explicit:
+
+```text
+public_charge_positive_kw = -source_positive_discharge_kw
+public_fcr_capacity_kw = source_xr_kw
+```
+
+The first equation changes only the sign convention. The second retains the
+non-negative symmetric capacity magnitude. For one-based source planning index
+`k`, hourly energy uses `ceil(k / 4)` and four-hour FCR uses `ceil(k / 16)`;
+the native arrays use the equivalent zero-based `k // 4` and `k // 16` maps.
+
+### FCR price unit correction
+
+The `pr` source comment says `EUR/kWh` in
+`baselines/robust_storage_bidding/code/01_datastruct.jl:18-20`, but the price
+normalization and objective behavior establish `EUR/kW/4h-block`. The native
+objective therefore computes `sum(price_per_kw_block * xr_kw)` exactly once
+per block; it does not multiply the value by four hours. Day-ahead energy
+retains `EUR/kWh` and the quarter-hour integration factor.
+
+### Restriction indexing detail
+
+The migrated restriction intentionally distinguishes interval-local
+`lambdaHigh[l]` in the classification decision from prefix-specific
+`lambdaHigh[k]` in the triangular tightening. Collapsing those two indices
+would change `baselines/robust_storage_bidding/code/02_model.jl:225-230` and
+the feasible region. The pure audit reports these classification and
+tightening families separately.
+
+### Terminal and slack semantics
+
+The terminal constraint is
+`initial_kwh - 0.25 * sum(alpha_kw) >= terminal_minimum_kwh - terminal_end_kwh`
+from `baselines/robust_storage_bidding/code/02_model.jl:252-263`. The exact
+reference target is not reconstructed from the rounded initial state.
+`symin`, `symax`, and `syK[1]` are declared and penalized but inert in the
+non-intraday hard robust SOC equations; only terminal-end `syK[2]` relaxes a
+constraint. All four groups remain visible audit evidence, and any modeled
+slack above `1e-6` blocks a deployable plan.
+
+The displayed objective is exclusively the ex-ante sum of day-ahead value,
+FCR capacity value, and the subtracted feasibility-slack penalty. Runtime and
+Feature 012 realized activation, settlement, and profit are different evidence
+domains and are excluded from this reconciliation.
+
 ## Behavior improved
 
 - Public immutable, versioned inputs make units, mappings, cutoff, provenance,
@@ -70,6 +143,10 @@ relative source paths, implicit indexing, activation loading during the
 combined backtest, intraday variants, LP variants, and ambiguous objective
 versus settlement labels are not migrated. No code writes under the reference
 tree.
+
+In particular, source variants `lp_relax` and `lp_restrict`, all intraday
+recourse equations, force-bilinear heuristics, rolling state carry-over, and
+the combined backtest are intentionally excluded from the Feature 013 model.
 
 The saved `bilinear_violations=0` is not treated as restriction feasibility
 evidence: the reference save path computes that check only for relaxation

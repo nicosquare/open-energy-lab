@@ -138,19 +138,19 @@ the expected triangular index counts and quadratic—not cubic—growth.
 
 ### Tests for User Story 3
 
-- [ ] T034 [P] [US3] Add equation-oracle tests for the 2.75-hour derivation, invalid budget combinations, 24/96/6 mapping, headroom, charge/discharge efficiency branches, lower/upper robust SOC, terminal shortfall, inert source slacks, and objective assembly in `tests/unit/control/test_robust_fcr_equations.py`
-- [ ] T035 [US3] After T034, add private K=8/16/32 index/cardinality growth tests and public K=96 assembly-without-solve checks for triangular and strict off-diagonal families in `tests/unit/control/test_robust_fcr_equations.py`
-- [ ] T036 [P] [US3] Add documentation/source-contract tests requiring the exact pinned equation paths, line ranges, sign conversion, FCR price unit correction, and `lambdaHigh[l]` versus `lambdaHigh[k]` restriction detail in `tests/unit/control/test_robust_fcr_source_documentation.py`
+- [X] T034 [P] [US3] Add equation-oracle tests for the 2.75-hour derivation, invalid budget combinations, 24/96/6 mapping, headroom, charge/discharge efficiency branches, lower/upper robust SOC, terminal shortfall, inert source slacks, and objective assembly in `tests/unit/control/test_robust_fcr_equations.py`
+- [X] T035 [US3] After T034, add private K=8/16/32 index/cardinality growth tests and public K=96 assembly-without-solve checks for triangular and strict off-diagonal families in `tests/unit/control/test_robust_fcr_equations.py`
+- [X] T036 [P] [US3] Add documentation/source-contract tests requiring the exact pinned equation paths, line ranges, sign conversion, FCR price unit correction, and `lambdaHigh[l]` versus `lambdaHigh[k]` restriction detail in `tests/unit/control/test_robust_fcr_source_documentation.py`
 
 ### Implementation for User Story 3
 
-- [ ] T037 [US3] Complete deterministic `to_dict` evidence for recovery-window/horizon-wide lineage, explicit planning-to-energy/FCR maps, formulation profiles, objective components, units, and source references in `src/open_energy_lab/control/robust_fcr_bidding.py`
-- [ ] T038 [US3] Enrich every pure audit family with canonical unit, relation, checked count, maximum positive violation, witness indices, and exact `code/02_model.jl` references while preserving independence from Pyomo expressions in `src/open_energy_lab/control/robust_fcr_bidding.py`
-- [ ] T039 [US3] Record semantic index counts, total variables/binaries/active constraints, and formulation-specific quadratic cardinality metadata during assembly in `src/open_energy_lab/control/_robust_fcr_formulation.py`
-- [ ] T040 [US3] Reconcile displayed day-ahead value, FCR capacity value, slack penalty, and total objective separately from runtime and Feature 012 settlement fields in `src/open_energy_lab/control/robust_fcr_bidding.py`
-- [ ] T041 [US3] Add human-readable mapping, uncertainty derivation, equation-family residual, objective-component, and model-cardinality tables to `examples/robust_fcr_bidding/run_small_case.py`
-- [ ] T042 [US3] Document the exact preserved equations, corrected units, terminal/slack semantics, sign adapter, reference quirks, and intentionally excluded LP/intraday variants in `docs/migration/reference-robust-fcr-bidding.md`
-- [ ] T043 [US3] Run `uv run pytest tests/unit/control/test_robust_fcr_equations.py tests/unit/control/test_robust_fcr_source_documentation.py -q` and verify public K=96 is assembled but not solved in `tests/unit/control/test_robust_fcr_equations.py`
+- [X] T037 [US3] Complete deterministic `to_dict` evidence for recovery-window/horizon-wide lineage, explicit planning-to-energy/FCR maps, formulation profiles, objective components, units, and source references in `src/open_energy_lab/control/robust_fcr_bidding.py`
+- [X] T038 [US3] Enrich every pure audit family with canonical unit, relation, checked count, maximum positive violation, witness indices, and exact `code/02_model.jl` references while preserving independence from Pyomo expressions in `src/open_energy_lab/control/robust_fcr_bidding.py`
+- [X] T039 [US3] Record semantic index counts, total variables/binaries/active constraints, and formulation-specific quadratic cardinality metadata during assembly in `src/open_energy_lab/control/_robust_fcr_formulation.py`
+- [X] T040 [US3] Reconcile displayed day-ahead value, FCR capacity value, slack penalty, and total objective separately from runtime and Feature 012 settlement fields in `src/open_energy_lab/control/robust_fcr_bidding.py`
+- [X] T041 [US3] Add human-readable mapping, uncertainty derivation, equation-family residual, objective-component, and model-cardinality tables to `examples/robust_fcr_bidding/run_small_case.py`
+- [X] T042 [US3] Document the exact preserved equations, corrected units, terminal/slack semantics, sign adapter, reference quirks, and intentionally excluded LP/intraday variants in `docs/migration/reference-robust-fcr-bidding.md`
+- [X] T043 [US3] Run `uv run pytest tests/unit/control/test_robust_fcr_equations.py tests/unit/control/test_robust_fcr_source_documentation.py -q` and verify public K=96 is assembled but not solved in `tests/unit/control/test_robust_fcr_equations.py`
 
 **Checkpoint**: A reviewer can reproduce the robust model from named evidence
 without treating a successful solver status as the equation audit.

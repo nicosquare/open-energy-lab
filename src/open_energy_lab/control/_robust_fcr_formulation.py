@@ -125,6 +125,82 @@ def model_cardinality_basis(index_sets: NormalizedRobustFCRIndexSets) -> dict[st
     return index_sets.semantic_counts()
 
 
+def model_cardinality_metadata(
+    index_sets: NormalizedRobustFCRIndexSets,
+    formulation_kind: str,
+) -> dict[str, int]:
+    """Return exact linear/quadratic structure counts without building Pyomo."""
+
+    if not isinstance(index_sets, NormalizedRobustFCRIndexSets):
+        raise RobustFCRValidationError(
+            "index_sets must be NormalizedRobustFCRIndexSets"
+        )
+    if formulation_kind not in {"restriction", "relaxation", "exact"}:
+        raise RobustFCRValidationError(
+            "formulation_kind must be restriction, relaxation, or exact"
+        )
+    count = index_sets.planning_interval_count
+    strict_count = max(count - 1, 0)
+    triangular = len(index_sets.triangular_pairs)
+    strict_triangular = len(index_sets.strict_triangular_pairs)
+    common_binary_variables = 2 * strict_count
+    formulation_binary_variables = (
+        strict_count if formulation_kind == "restriction" else 0
+    )
+    lambda_triangular_variables = 2 * triangular
+    common_strict_triangular_constraints = 4 * strict_triangular
+    formulation_strict_triangular_constraints = {
+        "restriction": 2 * strict_triangular,
+        "relaxation": 0,
+        "exact": strict_triangular,
+    }[formulation_kind]
+    formulation_linear_constraints = (
+        2 * strict_count if formulation_kind == "restriction" else 0
+    )
+    variables = (
+        len(index_sets.energy_indices)
+        + len(index_sets.fcr_indices)
+        + 9 * count
+        + lambda_triangular_variables
+        + formulation_binary_variables
+    )
+    common_constraints = (
+        15 * count
+        + triangular
+        + common_strict_triangular_constraints
+        - 3
+    )
+    active_constraints = (
+        common_constraints
+        + formulation_linear_constraints
+        + formulation_strict_triangular_constraints
+    )
+    return {
+        **model_cardinality_basis(index_sets),
+        "common_binary_variables": common_binary_variables,
+        "formulation_specific_binary_variables": formulation_binary_variables,
+        "lambda_triangular_variable_entries": lambda_triangular_variables,
+        "common_strict_triangular_constraint_entries": (
+            common_strict_triangular_constraints
+        ),
+        "formulation_specific_linear_constraint_entries": (
+            formulation_linear_constraints
+        ),
+        "formulation_specific_strict_triangular_constraint_entries": (
+            formulation_strict_triangular_constraints
+        ),
+        "quadratic_structure_entries": (
+            lambda_triangular_variables
+            + common_strict_triangular_constraints
+            + formulation_strict_triangular_constraints
+        ),
+        "quadratic_index_power": 2,
+        "variables": variables,
+        "binaries": common_binary_variables + formulation_binary_variables,
+        "active_constraints": active_constraints,
+    }
+
+
 def build_model_input(problem: RobustFCRBiddingProblem) -> RobustFCRModelInput:
     """Translate one validated public problem into source-frame numeric data."""
 
@@ -540,12 +616,17 @@ def assemble_robust_fcr_model(
     constraint_count = sum(
         1 for _ in model.component_data_objects(pyo.Constraint, active=True)
     )
-    cardinality = {
-        **model_cardinality_basis(indices),
+    cardinality = model_cardinality_metadata(indices, profile.kind)
+    observed = {
         "variables": variable_count,
         "binaries": binary_count,
         "active_constraints": constraint_count,
     }
+    expected = {name: cardinality[name] for name in observed}
+    if observed != expected:  # pragma: no cover - guards translation drift
+        raise RobustFCRValidationError(
+            f"assembled model cardinality mismatch: expected {expected}, observed {observed}"
+        )
     handoff = RobustFCRModelHandoff(
         formulation_kind=profile.kind,
         equation_version=profile.equation_version,
@@ -571,4 +652,5 @@ __all__ = [
     "build_model_input",
     "assemble_robust_fcr_model",
     "model_cardinality_basis",
+    "model_cardinality_metadata",
 ]

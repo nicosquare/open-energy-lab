@@ -52,6 +52,10 @@ def test_authored_problem_is_exact_ordinary_day_and_deterministic() -> None:
     assert first.time_contract.to_dict()["mapping"] == {
         "planning_to_energy": [index // 4 for index in range(96)],
         "planning_to_fcr": [index // 16 for index in range(96)],
+        "source_one_based_formulas": {
+            "energy": "ceil(k / 4)",
+            "fcr": "ceil(k / 16)",
+        },
     }
     assert first.information_cutoff_utc == AUTHORED_INFORMATION_CUTOFF_UTC
     assert first.to_dict()["problem_fingerprint"] == first.problem_fingerprint

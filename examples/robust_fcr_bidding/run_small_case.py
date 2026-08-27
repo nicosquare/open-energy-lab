@@ -33,6 +33,150 @@ def _digest(value: object) -> str:
     ).hexdigest()
 
 
+def _display_value(value: object) -> str:
+    if isinstance(value, float):
+        return f"{value:.12g}"
+    return str(value)
+
+
+def _print_table(
+    title: str,
+    headers: tuple[str, ...],
+    rows: tuple[tuple[object, ...], ...],
+) -> None:
+    rendered = tuple(
+        tuple(_display_value(value) for value in row)
+        for row in rows
+    )
+    widths = tuple(
+        max(len(headers[index]), *(len(row[index]) for row in rendered))
+        for index in range(len(headers))
+    )
+    print(title)
+    print(" | ".join(value.ljust(widths[index]) for index, value in enumerate(headers)))
+    print("-+-".join("-" * value for value in widths))
+    for row in rendered:
+        print(" | ".join(value.ljust(widths[index]) for index, value in enumerate(row)))
+
+
+def _print_problem_evidence(problem) -> None:
+    time_contract = problem.time_contract
+    _print_table(
+        "multi-rate mapping table",
+        ("mapping", "planning", "market blocks", "repeat", "first", "last"),
+        (
+            (
+                "planning_to_energy",
+                len(time_contract.planning_intervals),
+                len(time_contract.energy_intervals),
+                4,
+                "0 -> 0",
+                "95 -> 23",
+            ),
+            (
+                "planning_to_fcr",
+                len(time_contract.planning_intervals),
+                len(time_contract.fcr_intervals),
+                16,
+                "0 -> 0",
+                "95 -> 5",
+            ),
+        ),
+    )
+    inputs = problem.uncertainty.horizon_wide.derivation_inputs
+    _print_table(
+        "uncertainty derivation table",
+        ("quantity", "value", "unit"),
+        (
+            ("horizon", inputs["horizon_hours"], "h"),
+            ("recovery window", inputs["recovery_window_hours"], "h"),
+            (
+                "recovery activation budget",
+                inputs["recovery_activation_budget_hours"],
+                "h",
+            ),
+            ("full windows", inputs["full_window_count"], "count"),
+            ("remainder", inputs["remainder_hours"], "h"),
+            (
+                "derived horizon budget",
+                problem.uncertainty.horizon_wide.horizon_activation_budget_hours,
+                "h",
+            ),
+        ),
+    )
+
+
+def _print_result_evidence(restriction, relaxation) -> None:
+    if restriction.raw_objective is not None:
+        objective = restriction.raw_objective
+        _print_table(
+            "ex-ante objective-component table",
+            ("component", "value", "unit", "sign"),
+            (
+                (
+                    "day_ahead_energy_value",
+                    objective.day_ahead_energy_value_eur,
+                    "EUR",
+                    "+",
+                ),
+                (
+                    "fcr_capacity_value",
+                    objective.fcr_capacity_value_eur,
+                    "EUR",
+                    "+",
+                ),
+                (
+                    "feasibility_slack_penalty",
+                    objective.feasibility_slack_penalty_eur,
+                    "EUR",
+                    "-",
+                ),
+                ("total_objective", objective.total_objective_eur, "EUR", "="),
+                (
+                    "reconciliation_residual",
+                    objective.reconciliation_residual_eur,
+                    "EUR",
+                    "audit",
+                ),
+            ),
+        )
+    if restriction.feasibility_audit is not None:
+        _print_table(
+            "equation-family residual table",
+            ("family", "relation", "unit", "checks", "maximum violation"),
+            tuple(
+                (
+                    family.family_id,
+                    family.relation,
+                    family.canonical_unit,
+                    family.checked_count,
+                    family.maximum_positive_violation,
+                )
+                for family in restriction.feasibility_audit.constraint_families
+            ),
+        )
+    cardinality_keys = (
+        "planning_intervals",
+        "triangular_pairs",
+        "strict_triangular_pairs",
+        "variables",
+        "binaries",
+        "active_constraints",
+        "quadratic_structure_entries",
+    )
+    _print_table(
+        "model-cardinality table",
+        ("formulation", *cardinality_keys),
+        tuple(
+            (
+                result.formulation.kind,
+                *(result.solver.model_cardinality[key] for key in cardinality_keys),
+            )
+            for result in (restriction, relaxation)
+        ),
+    )
+
+
 def build_small_problem():
     """Build a unique zero-bid case that still assembles the public 96-step MILP."""
 
@@ -108,6 +252,7 @@ def build_small_problem():
 
 def main() -> int:
     problem = build_small_problem()
+    _print_problem_evidence(problem)
     restriction = solve_robust_fcr_bid(problem, formulation="restriction")
     relaxation = solve_robust_fcr_bid(problem, formulation="relaxation")
     exact = solve_robust_fcr_bid(problem, formulation="exact")
@@ -122,6 +267,7 @@ def main() -> int:
     print(json.dumps(relaxation.solver.to_dict(), indent=2, sort_keys=True))
     print("bound comparison")
     print(json.dumps(comparison.to_dict(), indent=2, sort_keys=True))
+    _print_result_evidence(restriction, relaxation)
     print(
         "exact evidence interpretation",
         {

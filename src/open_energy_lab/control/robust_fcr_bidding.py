@@ -478,12 +478,20 @@ class RobustFCRTimeContract:
             "mapping": {
                 "planning_to_energy": list(self.planning_to_energy),
                 "planning_to_fcr": list(self.planning_to_fcr),
+                "source_one_based_formulas": {
+                    "energy": "ceil(k / 4)",
+                    "fcr": "ceil(k / 16)",
+                },
             },
             "resolutions": {
                 "planning": "PT15M",
                 "energy": "PT1H",
                 "fcr": "PT4H",
             },
+            "source_refs": [
+                "baselines/robust_storage_bidding/code/02_model.jl:170-174,252-253",
+                "baselines/robust_storage_bidding/code/12.jl:27-47",
+            ],
         }
 
     def to_dict(self) -> dict[str, object]:
@@ -612,6 +620,10 @@ class RecoveryWindowActivationBudget:
                 "window": "h",
                 "pointwise_activation": "dimensionless",
             },
+            "source_refs": [
+                "baselines/robust_storage_bidding/code/01_datastruct.jl:8-9",
+                "baselines/robust_storage_bidding/code/12.jl:30-33",
+            ],
         }
 
     def to_dict(self) -> dict[str, object]:
@@ -661,6 +673,57 @@ class HorizonWideActivationBudget:
             self.derivation_inputs,
             field_name="derivation_inputs",
         )
+        expected_input_names = {
+            "horizon_hours",
+            "recovery_window_hours",
+            "recovery_activation_budget_hours",
+            "full_window_count",
+            "remainder_hours",
+        }
+        if set(derivation_inputs) != expected_input_names:
+            raise RobustFCRValidationError(
+                "derivation_inputs must contain the exact covering-rule inputs"
+            )
+        input_horizon = _positive(
+            derivation_inputs["horizon_hours"],
+            field_name="derivation_inputs.horizon_hours",
+        )
+        input_window = _positive(
+            derivation_inputs["recovery_window_hours"],
+            field_name="derivation_inputs.recovery_window_hours",
+        )
+        input_budget = _positive(
+            derivation_inputs["recovery_activation_budget_hours"],
+            field_name="derivation_inputs.recovery_activation_budget_hours",
+        )
+        full_windows = _integer(
+            derivation_inputs["full_window_count"],
+            field_name="derivation_inputs.full_window_count",
+            minimum=0,
+        )
+        remainder = _non_negative(
+            derivation_inputs["remainder_hours"],
+            field_name="derivation_inputs.remainder_hours",
+        )
+        expected_full_windows = math.floor(input_horizon / input_window)
+        expected_remainder = input_horizon - expected_full_windows * input_window
+        expected_budget = expected_full_windows * input_budget + min(
+            expected_remainder,
+            input_budget,
+        )
+        if (
+            input_horizon != horizon
+            or input_budget > input_window
+            or full_windows != expected_full_windows
+            or not math.isclose(remainder, expected_remainder, abs_tol=1e-12)
+        ):
+            raise RobustFCRValidationError(
+                "derivation_inputs do not reconcile with the covering rule"
+            )
+        if not math.isclose(budget, expected_budget, abs_tol=1e-12):
+            raise RobustFCRValidationError(
+                "derived horizon activation budget does not reconcile with derivation_inputs"
+            )
         object.__setattr__(self, "horizon_hours", horizon)
         object.__setattr__(self, "horizon_activation_budget_hours", budget)
         object.__setattr__(self, "recovery_window_fingerprint", source_fingerprint)
@@ -680,6 +743,9 @@ class HorizonWideActivationBudget:
             "recovery_window_fingerprint": self.recovery_window_fingerprint,
             "derivation_inputs": _thaw(self.derivation_inputs),
             "unit": "h",
+            "source_refs": [
+                "baselines/robust_storage_bidding/code/02_model.jl:293-305"
+            ],
         }
 
     def to_dict(self) -> dict[str, object]:
@@ -1430,6 +1496,28 @@ class ObjectiveBreakdown:
             object.__setattr__(self, name, normalized)
 
     def to_dict(self) -> dict[str, object]:
+        components = {
+            "day_ahead_energy_value": {
+                "value": self.day_ahead_energy_value_eur,
+                "unit": "EUR",
+                "formula": "delta_t_hours * sum(day_ahead_price_eur_per_kwh * source_x0_kw)",
+            },
+            "fcr_capacity_value": {
+                "value": self.fcr_capacity_value_eur,
+                "unit": "EUR",
+                "formula": "sum(fcr_capacity_price_eur_per_kw_block * xr_kw)",
+            },
+            "feasibility_slack_penalty": {
+                "value": self.feasibility_slack_penalty_eur,
+                "unit": "EUR",
+                "formula": "shortfall_penalty_eur_per_kwh * sum(modeled_energy_slacks_kwh)",
+            },
+            "total": {
+                "value": self.total_objective_eur,
+                "unit": "EUR",
+                "formula": "day_ahead_energy_value + fcr_capacity_value - feasibility_slack_penalty",
+            },
+        }
         return {
             "day_ahead_energy_value_eur": self.day_ahead_energy_value_eur,
             "fcr_capacity_value_eur": self.fcr_capacity_value_eur,
@@ -1438,6 +1526,15 @@ class ObjectiveBreakdown:
             "reconciliation_residual_eur": self.reconciliation_residual_eur,
             "unit": "EUR",
             "meaning": "ex_ante_optimization_objective",
+            "components": components,
+            "source_refs": [
+                "baselines/robust_storage_bidding/code/02_model.jl:252-263"
+            ],
+            "excluded_realized_fields": [
+                "activation_energy_revenue_eur",
+                "realized_settlement_eur",
+                "realized_profit_eur",
+            ],
         }
 
 
