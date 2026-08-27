@@ -10,6 +10,9 @@ parity validation, and environment assumptions.
   TPM artifact workflows, current-SPFlow compiler, required HiGHS solve, and exact
   legacy evidence for `open_energy_lab.simulator`, `open_energy_lab.tpm`, and
   `open_energy_lab.planning`
+- `declared-feature-domains.md`: schema-v3 mathematical domains, observed
+  training support, normalization provenance, schema-v2 compatibility, native
+  query diagnostics, and compiled-v2 physical/model-coordinate validity
 - `controller-pack.md`: preserve/improve/reject decisions, shipped controller
   behavior, fixture evidence, and exact legacy references for
   `open_energy_lab.control`

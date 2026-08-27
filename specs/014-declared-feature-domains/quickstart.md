@@ -13,8 +13,7 @@ uv lock --check
 
 ## Run the focused semantic suite
 
-The following files are the planned focused acceptance surface and become runnable as their
-implementation tasks land:
+The following files are the focused acceptance surface:
 
 ```bash
 uv run --locked --no-sync pytest \
@@ -102,3 +101,12 @@ compiled-v1 payloads remain normalized-only compatibility evidence.
 git diff --check
 git status --short
 ```
+
+## Recorded implementation validation
+
+On 2026-08-27, the full offline TPM/planning command completed with 394 passed and two existing
+Gurobi-dependent workflow tests skipped because the optional solver was unavailable. All new
+current-SPFlow and HiGHS tests ran and passed. `uv lock --check`, the isolated package import smoke,
+fixture JSON validation, declared-domain fixture verification, and `git diff --check` also passed.
+The no-legacy `rg` command returned no matches, as required. No dependency or lockfile change was
+needed.

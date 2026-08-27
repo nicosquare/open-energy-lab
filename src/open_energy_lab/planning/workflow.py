@@ -68,7 +68,7 @@ def compile_planning_study_tpm(
     *,
     output_path: str | Path | None = None,
     decision_features: tuple[str, ...] | None = None,
-    approximation_domains: tuple[TPMApproximationDomain, ...] = (),
+    approximation_domains: tuple[TPMApproximationDomain, ...] | None = None,
 ) -> CompiledPlanningStudyTPM:
     """Compile and persist the supported current-SPFlow MIO contract."""
 
@@ -92,14 +92,22 @@ def compile_planning_study_tpm(
         if marginalized_indices
         else runtime_payload["model"]
     )
-    if artifact.schema_version == "v3":
+    retained_scope = tuple(int(index) for index in compilation_model.scope.query)
+    retained_continuous = tuple(
+        index
+        for index in retained_scope
+        if artifact.feature_specs[index].feature_type == "continuous"
+    )
+    if artifact.schema_version == "v3" and (
+        approximation_domains is not None or retained_continuous
+    ):
         compiled = compile_spflow_model_to_mio(
             compilation_model,
             fitted_artifact=artifact,
-            approximation_domains=approximation_domains,
+            approximation_domains=approximation_domains or (),
         )
     else:
-        if approximation_domains:
+        if approximation_domains is not None:
             raise ValueError(
                 "legacy fitted artifacts must be refit as v3 before physical "
                 "approximation domains can be supplied"

@@ -61,7 +61,7 @@ def test_real_fit_uses_torch_and_typed_leaf_scopes(monkeypatch, tmp_path) -> Non
     artifact, _, elapsed = fit_real_artifact(tmp_path, seed=CANONICAL_SEED)
 
     assert elapsed < FIT_BUDGET_SECONDS
-    assert artifact.schema_version == "v2"
+    assert artifact.schema_version == "v3"
     assert artifact.backend_generation == "current-spflow"
     assert artifact.backend_api_version == "1.1.0"
     assert artifact.execution_mode == "production"

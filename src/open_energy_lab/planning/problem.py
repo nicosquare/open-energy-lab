@@ -537,14 +537,22 @@ def _build_solver_facing_spn_payload(
     approximation_domains = _approximation_domains_from_contract(
         problem_definition.approximation_contract
     )
-    if artifact.schema_version == "v3":
+    retained_scope = tuple(int(index) for index in compilation_model.scope.query)
+    retained_continuous = tuple(
+        index
+        for index in retained_scope
+        if artifact.feature_specs[index].feature_type == "continuous"
+    )
+    if artifact.schema_version == "v3" and (
+        approximation_domains is not None or retained_continuous
+    ):
         compiled = compile_spflow_model_to_mio(
             compilation_model,
             fitted_artifact=artifact,
-            approximation_domains=approximation_domains,
+            approximation_domains=approximation_domains or (),
         )
     else:
-        if approximation_domains:
+        if approximation_domains is not None:
             raise ValueError(
                 "physical approximation domains require refitting the source artifact "
                 "as schema v3 with declared domains"
@@ -566,8 +574,10 @@ def _build_solver_facing_spn_payload(
 
 def _approximation_domains_from_contract(
     approximation_contract: Mapping[str, object],
-) -> tuple[TPMApproximationDomain, ...]:
-    raw_domains = approximation_contract.get("approximation_domains", ())
+) -> tuple[TPMApproximationDomain, ...] | None:
+    if "approximation_domains" not in approximation_contract:
+        return None
+    raw_domains = approximation_contract["approximation_domains"]
     if isinstance(raw_domains, Mapping) or isinstance(raw_domains, (str, bytes)):
         raise TypeError("approximation_contract.approximation_domains must be a sequence")
     if not isinstance(raw_domains, Sequence):

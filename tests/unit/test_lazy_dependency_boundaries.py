@@ -353,8 +353,10 @@ def test_package_imports_stay_clear_of_lazy_research_stacks(module_name: str) ->
         "open_energy_lab.tpm",
         "open_energy_lab.tpm.artifact",
         "open_energy_lab.tpm.data",
+        "open_energy_lab.tpm.domains",
         "open_energy_lab.tpm.features",
         "open_energy_lab.tpm.fit",
+        "open_energy_lab.tpm.mio",
         "open_energy_lab.tpm.query",
         "open_energy_lab.tpm.piecewise",
         "open_energy_lab.tpm.optional_spflow",
@@ -363,6 +365,7 @@ def test_package_imports_stay_clear_of_lazy_research_stacks(module_name: str) ->
         "open_energy_lab.planning.problem",
         "open_energy_lab.planning.piecewise",
         "open_energy_lab.planning.optional_solver",
+        "open_energy_lab.planning.workflow",
         *VISUALIZATION_MODULES,
     ),
 )

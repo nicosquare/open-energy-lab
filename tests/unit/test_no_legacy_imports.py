@@ -27,6 +27,13 @@ FEATURE_012_OFFLINE_MODULES = (
     TARGET_PACKAGE / "simulator" / "fcr_bid_evaluation.py",
     TARGET_PACKAGE / "simulator" / "fcr_settlement.py",
 )
+FEATURE_014_DOMAIN_MODULES = (
+    TARGET_PACKAGE / "tpm" / "domains.py",
+    TARGET_PACKAGE / "tpm" / "mio.py",
+    TARGET_PACKAGE / "planning" / "piecewise.py",
+    TARGET_PACKAGE / "planning" / "problem.py",
+    TARGET_PACKAGE / "planning" / "workflow.py",
+)
 FEATURE_012_FORBIDDEN_IMPORTS = {
     "IPython",
     "aiohttp",
@@ -179,3 +186,13 @@ def test_feature_012_offline_modules_import_no_baseline_solver_network_or_notebo
             violations[path.as_posix()] = forbidden
 
     assert violations == {}
+
+
+def test_feature_014_domain_and_planning_modules_import_no_legacy_code() -> None:
+    offending_files = []
+    for path in FEATURE_014_DOMAIN_MODULES:
+        assert path.is_file(), f"missing Feature 014 module: {path}"
+        if LEGACY_IMPORT_PATTERN.search(path.read_text(encoding="utf-8")):
+            offending_files.append(path.as_posix())
+
+    assert offending_files == []

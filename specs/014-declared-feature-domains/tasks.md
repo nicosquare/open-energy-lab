@@ -183,11 +183,11 @@ remain evaluable without acquiring physical validity.
 **Purpose**: Document the public migration, validate dependency boundaries, and run the complete
 offline acceptance surface.
 
-- [ ] T052 [P] Document declaration shapes and carriers, exact boundary comparisons, single-feature ownership and coupled-constraint rejection, omission versus explicit unknown, v3/v2 compatibility, native-query behavior, and physical/model-coordinate compiler intervals in `docs/migration/declared-feature-domains.md`
-- [ ] T053 [P] Extend package-wide lazy-import and no-legacy checks for the new domain module and changed planning adapters in `tests/unit/test_lazy_dependency_boundaries.py`, `tests/unit/test_import_contract.py`, and `tests/unit/test_no_legacy_imports.py`
-- [ ] T054 Run the full TPM/planning regression command from `specs/014-declared-feature-domains/quickstart.md`, excluding only the already documented optional Gurobi/legacy-backend files and treating the new SPFlow/HiGHS tests as required
-- [ ] T055 Run `uv lock --check`, the import smoke command, the no-legacy `rg` check, and `git diff --check`; then update actual commands or explicitly documented environmental limitations in `specs/014-declared-feature-domains/quickstart.md`
-- [ ] T056 Audit `tests/fixtures/tpm/README.md`, all manifests under `tests/fixtures/tpm/`, OEL `git status`, and the parent repository gitlink to confirm provenance is complete, old fixture bytes are preserved, no dependency change was introduced, and no parent-repository file or gitlink was modified
+- [X] T052 [P] Document declaration shapes and carriers, exact boundary comparisons, single-feature ownership and coupled-constraint rejection, omission versus explicit unknown, v3/v2 compatibility, native-query behavior, and physical/model-coordinate compiler intervals in `docs/migration/declared-feature-domains.md`
+- [X] T053 [P] Extend package-wide lazy-import and no-legacy checks for the new domain module and changed planning adapters in `tests/unit/test_lazy_dependency_boundaries.py`, `tests/unit/test_import_contract.py`, and `tests/unit/test_no_legacy_imports.py`
+- [X] T054 Run the full TPM/planning regression command from `specs/014-declared-feature-domains/quickstart.md`, excluding only the already documented optional Gurobi/legacy-backend files and treating the new SPFlow/HiGHS tests as required
+- [X] T055 Run `uv lock --check`, the import smoke command, the no-legacy `rg` check, and `git diff --check`; then update actual commands or explicitly documented environmental limitations in `specs/014-declared-feature-domains/quickstart.md`
+- [X] T056 Audit `tests/fixtures/tpm/README.md`, all manifests under `tests/fixtures/tpm/`, OEL `git status`, and the parent repository gitlink to confirm provenance is complete, old fixture bytes are preserved, no dependency change was introduced, and no parent-repository file or gitlink was modified
 
 ---
 
