@@ -1,0 +1,46 @@
+# Robust FCR Bidding Examples
+
+Feature 013 selects one ordinary delivery day's hourly day-ahead baseline and
+six four-hour symmetric-FCR capacity bids before realized activation is known.
+It reproduces the pinned reference implementation's non-intraday mixed-binary
+restriction and relaxation with native Python, Pyomo, and HiGHS.
+
+This example area is deliberately separated into three evidence paths:
+
+| Path | Purpose | Routine offline? | Deployable plan? |
+| --- | --- | --- | --- |
+| `run_small_case.py` | Solve an authored restriction and relaxation, audit the equations, and inspect the Feature 012 plan | yes | restriction only, after every gate passes |
+| `run_reference_benchmark.py` | Run the explicit full 2023-06-18 optimization comparison | no; selected research/release gate | only an eligible native restriction incumbent |
+| `normalize_reference_fixture.py` | Normalize digest-pinned generated Julia result evidence below ignored `artifacts/` | no; maintainer refresh path | no |
+
+The restriction is a conservative, deployable formulation. The relaxation is
+optimistic upper-bound evidence and must never be presented as a market plan.
+An optional exact bilinear solve is validation evidence only. All three report
+an ex-ante optimization objective; none of them reports Feature 012's realized
+settlement or profit.
+
+## Scope boundary
+
+Bid selection accepts battery parameters, 24 hourly energy prices, six
+four-hour FCR prices, 96 quarter-hour robust-planning intervals, two distinctly
+named uncertainty sets, a terminal-energy rule, an information cutoff, and a
+fingerprinted solve policy. It never receives, loads, searches for, or infers a
+realized FCR activation trace.
+
+After a restriction plan is accepted by the market, a caller may pass that
+unchanged `FixedFCRBidPlan` to Feature 012 together with accepted-volume,
+battery, price, and realized-activation evidence. Feature 013 adds no battery
+replay or settlement implementation.
+
+The full Julia/Gurobi comparison uses a small normalized fixture committed
+under `tests/fixtures/fcr_bidding/`. Routine code never imports from or reads
+`baselines/*` or `legacy/*`. The complete historical solve is excluded from
+routine CI, and the external regulation CSV is needed only for a separately
+selected Feature 012 physical replay.
+
+Rolling and multi-day backtests, SOC carry-over, intraday recourse, scenario
+generation, TPM fitting or bid selection, aFRR/mFRR, degradation cost, live
+data acquisition, and full-history paper experiments remain out of scope.
+
+The exact commands and interpretation rules are maintained in the
+[Feature 013 quickstart](../../specs/013-reference-robust-fcr-bidding/quickstart.md).

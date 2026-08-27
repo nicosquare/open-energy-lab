@@ -26,10 +26,10 @@ and offline diagnostics can each be reviewed as a distinct increment.
 **Purpose**: Establish the Feature 013 source, evidence, example, and test
 locations without editing `baselines/*` or `legacy/*`.
 
-- [ ] T001 Create the Feature 013 example scaffold and scope statement in `examples/robust_fcr_bidding/README.md`
-- [ ] T002 [P] Create the optimization-fixture ownership, provenance, redistribution, and refresh-policy scaffold in `tests/fixtures/fcr_bidding/README.md`
-- [ ] T003 [P] Record the pinned source inventory and behavior-preserve/improve/drop boundary for `baselines/robust_storage_bidding/code/01_datastruct.jl`, `code/02_model.jl`, `code/12.jl`, and `results/02/2023-06-18.json` in `docs/migration/reference-robust-fcr-bidding.md`
-- [ ] T004 [P] Add fixture-independent authored battery, time, price, uncertainty, terminal, and solver-policy mappings with deferred library imports, including configurable objective-comparison fields and the complete `native-reference-benchmark-highs-v1` mapping, in `tests/robust_fcr_case_utils.py`
+- [X] T001 Create the Feature 013 example scaffold and scope statement in `examples/robust_fcr_bidding/README.md`
+- [X] T002 [P] Create the optimization-fixture ownership, provenance, redistribution, and refresh-policy scaffold in `tests/fixtures/fcr_bidding/README.md`
+- [X] T003 [P] Record the pinned source inventory and behavior-preserve/improve/drop boundary for `baselines/robust_storage_bidding/code/01_datastruct.jl`, `code/02_model.jl`, `code/12.jl`, and `results/02/2023-06-18.json` in `docs/migration/reference-robust-fcr-bidding.md`
+- [X] T004 [P] Add fixture-independent authored battery, time, price, uncertainty, terminal, and solver-policy mappings with deferred library imports, including configurable objective-comparison fields and the complete `native-reference-benchmark-highs-v1` mapping, in `tests/robust_fcr_case_utils.py`
 
 ---
 
