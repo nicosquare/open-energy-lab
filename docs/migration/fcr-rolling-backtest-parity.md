@@ -367,3 +367,38 @@ settlement, and result fingerprints. Native solves used an explicit
 plan; this replay is performance evidence, not a new optimality or schedule-
 parity claim. The test remains excluded from routine CI and skips actionably at
 the exact expected path when the caller has not installed the governed CSV.
+
+### Phase 9 — deterministic routine and optional research gates
+
+The exact first compatibility-and-isolation command in the Feature 015
+quickstart was run twice with the network unavailable, all research markers
+excluded, and the optional Gurobi module ignored. Both runs collected the same
+124 tests and passed without skips or failures:
+
+- pass 1: `124 passed in 200.69s`;
+- pass 2: `124 passed in 193.48s`.
+
+After each pass, the authored script-13 study was run with the same declared
+10-second HiGHS time-limit policy. Both complete four-date runs produced
+semantic fingerprint
+`4145f5727200e6c6eeb82befd895aea6923de4e0b0fc4acb0f2a561db0719c2b`.
+Elapsed solver duration remained reportable but did not affect semantic
+identity. A run with the CLI's different 30-second default was deliberately
+not compared as repeatability evidence because solver policy is part of the
+manifest identity.
+
+The non-routine paths were collected explicitly without executing their
+research workload:
+
+| Evidence path | Selection | Collected | Routine status |
+| --- | --- | ---: | --- |
+| Complete five-profile/four-date native comparison | `tests/parity/test_fcr_rolling_reference_benchmark.py -m reference_benchmark` | 3 | Explicit benchmark only |
+| Governed external activation replay | `tests/integration/simulator/test_fcr_rolling_external_reference_replay.py -m external_reference_data` | 1 | Requires the exact caller-installed CSV |
+| Optional licensed Gurobi checks | `tests/integration/control/test_robust_fcr_optional_gurobi.py` | 3 | Explicit optional module; never a HiGHS fallback |
+
+Collection proves that each opt-in route is discoverable; it does not add
+runtime evidence. The complete benchmark, licensed Gurobi solves, and external
+CSV replay therefore remain unavailable in this routine Phase 9 checkpoint.
+Their absence does not weaken the required offline Pyomo/HiGHS gate, and no
+Julia process, baseline runtime artifact, credential, or network access was
+used.

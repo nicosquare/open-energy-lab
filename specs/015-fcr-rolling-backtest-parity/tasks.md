@@ -290,8 +290,8 @@ external-CSV access; collect heavy checks only through their explicit markers.
 - [x] T097 [US7] Add an explicit full-history manifest, immutable date ordering, resumable output, partial failure retention, and research-only non-release-gating execution while retaining the mandatory accepted-bid policy in `examples/fcr_rolling_backtest/run_reference_benchmark.py`
 - [x] T098 [P] [US7] Complete authored, normalization, benchmark, Gurobi, external activation, resume, and full-history usage/evidence limits in `examples/fcr_rolling_backtest/README.md`
 - [x] T099 [US7] Add bounded Feature 015 selections to required-backend and offline CI jobs while preserving the existing 120-second focused-test command limits and 15-minute job limits and excluding heavy/optional markers in `.github/workflows/ci.yml`
-- [ ] T100 [US7] Run the exact routine Feature 015 quickstart gate twice offline and record pass counts plus stable semantic fingerprints in `docs/migration/fcr-rolling-backtest-parity.md`
-- [ ] T101 [US7] Verify marker collection for the full reference benchmark, external replay, and optional Gurobi paths and document unavailable evidence without executing it as routine acceptance in `docs/migration/fcr-rolling-backtest-parity.md`
+- [x] T100 [US7] Run the exact routine Feature 015 quickstart gate twice offline and record pass counts plus stable semantic fingerprints in `docs/migration/fcr-rolling-backtest-parity.md`
+- [x] T101 [US7] Verify marker collection for the full reference benchmark, external replay, and optional Gurobi paths and document unavailable evidence without executing it as routine acceptance in `docs/migration/fcr-rolling-backtest-parity.md`
 
 **Checkpoint**: Routine validation is deterministic and offline; research-scale
 evidence remains explicit, resumable, and visibly optional.
