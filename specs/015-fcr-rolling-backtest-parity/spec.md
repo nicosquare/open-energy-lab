@@ -62,18 +62,20 @@ outputs.
 answered unless every requested reference profile has an explicit and
 reviewable native meaning.
 
-**Independent Test**: A reviewer can run five bounded authored studies, one for each
-profile, and verify each profile's formulation classification, date treatment,
-FCR policy, coupling rule, and ordered delivery-date record envelopes without using external
-reference artifacts.
+**Independent Test**: A reviewer can construct and solve one bounded authored
+problem for each executable profile and verify its formulation classification,
+FCR policy, required coupling inputs, plan classification, date treatment, and
+ordered delivery-date record-envelope structure without external reference
+artifacts. Complete causal 08:00 chaining and realized midnight handoff are
+validated independently by User Stories 2 and 3.
 
 **Acceptance Scenarios**:
 
 1. **Given** a valid ordered manifest of ordinary delivery days, **When** Experiment 1 is selected, **Then** every included day is solved independently with the relaxation profile, its plan is classified diagnostic and non-robust, and no previous-day state is reused.
 2. **Given** the same manifest, **When** Experiment 2 is selected, **Then** every included day is solved independently with the restriction profile and only plans passing Feature 013's deployability policy may be classified deployable.
 3. **Given** the same manifest, **When** Experiment 3 is selected, **Then** every FCR capacity decision is constrained to exactly zero and the resulting study reports day-ahead arbitrage only.
-4. **Given** a valid predecessor sequence, **When** Experiment 4 is selected, **Then** the study uses the declared 08:00 cutoff, preserves accepted overlapping decisions, and represents initialization, provisional, finalized, and close-out records explicitly.
-5. **Given** a valid predecessor sequence, **When** Experiment 5 is selected, **Then** each day's initial stored energy is derived from its predecessor according to the selected midnight carry-over policy.
+4. **Given** explicit valid predecessor fixings and a cutoff state, **When** an Experiment 4 problem is constructed, **Then** its profile declares the 08:00 cutoff, accepted-overlap fixing contract, source-compatible handoff requirement, and initialization/finalization semantics; User Story 2 validates the complete causal chain.
+5. **Given** an explicit valid predecessor state, **When** an Experiment 5 problem is constructed, **Then** its restriction profile requires that state under the selected midnight carry-over policy; User Story 3 validates its derivation from realized predecessor replay.
 6. **Given** a profile label from a paper or workbook, **When** its relationship to the executable scripts cannot be reconciled field by field, **Then** the study reports the discrepancy and makes no Table A1 parity claim.
 
 ---
@@ -280,7 +282,7 @@ reference runtimes, licenses, credentials, or network access.
 - **FR-010**: An `assumed_accepted` policy MUST identify and fingerprint the assumption that optimizer-selected bids are accepted and MUST NOT present it as market evidence. An `evidence_backed_accepted` policy MUST identify and fingerprint individual bid-acceptance evidence. Neither policy may infer individual acceptance from system-wide contracted reserve volume, and no profile may supply a silent default.
 - **FR-011**: The feature MUST preserve Feature 013's existing exact single-day 24-hour, 96-quarter-hour, 24-energy-block, and six-FCR-block public contract and fingerprints.
 - **FR-012**: Rolling behavior MUST be represented through additive study contracts and MUST NOT broaden, reinterpret, or silently migrate existing Feature 013 inputs or results.
-- **FR-013**: The feature MUST provide five explicit profiles whose authoritative executable meanings correspond to reference scripts `11.jl` through `15.jl`; each manifest MUST select exactly one profile, and cross-profile analysis MUST consume separate study results rather than mix profiles within one result.
+- **FR-013**: The feature MUST provide five explicit profiles whose authoritative executable meanings correspond to reference scripts `11.jl` through `15.jl`; cross-profile analysis MUST consume separate study results rather than mix profiles within one result.
 - **FR-014**: Experiment 1 MUST use the relaxation with independently reset midnight days and MUST classify any replayable decisions as diagnostic and non-robust.
 - **FR-015**: Experiment 2 MUST use the restriction with independently reset midnight days and MUST apply Feature 013's deployability and feasible-incumbent opt-in rules unchanged.
 - **FR-016**: Experiment 3 MUST model day-ahead arbitrage with all six FCR capacity decisions constrained exactly to zero, independent of FCR price values.
@@ -309,7 +311,7 @@ reference runtimes, licenses, credentials, or network access.
 - **FR-039**: Each applicable solved revision MUST retain all 24 hourly energy decisions, all six four-hour FCR decisions, modeled feasibility slacks, independent residual-audit evidence, and ordered diagnostics.
 - **FR-040**: Each applicable evaluated revision MUST retain Feature 012 replay and settlement fingerprints and the metrics required to reconcile daily and study-level results. When declared activation samples are unavailable, an otherwise eligible independent solve MAY retain an optimization-only revision, but every replay, settlement, activation-derived state, and realized-profit field MUST be explicitly unavailable.
 - **FR-041**: A deterministic study result MUST contain exactly one delivery-date record envelope for every requested date in manifest order, coverage-labelled aggregate metrics, completeness status, ordered diagnostics, comparison outcomes, and one semantic fingerprint.
-- **FR-042**: The study semantic fingerprint MUST include all semantically relevant manifest, profile, lineage, daily-result, carry-over, and aggregation evidence and MUST exclude volatile runtime duration.
+- **FR-042**: The study semantic fingerprint MUST include all semantically relevant manifest, profile, lineage, daily-result, carry-over, and aggregation evidence. It MUST exclude volatile solver runtime duration, execution-host identity, process-local metadata, and caller-local filesystem paths. Solver policy and version, content fingerprints, market-interval timestamps, decision and information cutoffs, and provenance MUST remain semantic.
 - **FR-043**: No failed, blocked, excluded, provisional, initialization-only, close-out, or unfinalized date may disappear from the study result or completeness accounting.
 - **FR-044**: Independent reset-day profiles MAY continue after a failed or optimization-only date; coupled profiles MUST mark each activation-dependent successor blocked when required samples or a valid handoff state are unavailable, unless a caller supplies a valid state with its unit, effective handoff, provenance, and fingerprint. An accepted caller-supplied state MUST begin a new identified continuity segment and MUST NOT erase or repair the missing physical evidence.
 - **FR-045**: Every study aggregate metric MUST reconcile exactly with its declared eligible revisions and MUST retain the ordered contributing dates, every omitted otherwise-eligible date and reason, and a `complete` or `partial` coverage status. A partial aggregate MAY be reported, but missing values MUST NOT be replaced with zero and partial coverage MUST NOT support complete-study parity. Study-level counts MUST separately reconcile every requested-date status.
@@ -371,7 +373,7 @@ reference runtimes, licenses, credentials, or network access.
 - **Accepted Decision Set**: Hourly energy and four-hour FCR decisions already committed for overlapping intervals, with plan identity, interval mapping, acceptance assumption or evidence, and protection from re-optimization.
 - **Rolling State Link**: Provenance-rich relationship among a predecessor's eligible stored-energy evidence and a successor's initial or cutoff state, including rounding policy, units, and reconciliation status.
 - **Delivery-Date Record Envelope**: The single immutable top-level entry for one requested date. It carries current status and an ordered set of immutable original, optimization-only, provisional, and finalized revisions, each retaining applicable inputs, decisions, solve evidence, state values, audits, replay, settlement, diagnostics, and fingerprints. Failed, blocked, excluded, initialization-only, and unfinalized dates remain represented by their single envelope even when no solved revision exists.
-- **Study Result**: Ordered collection containing exactly one delivery-date record envelope for every requested date plus identified continuity segments, reconciled coverage-labelled aggregates, completeness evidence, comparison outcomes, diagnostics, and a semantic fingerprint excluding volatile runtime duration.
+- **Study Result**: Ordered collection containing exactly one delivery-date record envelope for every requested date plus identified continuity segments, reconciled coverage-labelled aggregates, completeness evidence, comparison outcomes, diagnostics, and a semantic fingerprint governed by FR-042: volatile runtime duration, execution-host/process metadata, and caller-local paths are excluded, while solver/version, content, cutoff, interval, and provenance evidence remains semantic.
 - **Aggregate Metric Evidence**: One named ex-ante or ex-post aggregate with its value when available, eligible-date rule, ordered contributing dates, omitted dates and reasons, and `complete` or `partial` coverage. Partial evidence is useful diagnostically but cannot establish complete-study parity.
 - **Resume Evidence**: Partial-study identity, completed-day fingerprints, carry state, and compatibility decision governing whether earlier work may be reused. A caller-supplied state additionally carries its unit, effective handoff, provenance, and fingerprint and starts a new continuity segment rather than repairing a failed one.
 - **Normalized Source Fixture**: Small committed representation of digest-pinned Julia/Gurobi outputs and logs, including provenance, versions, displayed decisions, objectives, bounds, termination evidence, date roles, precision policy, and unavailable fields.

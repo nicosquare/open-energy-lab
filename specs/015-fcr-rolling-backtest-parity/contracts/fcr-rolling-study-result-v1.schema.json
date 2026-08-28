@@ -1,0 +1,697 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-energy-lab.local/schemas/fcr-rolling-study-result-v1.schema.json",
+  "title": "Open Energy Lab FCR rolling study result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "study_id",
+    "manifest_fingerprint",
+    "profile_id",
+    "requested_dates",
+    "date_records",
+    "state_links",
+    "continuity_segments",
+    "status_counts",
+    "aggregates",
+    "completeness_status",
+    "resume_lineage",
+    "diagnostics",
+    "comparisons",
+    "runtime_metadata",
+    "semantic_fingerprint"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "fcr-rolling-study-result-v1"
+    },
+    "study_id": {"type": "string", "minLength": 1},
+    "manifest_fingerprint": {"$ref": "#/$defs/sha256"},
+    "profile_id": {"$ref": "#/$defs/profileId"},
+    "requested_dates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/date"}
+    },
+    "date_records": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/dateEnvelope"}
+    },
+    "state_links": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/stateLink"}
+    },
+    "continuity_segments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/continuitySegment"}
+    },
+    "status_counts": {
+      "$ref": "#/$defs/statusCounts"
+    },
+    "aggregates": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/aggregate"}
+    },
+    "completeness_status": {
+      "enum": ["complete", "partial", "failed", "incomplete"]
+    },
+    "resume_lineage": {
+      "oneOf": [
+        {"$ref": "#/$defs/resumeLineage"},
+        {"type": "null"}
+      ]
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/diagnostic"}
+    },
+    "comparisons": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/comparisonSummary"}
+    },
+    "runtime_metadata": {
+      "$ref": "#/$defs/runtimeMetadata"
+    },
+    "semantic_fingerprint": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "utcDateTime": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$"
+    },
+    "profileId": {
+      "type": "string",
+      "enum": [
+        "script-11-relaxation-reset-midnight-v1",
+        "script-12-restriction-reset-midnight-v1",
+        "script-13-arbitrage-only-midnight-v1",
+        "script-14-restriction-rolling-0800-v1",
+        "script-15-restriction-rolling-midnight-v1"
+      ]
+    },
+    "fingerprintMap": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/evidenceFingerprint"}
+    },
+    "evidenceFingerprint": {
+      "oneOf": [
+        {"$ref": "#/$defs/sha256"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "reason_codes"],
+          "properties": {
+            "status": {"const": "unavailable"},
+            "reason_codes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      ]
+    },
+    "dateClassification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "execution_role",
+        "comparison_eligible",
+        "reason_codes",
+        "classification_fingerprint"
+      ],
+      "properties": {
+        "execution_role": {
+          "enum": ["included", "warm-up", "close-out", "excluded"]
+        },
+        "comparison_eligible": {"type": "boolean"},
+        "reason_codes": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "classification_fingerprint": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "solverEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "solve_status",
+        "termination_status",
+        "incumbent_objective_eur",
+        "best_upper_bound_eur",
+        "absolute_gap_eur",
+        "relative_gap",
+        "feasibility_audit_fingerprint",
+        "max_modeled_slack",
+        "max_independent_residual",
+        "runtime_metadata",
+        "semantic_fingerprint"
+      ],
+      "properties": {
+        "solve_status": {
+          "enum": [
+            "optimal",
+            "feasible",
+            "no_solution",
+            "infeasible",
+            "unbounded",
+            "failed",
+            "unavailable"
+          ]
+        },
+        "termination_status": {"type": "string", "minLength": 1},
+        "incumbent_objective_eur": {
+          "type": ["number", "null"]
+        },
+        "best_upper_bound_eur": {
+          "type": ["number", "null"]
+        },
+        "absolute_gap_eur": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "relative_gap": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "feasibility_audit_fingerprint": {
+          "oneOf": [
+            {"$ref": "#/$defs/sha256"},
+            {"type": "null"}
+          ]
+        },
+        "max_modeled_slack": {"type": ["number", "null"]},
+        "max_independent_residual": {"type": ["number", "null"]},
+        "runtime_metadata": {
+          "oneOf": [
+            {"$ref": "#/$defs/solverRuntimeMetadata"},
+            {"type": "null"}
+          ]
+        },
+        "semantic_fingerprint": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "energyState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "initial_kwh",
+        "cutoff_kwh",
+        "handed_off_cutoff_kwh",
+        "modeled_terminal_kwh",
+        "realized_terminal_kwh",
+        "carried_kwh",
+        "unit"
+      ],
+      "properties": {
+        "initial_kwh": {"type": ["number", "null"]},
+        "cutoff_kwh": {"type": ["number", "null"]},
+        "handed_off_cutoff_kwh": {"type": ["number", "null"]},
+        "modeled_terminal_kwh": {"type": ["number", "null"]},
+        "realized_terminal_kwh": {"type": ["number", "null"]},
+        "carried_kwh": {"type": ["number", "null"]},
+        "unit": {"const": "kWh"}
+      }
+    },
+    "decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "public_sign_convention",
+        "hourly_energy_kw",
+        "fcr_capacity_kw",
+        "schedule_fingerprints"
+      ],
+      "properties": {
+        "public_sign_convention": {"const": "charge_positive"},
+        "hourly_energy_kw": {
+          "type": "array",
+          "minItems": 24,
+          "maxItems": 24,
+          "items": {"type": "number"}
+        },
+        "fcr_capacity_kw": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {"type": "number", "minimum": 0}
+        },
+        "schedule_fingerprints": {"$ref": "#/$defs/fingerprintMap"}
+      }
+    },
+    "realizedMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "settlement_eur",
+        "profit_eur",
+        "fcr_up_energy_kwh",
+        "fcr_down_energy_kwh",
+        "throughput_kwh",
+        "max_tracking_error_kw",
+        "saturation_count"
+      ],
+      "properties": {
+        "settlement_eur": {"type": "number"},
+        "profit_eur": {"type": "number"},
+        "fcr_up_energy_kwh": {"type": "number", "minimum": 0},
+        "fcr_down_energy_kwh": {"type": "number", "minimum": 0},
+        "throughput_kwh": {"type": "number", "minimum": 0},
+        "max_tracking_error_kw": {"type": "number", "minimum": 0},
+        "saturation_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "dayRevision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision_number",
+        "revision_kind",
+        "cause",
+        "cutoff_utc",
+        "predecessor_identity",
+        "successor_identity",
+        "fingerprints",
+        "energy_state",
+        "solver_evidence",
+        "decisions",
+        "realized_metrics",
+        "diagnostics",
+        "source_comparison_outcomes",
+        "revision_fingerprint"
+      ],
+      "properties": {
+        "revision_number": {"type": "integer", "minimum": 0},
+        "revision_kind": {
+          "enum": ["original", "optimization_only", "provisional", "finalized"]
+        },
+        "cause": {"type": "string", "minLength": 1},
+        "cutoff_utc": {
+          "oneOf": [
+            {"$ref": "#/$defs/utcDateTime"},
+            {"type": "null"}
+          ]
+        },
+        "predecessor_identity": {
+          "oneOf": [
+            {"$ref": "#/$defs/sha256"},
+            {"type": "null"}
+          ]
+        },
+        "successor_identity": {
+          "oneOf": [
+            {"$ref": "#/$defs/sha256"},
+            {"type": "null"}
+          ]
+        },
+        "fingerprints": {"$ref": "#/$defs/fingerprintMap"},
+        "energy_state": {"$ref": "#/$defs/energyState"},
+        "solver_evidence": {
+          "oneOf": [
+            {"$ref": "#/$defs/solverEvidence"},
+            {"type": "null"}
+          ]
+        },
+        "decisions": {
+          "oneOf": [
+            {"$ref": "#/$defs/decisions"},
+            {"type": "null"}
+          ]
+        },
+        "realized_metrics": {
+          "oneOf": [
+            {"$ref": "#/$defs/realizedMetrics"},
+            {"type": "null"}
+          ]
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/diagnostic"}
+        },
+        "source_comparison_outcomes": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/fieldOutcome"}
+        },
+        "revision_fingerprint": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "dateEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "delivery_date",
+        "manifest_fingerprint",
+        "profile_id",
+        "predecessor_delivery_date",
+        "classification",
+        "continuity_segment_id",
+        "revisions",
+        "lifecycle_status",
+        "diagnostics",
+        "comparison_summary",
+        "envelope_fingerprint"
+      ],
+      "properties": {
+        "delivery_date": {"$ref": "#/$defs/date"},
+        "manifest_fingerprint": {"$ref": "#/$defs/sha256"},
+        "profile_id": {"$ref": "#/$defs/profileId"},
+        "predecessor_delivery_date": {
+          "oneOf": [
+            {"$ref": "#/$defs/date"},
+            {"type": "null"}
+          ]
+        },
+        "classification": {"$ref": "#/$defs/dateClassification"},
+        "continuity_segment_id": {
+          "type": ["string", "null"]
+        },
+        "revisions": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/dayRevision"}
+        },
+        "lifecycle_status": {
+          "enum": [
+            "excluded",
+            "initialization_only",
+            "optimization_only",
+            "provisional",
+            "finalized",
+            "failed",
+            "blocked_by_predecessor",
+            "unfinalized"
+          ]
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/diagnostic"}
+        },
+        "comparison_summary": {
+          "oneOf": [
+            {"$ref": "#/$defs/comparisonSummary"},
+            {"type": "null"}
+          ]
+        },
+        "envelope_fingerprint": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "stateLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state_link_id",
+        "predecessor_delivery_date",
+        "successor_delivery_date",
+        "handoff_kind",
+        "observation_cutoff_utc",
+        "fingerprints",
+        "full_precision_checkpoint_kwh",
+        "carried_kwh",
+        "rounding_policy_id",
+        "closed_source_interval_kwh",
+        "modeled_terminal_residual_kwh",
+        "reconciliation_status",
+        "continuity_segment_id",
+        "state_link_fingerprint"
+      ],
+      "properties": {
+        "state_link_id": {"type": "string", "minLength": 1},
+        "predecessor_delivery_date": {"$ref": "#/$defs/date"},
+        "successor_delivery_date": {"$ref": "#/$defs/date"},
+        "handoff_kind": {"enum": ["midnight", "cutoff_0800", "caller_supplied"]},
+        "observation_cutoff_utc": {"$ref": "#/$defs/utcDateTime"},
+        "fingerprints": {"$ref": "#/$defs/fingerprintMap"},
+        "full_precision_checkpoint_kwh": {"type": "number"},
+        "carried_kwh": {"type": "number"},
+        "rounding_policy_id": {"type": "string", "minLength": 1},
+        "closed_source_interval_kwh": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"type": "number"}
+        },
+        "modeled_terminal_residual_kwh": {"type": ["number", "null"]},
+        "reconciliation_status": {"enum": ["compatible", "incompatible", "unavailable"]},
+        "continuity_segment_id": {"type": "string", "minLength": 1},
+        "state_link_fingerprint": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "continuitySegment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "segment_id",
+        "origin",
+        "member_dates",
+        "first_state_link_fingerprint",
+        "terminal_state_link_fingerprint",
+        "completeness_status",
+        "diagnostics",
+        "segment_fingerprint"
+      ],
+      "properties": {
+        "segment_id": {"type": "string", "minLength": 1},
+        "origin": {"enum": ["manifest_initial", "valid_predecessor", "caller_supplied"]},
+        "member_dates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/date"}
+        },
+        "first_state_link_fingerprint": {
+          "oneOf": [
+            {"$ref": "#/$defs/sha256"},
+            {"type": "null"}
+          ]
+        },
+        "terminal_state_link_fingerprint": {
+          "oneOf": [
+            {"$ref": "#/$defs/sha256"},
+            {"type": "null"}
+          ]
+        },
+        "completeness_status": {"enum": ["complete", "partial", "blocked"]},
+        "diagnostics": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/diagnostic"}
+        },
+        "segment_fingerprint": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "omittedDate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["delivery_date", "reason_codes"],
+      "properties": {
+        "delivery_date": {"$ref": "#/$defs/date"},
+        "reason_codes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "metric_name",
+        "unit",
+        "aggregation_rule",
+        "eligible_dates",
+        "contributing_dates",
+        "omitted_dates",
+        "source_fingerprints",
+        "value",
+        "reconciliation_residual",
+        "status",
+        "aggregate_fingerprint"
+      ],
+      "properties": {
+        "metric_name": {"type": "string", "minLength": 1},
+        "unit": {"type": "string", "minLength": 1},
+        "aggregation_rule": {"type": "string", "minLength": 1},
+        "eligible_dates": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/date"}
+        },
+        "contributing_dates": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/date"}
+        },
+        "omitted_dates": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/omittedDate"}
+        },
+        "source_fingerprints": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/sha256"}
+        },
+        "value": {"type": ["number", "null"]},
+        "reconciliation_residual": {"type": ["number", "null"]},
+        "status": {"enum": ["complete", "partial", "unavailable"]},
+        "aggregate_fingerprint": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "statusCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requested",
+        "included",
+        "compared",
+        "warm-up",
+        "close-out",
+        "excluded",
+        "initialization_only",
+        "optimization_only",
+        "provisional",
+        "finalized",
+        "failed",
+        "blocked_by_predecessor",
+        "unfinalized"
+      ],
+      "properties": {
+        "requested": {"type": "integer", "minimum": 0},
+        "included": {"type": "integer", "minimum": 0},
+        "compared": {"type": "integer", "minimum": 0},
+        "warm-up": {"type": "integer", "minimum": 0},
+        "close-out": {"type": "integer", "minimum": 0},
+        "excluded": {"type": "integer", "minimum": 0},
+        "initialization_only": {"type": "integer", "minimum": 0},
+        "optimization_only": {"type": "integer", "minimum": 0},
+        "provisional": {"type": "integer", "minimum": 0},
+        "finalized": {"type": "integer", "minimum": 0},
+        "failed": {"type": "integer", "minimum": 0},
+        "blocked_by_predecessor": {"type": "integer", "minimum": 0},
+        "unfinalized": {"type": "integer", "minimum": 0}
+      }
+    },
+    "resumeLineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "prior_semantic_fingerprint",
+        "reused_envelope_fingerprints",
+        "last_state_link_fingerprint",
+        "resume_fingerprint"
+      ],
+      "properties": {
+        "prior_semantic_fingerprint": {"$ref": "#/$defs/sha256"},
+        "reused_envelope_fingerprints": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/sha256"}
+        },
+        "last_state_link_fingerprint": {
+          "oneOf": [
+            {"$ref": "#/$defs/sha256"},
+            {"type": "null"}
+          ]
+        },
+        "resume_fingerprint": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["phase", "code", "severity", "field_path", "evidence_refs", "message"],
+      "properties": {
+        "phase": {"type": "string", "minLength": 1},
+        "code": {"type": "string", "minLength": 1},
+        "severity": {"enum": ["info", "warning", "error"]},
+        "field_path": {"type": ["string", "null"]},
+        "evidence_refs": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "message": {"type": "string", "minLength": 1}
+      }
+    },
+    "fieldOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field_path", "status", "field_result_fingerprint"],
+      "properties": {
+        "field_path": {"type": "string", "minLength": 1},
+        "status": {
+          "enum": [
+            "exact_displayed_decision_parity",
+            "source_precision_compatible",
+            "alternative_optimum_compatible",
+            "source_incumbent_equivalent",
+            "improved_feasible_incumbent_compatible_with_source_bound",
+            "bound_incompatible",
+            "mismatch",
+            "unavailable",
+            "incomplete_or_unfinalized"
+          ]
+        },
+        "field_result_fingerprint": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "comparisonSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fixture_fingerprint", "overall_compatibility", "evidence_bases", "field_outcomes", "comparison_fingerprint"],
+      "properties": {
+        "fixture_fingerprint": {"$ref": "#/$defs/sha256"},
+        "overall_compatibility": {"enum": ["compatible", "incompatible", "incomplete"]},
+        "evidence_bases": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "exact_displayed_decision_parity",
+              "source_precision_compatible",
+              "alternative_optimum_compatible",
+              "source_incumbent_equivalent",
+              "improved_feasible_incumbent_compatible_with_source_bound",
+              "bound_incompatible",
+              "mismatch",
+              "unavailable",
+              "incomplete_or_unfinalized"
+            ]
+          }
+        },
+        "field_outcomes": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/fieldOutcome"}
+        },
+        "comparison_fingerprint": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "solverRuntimeMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["duration_seconds", "backend_name", "backend_version"],
+      "properties": {
+        "duration_seconds": {"type": "number", "minimum": 0},
+        "backend_name": {"type": "string", "minLength": 1},
+        "backend_version": {"type": "string", "minLength": 1}
+      }
+    },
+    "runtimeMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["started_at_utc", "finished_at_utc", "duration_seconds", "backend_versions"],
+      "properties": {
+        "started_at_utc": {"$ref": "#/$defs/utcDateTime"},
+        "finished_at_utc": {"$ref": "#/$defs/utcDateTime"},
+        "duration_seconds": {"type": "number", "minimum": 0},
+        "backend_versions": {
+          "type": "object",
+          "additionalProperties": {"type": "string"}
+        }
+      }
+    }
+  }
+}

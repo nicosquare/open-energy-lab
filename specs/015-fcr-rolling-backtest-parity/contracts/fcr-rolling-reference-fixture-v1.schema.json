@@ -1,0 +1,515 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-energy-lab.local/schemas/fcr-rolling-reference-fixture-v1.schema.json",
+  "title": "Open Energy Lab normalized FCR rolling reference fixture v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "fixture_id",
+    "reference_provenance",
+    "raw_input_manifest",
+    "profile_crosswalk",
+    "study_window",
+    "problem_inputs",
+    "solve_records",
+    "delivery_evidence",
+    "precision_policy",
+    "feature_013_cross_check",
+    "discrepancies",
+    "unavailable_fields",
+    "redistribution_status",
+    "fixture_fingerprint"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "fcr-rolling-reference-fixture-v1"
+    },
+    "fixture_id": {
+      "const": "robust-storage-bidding-experiments-01-05-2023-06-17-20-v1"
+    },
+    "reference_provenance": {
+      "$ref": "#/$defs/referenceProvenance"
+    },
+    "raw_input_manifest": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/rawArtifact"
+      }
+    },
+    "profile_crosswalk": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "$ref": "#/$defs/profileCrosswalk"
+      }
+    },
+    "study_window": {
+      "$ref": "#/$defs/studyWindow"
+    },
+    "problem_inputs": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "$ref": "#/$defs/problemInput"
+      }
+    },
+    "solve_records": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/solveRecord"
+      }
+    },
+    "delivery_evidence": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/deliveryEvidence"
+      }
+    },
+    "precision_policy": {
+      "$ref": "#/$defs/precisionPolicy"
+    },
+    "feature_013_cross_check": {
+      "$ref": "#/$defs/feature013CrossCheck"
+    },
+    "discrepancies": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/discrepancy"
+      }
+    },
+    "unavailable_fields": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/unavailableField"
+      }
+    },
+    "redistribution_status": {
+      "$ref": "#/$defs/redistributionStatus"
+    },
+    "fixture_fingerprint": {
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "date": {
+      "type": "string",
+      "enum": [
+        "2023-06-17",
+        "2023-06-18",
+        "2023-06-19",
+        "2023-06-20"
+      ]
+    },
+    "profileId": {
+      "type": "string",
+      "enum": [
+        "script-11-relaxation-reset-midnight-v1",
+        "script-12-restriction-reset-midnight-v1",
+        "script-13-arbitrage-only-midnight-v1",
+        "script-14-restriction-rolling-0800-v1",
+        "script-15-restriction-rolling-midnight-v1"
+      ]
+    },
+    "finiteNumber": {
+      "type": "number"
+    },
+    "referenceProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference_repository",
+        "reference_revision",
+        "source_kind",
+        "runtime_evidence",
+        "committed_environment",
+        "readme_claims",
+        "normalizer_version"
+      ],
+      "properties": {
+        "reference_repository": {
+          "const": "robust_storage_bidding"
+        },
+        "reference_revision": {
+          "const": "7e44738bb30e5c8204efe40103b9be4c2203685c"
+        },
+        "source_kind": {
+          "const": "generated-untracked-bounded-rerun-evidence"
+        },
+        "runtime_evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["julia_version", "gurobi_runtime_version"],
+          "properties": {
+            "julia_version": {"const": "1.10.1"},
+            "gurobi_runtime_version": {"const": "11.0.3"}
+          }
+        },
+        "committed_environment": {
+          "type": "object",
+          "additionalProperties": {"type": "string"},
+          "required": ["julia", "jump", "gurobi_jl", "gurobi_runtime"]
+        },
+        "readme_claims": {
+          "type": "object",
+          "additionalProperties": {"type": "string"},
+          "required": ["julia", "jump", "gurobi"]
+        },
+        "normalizer_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "rawArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "artifact_kind",
+        "logical_source_path",
+        "sha256",
+        "used_fields",
+        "redistributed"
+      ],
+      "properties": {
+        "artifact_id": {"type": "string", "minLength": 1},
+        "artifact_kind": {
+          "enum": [
+            "source",
+            "generated_json",
+            "generated_log",
+            "input_data",
+            "project",
+            "manifest",
+            "workbook"
+          ]
+        },
+        "logical_source_path": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "used_fields": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "redistributed": {"const": false}
+      }
+    },
+    "profileCrosswalk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "script",
+        "result_directory",
+        "executable_behavior",
+        "paper_experiment",
+        "workbook_column",
+        "mapping_status",
+        "table_a1_claim"
+      ],
+      "properties": {
+        "profile_id": {"$ref": "#/$defs/profileId"},
+        "script": {
+          "type": "string",
+          "pattern": "^code/1[1-5]\\.jl$"
+        },
+        "result_directory": {
+          "type": "string",
+          "pattern": "^results/0[1-5]$"
+        },
+        "executable_behavior": {"type": "string", "minLength": 1},
+        "paper_experiment": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "workbook_column": {"type": "string", "minLength": 1},
+        "mapping_status": {
+          "enum": ["reconciled_by_behavior", "unresolved"]
+        },
+        "table_a1_claim": {"const": "not_claimed_by_bounded_fixture"}
+      }
+    },
+    "studyWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ordered_dates", "primary_comparison_dates", "edge_policy"],
+      "properties": {
+        "ordered_dates": {
+          "const": ["2023-06-17", "2023-06-18", "2023-06-19", "2023-06-20"]
+        },
+        "primary_comparison_dates": {
+          "const": ["2023-06-18", "2023-06-19"]
+        },
+        "edge_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rolling_0800_first_date", "rolling_0800_last_date"],
+          "properties": {
+            "rolling_0800_first_date": {"const": "initialization_only"},
+            "rolling_0800_last_date": {"const": "unfinalized"}
+          }
+        }
+      }
+    },
+    "problemInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "delivery_date",
+        "battery",
+        "day_ahead_prices_eur_per_kwh",
+        "fcr_prices_eur_per_kw_block",
+        "uncertainty",
+        "terminal_rule",
+        "input_fingerprint"
+      ],
+      "properties": {
+        "delivery_date": {"$ref": "#/$defs/date"},
+        "battery": {"type": "object"},
+        "day_ahead_prices_eur_per_kwh": {
+          "type": "array",
+          "minItems": 24,
+          "maxItems": 24,
+          "items": {"$ref": "#/$defs/finiteNumber"}
+        },
+        "fcr_prices_eur_per_kw_block": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {"$ref": "#/$defs/finiteNumber"}
+        },
+        "uncertainty": {"type": "object"},
+        "terminal_rule": {"type": "object"},
+        "input_fingerprint": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "solverEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "termination_condition",
+        "primal_status",
+        "dual_status",
+        "incumbent_available",
+        "source_evidence"
+      ],
+      "properties": {
+        "termination_condition": {
+          "enum": ["OPTIMAL", "TIME_LIMIT", "unavailable"]
+        },
+        "primal_status": {
+          "enum": ["FEASIBLE_POINT", "unavailable"]
+        },
+        "dual_status": {
+          "enum": ["FEASIBLE_POINT", "NO_SOLUTION", "unavailable"]
+        },
+        "incumbent_available": {"type": "boolean"},
+        "source_evidence": {
+          "enum": ["generated_log", "generated_json", "combined"]
+        }
+      }
+    },
+    "solveRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "delivery_date",
+        "source_json_artifact_id",
+        "source_log_artifact_id",
+        "solver_evidence",
+        "objective_eur",
+        "best_upper_bound_eur",
+        "absolute_gap_eur",
+        "relative_gap",
+        "runtime_seconds",
+        "hourly_energy_source_positive_discharge_kw",
+        "fcr_capacity_kw",
+        "initial_stored_energy_kwh",
+        "cutoff_stored_energy_kwh",
+        "terminal_stored_energy_kwh",
+        "modeled_feasibility_claim",
+        "record_fingerprint"
+      ],
+      "properties": {
+        "profile_id": {"$ref": "#/$defs/profileId"},
+        "delivery_date": {"$ref": "#/$defs/date"},
+        "source_json_artifact_id": {"type": "string", "minLength": 1},
+        "source_log_artifact_id": {"type": "string", "minLength": 1},
+        "solver_evidence": {"$ref": "#/$defs/solverEvidence"},
+        "objective_eur": {"$ref": "#/$defs/finiteNumber"},
+        "best_upper_bound_eur": {"$ref": "#/$defs/finiteNumber"},
+        "absolute_gap_eur": {"type": "number", "minimum": 0},
+        "relative_gap": {"type": "number", "minimum": 0},
+        "runtime_seconds": {"type": "number", "minimum": 0},
+        "hourly_energy_source_positive_discharge_kw": {
+          "type": "array",
+          "minItems": 24,
+          "maxItems": 24,
+          "items": {"$ref": "#/$defs/finiteNumber"}
+        },
+        "fcr_capacity_kw": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {"$ref": "#/$defs/finiteNumber"}
+        },
+        "initial_stored_energy_kwh": {"$ref": "#/$defs/finiteNumber"},
+        "cutoff_stored_energy_kwh": {
+          "oneOf": [
+            {"$ref": "#/$defs/finiteNumber"},
+            {"type": "null"}
+          ]
+        },
+        "terminal_stored_energy_kwh": {"$ref": "#/$defs/finiteNumber"},
+        "modeled_feasibility_claim": {
+          "const": "unavailable_pending_independent_audit"
+        },
+        "record_fingerprint": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "deliveryEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "delivery_date",
+        "source_lifecycle_status",
+        "predecessor_delivery_date",
+        "original_evidence_available",
+        "finalized_evidence_available",
+        "activation_samples_redistributed",
+        "evidence_fingerprint"
+      ],
+      "properties": {
+        "profile_id": {"$ref": "#/$defs/profileId"},
+        "delivery_date": {"$ref": "#/$defs/date"},
+        "source_lifecycle_status": {
+          "enum": [
+            "independent_complete",
+            "initialization_only",
+            "finalized",
+            "unfinalized"
+          ]
+        },
+        "predecessor_delivery_date": {
+          "oneOf": [
+            {"$ref": "#/$defs/date"},
+            {"type": "null"}
+          ]
+        },
+        "original_evidence_available": {"type": "boolean"},
+        "finalized_evidence_available": {"type": "boolean"},
+        "activation_samples_redistributed": {"const": false},
+        "evidence_fingerprint": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "precisionPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_decimal_places",
+        "decision_interval_rule",
+        "objective_interval_rule",
+        "state_rounding_rule",
+        "joint_certificate_required",
+        "restriction_bilinear_violations_is_feasibility_evidence"
+      ],
+      "properties": {
+        "source_decimal_places": {"const": 3},
+        "decision_interval_rule": {
+          "const": "closed-half-displayed-unit-with-recorded-julia-endpoint-policy-v1"
+        },
+        "objective_interval_rule": {
+          "const": "closed-half-displayed-unit-plus-native-tolerance-v1"
+        },
+        "state_rounding_rule": {
+          "const": "decimal-string-three-place-half-even-normalized-zero-v1"
+        },
+        "joint_certificate_required": {"const": true},
+        "restriction_bilinear_violations_is_feasibility_evidence": {"const": false}
+      }
+    },
+    "feature013CrossCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "governed_fixture_preserved",
+        "governed_raw_sha256",
+        "rerun_raw_sha256",
+        "semantic_fields_compared",
+        "semantic_outcome"
+      ],
+      "properties": {
+        "governed_fixture_preserved": {"const": true},
+        "governed_raw_sha256": {"$ref": "#/$defs/sha256"},
+        "rerun_raw_sha256": {"$ref": "#/$defs/sha256"},
+        "semantic_fields_compared": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "semantic_outcome": {
+          "const": "displayed_objective_bound_and_30_decisions_match"
+        }
+      }
+    },
+    "discrepancy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "scope", "description", "effect_on_claims"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1},
+        "scope": {"type": "string", "minLength": 1},
+        "description": {"type": "string", "minLength": 1},
+        "effect_on_claims": {"type": "string", "minLength": 1}
+      }
+    },
+    "unavailableField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field_path", "reason", "required_for"],
+      "properties": {
+        "field_path": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "required_for": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "redistributionStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixture_contains_raw_logs",
+        "fixture_contains_raw_json",
+        "fixture_contains_workbook",
+        "fixture_contains_activation_samples",
+        "fixture_contains_machine_or_license_data",
+        "normalized_fields_only"
+      ],
+      "properties": {
+        "fixture_contains_raw_logs": {"const": false},
+        "fixture_contains_raw_json": {"const": false},
+        "fixture_contains_workbook": {"const": false},
+        "fixture_contains_activation_samples": {"const": false},
+        "fixture_contains_machine_or_license_data": {"const": false},
+        "normalized_fields_only": {"const": true}
+      }
+    }
+  }
+}
