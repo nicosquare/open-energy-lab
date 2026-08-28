@@ -1,0 +1,1094 @@
+"""Import-light immutable records for composable conditional TPM circuits.
+
+This module owns record meaning, canonical identity, and create-or-verify
+publication.  It intentionally imports no SPFlow, Torch, Pyomo, or solver
+package; backend workflows live behind separate lazy boundaries.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import os
+import tempfile
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
+from numbers import Real
+from pathlib import Path
+from types import MappingProxyType
+from typing import Any, ClassVar
+
+
+CONDITIONAL_PAIR_RECORD_KIND = "conditional-pair-v1"
+CONDITIONAL_PAIR_SCHEMA_VERSION = "v1"
+CONDITIONAL_PAIR_COMPILER_VERSION = "conditional-mio-v1"
+
+_SUPPORTED_NODE_TYPES = frozenset(
+    {
+        "log_one",
+        "leaf_piecewise",
+        "leaf_binary",
+        "leaf_categorical",
+        "product",
+        "sum",
+    }
+)
+_MAX_APPROXIMATION_LABEL = "weighted-log-sum-exp-max-approximation"
+_PIECEWISE_APPROXIMATION_LABEL = (
+    "weighted-log-sum-exp-piecewise-linear-approximation"
+)
+_REQUIRED_NUMERICAL_TOLERANCES = frozenset(
+    {
+        "embedding_parity_absolute_tolerance",
+        "constraint_residual_absolute_tolerance",
+        "positive_log_risk_limit",
+        "domain_membership_tolerance",
+    }
+)
+
+
+@dataclass(frozen=True, slots=True)
+class TPMConditionalSourceReference:
+    """Persisted fitted-artifact and current-model origin for one pair."""
+
+    artifact_id: str
+    artifact_schema_version: str
+    manifest_reference: str
+    sidecar_sha256: str
+    backend_generation: str
+    backend_api_version: str
+    model_digest: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "artifact_id", _non_empty_string(self.artifact_id, "artifact_id")
+        )
+        object.__setattr__(
+            self,
+            "artifact_schema_version",
+            _non_empty_string(
+                self.artifact_schema_version, "artifact_schema_version"
+            ),
+        )
+        manifest_reference = _non_empty_string(
+            self.manifest_reference, "manifest_reference"
+        )
+        if Path(manifest_reference).is_absolute():
+            raise ValueError("manifest_reference must be a portable relative path")
+        object.__setattr__(self, "manifest_reference", manifest_reference)
+        object.__setattr__(
+            self,
+            "sidecar_sha256",
+            _sha256_digest(self.sidecar_sha256, field_name="sidecar_sha256"),
+        )
+        object.__setattr__(
+            self,
+            "backend_generation",
+            _non_empty_string(self.backend_generation, "backend_generation"),
+        )
+        object.__setattr__(
+            self,
+            "backend_api_version",
+            _non_empty_string(self.backend_api_version, "backend_api_version"),
+        )
+        object.__setattr__(
+            self,
+            "model_digest",
+            _sha256_digest(self.model_digest, field_name="model_digest"),
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "artifact_id": self.artifact_id,
+            "artifact_schema_version": self.artifact_schema_version,
+            "manifest_reference": self.manifest_reference,
+            "sidecar_sha256": self.sidecar_sha256,
+            "backend_generation": self.backend_generation,
+            "backend_api_version": self.backend_api_version,
+            "model_digest": self.model_digest,
+        }
+
+    @classmethod
+    def from_dict(
+        cls, payload: Mapping[str, object]
+    ) -> "TPMConditionalSourceReference":
+        data = _strict_mapping(
+            payload,
+            record_name="conditional source reference",
+            required={
+                "artifact_id",
+                "artifact_schema_version",
+                "manifest_reference",
+                "sidecar_sha256",
+                "backend_generation",
+                "backend_api_version",
+                "model_digest",
+            },
+        )
+        return cls(**data)
+
+
+@dataclass(frozen=True, slots=True)
+class TPMConditionalEvent:
+    """Exactly one binary event value and its persisted model coordinate."""
+
+    feature_name: str
+    declared_value: object
+    model_index: int
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "feature_name",
+            _non_empty_string(self.feature_name, "feature_name"),
+        )
+        object.__setattr__(
+            self,
+            "declared_value",
+            _freeze_json(self.declared_value, field_name="declared_value"),
+        )
+        if isinstance(self.model_index, bool) or self.model_index not in (0, 1):
+            raise ValueError("event model_index must be exactly 0 or 1")
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "feature_name": self.feature_name,
+            "declared_value": _thaw_json(self.declared_value),
+            "model_index": self.model_index,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, object]) -> "TPMConditionalEvent":
+        return cls(
+            **_strict_mapping(
+                payload,
+                record_name="conditional event",
+                required={"feature_name", "declared_value", "model_index"},
+            )
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class TPMConditionalFeatureValidity:
+    """Declared and compiler-valid meaning for one retained feature."""
+
+    feature_name: str
+    feature_index: int
+    feature_type: str
+    declared_domain: Mapping[str, object]
+    normalization: Mapping[str, object]
+    approximation_domain: Mapping[str, object] | None = None
+
+    _SUPPORTED_FEATURE_TYPES: ClassVar[frozenset[str]] = frozenset(
+        {"continuous", "binary", "categorical"}
+    )
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "feature_name",
+            _non_empty_string(self.feature_name, "feature_name"),
+        )
+        if isinstance(self.feature_index, bool) or not isinstance(
+            self.feature_index, int
+        ):
+            raise TypeError("feature_index must be an integer")
+        if self.feature_index < 0:
+            raise ValueError("feature_index must be non-negative")
+        feature_type = _non_empty_string(self.feature_type, "feature_type")
+        if feature_type not in self._SUPPORTED_FEATURE_TYPES:
+            raise ValueError(
+                "feature_type must be continuous, binary, or categorical"
+            )
+        object.__setattr__(self, "feature_type", feature_type)
+        declared_domain = _freeze_json(
+            self.declared_domain, field_name="declared_domain"
+        )
+        normalization = _freeze_json(
+            self.normalization, field_name="normalization"
+        )
+        if not isinstance(declared_domain, Mapping) or not declared_domain:
+            raise ValueError("declared_domain must be a nonempty mapping")
+        if not isinstance(normalization, Mapping) or not normalization:
+            raise ValueError("normalization must be a nonempty mapping")
+        approximation_domain = (
+            None
+            if self.approximation_domain is None
+            else _freeze_json(
+                self.approximation_domain, field_name="approximation_domain"
+            )
+        )
+        if feature_type == "continuous" and not isinstance(
+            approximation_domain, Mapping
+        ):
+            raise ValueError(
+                f"continuous retained feature {self.feature_name!r} requires an "
+                "approximation_domain"
+            )
+        if feature_type != "continuous" and approximation_domain is not None:
+            raise ValueError(
+                f"discrete retained feature {self.feature_name!r} must not invent an "
+                "approximation_domain"
+            )
+        object.__setattr__(self, "declared_domain", declared_domain)
+        object.__setattr__(self, "normalization", normalization)
+        object.__setattr__(self, "approximation_domain", approximation_domain)
+
+    def to_dict(self) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "feature_name": self.feature_name,
+            "feature_index": self.feature_index,
+            "feature_type": self.feature_type,
+            "declared_domain": _thaw_json(self.declared_domain),
+            "normalization": _thaw_json(self.normalization),
+        }
+        if self.approximation_domain is not None:
+            payload["approximation_domain"] = _thaw_json(
+                self.approximation_domain
+            )
+        return payload
+
+    @classmethod
+    def from_dict(
+        cls, payload: Mapping[str, object]
+    ) -> "TPMConditionalFeatureValidity":
+        data = _strict_mapping(
+            payload,
+            record_name="conditional feature validity",
+            required={
+                "feature_name",
+                "feature_index",
+                "feature_type",
+                "declared_domain",
+                "normalization",
+            },
+            optional={"approximation_domain"},
+        )
+        return cls(**data)
+
+
+@dataclass(frozen=True, slots=True)
+class TPMConditionalEncodingPolicy:
+    """Fully labelled max or PWL semantics shared by both circuits."""
+
+    mode: str
+    approximation_label: str
+    certification_label: str
+    leaf_configuration: Mapping[str, object]
+    sum_configuration: Mapping[str, object]
+
+    def __post_init__(self) -> None:
+        mode = _non_empty_string(self.mode, "mode")
+        if mode not in {"max", "piecewise"}:
+            raise ValueError("conditional Sum encoding mode must be 'max' or 'piecewise'")
+        expected_label = (
+            _MAX_APPROXIMATION_LABEL
+            if mode == "max"
+            else _PIECEWISE_APPROXIMATION_LABEL
+        )
+        approximation_label = _non_empty_string(
+            self.approximation_label, "approximation_label"
+        )
+        if approximation_label != expected_label:
+            raise ValueError(
+                f"{mode} approximation_label must be {expected_label!r}"
+            )
+        certification_label = _non_empty_string(
+            self.certification_label, "certification_label"
+        )
+        if mode == "max" and certification_label != "uncertified":
+            raise ValueError(
+                "max certification_label must remain 'uncertified' in this feature"
+            )
+        if mode == "piecewise" and certification_label != "not-applicable":
+            raise ValueError(
+                "piecewise certification_label must be 'not-applicable'"
+            )
+        leaf_configuration = _freeze_json(
+            self.leaf_configuration, field_name="leaf_configuration"
+        )
+        sum_configuration = _freeze_json(
+            self.sum_configuration, field_name="sum_configuration"
+        )
+        if not isinstance(leaf_configuration, Mapping) or not leaf_configuration:
+            raise ValueError("leaf_configuration must be a nonempty mapping")
+        if not isinstance(sum_configuration, Mapping) or not sum_configuration:
+            raise ValueError("sum_configuration must be a nonempty mapping")
+        object.__setattr__(self, "mode", mode)
+        object.__setattr__(self, "approximation_label", approximation_label)
+        object.__setattr__(self, "certification_label", certification_label)
+        object.__setattr__(self, "leaf_configuration", leaf_configuration)
+        object.__setattr__(self, "sum_configuration", sum_configuration)
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "mode": self.mode,
+            "approximation_label": self.approximation_label,
+            "certification_label": self.certification_label,
+            "leaf_configuration": _thaw_json(self.leaf_configuration),
+            "sum_configuration": _thaw_json(self.sum_configuration),
+        }
+
+    @classmethod
+    def from_dict(
+        cls, payload: Mapping[str, object]
+    ) -> "TPMConditionalEncodingPolicy":
+        return cls(
+            **_strict_mapping(
+                payload,
+                record_name="conditional encoding policy",
+                required={
+                    "mode",
+                    "approximation_label",
+                    "certification_label",
+                    "leaf_configuration",
+                    "sum_configuration",
+                },
+            )
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class TPMConditionalNumericalPolicy:
+    """Finite purpose-labelled tolerances without one ambiguous epsilon."""
+
+    tolerances: Mapping[str, float]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.tolerances, Mapping):
+            raise TypeError("tolerances must be a mapping")
+        normalized: dict[str, float] = {}
+        for raw_name, raw_value in self.tolerances.items():
+            name = _non_empty_string(raw_name, "tolerance name")
+            value = _finite_float(raw_value, field_name=f"tolerance {name}")
+            if name == "domain_membership_tolerance":
+                if value != 0.0:
+                    raise ValueError(
+                        "domain_membership_tolerance must be exactly zero"
+                    )
+            elif value <= 0.0:
+                raise ValueError(f"tolerance {name!r} must be positive")
+            normalized[name] = value
+        missing = sorted(_REQUIRED_NUMERICAL_TOLERANCES - set(normalized))
+        if missing:
+            raise ValueError(
+                "numerical policy is missing purpose-labelled tolerances: "
+                + ", ".join(missing)
+            )
+        object.__setattr__(self, "tolerances", MappingProxyType(normalized))
+
+    def to_dict(self) -> dict[str, object]:
+        return {"tolerances": dict(self.tolerances)}
+
+    @classmethod
+    def from_dict(
+        cls, payload: Mapping[str, object]
+    ) -> "TPMConditionalNumericalPolicy":
+        data = _strict_mapping(
+            payload,
+            record_name="conditional numerical policy",
+            required={"tolerances"},
+        )
+        return cls(tolerances=data["tolerances"])
+
+
+@dataclass(frozen=True, slots=True)
+class TPMConditionalCompilationRequest:
+    """Complete caller-selected semantics for one conditional compilation."""
+
+    source_artifact: str
+    event_target: str
+    event_value: object
+    retained_decisions: tuple[str, ...]
+    approximation_domains: tuple[Mapping[str, object], ...]
+    encoding: TPMConditionalEncodingPolicy
+    numerical_policy: TPMConditionalNumericalPolicy
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "source_artifact",
+            _non_empty_string(self.source_artifact, "source_artifact"),
+        )
+        event_target = _non_empty_string(self.event_target, "event_target")
+        object.__setattr__(self, "event_target", event_target)
+        object.__setattr__(
+            self,
+            "event_value",
+            _freeze_json(self.event_value, field_name="event_value"),
+        )
+        retained_decisions = tuple(
+            _non_empty_string(value, "retained decision")
+            for value in self.retained_decisions
+        )
+        if not retained_decisions:
+            raise ValueError("retained_decisions must be nonempty")
+        if len(set(retained_decisions)) != len(retained_decisions):
+            raise ValueError("retained_decisions must be unique")
+        if event_target in retained_decisions:
+            raise ValueError("the event target cannot be a retained decision")
+        object.__setattr__(self, "retained_decisions", retained_decisions)
+        domains = tuple(
+            _freeze_json(value, field_name="approximation_domains")
+            for value in self.approximation_domains
+        )
+        if any(not isinstance(value, Mapping) for value in domains):
+            raise TypeError("approximation_domains entries must be mappings")
+        domain_names = tuple(str(value.get("feature_name", "")) for value in domains)
+        if any(not name for name in domain_names):
+            raise ValueError("every approximation domain requires feature_name")
+        if len(set(domain_names)) != len(domain_names):
+            raise ValueError("approximation domain feature names must be unique")
+        unknown = sorted(set(domain_names) - set(retained_decisions))
+        if unknown:
+            raise ValueError(
+                "approximation domains refer to unknown retained decisions: "
+                + ", ".join(unknown)
+            )
+        object.__setattr__(self, "approximation_domains", domains)
+        if not isinstance(self.encoding, TPMConditionalEncodingPolicy):
+            raise TypeError("encoding must be a TPMConditionalEncodingPolicy")
+        if not isinstance(self.numerical_policy, TPMConditionalNumericalPolicy):
+            raise TypeError(
+                "numerical_policy must be a TPMConditionalNumericalPolicy"
+            )
+
+
+@dataclass(frozen=True, slots=True)
+class TPMConditionalCircuitNode:
+    """One finite immutable node in a conditioned log-space circuit."""
+
+    node_id: int
+    node_type: str
+    children: tuple[int, ...] = field(default_factory=tuple)
+    feature_name: str | None = None
+    parameters: Mapping[str, object] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if isinstance(self.node_id, bool) or not isinstance(self.node_id, int):
+            raise TypeError("conditional circuit node id must be an integer")
+        if self.node_id < 0:
+            raise ValueError("conditional circuit node id must be non-negative")
+        node_type = _non_empty_string(self.node_type, "node type")
+        if node_type not in _SUPPORTED_NODE_TYPES:
+            raise ValueError(f"unsupported conditional circuit node type {node_type!r}")
+        children = tuple(int(value) for value in self.children)
+        if any(value < 0 for value in children):
+            raise ValueError("conditional circuit children must be non-negative ids")
+        if node_type in {"product", "sum"} and not children:
+            raise ValueError(f"{node_type} node requires at least one child")
+        if node_type not in {"product", "sum"} and children:
+            raise ValueError(f"{node_type} node must not contain children")
+        feature_name = self.feature_name
+        if node_type.startswith("leaf_"):
+            feature_name = _non_empty_string(feature_name, "feature_name")
+        elif feature_name is not None:
+            raise ValueError(f"{node_type} node must not contain feature_name")
+        parameters = _freeze_json(self.parameters, field_name="node parameters")
+        if not isinstance(parameters, Mapping):
+            raise TypeError("node parameters must be a mapping")
+        self._validate_parameters(node_type=node_type, parameters=parameters)
+        object.__setattr__(self, "node_type", node_type)
+        object.__setattr__(self, "children", children)
+        object.__setattr__(self, "feature_name", feature_name)
+        object.__setattr__(self, "parameters", parameters)
+
+    @staticmethod
+    def _validate_parameters(
+        *, node_type: str, parameters: Mapping[str, object]
+    ) -> None:
+        if node_type == "log_one":
+            if set(parameters) != {"log_value"} or parameters["log_value"] != 0.0:
+                raise ValueError("log_one node must contain exact log_value 0.0")
+            return
+        if node_type == "leaf_piecewise":
+            x_values = _finite_sequence(
+                parameters.get("breakpoints"), field_name="breakpoints"
+            )
+            y_values = _finite_sequence(
+                parameters.get("log_values"), field_name="log_values"
+            )
+            if len(x_values) < 2 or len(x_values) != len(y_values):
+                raise ValueError(
+                    "leaf_piecewise breakpoints and log_values must align"
+                )
+            if any(right <= left for left, right in zip(x_values, x_values[1:])):
+                raise ValueError("leaf_piecewise breakpoints must increase")
+            return
+        if node_type in {"leaf_binary", "leaf_categorical"}:
+            densities = _finite_sequence(
+                parameters.get("densities"), field_name="densities"
+            )
+            minimum_count = 2 if node_type == "leaf_binary" else 1
+            if len(densities) < minimum_count or any(value < 0.0 for value in densities):
+                raise ValueError(f"{node_type} densities are invalid")
+            if math.fsum(densities) <= 0.0:
+                raise ValueError(f"{node_type} densities must contain positive mass")
+            fixed_value = parameters.get("fixed_value")
+            if fixed_value is not None:
+                if isinstance(fixed_value, bool) or not isinstance(fixed_value, int):
+                    raise TypeError("fixed_value must be an integer model index")
+                if fixed_value < 0 or fixed_value >= len(densities):
+                    raise ValueError("fixed_value is outside the leaf density ordering")
+            return
+        if node_type == "sum":
+            weights = _finite_sequence(
+                parameters.get("weights"), field_name="weights"
+            )
+            if not weights or any(value <= 0.0 for value in weights):
+                raise ValueError("sum weights must be finite and positive")
+
+    def to_dict(self) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "id": self.node_id,
+            "type": self.node_type,
+        }
+        if self.children:
+            payload["children"] = list(self.children)
+        if self.feature_name is not None:
+            payload["feature_name"] = self.feature_name
+        payload.update(_thaw_json(self.parameters))
+        return payload
+
+    @classmethod
+    def from_dict(
+        cls, payload: Mapping[str, object]
+    ) -> "TPMConditionalCircuitNode":
+        if not isinstance(payload, Mapping):
+            raise TypeError("conditional circuit node must be a mapping")
+        if "id" not in payload or "type" not in payload:
+            raise ValueError("conditional circuit node requires id and type")
+        node_type = str(payload["type"])
+        parameters = {
+            str(key): value
+            for key, value in payload.items()
+            if key not in {"id", "type", "children", "feature_name"}
+        }
+        if node_type == "log_one" and "log_value" not in parameters:
+            parameters["log_value"] = 0.0
+        return cls(
+            node_id=payload["id"],
+            node_type=node_type,
+            children=tuple(payload.get("children", ())),
+            feature_name=payload.get("feature_name"),
+            parameters=parameters,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class TPMConditionalCircuit:
+    """One validated finite acyclic conditioned circuit and its treatment metadata."""
+
+    root_id: int
+    nodes: tuple[TPMConditionalCircuitNode, ...]
+    metadata: Mapping[str, object] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if isinstance(self.root_id, bool) or not isinstance(self.root_id, int):
+            raise TypeError("conditional circuit root_id must be an integer")
+        nodes = tuple(
+            node
+            if isinstance(node, TPMConditionalCircuitNode)
+            else TPMConditionalCircuitNode.from_dict(node)
+            for node in self.nodes
+        )
+        if not nodes:
+            raise ValueError("conditional circuit nodes must be nonempty")
+        by_id = {node.node_id: node for node in nodes}
+        if len(by_id) != len(nodes):
+            raise ValueError("conditional circuit node ids must be unique")
+        if self.root_id not in by_id:
+            raise ValueError(
+                f"conditional circuit root_id {self.root_id!r} does not exist"
+            )
+        active: set[int] = set()
+        visited: set[int] = set()
+
+        def visit(node_id: int) -> None:
+            if node_id in visited:
+                return
+            if node_id in active:
+                raise ValueError("conditional circuit nodes must form an acyclic graph")
+            if node_id not in by_id:
+                raise ValueError(f"conditional circuit child {node_id} does not exist")
+            active.add(node_id)
+            for child_id in by_id[node_id].children:
+                visit(child_id)
+            active.remove(node_id)
+            visited.add(node_id)
+
+        visit(self.root_id)
+        metadata = _freeze_json(self.metadata, field_name="circuit metadata")
+        if not isinstance(metadata, Mapping):
+            raise TypeError("circuit metadata must be a mapping")
+        object.__setattr__(self, "nodes", nodes)
+        object.__setattr__(self, "metadata", metadata)
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "root_id": self.root_id,
+            "nodes": [node.to_dict() for node in self.nodes],
+            "metadata": _thaw_json(self.metadata),
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, object]) -> "TPMConditionalCircuit":
+        data = _strict_mapping(
+            payload,
+            record_name="conditional circuit",
+            required={"root_id", "nodes", "metadata"},
+        )
+        nodes = data["nodes"]
+        if not _is_sequence(nodes):
+            raise TypeError("conditional circuit nodes must be a sequence")
+        return cls(
+            root_id=data["root_id"],
+            nodes=tuple(TPMConditionalCircuitNode.from_dict(node) for node in nodes),
+            metadata=data["metadata"],
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class TPMConditionalPair:
+    """Immutable solver-neutral conditional numerator/denominator pair."""
+
+    source: TPMConditionalSourceReference
+    event: TPMConditionalEvent
+    feature_schema: tuple[Mapping[str, object], ...]
+    retained_decisions: tuple[str, ...]
+    marginalized_features: tuple[str, ...]
+    validity: tuple[TPMConditionalFeatureValidity, ...]
+    encoding: TPMConditionalEncodingPolicy
+    numerical_policy: TPMConditionalNumericalPolicy
+    numerator: TPMConditionalCircuit
+    denominator: TPMConditionalCircuit
+    provenance: Mapping[str, object] = field(default_factory=dict)
+    pair_id: str = ""
+    record_kind: str = CONDITIONAL_PAIR_RECORD_KIND
+    schema_version: str = CONDITIONAL_PAIR_SCHEMA_VERSION
+    compiler_version: str = CONDITIONAL_PAIR_COMPILER_VERSION
+
+    def __post_init__(self) -> None:
+        if self.record_kind != CONDITIONAL_PAIR_RECORD_KIND:
+            raise ValueError(
+                f"conditional pair record_kind must be {CONDITIONAL_PAIR_RECORD_KIND!r}"
+            )
+        if self.schema_version != CONDITIONAL_PAIR_SCHEMA_VERSION:
+            raise ValueError(
+                "conditional pair schema_version must be "
+                f"{CONDITIONAL_PAIR_SCHEMA_VERSION!r}"
+            )
+        if self.compiler_version != CONDITIONAL_PAIR_COMPILER_VERSION:
+            raise ValueError(
+                "conditional pair compiler_version must be "
+                f"{CONDITIONAL_PAIR_COMPILER_VERSION!r}"
+            )
+        if not isinstance(self.source, TPMConditionalSourceReference):
+            raise TypeError("source must be a TPMConditionalSourceReference")
+        if not isinstance(self.event, TPMConditionalEvent):
+            raise TypeError("event must be a TPMConditionalEvent")
+        feature_schema = tuple(
+            _freeze_json(value, field_name="feature_schema")
+            for value in self.feature_schema
+        )
+        if not feature_schema or any(
+            not isinstance(value, Mapping) for value in feature_schema
+        ):
+            raise ValueError("feature_schema must contain nonempty mappings")
+        feature_names = tuple(
+            _non_empty_string(value.get("feature_name"), "feature_schema name")
+            for value in feature_schema
+        )
+        if len(set(feature_names)) != len(feature_names):
+            raise ValueError("feature_schema names must be unique")
+        retained = tuple(
+            _non_empty_string(value, "retained decision")
+            for value in self.retained_decisions
+        )
+        marginalized = tuple(
+            _non_empty_string(value, "marginalized feature")
+            for value in self.marginalized_features
+        )
+        if not retained or len(set(retained)) != len(retained):
+            raise ValueError("retained_decisions must be nonempty and unique")
+        if len(set(marginalized)) != len(marginalized):
+            raise ValueError("marginalized_features must be unique")
+        if self.event.feature_name not in feature_names:
+            raise ValueError("event feature is absent from feature_schema")
+        if self.event.feature_name in retained:
+            raise ValueError("event feature cannot be a retained decision")
+        unknown = sorted((set(retained) | set(marginalized)) - set(feature_names))
+        if unknown:
+            raise ValueError("pair feature references are unknown: " + ", ".join(unknown))
+        if set(retained) & set(marginalized):
+            raise ValueError("retained and marginalized features must be disjoint")
+        expected_marginalized = set(feature_names) - set(retained) - {
+            self.event.feature_name
+        }
+        if set(marginalized) != expected_marginalized:
+            raise ValueError(
+                "marginalized_features must contain every nonevent nondecision feature"
+            )
+        validity = tuple(
+            value
+            if isinstance(value, TPMConditionalFeatureValidity)
+            else TPMConditionalFeatureValidity.from_dict(value)
+            for value in self.validity
+        )
+        if tuple(value.feature_name for value in validity) != retained:
+            raise ValueError(
+                "validity records must follow and exactly cover retained_decisions"
+            )
+        if not isinstance(self.encoding, TPMConditionalEncodingPolicy):
+            raise TypeError("encoding must be a TPMConditionalEncodingPolicy")
+        if not isinstance(self.numerical_policy, TPMConditionalNumericalPolicy):
+            raise TypeError(
+                "numerical_policy must be a TPMConditionalNumericalPolicy"
+            )
+        if not isinstance(self.numerator, TPMConditionalCircuit):
+            raise TypeError("numerator must be a TPMConditionalCircuit")
+        if not isinstance(self.denominator, TPMConditionalCircuit):
+            raise TypeError("denominator must be a TPMConditionalCircuit")
+        if self.numerator.metadata.get("event_treatment") != "fixed":
+            raise ValueError("numerator circuit must declare fixed event treatment")
+        if self.denominator.metadata.get("event_treatment") != "marginalized":
+            raise ValueError(
+                "denominator circuit must declare marginalized event treatment"
+            )
+        provenance = _freeze_json(self.provenance, field_name="provenance")
+        if not isinstance(provenance, Mapping):
+            raise TypeError("provenance must be a mapping")
+        object.__setattr__(self, "feature_schema", feature_schema)
+        object.__setattr__(self, "retained_decisions", retained)
+        object.__setattr__(self, "marginalized_features", marginalized)
+        object.__setattr__(self, "validity", validity)
+        object.__setattr__(self, "provenance", provenance)
+        expected_id = hashlib.sha256(
+            canonical_conditional_json_bytes(self.identity_payload())
+        ).hexdigest()
+        if self.pair_id:
+            supplied_id = _sha256_digest(self.pair_id, field_name="pair_id")
+            if supplied_id != expected_id:
+                raise ValueError(
+                    f"conditional pair pair_id mismatch: expected {expected_id}, "
+                    f"found {supplied_id}"
+                )
+        object.__setattr__(self, "pair_id", expected_id)
+
+    def identity_payload(self) -> dict[str, object]:
+        provenance = {
+            key: _thaw_json(value)
+            for key, value in self.provenance.items()
+            if key not in {"created_at", "output_path", "publication_timestamp"}
+        }
+        return {
+            "record_kind": self.record_kind,
+            "schema_version": self.schema_version,
+            "compiler_version": self.compiler_version,
+            "source": self.source.to_dict(),
+            "event": self.event.to_dict(),
+            "feature_schema": _thaw_json(self.feature_schema),
+            "retained_decisions": list(self.retained_decisions),
+            "marginalized_features": list(self.marginalized_features),
+            "validity": [value.to_dict() for value in self.validity],
+            "encoding": self.encoding.to_dict(),
+            "numerical_policy": self.numerical_policy.to_dict(),
+            "numerator": self.numerator.to_dict(),
+            "denominator": self.denominator.to_dict(),
+            "provenance": provenance,
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return {"pair_id": self.pair_id, **self.identity_payload()}
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, object]) -> "TPMConditionalPair":
+        data = _strict_mapping(
+            payload,
+            record_name="conditional pair",
+            required={
+                "record_kind",
+                "schema_version",
+                "compiler_version",
+                "pair_id",
+                "source",
+                "event",
+                "feature_schema",
+                "retained_decisions",
+                "marginalized_features",
+                "validity",
+                "encoding",
+                "numerical_policy",
+                "numerator",
+                "denominator",
+                "provenance",
+            },
+        )
+        for name in (
+            "feature_schema",
+            "retained_decisions",
+            "marginalized_features",
+            "validity",
+        ):
+            if not _is_sequence(data[name]):
+                raise TypeError(f"conditional pair {name} must be a sequence")
+        return cls(
+            source=TPMConditionalSourceReference.from_dict(data["source"]),
+            event=TPMConditionalEvent.from_dict(data["event"]),
+            feature_schema=tuple(data["feature_schema"]),
+            retained_decisions=tuple(data["retained_decisions"]),
+            marginalized_features=tuple(data["marginalized_features"]),
+            validity=tuple(
+                TPMConditionalFeatureValidity.from_dict(value)
+                for value in data["validity"]
+            ),
+            encoding=TPMConditionalEncodingPolicy.from_dict(data["encoding"]),
+            numerical_policy=TPMConditionalNumericalPolicy.from_dict(
+                data["numerical_policy"]
+            ),
+            numerator=TPMConditionalCircuit.from_dict(data["numerator"]),
+            denominator=TPMConditionalCircuit.from_dict(data["denominator"]),
+            provenance=data["provenance"],
+            pair_id=data["pair_id"],
+            record_kind=data["record_kind"],
+            schema_version=data["schema_version"],
+            compiler_version=data["compiler_version"],
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class TPMConditionalPublication:
+    """Outcome of one create-only or verified-identical publication."""
+
+    path: Path
+    created: bool
+    reused: bool
+
+
+def canonical_conditional_json_bytes(value: object) -> bytes:
+    """Encode one record or finite JSON value using the canonical pair form."""
+
+    payload = value.to_dict() if hasattr(value, "to_dict") else value
+    finite_payload = _thaw_json(
+        _freeze_json(payload, field_name="canonical conditional JSON")
+    )
+    return (
+        json.dumps(
+            finite_payload,
+            allow_nan=False,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode("utf-8")
+
+
+def load_conditional_pair(path: str | Path) -> TPMConditionalPair:
+    """Load and fully validate one published pair without backend imports."""
+
+    source = Path(path)
+    try:
+        payload = json.loads(source.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"conditional pair {source} is unreadable or corrupt") from exc
+    if not isinstance(payload, Mapping):
+        raise TypeError(f"conditional pair {source} must contain a JSON object")
+    return TPMConditionalPair.from_dict(payload)
+
+
+def publish_conditional_pair(
+    pair: TPMConditionalPair,
+    path: str | Path,
+) -> TPMConditionalPublication:
+    """Create one canonical pair path or verify byte-identical existing evidence."""
+
+    if not isinstance(pair, TPMConditionalPair):
+        raise TypeError("pair must be a TPMConditionalPair")
+    output_path = Path(path)
+    payload = canonical_conditional_json_bytes(pair)
+    return _publish_create_or_verify(
+        output_path,
+        payload,
+        validator=load_conditional_pair,
+        expected_identity=pair.pair_id,
+    )
+
+
+def _publish_create_or_verify(
+    path: Path,
+    payload: bytes,
+    *,
+    validator: Any,
+    expected_identity: str,
+) -> TPMConditionalPublication:
+    parent = path.parent
+    if not parent.is_dir():
+        raise FileNotFoundError(f"conditional publication directory does not exist: {parent}")
+
+    def verify_existing() -> TPMConditionalPublication:
+        try:
+            existing = path.read_bytes()
+        except OSError as exc:
+            raise FileExistsError(
+                f"conditional publication target {path} exists but cannot be verified"
+            ) from exc
+        if existing != payload:
+            raise FileExistsError(
+                f"conditional publication target {path} conflicts with immutable evidence"
+            )
+        validated = validator(path)
+        actual_identity = getattr(validated, "pair_id", None)
+        if actual_identity != expected_identity:
+            raise FileExistsError(
+                f"conditional publication target {path} has a mismatched identity"
+            )
+        return TPMConditionalPublication(path=path, created=False, reused=True)
+
+    if path.exists():
+        return verify_existing()
+
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=parent
+    )
+    temporary_path = Path(temporary_name)
+    linked = False
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            os.link(temporary_path, path)
+            linked = True
+        except FileExistsError:
+            return verify_existing()
+        _fsync_directory(parent)
+        return TPMConditionalPublication(path=path, created=True, reused=False)
+    finally:
+        try:
+            temporary_path.unlink()
+        except FileNotFoundError:
+            pass
+        if not linked and path.exists():
+            # A concurrently published final name is never removed here.
+            pass
+
+
+def _fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _strict_mapping(
+    payload: Mapping[str, object],
+    *,
+    record_name: str,
+    required: set[str],
+    optional: set[str] | None = None,
+) -> dict[str, Any]:
+    if not isinstance(payload, Mapping):
+        raise TypeError(f"{record_name} must be a mapping")
+    keys = {str(key) for key in payload}
+    allowed = required | (optional or set())
+    missing = sorted(required - keys)
+    unknown = sorted(keys - allowed)
+    if missing:
+        raise ValueError(f"{record_name} is missing required fields: {', '.join(missing)}")
+    if unknown:
+        raise ValueError(f"{record_name} contains unknown fields: {', '.join(unknown)}")
+    return {str(key): value for key, value in payload.items()}
+
+
+def _freeze_json(value: object, *, field_name: str) -> object:
+    if value is None or isinstance(value, (str, bool)):
+        return value
+    if isinstance(value, Real):
+        if not math.isfinite(float(value)):
+            raise ValueError(f"{field_name} must contain only finite numbers")
+        return int(value) if isinstance(value, int) else float(value)
+    if isinstance(value, Mapping):
+        frozen: dict[str, object] = {}
+        for key, item in value.items():
+            if not isinstance(key, str) or not key:
+                raise ValueError(f"{field_name} mapping keys must be nonempty strings")
+            frozen[key] = _freeze_json(item, field_name=f"{field_name}.{key}")
+        return MappingProxyType(frozen)
+    if _is_sequence(value):
+        return tuple(
+            _freeze_json(item, field_name=f"{field_name}[{index}]")
+            for index, item in enumerate(value)
+        )
+    raise TypeError(f"{field_name} contains a non-JSON value {type(value).__name__}")
+
+
+def _thaw_json(value: object) -> object:
+    if isinstance(value, Mapping):
+        return {str(key): _thaw_json(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_thaw_json(item) for item in value]
+    return value
+
+
+def _is_sequence(value: object) -> bool:
+    return isinstance(value, Sequence) and not isinstance(
+        value, (str, bytes, bytearray)
+    )
+
+
+def _finite_sequence(value: object, *, field_name: str) -> tuple[float, ...]:
+    if not _is_sequence(value):
+        raise TypeError(f"{field_name} must be a sequence")
+    return tuple(
+        _finite_float(item, field_name=f"{field_name}[{index}]")
+        for index, item in enumerate(value)
+    )
+
+
+def _finite_float(value: object, *, field_name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise TypeError(f"{field_name} must be numeric")
+    normalized = float(value)
+    if not math.isfinite(normalized):
+        raise ValueError(f"{field_name} must be finite")
+    return normalized
+
+
+def _non_empty_string(value: object, field_name: str) -> str:
+    normalized = str(value)
+    if not normalized:
+        raise ValueError(f"{field_name} must be nonempty")
+    return normalized
+
+
+def _sha256_digest(value: object, *, field_name: str) -> str:
+    normalized = str(value).lower()
+    if len(normalized) != 64 or any(
+        character not in "0123456789abcdef" for character in normalized
+    ):
+        raise ValueError(f"{field_name} must be a 64-character SHA-256 digest")
+    return normalized
+
+
+__all__ = [
+    "CONDITIONAL_PAIR_COMPILER_VERSION",
+    "CONDITIONAL_PAIR_RECORD_KIND",
+    "CONDITIONAL_PAIR_SCHEMA_VERSION",
+    "TPMConditionalCircuit",
+    "TPMConditionalCircuitNode",
+    "TPMConditionalCompilationRequest",
+    "TPMConditionalEncodingPolicy",
+    "TPMConditionalEvent",
+    "TPMConditionalFeatureValidity",
+    "TPMConditionalNumericalPolicy",
+    "TPMConditionalPair",
+    "TPMConditionalPublication",
+    "TPMConditionalSourceReference",
+    "canonical_conditional_json_bytes",
+    "load_conditional_pair",
+    "publish_conditional_pair",
+]
