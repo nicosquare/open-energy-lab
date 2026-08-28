@@ -13,6 +13,9 @@ parity validation, and environment assumptions.
 - `declared-feature-domains.md`: schema-v3 mathematical domains, observed
   training support, normalization provenance, schema-v2 compatibility, native
   query diagnostics, and compiled-v2 physical/model-coordinate validity
+- `conditional-mio-embedding.md`: reusable conditional numerator/denominator
+  pairs, caller-owned Pyomo mappings and ownership, atomic attachment,
+  embedding parity versus compiler fidelity, and compatibility limitations
 - `controller-pack.md`: preserve/improve/reject decisions, shipped controller
   behavior, fixture evidence, and exact legacy references for
   `open_energy_lab.control`
@@ -139,6 +142,26 @@ For the `009-tpm-planning` feature, read the migration docs in this order:
 This review path keeps the TPM-planning feature anchored to the shipped
 library workflow and offline contract rather than the earlier scaffolding
 milestone.
+
+## Conditional-MIO Review Path
+
+For `016-conditional-mio-embedding`, review these artifacts in order:
+
+1. `declared-feature-domains.md` for the schema-v3 U-Bounds meaning required by
+   an eligible source artifact.
+2. `conditional-mio-embedding.md` for the mathematical contract, pair lifecycle,
+   mapping forms, caller/OEL ownership, numerical policy, evidence separation,
+   and compatibility boundary.
+3. `tests/fixtures/tpm/README.md` for the reviewed nonuniform source, fitted
+   artifact/sidecar, immutable max/PWL pairs, and parity/fidelity provenance.
+4. `examples/tpm_planning/conditional_mio_embedding_walkthrough.ipynb` for the
+   thin public-API composition demonstration.
+5. `specs/016-conditional-mio-embedding/quickstart.md` for the required offline
+   fixture, backend, notebook, import, regression, and repository checks.
+
+Feature 016 is a reusable TPM compiler/attachment capability. It does not own a
+benchmark objective, deterministic operating constraints, chance threshold,
+chance constraint, or optimized decision.
 
 ## Visualization Review Path
 
