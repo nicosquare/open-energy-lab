@@ -327,6 +327,81 @@ def _extract_complete_witness(
     return extract_complete_witness(assembled, pyo)
 
 
+def extract_arbitrage_only_witness(
+    assembled: AssembledRobustFCRModel,
+    pyo: Any,
+) -> Mapping[str, object]:
+    """Extract the source hourly no-regulation witness and six fixed zeros."""
+
+    handles = assembled.variable_handles
+    hours = tuple(range(1, 25))
+    blocks = tuple(range(1, 7))
+    return MappingProxyType(
+        {
+            "x0": _component_values(handles["x0"], hours, pyo),
+            "xr": _component_values(handles["xr"], blocks, pyo),
+            "alpha": _component_values(handles["alpha"], hours, pyo),
+            "u": _component_values(handles["u"], tuple(range(1, 24)), pyo),
+            "symin": _component_values(handles["symin"], hours, pyo),
+            "symax": _component_values(handles["symax"], hours, pyo),
+            "syK": _component_values(handles["syK"], (0, 1), pyo),
+        }
+    )
+
+
+def extract_rolling_0800_witness(
+    assembled: AssembledRobustFCRModel,
+    pyo: Any,
+) -> Mapping[str, object]:
+    """Extract complete extended decisions plus the current 24/6 output frame."""
+
+    handles = assembled.variable_handles
+    planning_ext = tuple(range(-63, 97))
+    current = tuple(range(1, 97))
+    current_strict = tuple(range(1, 96))
+    hours = tuple(range(-15, 25))
+    blocks = tuple(range(-3, 7))
+    return MappingProxyType(
+        {
+            "x0_extended": _component_values(handles["x0"], hours, pyo),
+            "xr_extended": _component_values(handles["xr"], blocks, pyo),
+            "x0": _component_values(handles["x0"], tuple(range(1, 25)), pyo),
+            "xr": _component_values(handles["xr"], tuple(range(1, 7)), pyo),
+            "xa_extended": _component_values(handles["xa"], planning_ext, pyo),
+            "symin_extended": _component_values(handles["symin"], planning_ext, pyo),
+            "symax_extended": _component_values(handles["symax"], planning_ext, pyo),
+            "syK": _component_values(handles["syK"], (0, 1), pyo),
+            "alpha_extended": _component_values(handles["alpha"], planning_ext, pyo),
+            "beta_extended": _component_values(handles["beta"], planning_ext, pyo),
+            "lambda_l": _component_values(handles["lambda_l"], current, pyo),
+            "lambda_h": _component_values(handles["lambda_h"], current, pyo),
+            "Lambda_l": tuple(
+                tuple(
+                    _finite_backend_value(
+                        pyo.value(handles["Lambda_l"][outer, inner]),
+                        field_name=f"witness variable Lambda_l[{outer},{inner}]",
+                    )
+                    for inner in range(1, outer + 1)
+                )
+                for outer in current
+            ),
+            "Lambda_h": tuple(
+                tuple(
+                    _finite_backend_value(
+                        pyo.value(handles["Lambda_h"][outer, inner]),
+                        field_name=f"witness variable Lambda_h[{outer},{inner}]",
+                    )
+                    for inner in range(1, outer + 1)
+                )
+                for outer in current
+            ),
+            "u1": _component_values(handles["u1"], current_strict, pyo),
+            "u2": _component_values(handles["u2"], current_strict, pyo),
+            "v_res": _component_values(handles["v_res"], current_strict, pyo),
+        }
+    )
+
+
 def _termination_text(results: Any) -> str:
     value = getattr(results.solver, "termination_condition", "unknown")
     return str(value).strip().lower().replace(" ", "_")
@@ -418,6 +493,7 @@ def solve_assembled_model(
     policy: Any,
     *,
     backend: SolverBackendModules,
+    witness_extractor: Any = extract_complete_witness,
 ) -> RawRobustFCRSolveResult:
     """Execute one assembled routine model without implicit solution loading."""
 
@@ -450,7 +526,7 @@ def solve_assembled_model(
     if confirmed:
         try:
             assembled.model.solutions.load_from(results)
-            witness = _extract_complete_witness(assembled, pyo)
+            witness = witness_extractor(assembled, pyo)
             objective = _finite_backend_value(
                 pyo.value(assembled.model.objective),
                 field_name="objective value",
@@ -698,7 +774,9 @@ __all__ = [
     "RawRobustFCRSolveResult",
     "GurobiBackendModules",
     "SolverBackendModules",
+    "extract_arbitrage_only_witness",
     "extract_complete_witness",
+    "extract_rolling_0800_witness",
     "require_highs_backend",
     "load_optional_gurobi_backend",
     "solve_exact_assembled_model",

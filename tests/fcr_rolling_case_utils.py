@@ -8,10 +8,11 @@ boundary tests can use this helper without eagerly loading Pyomo or HiGHS.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 import hashlib
 import json
 from typing import Any
+from zoneinfo import ZoneInfo
 
 
 AUTHORED_DELIVERY_DATES = tuple(date(2023, 6, day) for day in range(17, 21))
@@ -130,6 +131,26 @@ def build_authored_prices(
     )
 
 
+def build_authored_zero_prices(
+    delivery_date: date = AUTHORED_DELIVERY_DATES[1],
+) -> Any:
+    """Build a presolve-friendly zero-price 24/6 oracle."""
+
+    from open_energy_lab.control import RobustFCRPriceInputs
+
+    return RobustFCRPriceInputs(
+        day_ahead_energy_prices_eur_per_kwh=(0.0,) * 24,
+        fcr_capacity_prices_eur_per_kw_block=(0.0,) * 6,
+        energy_interval_refs=tuple(
+            f"authored-zero:{delivery_date}:day_ahead:{index}"
+            for index in range(24)
+        ),
+        fcr_interval_refs=tuple(
+            f"authored-zero:{delivery_date}:fcr:{index}" for index in range(6)
+        ),
+    )
+
+
 def build_authored_time_contract(
     delivery_date: date = AUTHORED_DELIVERY_DATES[1],
 ) -> Any:
@@ -181,6 +202,364 @@ def build_authored_solve_policy(
             allow_feasible_incumbent_plan=allow_feasible_incumbent_plan,
         )
     )
+
+
+def build_authored_uncertainty() -> Any:
+    """Build Feature 013's separate recovery and horizon uncertainty sets."""
+
+    from open_energy_lab.control import (
+        RecoveryWindowActivationBudget,
+        RobustFCRUncertaintyProfile,
+        derive_non_intraday_horizon_budget,
+    )
+
+    recovery = RecoveryWindowActivationBudget(
+        recovery_activation_budget_hours=0.25,
+        recovery_window_hours=2.25,
+        pointwise_activation_lower=-1.0,
+        pointwise_activation_upper=1.0,
+    )
+    return RobustFCRUncertaintyProfile(
+        recovery_window=recovery,
+        horizon_wide=derive_non_intraday_horizon_budget(
+            recovery,
+            horizon_hours=24.0,
+        ),
+    )
+
+
+def build_authored_terminal_rule() -> Any:
+    """Build the bounded terminal stored-energy requirement."""
+
+    from open_energy_lab.control import TerminalStoredEnergyRule
+
+    return TerminalStoredEnergyRule(
+        minimum_terminal_stored_energy_kwh=10.0,
+        allow_penalized_shortfall=True,
+        shortfall_penalty_eur_per_kwh=100.0,
+        rule_id="feature-015-authored-terminal-v1",
+    )
+
+
+def build_authored_data_descriptor(kind: str) -> Any:
+    """Build one governed fingerprint-only rolling data descriptor."""
+
+    from open_energy_lab.control import RollingFCRDataDescriptor
+
+    values = {
+        "day_ahead_price": (
+            "EUR/kWh",
+            "positive is a payment for source-positive discharge",
+            "PT1H",
+            "hourly-delivery-interval-v1",
+        ),
+        "fcr_capacity_price": (
+            "EUR/kW/4h-block",
+            "non-negative symmetric capacity payment",
+            "PT4H",
+            "six-four-hour-delivery-blocks-v1",
+        ),
+        "regulation_activation": (
+            "dimensionless",
+            "positive requests upward discharge",
+            "PT10S",
+            "ten-second-half-open-activation-v1",
+        ),
+    }
+    unit, sign, resolution, mapping = values[kind]
+    content = fingerprint({"kind": kind, "window": "2023-06-15/2023-06-22"})
+    return RollingFCRDataDescriptor(
+        descriptor_id=f"feature-015-authored-{kind}-v1",
+        kind=kind,
+        schema_version="authored-fixture-v1",
+        unit=unit,
+        sign_convention=sign,
+        timezone=AUTHORED_MARKET_TIMEZONE,
+        temporal_resolution=resolution,
+        mapping_rule_id=mapping,
+        coverage_start_utc=datetime(2023, 6, 15, tzinfo=UTC),
+        coverage_end_utc=datetime(2023, 6, 23, tzinfo=UTC),
+        source_organization="Open Energy Lab",
+        source_document_id=f"project-authored-{kind}",
+        acquisition_cutoff_utc=datetime(2023, 6, 15, tzinfo=UTC),
+        content_sha256=content,
+        normalized_data_fingerprint=fingerprint(
+            {"content": content, "mapping": mapping}
+        ),
+        provenance={
+            "kind": "project_authored",
+            "license": "Apache-2.0",
+            "purpose": "deterministic Feature 015 validation",
+        },
+    )
+
+
+def build_authored_acceptance_policy() -> Any:
+    from open_energy_lab.control import AcceptedBidPolicy
+
+    return AcceptedBidPolicy(
+        policy_id="feature-015-authored-assumed-acceptance-v1",
+        kind="assumed_accepted",
+        assumption_statement=(
+            "optimizer-selected schedules are assumed accepted for authored research"
+        ),
+    )
+
+
+def build_authored_numeric_policy(
+    solve_policy: Any,
+    *,
+    state_carry_policy: str = "source_three_decimal",
+) -> Any:
+    from open_energy_lab.control import RollingFCRNumericPolicy
+
+    return RollingFCRNumericPolicy(
+        solve_policy_fingerprint=solve_policy.solve_policy_fingerprint,
+        state_carry_policy=state_carry_policy,
+        decimal_places=3 if state_carry_policy == "source_three_decimal" else 0,
+    )
+
+
+def build_authored_battery_binding(
+    *,
+    initial_stored_energy_kwh: float = 10.0,
+) -> Any:
+    from open_energy_lab.control import RollingFCRBatteryBinding
+
+    return RollingFCRBatteryBinding(
+        optimization_battery=build_authored_battery(
+            initial_stored_energy_kwh=initial_stored_energy_kwh
+        ),
+        capacity_kwh=20.0,
+        component_name="feature-015-authored-battery",
+        replay_timestep_seconds=900,
+    )
+
+
+def authored_date_classifications(profile_id: str) -> tuple[Any, ...]:
+    from open_energy_lab.control import DeliveryDateClassification
+
+    values = []
+    for index, delivery_date in enumerate(AUTHORED_DELIVERY_DATES):
+        if profile_id == "script-14-restriction-rolling-0800-v1":
+            if index == 0:
+                role, eligible, reasons = "warm-up", False, ("initialization_only",)
+            elif index == len(AUTHORED_DELIVERY_DATES) - 1:
+                role, eligible, reasons = "close-out", False, ("closes_predecessor",)
+            else:
+                role, eligible, reasons = "included", True, ()
+        else:
+            role, eligible, reasons = "included", True, ()
+        values.append(
+            DeliveryDateClassification(
+                delivery_date=delivery_date,
+                execution_role=role,
+                comparison_eligible=eligible,
+                reason_codes=reasons,
+            )
+        )
+    return tuple(values)
+
+
+def build_authored_manifest(
+    profile_id: str = "script-12-restriction-reset-midnight-v1",
+    *,
+    state_carry_policy: str = "source_three_decimal",
+    solve_policy: Any | None = None,
+) -> Any:
+    from open_energy_lab.control import (
+        AGGREGATION_POLICY,
+        FAILURE_POLICY_COUPLED,
+        FAILURE_POLICY_INDEPENDENT,
+        RESUME_POLICY,
+        build_rolling_fcr_experiment_profile,
+        build_rolling_fcr_study_manifest,
+    )
+
+    profile = build_rolling_fcr_experiment_profile(profile_id)
+    policy = solve_policy or build_authored_solve_policy()
+    return build_rolling_fcr_study_manifest(
+        study_id=f"feature-015-authored-{profile_id}",
+        profile=profile,
+        dates=authored_date_classifications(profile_id),
+        day_ahead_descriptor=build_authored_data_descriptor("day_ahead_price"),
+        fcr_capacity_descriptor=build_authored_data_descriptor("fcr_capacity_price"),
+        activation_descriptor=build_authored_data_descriptor(
+            "regulation_activation"
+        ),
+        battery_binding=build_authored_battery_binding(),
+        uncertainty_profile=build_authored_uncertainty(),
+        terminal_rule=build_authored_terminal_rule(),
+        solve_policy=policy,
+        settlement_profile="fcr-settlement-v1",
+        acceptance_policy=build_authored_acceptance_policy(),
+        numeric_policy=build_authored_numeric_policy(
+            policy,
+            state_carry_policy=state_carry_policy,
+        ),
+        failure_policy=(
+            FAILURE_POLICY_INDEPENDENT
+            if profile.is_independent
+            else FAILURE_POLICY_COUPLED
+        ),
+        aggregation_policy=AGGREGATION_POLICY,
+        resume_policy=RESUME_POLICY,
+        reference_lineage={
+            "reference_revision": (
+                "7e44738bb30e5c8204efe40103b9be4c2203685c"
+            ),
+            "fixture_status": "not_required_for_authored_case",
+        },
+    )
+
+
+def build_authored_day_input(manifest: Any, delivery_date: date) -> Any:
+    from open_energy_lab.control import RollingFCRDayInput
+
+    classification = next(
+        item for item in manifest.dates if item.delivery_date == delivery_date
+    )
+    time_contract = build_authored_time_contract(delivery_date)
+    if manifest.profile.state_mode == "rolling_0800":
+        cutoff = datetime.combine(
+            delivery_date - timedelta(days=1),
+            time(8),
+            tzinfo=ZoneInfo(AUTHORED_MARKET_TIMEZONE),
+        ).astimezone(UTC)
+    else:
+        cutoff = time_contract.delivery_period.start_utc - timedelta(hours=12)
+    prices = build_authored_prices(delivery_date)
+    return RollingFCRDayInput(
+        manifest_fingerprint=manifest.manifest_fingerprint,
+        profile_fingerprint=manifest.profile.profile_fingerprint,
+        date_classification=classification,
+        time_contract=time_contract,
+        battery=manifest.battery_binding.optimization_battery,
+        prices=prices,
+        decision_cutoff_utc=cutoff,
+        information_cutoff_utc=cutoff,
+        producer_input_fingerprints={
+            "market_prices": prices.price_input_fingerprint,
+            "battery_binding": manifest.battery_binding.binding_fingerprint,
+            "uncertainty_profile": (
+                manifest.uncertainty_profile.uncertainty_profile_fingerprint
+            ),
+        },
+        provenance={
+            "source_kind": "project_authored",
+            "information_boundary": "pre_delivery_only",
+        },
+    )
+
+
+def build_authored_accepted_fixings(
+    *,
+    public_energy_charge_positive_kw: Sequence[float] = (0.0,) * 16,
+    fcr_capacity_kw: Sequence[float] = (0.0,) * 4,
+) -> Any:
+    from open_energy_lab.control import RobustFCRAcceptedDecisionFixings
+
+    public = tuple(float(value) for value in public_energy_charge_positive_kw)
+    fcr = tuple(float(value) for value in fcr_capacity_kw)
+    return RobustFCRAcceptedDecisionFixings(
+        predecessor_plan_fingerprint=fingerprint(
+            {"kind": "authored-predecessor-plan", "energy": public, "fcr": fcr}
+        ),
+        predecessor_problem_fingerprint=fingerprint(
+            {"kind": "authored-predecessor-problem"}
+        ),
+        predecessor_result_fingerprint=fingerprint(
+            {"kind": "authored-predecessor-result", "energy": public, "fcr": fcr}
+        ),
+        energy_source_indices=tuple(range(-15, 1)),
+        energy_public_charge_positive_kw=public,
+        source_energy_positive_discharge_kw=tuple(-value for value in public),
+        energy_interval_refs=tuple(
+            f"authored:predecessor:energy:{index}" for index in range(8, 24)
+        ),
+        fcr_source_indices=tuple(range(-3, 1)),
+        fcr_capacity_kw=fcr,
+        fcr_interval_refs=tuple(
+            f"authored:predecessor:fcr:{index}" for index in range(2, 6)
+        ),
+    )
+
+
+def build_authored_0800_day_input(
+    manifest: Any,
+    delivery_date: date,
+    *,
+    accepted_fixings: Any | None = None,
+) -> Any:
+    """Build one 08:00 successor input with explicit accepted predecessor data."""
+
+    from dataclasses import replace
+
+    original = build_authored_day_input(manifest, delivery_date)
+    return replace(
+        original,
+        predecessor_prices=build_authored_prices(
+            delivery_date - timedelta(days=1)
+        ),
+        accepted_fixings=accepted_fixings or build_authored_accepted_fixings(),
+        predecessor_cutoff_utc=original.information_cutoff_utc - timedelta(days=1),
+    )
+
+
+def build_authored_rolling_problem(
+    profile_id: str,
+    *,
+    delivery_date: date = AUTHORED_DELIVERY_DATES[1],
+    initial_stored_energy_kwh: float = 10.0,
+    accepted_fixings: Any | None = None,
+    solve_policy: Any | None = None,
+) -> Any:
+    from open_energy_lab.control import (
+        build_robust_fcr_rolling_problem,
+        build_rolling_fcr_experiment_profile,
+    )
+
+    profile = build_rolling_fcr_experiment_profile(profile_id)
+    policy = solve_policy or build_authored_solve_policy(time_limit_seconds=30.0)
+    time_contract = build_authored_time_contract(delivery_date)
+    cutoff = time_contract.delivery_period.start_utc - timedelta(hours=12)
+    common = {
+        "problem_id": f"feature-015-authored-{profile_id}-{delivery_date}",
+        "profile": profile,
+        "current_time_contract": time_contract,
+        "battery": build_authored_battery(
+            initial_stored_energy_kwh=initial_stored_energy_kwh
+        ),
+        "current_prices": build_authored_prices(delivery_date),
+        "uncertainty": build_authored_uncertainty(),
+        "terminal_rule": build_authored_terminal_rule(),
+        "solve_policy": policy,
+        "information_cutoff_utc": cutoff,
+        "producer_input_fingerprints": {
+            "authored_prices": build_authored_prices(
+                delivery_date
+            ).price_input_fingerprint,
+            "authored_case": fingerprint(
+                {"profile": profile_id, "delivery_date": delivery_date.isoformat()}
+            ),
+        },
+        "provenance": {
+            "source_kind": "project_authored",
+            "information_boundary": "pre_delivery_only",
+        },
+    }
+    if profile.state_mode == "rolling_0800":
+        predecessor_date = delivery_date - timedelta(days=1)
+        common.update(
+            {
+                "predecessor_prices": build_authored_prices(predecessor_date),
+                "accepted_fixings": (
+                    accepted_fixings or build_authored_accepted_fixings()
+                ),
+                "predecessor_cutoff_utc": cutoff - timedelta(days=1),
+            }
+        )
+    return build_robust_fcr_rolling_problem(**common)
 
 
 def authored_activation_values(
@@ -287,9 +666,22 @@ __all__ = [
     "authored_price_mapping",
     "authored_solve_policy_mapping",
     "build_authored_activation_trace",
+    "build_authored_acceptance_policy",
+    "build_authored_accepted_fixings",
+    "build_authored_0800_day_input",
     "build_authored_battery",
+    "build_authored_battery_binding",
+    "build_authored_data_descriptor",
+    "build_authored_day_input",
+    "build_authored_manifest",
+    "build_authored_numeric_policy",
     "build_authored_prices",
+    "build_authored_rolling_problem",
     "build_authored_solve_policy",
+    "build_authored_terminal_rule",
     "build_authored_time_contract",
+    "build_authored_uncertainty",
+    "build_authored_zero_prices",
+    "authored_date_classifications",
     "fingerprint",
 ]

@@ -95,3 +95,39 @@ and plan fingerprint
 `5da0ba402a0f973117539b42d1f798c9adc24ac52ed841b15069409a3bd35992`.
 No optional source runtime, network, credentials, Julia, Gurobi, or external
 activation CSV was used by this checkpoint.
+
+### Phase 3 — five executable profile families
+
+The pure manifest/crosswalk/oracle contracts, additive Pyomo formulations,
+bounded HiGHS cases, initial ordered orchestration, public control surface, and
+lazy-import checks passed with `58 passed in 57.60s`:
+
+```bash
+uv run pytest \
+  tests/unit/control/test_fcr_rolling_manifest.py \
+  tests/unit/control/test_fcr_rolling_source_documentation.py \
+  tests/unit/control/test_fcr_rolling_orchestration.py \
+  tests/integration/control/test_fcr_rolling_highs.py \
+  tests/unit/control/test_fcr_rolling_import_boundary.py \
+  tests/unit/test_import_contract.py -q
+```
+
+All five executable profile identities constructed and produced bounded,
+ordered optimization evidence:
+
+| Executable profile | Formulation/state family | Plan classification | Profile fingerprint |
+| --- | --- | --- | --- |
+| `script-11-relaxation-reset-midnight-v1` | relaxation/reset | diagnostic non-robust | `b30877d59634c14c6e337711cbdbcb05df47abb6db57c6c1a006a5704265d49d` |
+| `script-12-restriction-reset-midnight-v1` | restriction/reset | robust candidate | `4b3dc124fa0467f0d31055858b1bc38bab3ee4774ce7347d93bbfdb443f5ef2a` |
+| `script-13-arbitrage-only-midnight-v1` | exact-zero-FCR/midnight carry | arbitrage only | `bf082f8d94c5df63165456c9ea5e7c7d4fe80e68c6bddd35d46322b3ecbad221` |
+| `script-14-restriction-rolling-0800-v1` | restriction/40-hour fixed overlap | robust candidate | `18c142dc223d75c256c781b39d017008b9e7e8f06cc086a4fd448f8d860c08ce` |
+| `script-15-restriction-rolling-midnight-v1` | restriction/midnight carry | robust candidate | `783effe5276659ceb2aa5e73d1c1ee83d6d6c6a927f5c0db56c09414eb92827a` |
+
+The 08:00 oracle asserts `K_lower=-63`, 160 quarter-hour indices, 40
+hourly indices, ten four-hour FCR indices, and exact 16/4 accepted predecessor
+fixings. The arbitrage-only model carries six explicit model-fixed zero FCR
+decisions. Both additive formulations report an independent equation-family
+residual audit, objective/bound/gap evidence, and only current-day 24/6 public
+charge-positive decisions. Complete causal 08:00 finalization and realized
+midnight state links remain deliberately deferred to their subsequent task
+groups; this checkpoint makes no such completion claim.
