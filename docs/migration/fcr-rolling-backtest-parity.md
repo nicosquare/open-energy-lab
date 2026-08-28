@@ -402,3 +402,52 @@ CSV replay therefore remain unavailable in this routine Phase 9 checkpoint.
 Their absence does not weaken the required offline Pyomo/HiGHS gate, and no
 Julia process, baseline runtime artifact, credential, or network access was
 used.
+
+### Phase 10 — final contracts, compatibility, isolation, and optional evidence
+
+After synchronizing the public API, strict JSON wire schema, command guide,
+and lazy export snapshots, the exact routine Feature 015 command completed
+with `126 passed in 196.21s`. It excluded `reference_benchmark` and
+`external_reference_data`, used required one-thread Pyomo/HiGHS only, and
+retained the stable authored-study evidence recorded in Phase 9.
+
+The protected Feature 013 quickstart gate completed with
+`137 passed in 100.78s`. It rechecked ordinary-day 24/96/6 validation,
+uncertainty-budget equations, restriction/relaxation ordering, deterministic
+decisions and fingerprints, normalized reference isolation, lazy backend
+behavior, and the Feature 012 handoff. The exact Feature 012 offline gate then
+completed with `121 passed in 5.85s`, covering the bidder-neutral plan,
+physical evaluator, settlement, Golden Reference Fixture, source precision,
+normalization, CI, and documentation governance.
+
+The final CI/documentation/import selection completed with
+`115 passed in 5.08s`. It covered workflow selection, fixture provenance,
+migration policy, lazy dependencies, exact package exports, and no-legacy/
+no-baseline import contracts.
+
+`compileall` succeeded for control, market, simulator, and all selected
+Feature 015 test trees. Static review found:
+
+- no `baselines` or `legacy` import in production or routine/parity tests;
+- no raw baseline/result/external-CSV locator attached to `Path`, `open`,
+  `read_*`, `glob`, or `rglob` in the rolling runtime boundary;
+- no network, environment, credential, license-file, or subprocess probe in
+  rolling production modules; and
+- three `RegulationActivationTrace` references only inside the post-solve
+  `_activation_for_date` replay guard. They validate evaluation-only input and
+  are absent from rolling problem and solve entry points.
+
+Optional evidence was selected explicitly. The Gurobi module reported
+`1 passed, 2 skipped in 0.55s`: the no-fallback contract passed, while the
+linear and exact-bilinear solver checks skipped because the optional Gurobi
+binary was unavailable to Pyomo. Required HiGHS evidence remained green. The
+governed four-day `external_reference_data` replay was locally available and
+completed with `1 passed in 279.82s`; it reverified the Feature 012-owned CSV
+path/digest and evaluated all source/native plans solely through Feature 012.
+
+Both committed Feature 015 JSON schemas passed `python -m json.tool`. All
+seven quickstart review links resolved to local files, the focused source and
+migration documentation contracts completed with `22 passed in 0.10s`, and
+`git diff --check` was clean. The final Phase 10 diff was limited to the
+Feature 015 quickstart, this validation ledger, and task completion evidence;
+neither `baselines/robust_storage_bidding` nor `legacy/*` was modified.

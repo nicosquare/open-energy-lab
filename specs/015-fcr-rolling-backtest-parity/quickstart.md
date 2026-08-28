@@ -334,12 +334,39 @@ rg "from baselines|import baselines|from legacy|import legacy" \
 rg "RegulationActivationTrace|regulation_signal.csv" \
   src/open_energy_lab/control
 
+rg "(Path|open|read_bytes|read_text|glob|rglob)\\([^\\n]*(baselines/|legacy/|results/|regulation_signal\\.csv)" \
+  src/open_energy_lab/control \
+  src/open_energy_lab/market/activation.py \
+  src/open_energy_lab/simulator/fcr_rolling_evaluation.py
+
+rg "os\\.(environ|getenv)|socket|subprocess|requests|urlopen|GRB_LICENSE_FILE|gurobi\\.lic|ENTSOE_API|RTE_API" \
+  src/open_energy_lab/control/fcr_rolling_backtest.py \
+  src/open_energy_lab/control/fcr_rolling_reference.py \
+  src/open_energy_lab/control/robust_fcr_rolling.py \
+  src/open_energy_lab/control/_fcr_rolling_orchestrator.py \
+  src/open_energy_lab/market/activation.py \
+  src/open_energy_lab/simulator/fcr_rolling_evaluation.py
+
 git diff --check
 ```
 
 The import search must return no production/runtime dependency. The activation
-search must return no bidder input or hidden file lookup; type-check-only or
-diagnostic references, if any, require explicit review.
+search must return no bidder input or hidden file lookup. The expected
+`RegulationActivationTrace` references in `_fcr_rolling_orchestrator.py` belong
+only to the post-solve causal replay guard. The raw-path access and network/
+credential searches must be empty; source-citation strings without an access
+operation are immutable provenance, not runtime lookup. Any future match
+requires explicit review.
+
+## Local review links
+
+- [Implementation plan](./plan.md)
+- [Public Python API contract](./contracts/python-api.md)
+- [Normalized reference fixture schema](./contracts/fcr-rolling-reference-fixture-v1.schema.json)
+- [Persisted study-result schema](./contracts/fcr-rolling-study-result-v1.schema.json)
+- [Rolling examples and research commands](../../examples/fcr_rolling_backtest/README.md)
+- [Migration and validation ledger](../../docs/migration/fcr-rolling-backtest-parity.md)
+- [Governed fixture policy](../../tests/fixtures/fcr_rolling_backtest/README.md)
 
 ## Evidence interpretation
 
