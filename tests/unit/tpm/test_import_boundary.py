@@ -11,6 +11,8 @@ from pathlib import Path
 TPM_PACKAGE = "open_energy_lab.tpm"
 PLANNED_TPM_SUBMODULES = (
     "open_energy_lab.tpm.artifact",
+    "open_energy_lab.tpm.conditional",
+    "open_energy_lab.tpm.conditional_mio",
     "open_energy_lab.tpm.data",
     "open_energy_lab.tpm.domains",
     "open_energy_lab.tpm.features",
@@ -19,6 +21,7 @@ PLANNED_TPM_SUBMODULES = (
     "open_energy_lab.tpm.piecewise",
     "open_energy_lab.tpm.optional_spflow",
 )
+HEAVY_TPM_BACKENDS = {"spflow", "torch", "pyomo", "highspy"}
 
 
 def test_tpm_package_root_reserves_a_lightweight_public_boundary() -> None:
@@ -76,6 +79,31 @@ def test_declared_domain_exports_load_only_the_import_light_domain_module() -> N
         module_name == "spflow" or module_name.startswith("spflow.")
         for module_name in newly_loaded
     )
+
+
+def test_conditional_exports_resolve_without_loading_heavy_backends() -> None:
+    for module_name in (TPM_PACKAGE, *PLANNED_TPM_SUBMODULES):
+        sys.modules.pop(module_name, None)
+    modules_before = set(sys.modules)
+
+    package = importlib.import_module(TPM_PACKAGE)
+    exports = (
+        package.TPMConditionalCompilationRequest,
+        package.TPMConditionalPair,
+        package.publish_conditional_pair,
+        package.compile_conditional_mio_pair,
+        package.evaluate_conditional_mio_pair,
+        package.evaluate_native_conditional_pair,
+    )
+
+    assert all(
+        export.__module__.startswith("open_energy_lab.tpm.") for export in exports
+    )
+    newly_loaded_roots = {
+        module_name.split(".", 1)[0]
+        for module_name in set(sys.modules) - modules_before
+    }
+    assert HEAVY_TPM_BACKENDS.isdisjoint(newly_loaded_roots)
 
 
 def test_planned_tpm_submodules_stay_within_the_reserved_package_boundary() -> None:

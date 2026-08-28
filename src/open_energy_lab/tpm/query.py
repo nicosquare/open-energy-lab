@@ -19,7 +19,11 @@ from .features import (
     TPMFeatureSpec,
     validate_spflow_feature_assignments,
 )
-from .optional_spflow import evaluate_spflow_query, load_spflow_payload
+from .optional_spflow import (
+    evaluate_spflow_query,
+    load_spflow_payload,
+    require_spflow_backend,
+)
 from .piecewise import (
     DEFAULT_QUERY_NUMERIC_TOLERANCE,
     resolve_query_numeric_tolerance,
@@ -174,6 +178,7 @@ def evaluate_native_conditional_pair(
         raise TypeError("pair must be a TPMConditionalPair")
     resolved_artifact = _load_artifact(artifact)
     _validate_native_pair_source(resolved_artifact, pair=pair)
+    require_spflow_backend()
     if not isinstance(declared_domain_assignments, Mapping):
         raise TypeError("declared_domain_assignments must be a mapping")
     supplied_names = {str(name) for name in declared_domain_assignments}

@@ -15,17 +15,19 @@ denominator scientifically material and prevents a uniform-density shortcut from
 reviewed case accidentally. Both binary states, all three categories, and both event values occur
 in the source table.
 
-The fixture fixes one fit seed and one set of SPFlow structure-learning options. A maintainer refresh
-performs exactly one fit and fails if the retained graph and conditioned circuits do not contain a
+The fixture fixes one fit seed and one set of SPFlow structure-learning options. The current-SPFlow
+minimum/default `min_features_slice=2` is recorded explicitly. A maintainer refresh performs
+exactly one fit and fails if the retained graph and conditioned circuits do not contain a
 genuine learned Sum node; it does not change seeds, retry, or adapt fitting options. The three
 representative assignments cover both continuous boundaries, one interior point, both binary states,
 and all categories without enumerating their Cartesian product.
 
 The JSON also declares the max and PWL compiler policies, the physical approximation interval, and
-purpose-labelled numerical tolerances. Those are source inputs, not claims that derived artifacts
-already exist. Derived files are introduced only by their corresponding implementation tasks:
+purpose-labelled numerical tolerances. Those are source inputs, not claims about uncommitted
+derived evidence. The source artifact now exists; later files are introduced only by their
+corresponding implementation tasks:
 
-- `tpm_artifact_conditional_mio_v3.json` and its sidecar after the real fit path exists;
+- `tpm_artifact_conditional_mio_v3.json` and its sidecar are the reviewed real-fit source artifact;
 - `conditional_pair_max_v1.json` and `conditional_pair_pwl_v1.json` only after mixed symbolic
   continuous/binary/categorical support is implemented; and
 - `conditional_mio_evidence_v1.json` only after direct/native/HiGHS evidence is separated and
@@ -36,6 +38,31 @@ a fresh staging directory, records row/configuration digests and backend/compile
 reviewed as an ordinary source-control change. Normal verification is read-only and fails on any
 mismatch.
 
+The reviewed source artifact was fitted offline on CPU with CPython `3.14.6`, current SPFlow
+`1.1.0`, Torch `2.13.0+cu130`, fit seed `16028`, and the options in the source JSON. Its compiler
+contracts are base MIO compiler `spflow-v1-mio-v2` and conditional-pair compiler
+`conditional-mio-v1`; US1 validates both using temporary max/PWL pairs but intentionally does not
+publish those pair fixtures yet. Current exact byte digests are:
+
+- source JSON: `394f4ab76de48457f36ea03e451fbb608b66b8660ca1374b92f6260396b110bd`;
+- artifact manifest: `58e56e7adf850d604e41933479260cce22e90da4f40ac5838fab7578d88dac44`;
+- current-SPFlow sidecar: `2157d35ec4d18c230e8c01a074dae271c0cb161af1520582325420361bb7bc6f`.
+
+Maintainers create candidate evidence only in a fresh directory:
+
+```bash
+uv run --offline --locked --no-sync python \
+  examples/tpm_planning/run_conditional_mio_embedding.py \
+  --stage-fixtures /tmp/oel-conditional-mio-review
+```
+
+Routine verification is read-only and includes a one-shot temporary semantic refit:
+
+```bash
+uv run --offline --locked --no-sync python \
+  examples/tpm_planning/run_conditional_mio_embedding.py --verify-fixtures
+```
+
 This directory holds deterministic, offline fixtures for the
 `009-tpm-planning` dataset, TPM artifact, and query contracts. Schema-v2 and
 schema-v3 artifacts separate their JSON manifest from a project-relative
@@ -43,6 +70,12 @@ sidecar and record a SHA-256 digest.
 
 ## Active Fixture Set
 
+- `conditional_mio_embedding_v1.json`: reviewed nonuniform mixed-feature source rows and fixed
+  fit/compiler inputs for feature 016.
+- `tpm_artifact_conditional_mio_v3.json`: reviewed schema-v3 production source artifact for
+  conditional compilation.
+- `sidecars/tpm_artifact_conditional_mio_v3.spn_payload.pkl`: real current-SPFlow model sidecar
+  referenced by the feature-016 source artifact.
 - `declared_feature_domains_v1.json`: reviewable U-Bounds declarations,
   physical training rows, and exact domain/compiler probes without fitted
   model output.
@@ -156,6 +189,34 @@ by `open_energy_lab.tpm.load_tpm_artifact`. Query fixtures retain the
 `TPMQueryRequest` fields and exact expected response.
 
 ## Fixture Records
+
+`conditional_mio_embedding_v1.json`
+
+- status: active human-reviewable input fixture
+- validation target: deliberate nonuniformity, declared continuous/binary/categorical domains,
+  explicit event direction, fixed fit/compiler inputs, representative non-Cartesian assignments,
+  and purpose-labelled tolerances
+- seed: fitting seed `16028`; the physical rows are manually reviewed rather than randomly
+  generated
+- refresh policy: one reviewed source change followed by one fresh staging run; no retries,
+  adaptive candidates, or in-place overwrite
+
+`tpm_artifact_conditional_mio_v3.json`
+
+- status: supported schema-v3 production source artifact
+- backend contract: current SPFlow `1.1.0`, Torch `2.13.0+cu130`, CPU, seed `16028`
+- compiler contracts: `spflow-v1-mio-v2` and `conditional-mio-v1`
+- source SHA-256: `394f4ab76de48457f36ea03e451fbb608b66b8660ca1374b92f6260396b110bd`
+- manifest SHA-256: `58e56e7adf850d604e41933479260cce22e90da4f40ac5838fab7578d88dac44`
+- sidecar: `sidecars/tpm_artifact_conditional_mio_v3.spn_payload.pkl`
+- sidecar SHA-256: `2157d35ec4d18c230e8c01a074dae271c0cb161af1520582325420361bb7bc6f`
+- validation target: eligible U-Bounds semantics, real fit/persist/reload, genuine learned Sum nodes,
+  explicit learned denominator, raw native numerator/denominator queries, and temporary max/PWL
+  pair compile/persist/reload/direct evaluation
+- staging command: `uv run --offline --locked --no-sync python examples/tpm_planning/run_conditional_mio_embedding.py --stage-fixtures <fresh-directory>`
+- verification command: `uv run --offline --locked --no-sync python examples/tpm_planning/run_conditional_mio_embedding.py --verify-fixtures`
+- refresh policy: verify committed bytes in place; stage replacements only in a new directory for
+  ordinary review
 
 `declared_feature_domains_v1.json`
 

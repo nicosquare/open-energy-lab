@@ -29,6 +29,7 @@ from .optional_spflow import (
     CURRENT_SPFLOW_BACKEND_GENERATION,
     REQUIRED_SPFLOW_VERSION,
     load_spflow_payload,
+    require_spflow_backend,
 )
 from .query import marginalize_spflow_model
 
@@ -53,6 +54,7 @@ def compile_conditional_mio_pair(
         raise TypeError("request must be a TPMConditionalCompilationRequest")
     artifact = load_tpm_artifact(request.source_artifact)
     _validate_eligible_artifact(artifact)
+    require_spflow_backend()
     feature_specs = artifact.feature_specs
     feature_by_name = {spec.feature_name: spec for spec in feature_specs}
     if request.event_target not in feature_by_name:

@@ -349,6 +349,10 @@ def test_pair_identity_is_canonical_and_changes_with_semantics() -> None:
     assert first.pair_id == same.pair_id
     assert first.pair_id != changed.pair_id
     assert len(first.pair_id) == 64
+    assert (
+        first.identity_payload()["compiler_version"]
+        == CONDITIONAL_PAIR_COMPILER_VERSION
+    )
     assert canonical_conditional_json_bytes(first) == canonical_conditional_json_bytes(
         same
     )

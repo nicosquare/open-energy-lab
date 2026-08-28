@@ -36,7 +36,7 @@
     "training_random_seed": 16028,
     "learn_spn_options": {
       "min_instances_slice": 4,
-      "min_features_slice": 1,
+      "min_features_slice": 2,
       "n_clusters": 2,
       "threshold": 0.3
     },

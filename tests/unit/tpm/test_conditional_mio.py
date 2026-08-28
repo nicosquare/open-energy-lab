@@ -27,6 +27,7 @@ from open_energy_lab.tpm.conditional_mio import (
 from open_energy_lab.tpm.domains import TPMFeatureDomain, TPMNormalizationSpec
 from open_energy_lab.tpm.mio import condition_compiled_spflow_mio
 from open_energy_lab.tpm.query import evaluate_native_conditional_pair
+from open_energy_lab.tpm.optional_spflow import SPFlowDependencyUnavailableError
 from tests.unit.tpm.test_conditional_pair import _encoding, _pair
 
 
@@ -489,12 +490,18 @@ def test_compiler_resolves_max_and_pwl_without_fallback_and_changes_identity(
     other_event = compile_conditional_mio_pair(
         _compilation_request(event_value=0.0)
     )
+    reordered_decisions = compile_conditional_mio_pair(
+        _compilation_request(
+            retained_decisions=("service_tier", "activation", "x")
+        )
+    )
 
     assert max_pair.encoding.mode == "max"
     assert pwl_pair.encoding.mode == "piecewise"
     assert pwl_pair.encoding.approximation_label.endswith("linear-approximation")
     assert max_pair.pair_id != pwl_pair.pair_id
     assert max_pair.pair_id != other_event.pair_id
+    assert max_pair.pair_id != reordered_decisions.pair_id
 
 
 def test_compiler_rejects_ineligible_legacy_or_omitted_semantics(
@@ -557,6 +564,20 @@ def test_compiler_rejects_invalid_event_domains_and_approximation_requests(
     with pytest.raises(ValueError, match="approximation domain"):
         compile_conditional_mio_pair(
             _compilation_request(approximation_domains=())
+        )
+    with pytest.raises(ValueError, match="outside"):
+        compile_conditional_mio_pair(
+            _compilation_request(
+                approximation_domains=(
+                    {
+                        "feature_name": "x",
+                        "lower": 39.0,
+                        "upper": 160.0,
+                        "source": "conditional-unit",
+                        "encoding": "piecewise-log-density",
+                    },
+                )
+            )
         )
     with pytest.raises(TypeError, match="unexpected"):
         TPMConditionalCompilationRequest(
@@ -951,6 +972,69 @@ def test_native_evaluator_rejects_pair_source_mismatch(
     with pytest.raises(ValueError, match="source provenance"):
         evaluate_native_conditional_pair(
             mismatched,
+            pair,
+            declared_domain_assignments={
+                "x": 100.0,
+                "activation": "on",
+                "service_tier": "standard",
+            },
+        )
+
+
+def test_compiler_reports_missing_spflow_before_loading_a_sidecar(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    artifact = load_tpm_artifact(
+        TPM_FIXTURE_DIRECTORY / "tpm_artifact_domains_v3.json"
+    )
+    monkeypatch.setattr(
+        conditional_mio_module,
+        "load_tpm_artifact",
+        lambda _source: artifact,
+    )
+
+    def missing_backend():
+        raise SPFlowDependencyUnavailableError("locked SPFlow dependency is absent")
+
+    monkeypatch.setattr(
+        conditional_mio_module, "require_spflow_backend", missing_backend
+    )
+    monkeypatch.setattr(
+        conditional_mio_module,
+        "load_spflow_payload",
+        lambda _artifact: pytest.fail("sidecar must not be loaded without SPFlow"),
+    )
+
+    with pytest.raises(
+        SPFlowDependencyUnavailableError, match="SPFlow dependency is absent"
+    ):
+        compile_conditional_mio_pair(_compilation_request())
+
+
+def test_native_evaluator_reports_missing_spflow_before_loading_a_sidecar(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    artifact = load_tpm_artifact(
+        TPM_FIXTURE_DIRECTORY / "tpm_artifact_domains_v3.json"
+    )
+    _install_compiler_stubs(monkeypatch, artifact)
+    pair = compile_conditional_mio_pair(_compilation_request())
+
+    def missing_backend():
+        raise SPFlowDependencyUnavailableError("locked SPFlow dependency is absent")
+
+    monkeypatch.setattr(query_module, "require_spflow_backend", missing_backend)
+    monkeypatch.setattr(
+        query_module,
+        "load_spflow_payload",
+        lambda _artifact: pytest.fail("sidecar must not be loaded without SPFlow"),
+    )
+
+    with pytest.raises(
+        SPFlowDependencyUnavailableError, match="SPFlow dependency is absent"
+    ):
+        evaluate_native_conditional_pair(
+            artifact,
             pair,
             declared_domain_assignments={
                 "x": 100.0,
