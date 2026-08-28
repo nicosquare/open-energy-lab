@@ -129,6 +129,64 @@ from native policy. Feature 012 replay is a later ex-post validation using the
 same emitted plan and evaluator. It neither proves robust feasibility nor
 changes the bid-selection parity category.
 
+## Rolling FCR Backtest Reference Validation
+
+Feature `015-fcr-rolling-backtest-parity` compares the pinned executable
+behavior of scripts 11–15 over 2023-06-17 through 2023-06-20. Routine tests
+load only the committed normalized fixture. They do not read `baselines`, raw
+source JSON/logs, the workbook, Julia, Gurobi, a credential, the network, or
+the external activation CSV.
+
+Every field has one explicit outcome:
+
+- `exact_displayed_decision_parity` when all displayed decisions match exactly;
+- `source_precision_compatible` when one common audited native/source witness
+  satisfies the closed three-decimal envelopes;
+- `alternative_optimum_compatible` only when both plans have sufficient
+  optimality and common-feasibility evidence plus objective equivalence;
+- `source_incumbent_equivalent` when an audited native plan is
+  objective-equivalent to a time-limited source incumbent under the declared
+  precision policy;
+- `improved_feasible_incumbent_compatible_with_source_bound` when the audited
+  native incumbent improves on the displayed source incumbent without
+  violating its same-solve upper bound;
+- `bound_incompatible` when the claimed native objective relationship cannot
+  fit the retained source bound;
+- `mismatch` for proven decision, formulation, objective, state, overlap, or
+  lifecycle incompatibility;
+- `unavailable` when the source or selected environment lacks the evidence;
+  or
+- `incomplete_or_unfinalized` for an initialization edge, unclosed delivery,
+  blocked/failed date, or incomplete study record.
+
+Thirty independent interval checks are insufficient. Source-precision
+compatibility uses one simultaneous witness over the decisions, objective,
+state, and accepted overlap and requires Feature 013's modeled-slack and
+independent residual audit. The source JSON's `bilinear_violations=0` value is
+never feasibility proof. Source rounding is a closed interval; it is not the
+hidden full-precision solver solution.
+
+A time-limited incumbent plus bound is not an optimum. Two time-limited
+incumbents are never called alternative optima merely because their displayed
+objectives are close. A different native plan may be compatible only when its
+common feasibility and objective/bound relationship are positively justified.
+Optimization objective, best bound, Feature 012 settlement, and realized
+profit remain separate quantities.
+
+For script 14, 2023-06-17 is initialization evidence, 2023-06-18 and
+2023-06-19 are primary finalized comparisons, and 2023-06-20 is an explicit
+unfinalized edge until another 08:00 solve closes it. Exact full-precision
+restart parity remains unavailable because the source did not persist every
+in-memory fixing. Such dates remain in the result and are excluded from parity
+aggregates with an explicit reason rather than silently dropped.
+
+The complete native 5-by-4 run is an explicit `reference_benchmark`; governed
+ten-second replay is `external_reference_data`; optional Gurobi is licensed
+research evidence. Routine Pyomo/HiGHS oracles and bounded cases remain
+complete without them. The bounded fixture cannot establish full-history or
+Table A1 parity because source/profile metric reconciliation and complete
+1,453-date evidence remain outside its scope.
+
 ## TPM-Backed Planning Validation Governance
 
 The `009-tpm-planning` migration validates current library behavior rather

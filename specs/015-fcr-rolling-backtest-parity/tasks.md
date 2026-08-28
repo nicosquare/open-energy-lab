@@ -303,10 +303,10 @@ evidence remains explicit, resumable, and visibly optional.
 **Purpose**: Finish public documentation, fixture indexes, compatibility
 guards, and exact validation evidence across all stories.
 
-- [ ] T102 [P] Update the root feature index and architecture navigation for the rolling backtest API and ownership boundaries in `README.md` and `docs/architecture/README.md`
-- [ ] T103 [P] Update migration navigation and maturity classification for Feature 015 in `docs/migration/README.md` and `docs/migration/api-maturity.md`
-- [ ] T104 [P] Document unchanged required Pyomo/HiGHS pins, optional Gurobi, zero new core dependencies, lazy import boundaries, and research-only artifacts in `docs/migration/dependency-policy.md` and `docs/migration/environment-assumptions.md`
-- [ ] T105 [P] Add the Feature 015 normalized fixture and source-precision/incumbent evidence rules to `tests/fixtures/README.md`, `docs/migration/fixture-provenance.md`, and `docs/migration/parity-validation.md`
+- [x] T102 [P] Update the root feature index and architecture navigation for the rolling backtest API and ownership boundaries in `README.md` and `docs/architecture/README.md`
+- [x] T103 [P] Update migration navigation and maturity classification for Feature 015 in `docs/migration/README.md` and `docs/migration/api-maturity.md`
+- [x] T104 [P] Document unchanged required Pyomo/HiGHS pins, optional Gurobi, zero new core dependencies, lazy import boundaries, and research-only artifacts in `docs/migration/dependency-policy.md` and `docs/migration/environment-assumptions.md`
+- [x] T105 [P] Add the Feature 015 normalized fixture and source-precision/incumbent evidence rules to `tests/fixtures/README.md`, `docs/migration/fixture-provenance.md`, and `docs/migration/parity-validation.md`
 - [ ] T106 Synchronize the implemented public surface and commands with `specs/015-fcr-rolling-backtest-parity/contracts/python-api.md`, both JSON schemas under `specs/015-fcr-rolling-backtest-parity/contracts/`, and `specs/015-fcr-rolling-backtest-parity/quickstart.md`
 - [ ] T107 Update lazy export snapshots and package import contracts for all new control, market, and simulator symbols in `tests/unit/control/test_fcr_rolling_import_boundary.py`, `tests/unit/test_lazy_dependency_boundaries.py`, and `tests/unit/test_import_contract.py`
 - [ ] T108 Run the exact routine Feature 015 unit/integration command from `specs/015-fcr-rolling-backtest-parity/quickstart.md` and record final results in `docs/migration/fcr-rolling-backtest-parity.md`

@@ -27,13 +27,17 @@ Current library package areas under `src/open_energy_lab`:
 
 - `weather`: fitted weather artifacts and offline sampling flows.
 - `demand`: fitted demand artifacts and weather-conditioned demand sampling.
-- `simulator`: scenario components, family evaluation, and planning-dataset
-  export.
+- `market`: source-independent market artifacts, time contracts, and realized
+  activation traces.
+- `simulator`: scenario components, family evaluation, planning-dataset
+  export, and the sole FCR physical replay and settlement implementation.
 - `tpm`: typed-feature TPM artifacts, required SPFlow-backed fit/query flows,
   runtime payloads, and SPN-to-MIO helpers, with backend imports kept lazy.
 - `planning`: planning-dataset reload, planning assembly, and required
   Pyomo/HiGHS solve flows, with solver imports kept lazy.
-- `experimental`, `control`, and `visualization`: incubating or still-thin
+- `control`: deterministic controllers, bidder-neutral schedules, robust FCR
+  bidding, and rolling-study orchestration with lazy solver boundaries.
+- `experimental` and `visualization`: incubating or deliberately narrower
   areas.
 
 The repository still treats `legacy/*` as reference material rather than
@@ -77,8 +81,12 @@ service capabilities remain outside the routine environment and import path.
 - [Feature 013 review and benchmark quickstart](specs/013-reference-robust-fcr-bidding/quickstart.md)
 - [Reference robust-FCR bidding migration and evidence ledger](docs/migration/reference-robust-fcr-bidding.md)
 - [Robust-FCR bidding examples](examples/robust_fcr_bidding/README.md)
+- [Feature 015 rolling FCR backtest design](specs/015-fcr-rolling-backtest-parity/plan.md)
+- [Feature 015 routine and research quickstart](specs/015-fcr-rolling-backtest-parity/quickstart.md)
+- [Rolling FCR parity and validation ledger](docs/migration/fcr-rolling-backtest-parity.md)
+- [Rolling FCR study and reference workflows](examples/fcr_rolling_backtest/README.md)
 - [Fixture provenance rules](tests/fixtures/README.md)
-- [Active Spec Kit plan](specs/013-reference-robust-fcr-bidding/plan.md)
+- [Active Spec Kit plan](specs/015-fcr-rolling-backtest-parity/plan.md)
 
 ## French Restoration-Services Research Slice
 
@@ -133,6 +141,33 @@ replay—for physical delivery and realized settlement. Start with the
 The historical Julia comparison is deliberately bounded by rounded source
 precision and unavailable source metadata; it does not claim identical
 unrounded decisions, solver proof, or complete Julia trace parity.
+
+## Rolling FCR Backtest Parity
+
+Feature 015 composes Feature 013 bidding and Feature 012 replay into five
+explicit non-intraday rolling-study profiles. It covers independent reset
+days, exact-zero-FCR arbitrage, realized midnight state carry, and causal 08:00
+overlap with accepted predecessor decisions fixed in place. Immutable daily
+revision histories retain failed, blocked, provisional, finalized, and
+unfinalized dates instead of silently dropping them.
+
+The rolling orchestrator lives in
+[`open_energy_lab.control`](src/open_energy_lab/control), activation slicing
+stays in [`open_energy_lab.market`](src/open_energy_lab/market), and all
+physical replay and settlement remain owned by
+[`open_energy_lab.simulator`](src/open_energy_lab/simulator). Bid selection
+cannot observe future activation. Routine Pyomo/HiGHS validation is
+deterministic and offline; the complete four-date source comparison, optional
+Gurobi checks, external activation replay, and full-history study are explicit
+research workflows. Start with the [Feature 015 plan](specs/015-fcr-rolling-backtest-parity/plan.md),
+[examples](examples/fcr_rolling_backtest/README.md), and
+[quickstart](specs/015-fcr-rolling-backtest-parity/quickstart.md).
+
+The bounded Julia/Gurobi fixture distinguishes exact displayed decisions,
+source-precision compatibility, source-incumbent equivalence, compatible
+improvements under a retained bound, mismatch, and unavailable or unfinalized
+evidence. It does not prove Table A1 parity, full-history parity, or optimality
+for time-limited source incumbents.
 
 ## Local Checks
 

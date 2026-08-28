@@ -173,6 +173,61 @@ evidence. Fixture loading never supplies a native execution policy. A selected
 native benchmark must separately declare and fingerprint every HiGHS tolerance,
 limit, thread, seed, incumbent, canonicalization, and comparison option.
 
+## Feature 015 Rolling Backtest Reference Fixture
+
+Feature `015-fcr-rolling-backtest-parity` owns a separate normalized fixture
+for the bounded five-profile/four-date source rerun:
+
+- fixture path:
+  `tests/fixtures/fcr_rolling_backtest/robust_storage_bidding_experiments_01_05_2023-06-17_20_v1.json`;
+- fixture size and committed-byte SHA-256: 99,635 bytes and
+  `c075d81cb8a388c82f57c78f3f36aedf9c0da9b0dadbed636b6422e87081be4f`;
+- semantic fingerprint:
+  `d9f12af283ff0377e651d7c7aaf5e81a40f85372a6e1bf62a4f90ab928659d93`;
+- pinned reference revision:
+  `7e44738bb30e5c8204efe40103b9be4c2203685c`;
+- input manifest and SHA-256:
+  `examples/fcr_rolling_backtest/reference_inputs_v1.json` and
+  `b84aef1734df9cb366696b9183b47610e540f5ecd47515ac012bf33e67875edc`;
+- content: exact canonical ordering for scripts 11–15 and dates 2023-06-17
+  through 2023-06-20, source inputs/decisions/objectives/bounds, log-derived
+  termination, lifecycle roles, source precision, version evidence,
+  crosswalk discrepancies, unavailable fields, and every raw input digest;
+  and
+- exclusions: raw generated JSON, raw logs, workbook bytes, complete
+  activation data, baseline code, credentials, license text, machine/user
+  identities, caller-local paths, and native solver policy.
+
+The no-glob normalizer at
+`examples/fcr_rolling_backtest/normalize_reference_fixture.py` accepts only
+the 49 entries explicitly listed in the input manifest, verifies every byte
+digest before parsing, and writes canonical candidates plus semantic diffs
+only beneath ignored `artifacts/reference/fcr_rolling_backtest/`. It neither
+invokes Julia or a solver nor accesses the network or credentials. Promotion
+to the committed fixture is a separate reviewed action.
+
+The fixture records six source `TIME_LIMIT` incumbents—scripts 14 and 15 for
+2023-06-17, 2023-06-18, and 2023-06-19—with their same-solve upper bounds.
+They are not relabelled optimal. The source JSON's three-decimal fields define
+closed half-unit-last-place intervals and its hard-coded
+`bilinear_violations=0` field is not independent feasibility evidence. Native
+compatibility instead requires one common decision/objective/state/overlap
+witness that passes Feature 013's independent formulation audit.
+
+The Feature 013 fixture is preserved byte-for-byte. Its governed original
+Experiment 2 digest is
+`8c13f8318d533c35755e90e4e45bcef336cb7b31c09afccbe616844acbddc1e6`;
+the separate Feature 015 rerun digest is
+`6aee0bbc3353e0b08d1471b2e5c7c3b79aeffd220e2d9c1b69e8c4d711d8f37b`.
+Their displayed objective, bound, 24 hourly decisions, and six FCR decisions
+match semantically, while their raw bytes remain distinct evidence.
+
+No random seed is claimed for source output. A native benchmark must supply
+and fingerprint its own solver policy. The fixture supports only the bounded
+executable-profile comparison; the external activation replay and 1,453-date
+full-history study remain optional caller-owned research evidence and cannot
+be inferred from these normalized bytes.
+
 ### Feature 010 Single-Owner Matrix
 
 | Responsibility ID | Responsibility | Single owner |

@@ -110,6 +110,46 @@ The expected environment is a single CPU process with deterministic one-thread
 HiGHS options. GPU, SLURM, W&B, notebooks, commercial licenses, and network
 services are not assumptions of the routine Feature 013 gate.
 
+## Rolling FCR Backtest Parity Notes
+
+Feature `015-fcr-rolling-backtest-parity` adds no dependency to the routine
+environment. The existing locked Pyomo `6.10.1` and highspy `1.15.1` pair is
+the required backend for bounded rolling solves; `gurobipy` `13.0.2` remains an
+optional extra. Imports of `open_energy_lab.control`,
+`open_energy_lab.market`, `open_energy_lab.simulator`, rolling contract
+modules, and normalized fixture/comparison helpers must not load any solver.
+
+The routine gate assumes:
+
+- an offline CPU process with deterministic one-thread HiGHS settings;
+- committed authored and normalized fixtures only;
+- no Julia process, baseline checkout read, source JSON/log/workbook access,
+  network call, credential lookup, solver license, or activation CSV;
+- no future activation passed to bidding and no duplicate physical or
+  settlement implementation; and
+- bounded tests within the existing focused-command and CI time limits.
+
+The complete five-profile/four-date comparison is marked
+`reference_benchmark`. The external ten-second replay is marked
+`external_reference_data` and accepts only the explicit governed CSV path and
+digest. Optional Gurobi checks probe the package/license only after selection
+and never fall back to HiGHS. Each path reports unavailable, skipped, partial,
+time-limited, or unfinalized evidence explicitly without weakening the routine
+gate.
+
+The 2020-07-01 through 2024-06-30 workflow is an optional resumable research
+command over an explicit fingerprinted manifest and data bundle. Its 1,453
+ordered ordinary dates, eight declared DST exclusions, acceptance assumption,
+failure policy, and output path are caller-owned. It is not a release or
+acceptance requirement, performs no directory discovery, and does not make
+Table A1 parity available merely because execution completed.
+
+Raw Julia JSON, retained logs, the workbook, complete activation CSV,
+credentials, license text, machine identities, and full-history results remain
+research-only artifacts outside Git and package distributions. The small
+normalized rolling fixture is committed derived evidence and is sufficient for
+routine source-field comparison without those resources.
+
 ## TPM-Backed Planning Notes
 
 The `009-tpm-planning` feature keeps the same minimal conda bootstrap while uv

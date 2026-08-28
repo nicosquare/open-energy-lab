@@ -58,6 +58,38 @@ parity validation, and environment assumptions.
 - `reference-robust-fcr-bidding.md`: Feature 013 preserved equations,
   restriction/relaxation roles, native solve/audit evidence, normalized Julia
   bid-selection comparison, and Feature 012 handoff boundary
+- `fcr-rolling-backtest-parity.md`: Feature 015 executable-profile crosswalk,
+  causal 08:00 and midnight carry semantics, immutable study evidence,
+  normalized rolling source comparison, and routine/research validation ledger
+
+## Rolling FCR Backtest Parity Review Path
+
+For `015-fcr-rolling-backtest-parity`, review these artifacts in order:
+
+1. [Feature 015 plan](../../specs/015-fcr-rolling-backtest-parity/plan.md) and
+   [Python API contract](../../specs/015-fcr-rolling-backtest-parity/contracts/python-api.md)
+   for the five executable profiles, immutable rolling surface, and ownership
+   boundaries.
+2. [Rolling migration/evidence ledger](./fcr-rolling-backtest-parity.md) for
+   exact source line ranges, script/paper/workbook discrepancies, lifecycle
+   semantics, recorded gates, and evidence limits.
+3. `fixture-provenance.md`,
+   `tests/fixtures/fcr_rolling_backtest/README.md`, and the strict fixture
+   schema for the digest-pinned 5-by-4 Julia/Gurobi evidence and two-step
+   no-runtime-baseline normalization policy.
+4. `api-maturity.md`, `dependency-policy.md`, and `parity-validation.md` for
+   stable lazy exports, required HiGHS/optional Gurobi, source-precision and
+   time-limit-incumbent categories, and the no-Table-A1-parity boundary.
+5. [Feature 015 quickstart](../../specs/015-fcr-rolling-backtest-parity/quickstart.md)
+   and [example guide](../../examples/fcr_rolling_backtest/README.md) for
+   authored, resume, bounded benchmark, external activation, and research-only
+   full-history commands.
+
+Feature 015 preserves Feature 013 as the bid optimizer and Feature 012 as the
+only physical replay and settlement owner. It adds no second battery model,
+does not expose realized or future activation to bid selection, and never uses
+system-wide contracted reserve volume as proof that an individual bid was
+accepted.
 
 ## Reference Robust-FCR Bidding Review Path
 
