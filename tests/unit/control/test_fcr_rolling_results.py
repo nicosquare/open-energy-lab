@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import FrozenInstanceError, replace
 from datetime import date
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -148,6 +150,50 @@ def test_result_contract_is_deeply_immutable_and_to_dict_is_detached() -> None:
     payload = result.to_dict()
     payload["runtime_metadata"]["host"] = "mutated"
     assert "host" not in result.runtime_metadata
+
+
+def test_study_result_schema_keys_match_the_strict_serialized_contract() -> None:
+    manifest = replace(
+        build_authored_manifest("script-12-restriction-reset-midnight-v1"),
+        dates=build_authored_manifest(
+            "script-12-restriction-reset-midnight-v1"
+        ).dates[:1],
+    )
+    result = _result(manifest, (_envelope(manifest, 0, _revision()),))
+    payload = result.to_dict()
+    schema = json.loads(
+        Path(
+            "specs/015-fcr-rolling-backtest-parity/contracts/"
+            "fcr-rolling-study-result-v1.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+
+    assert schema["properties"]["semantics_version"]["const"] == (
+        "oel.fcr-rolling-study-result.v1"
+    )
+    assert set(schema["required"]) == set(schema["properties"]) == set(payload)
+    nested = {
+        "dateEnvelope": payload["records"][0],
+        "dateClassification": payload["records"][0]["classification"],
+        "dayRevision": payload["records"][0]["revisions"][0],
+        "storedEnergy": payload["records"][0]["revisions"][0][
+            "stored_energy_kwh"
+        ],
+        "fingerprintEvidence": payload["records"][0]["revisions"][0][
+            "fingerprint_evidence"
+        ],
+        "continuitySegment": payload["continuity_segments"][0],
+        "aggregateMetric": payload["aggregate_metrics"][0],
+        "statusCounts": payload["status_counts"],
+    }
+    for definition_name, serialized in nested.items():
+        definition = schema["$defs"][definition_name]
+        assert set(definition["required"]) == set(definition["properties"])
+        assert set(definition["required"]) == set(serialized)
+
+    serialized_schema = json.dumps(schema, allow_nan=False, sort_keys=True)
+    assert '"date_records"' not in serialized_schema
+    assert '"aggregates"' not in serialized_schema
 
 
 def test_revision_reports_explicit_unavailable_fingerprint_evidence_and_gaps() -> None:

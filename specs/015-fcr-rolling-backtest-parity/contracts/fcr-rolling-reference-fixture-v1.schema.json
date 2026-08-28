@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-energy-lab.local/schemas/fcr-rolling-reference-fixture-v1.schema.json",
   "title": "Open Energy Lab normalized FCR rolling reference fixture v1",
+  "description": "Normalized source-only evidence for the five-profile/four-date bounded rerun. Native comparison outcomes and solver policies are separate contracts.",
   "type": "object",
   "additionalProperties": false,
   "required": [

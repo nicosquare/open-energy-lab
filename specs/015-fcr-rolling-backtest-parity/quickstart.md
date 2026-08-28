@@ -203,6 +203,12 @@ uv run python examples/fcr_rolling_backtest/run_reference_benchmark.py \
 Missing Gurobi or a license is actionable optional evidence, never a routine
 failure or a reason to skip required HiGHS checks.
 
+With `--profiles all`, the existing Feature 013 adapter may solve scripts 11,
+12, and 15. The additive script-13 exact-zero-FCR and script-14 40-hour
+formulations currently produce explicit
+`optional_gurobi_rolling_adapter_not_implemented` reports. They are not
+silently solved by HiGHS, and their unavailable records remain in the report.
+
 ## 6. Run optional external activation replay
 
 Feature 015 never downloads, searches for, or infers activation data. To run
@@ -252,19 +258,31 @@ gap.
 ## 8. Run the optional full-history workflow
 
 The 2020-07-01 through 2024-06-30 study is research-only and not an acceptance
-requirement. After constructing a fully fingerprinted local manifest and data
+requirement. After constructing a fully fingerprinted local request and data
 bundle, run it resumably:
 
 ```bash
 uv run python examples/fcr_rolling_backtest/run_reference_benchmark.py \
-  --study-manifest artifacts/reference/fcr_rolling_backtest/full-history-manifest.json \
+  --study-manifest artifacts/reference/fcr_rolling_backtest/full-history-request.json \
   --resume-output artifacts/reference/fcr_rolling_backtest/full-history-result.json
 ```
 
-The manifest—not directory discovery—owns its 1,453 ordered dates and explicit
-DST exclusions. Missing dates and failed solves remain visible. This workflow
-does not claim Table A1 parity until profile mapping, completeness, metric
-meaning, source precision, and aggregate comparison all pass.
+The `fcr-rolling-full-history-request-v1` document declares `research_only`,
+`release_gate: false`, exactly one profile and carry policy, the immutable
+1,453-date source ordering and eight explicit DST exclusions, the authoritative
+date-list SHA-256, an explicit assumed-accepted or evidence-backed individual
+bid policy, and the path plus byte digest of an
+`fcr-rolling-full-history-data-v1` bundle. Its request fingerprint excludes the
+caller-local path while retaining the bundle digest.
+
+The separate bundle supplies canonical manifest inputs, exactly ordered 24/6
+price rows for every requested date, and only explicitly available activation
+traces. Neither request nor command performs directory discovery. Missing
+activation, failed solves, dependent blocking, partial checkpoints, and
+unfinalized dates remain visible. A compatible `--resume-output` is reused only
+after strict semantic validation. This workflow does not claim Table A1 parity
+until profile mapping, completeness, metric meaning, source precision, and
+aggregate comparison all pass.
 
 ## 9. Run compatibility and isolation checks
 

@@ -18,12 +18,16 @@ validation, and fingerprints remain unchanged.
 
 ```python
 from open_energy_lab.control import (
+    AGGREGATION_POLICY,
     AcceptedBidPolicy,
     AggregateMetricEvidence,
     CallerSuppliedRollingState,
     ContinuitySegment,
     DeliveryDateClassification,
     DeliveryDateRecordEnvelope,
+    FAILURE_POLICY_COUPLED,
+    FAILURE_POLICY_INDEPENDENT,
+    RESUME_POLICY,
     RobustFCRAcceptedDecisionFixings,
     RobustFCRRollingBiddingProblem,
     RobustFCRRollingSolveResult,
@@ -37,6 +41,7 @@ from open_energy_lab.control import (
     RollingFCRReferenceFieldResult,
     RollingFCRReferenceFixture,
     RollingFCRResumeEvidence,
+    RollingFCRStateCarryEvidence,
     RollingFCRStateLink,
     RollingFCRStudyManifest,
     RollingFCRStudyResult,
@@ -47,6 +52,8 @@ from open_energy_lab.control import (
     build_rolling_fcr_experiment_profile,
     build_rolling_fcr_study_manifest,
     compare_rolling_fcr_reference,
+    derive_rolling_fcr_state_carry,
+    extract_accepted_predecessor_fixings,
     load_rolling_fcr_reference_fixture,
     load_rolling_fcr_study_result,
     run_rolling_fcr_study,
@@ -152,6 +159,41 @@ Construction rejects:
 
 One manifest is one semantic profile. Comparing two carry policies means
 building and running two manifests.
+
+## State carry and accepted overlap
+
+```python
+def derive_rolling_fcr_state_carry(
+    replay_checkpoint_kwh: float,
+    *,
+    state_carry_policy: Literal[
+        "source_three_decimal",
+        "native_full_precision",
+    ],
+) -> RollingFCRStateCarryEvidence:
+    """Return the full-precision checkpoint, carried state, interval, and fingerprint."""
+
+
+def extract_accepted_predecessor_fixings(
+    *,
+    plan: FixedFCRBidPlan,
+    predecessor_problem_fingerprint: str,
+    predecessor_result_fingerprint: str,
+) -> RobustFCRAcceptedDecisionFixings:
+    """Extract the unchanged 16 hourly and four reserve predecessor tails."""
+```
+
+Source-compatible carry uses `Decimal(str(value))`, three places,
+`ROUND_HALF_EVEN`, positive-zero normalization, and the closed displayed-value
+interval. Native carry preserves the exact value and a degenerate interval.
+The two policies have distinct evidence fingerprints. Caller-supplied recovery
+states are manifest declarations and continuity links, not an alternative
+input accepted by this two-policy helper.
+
+Accepted predecessor extraction never solves or replays. It retains the
+accepted plan and predecessor problem/result fingerprints and maps exactly
+hours 09–24 plus FCR blocks 3–6 for the 08:00 rolling request. The successor
+builder verifies those values rather than permitting them to be re-optimized.
 
 ## Additive rolling optimization contract
 
@@ -363,6 +405,12 @@ Aggregates report `eligible_dates`, `contributing_dates`, and
 `omitted_dates_with_reasons` for every metric. `partial` values remain useful
 but cannot support a complete-study parity claim. The persisted schema is
 [fcr-rolling-study-result-v1.schema.json](./fcr-rolling-study-result-v1.schema.json).
+Its top-level wire keys are `semantics_version`, `records`,
+`aggregate_metrics`, the requested-input and supplied-activation fingerprint
+maps, `stable_runtime_evidence`, `runtime_metadata`, and the remaining strict
+study identity/lifecycle fields emitted by `RollingFCRStudyResult.to_dict()`.
+It does not use the earlier design-only `schema_version`, `date_records`, or
+`aggregates` names.
 
 ## Reference fixture and comparison
 

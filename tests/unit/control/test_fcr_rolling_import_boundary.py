@@ -113,15 +113,29 @@ def test_result_resume_and_persistence_exports_remain_lazy() -> None:
 
         before = set(sys.modules)
         from open_energy_lab.control import (
+            AGGREGATION_POLICY,
+            FAILURE_POLICY_COUPLED,
+            FAILURE_POLICY_INDEPENDENT,
+            RESUME_POLICY,
             RollingFCRResumeEvidence,
+            RollingFCRStateCarryEvidence,
             aggregate_rolling_fcr_records,
             assess_rolling_fcr_resume,
+            derive_rolling_fcr_state_carry,
+            extract_accepted_predecessor_fixings,
             load_rolling_fcr_study_result,
         )
 
+        assert AGGREGATION_POLICY == "coverage-labelled-no-zero-fill-v1"
+        assert FAILURE_POLICY_COUPLED.startswith("coupled-days-")
+        assert FAILURE_POLICY_INDEPENDENT.startswith("independent-days-")
+        assert RESUME_POLICY == "exact-semantic-evidence-v1"
         assert RollingFCRResumeEvidence.__name__ == "RollingFCRResumeEvidence"
+        assert RollingFCRStateCarryEvidence.__name__ == "RollingFCRStateCarryEvidence"
         assert callable(aggregate_rolling_fcr_records)
         assert callable(assess_rolling_fcr_resume)
+        assert callable(derive_rolling_fcr_state_carry)
+        assert callable(extract_accepted_predecessor_fixings)
         assert callable(load_rolling_fcr_study_result)
         newly_loaded = set(sys.modules) - before
         forbidden = {"pyomo", "highspy", "gurobipy", "pandas"}

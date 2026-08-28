@@ -28,6 +28,10 @@ FIXTURE_PATH = Path(
     "tests/fixtures/fcr_rolling_backtest/"
     "robust_storage_bidding_experiments_01_05_2023-06-17_20_v1.json"
 )
+SCHEMA_PATH = Path(
+    "specs/015-fcr-rolling-backtest-parity/contracts/"
+    "fcr-rolling-reference-fixture-v1.schema.json"
+)
 REFERENCE_REVISION = "7e44738bb30e5c8204efe40103b9be4c2203685c"
 EXPECTED_FIXTURE_FINGERPRINT = (
     "d9f12af283ff0377e651d7c7aaf5e81a40f85372a6e1bf62a4f90ab928659d93"
@@ -43,6 +47,17 @@ PROFILES = (
     "script-15-restriction-rolling-midnight-v1",
 )
 DATES = ("2023-06-17", "2023-06-18", "2023-06-19", "2023-06-20")
+
+
+def test_reference_schema_top_level_matches_the_governed_fixture_contract() -> None:
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    fixture = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+
+    assert schema["properties"]["schema_version"]["const"] == (
+        ROLLING_FCR_REFERENCE_FIXTURE_SCHEMA_VERSION
+    )
+    assert set(schema["required"]) == set(schema["properties"]) == set(fixture)
+    assert "source-only evidence" in schema["description"]
 
 
 def _canonical_bytes(value: object) -> bytes:
