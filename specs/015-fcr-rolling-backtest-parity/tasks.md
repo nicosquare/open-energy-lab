@@ -28,10 +28,10 @@ depend on them.
 **Purpose**: Establish Feature 015's source, example, fixture, and documentation
 surfaces without changing dependencies or writing into the reference baseline.
 
-- [ ] T001 Create the Feature 015 example package and document its offline, no-baseline-runtime scope in `examples/fcr_rolling_backtest/README.md`
-- [ ] T002 [P] Create the normalized-fixture governance scaffold and redistribution limits in `tests/fixtures/fcr_rolling_backtest/README.md`
-- [ ] T003 [P] Add deterministic raw authored battery, price, date, activation, and solver-policy builders using only existing public contracts in `tests/fcr_rolling_case_utils.py`
-- [ ] T004 [P] Create the migration evidence ledger with the exact source citation map and initial no-Table-A1/no-optimality claims in `docs/migration/fcr-rolling-backtest-parity.md`
+- [X] T001 Create the Feature 015 example package and document its offline, no-baseline-runtime scope in `examples/fcr_rolling_backtest/README.md`
+- [X] T002 [P] Create the normalized-fixture governance scaffold and redistribution limits in `tests/fixtures/fcr_rolling_backtest/README.md`
+- [X] T003 [P] Add deterministic raw authored battery, price, date, activation, and solver-policy builders using only existing public contracts in `tests/fcr_rolling_case_utils.py`
+- [X] T004 [P] Create the migration evidence ledger with the exact source citation map and initial no-Table-A1/no-optimality claims in `docs/migration/fcr-rolling-backtest-parity.md`
 
 ---
 
