@@ -14,6 +14,7 @@ from .robust_fcr_bidding import (
     RobustFCRFormulationProfile,
     RobustFCRValidationError,
     _deep_freeze,
+    _fingerprint,
     _finite,
     _integer,
     _non_empty,
@@ -51,6 +52,151 @@ SOURCE_EQUATION_REFERENCES = MappingProxyType(
         ),
     }
 )
+
+
+@dataclass(frozen=True, slots=True)
+class RobustFCRReferenceIntervalAudit:
+    """Joint audit of one independently checked witness against closed boxes."""
+
+    field_residuals: Mapping[str, float]
+    maximum_interval_residual: float
+    maximum_modeled_slack: float
+    maximum_independent_residual: float
+    tolerance: float
+    passes: bool
+    audit_fingerprint: str = ""
+
+    def __post_init__(self) -> None:
+        residuals: dict[str, float] = {}
+        for name, value in self.field_residuals.items():
+            normalized_name = _non_empty(name, field_name="reference interval field")
+            normalized = _finite(
+                value, field_name=f"reference interval residual {normalized_name}"
+            )
+            if normalized < 0.0:
+                raise RobustFCRValidationError(
+                    "reference interval residuals must be non-negative"
+                )
+            residuals[normalized_name] = normalized
+        maximum_interval = _finite(
+            self.maximum_interval_residual,
+            field_name="maximum_interval_residual",
+        )
+        maximum_slack = _finite(
+            self.maximum_modeled_slack,
+            field_name="maximum_modeled_slack",
+        )
+        maximum_independent = _finite(
+            self.maximum_independent_residual,
+            field_name="maximum_independent_residual",
+        )
+        tolerance = _finite(self.tolerance, field_name="reference audit tolerance")
+        if min(maximum_interval, maximum_slack, maximum_independent, tolerance) < 0.0:
+            raise RobustFCRValidationError(
+                "reference interval audit values must be non-negative"
+            )
+        expected_maximum = max(residuals.values(), default=0.0)
+        if abs(maximum_interval - expected_maximum) > 1e-12:
+            raise RobustFCRValidationError(
+                "maximum interval residual does not reconcile field residuals"
+            )
+        expected_passes = max(
+            maximum_interval,
+            maximum_slack,
+            maximum_independent,
+        ) <= tolerance
+        if self.passes != expected_passes:
+            raise RobustFCRValidationError(
+                "reference interval audit status does not reconcile evidence"
+            )
+        object.__setattr__(
+            self,
+            "field_residuals",
+            MappingProxyType(dict(sorted(residuals.items()))),
+        )
+        object.__setattr__(self, "maximum_interval_residual", maximum_interval)
+        object.__setattr__(self, "maximum_modeled_slack", maximum_slack)
+        object.__setattr__(self, "maximum_independent_residual", maximum_independent)
+        object.__setattr__(self, "tolerance", tolerance)
+        payload = self._payload()
+        expected_fingerprint = _fingerprint(payload)
+        if self.audit_fingerprint and self.audit_fingerprint != expected_fingerprint:
+            raise RobustFCRValidationError(
+                "reference interval audit fingerprint mismatch"
+            )
+        object.__setattr__(self, "audit_fingerprint", expected_fingerprint)
+
+    def _payload(self) -> dict[str, object]:
+        return {
+            "field_residuals": dict(self.field_residuals),
+            "maximum_interval_residual": self.maximum_interval_residual,
+            "maximum_modeled_slack": self.maximum_modeled_slack,
+            "maximum_independent_residual": self.maximum_independent_residual,
+            "tolerance": self.tolerance,
+            "passes": self.passes,
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return {**self._payload(), "audit_fingerprint": self.audit_fingerprint}
+
+
+def audit_closed_reference_witness(
+    *,
+    field_values: Mapping[str, float],
+    closed_intervals: Mapping[str, tuple[float, float]],
+    maximum_modeled_slack: float,
+    maximum_independent_residual: float,
+    tolerance: float,
+) -> RobustFCRReferenceIntervalAudit:
+    """Audit one common witness against decisions, objective, and state boxes.
+
+    The helper deliberately consumes the independent equation-family residual
+    and modeled-slack evidence produced by Feature 013.  It adds only interval
+    membership checks and therefore does not create a second formulation or
+    feasibility model.
+    """
+
+    if set(field_values) != set(closed_intervals):
+        raise RobustFCRValidationError(
+            "reference witness fields and closed intervals must match exactly"
+        )
+    residuals: dict[str, float] = {}
+    for name in sorted(field_values):
+        value = _finite(field_values[name], field_name=f"field_values.{name}")
+        raw_interval = closed_intervals[name]
+        if len(raw_interval) != 2:
+            raise RobustFCRValidationError(
+                f"closed_intervals.{name} must contain two endpoints"
+            )
+        lower = _finite(raw_interval[0], field_name=f"closed_intervals.{name}.lower")
+        upper = _finite(raw_interval[1], field_name=f"closed_intervals.{name}.upper")
+        if lower > upper:
+            raise RobustFCRValidationError(
+                f"closed_intervals.{name} lower endpoint exceeds upper"
+            )
+        residuals[name] = max(lower - value, value - upper, 0.0)
+    maximum_interval = max(residuals.values(), default=0.0)
+    maximum_slack = _finite(
+        maximum_modeled_slack, field_name="maximum_modeled_slack"
+    )
+    maximum_independent = _finite(
+        maximum_independent_residual,
+        field_name="maximum_independent_residual",
+    )
+    normalized_tolerance = _finite(tolerance, field_name="tolerance")
+    passes = max(
+        maximum_interval,
+        maximum_slack,
+        maximum_independent,
+    ) <= normalized_tolerance
+    return RobustFCRReferenceIntervalAudit(
+        field_residuals=residuals,
+        maximum_interval_residual=maximum_interval,
+        maximum_modeled_slack=maximum_slack,
+        maximum_independent_residual=maximum_independent,
+        tolerance=normalized_tolerance,
+        passes=passes,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1412,6 +1558,7 @@ __all__ = [
     "NormalizedRobustFCRIndexSets",
     "RobustFCRModelHandoff",
     "RobustFCRModelInput",
+    "RobustFCRReferenceIntervalAudit",
     "SOURCE_EQUATION_REFERENCES",
     "SOURCE_EQUATION_VERSION",
     "assemble_arbitrage_only_model",
@@ -1423,6 +1570,7 @@ __all__ = [
     "derive_rolling_source_indices",
     "assemble_robust_fcr_model",
     "assemble_robust_fcr_reference_certificate",
+    "audit_closed_reference_witness",
     "model_cardinality_basis",
     "model_cardinality_metadata",
     "propagate_fixed_tail_robust_bounds",
