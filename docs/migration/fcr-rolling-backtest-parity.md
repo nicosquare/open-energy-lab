@@ -168,3 +168,41 @@ passed with `60 passed in 50.82s`, and the protected Feature 013 problem,
 solver, HiGHS, and fingerprint regressions passed with `80 passed in 85.67s`.
 No external activation CSV, baseline runtime read, Julia, Gurobi, network, or
 credential access was used.
+
+### Phase 5 — realized midnight carry and explicit continuity
+
+Midnight-coupled profiles now replay each accepted full-day plan exclusively
+through Feature 012 and construct the next Feature 013 battery from the
+realized terminal checkpoint. The modeled robust terminal remains separate
+optimization evidence and is never substituted for the realized handoff.
+
+`derive_rolling_fcr_state_carry` applies source-compatible rounding with
+`Decimal(str(value))`, `ROUND_HALF_EVEN`, exactly three decimal kWh, positive
+zero normalization, and a closed half-unit interval. Native full precision is
+an exact identity with a degenerate closed interval. Both forms retain
+immutable rounding evidence and distinct fingerprints. State links validate
+listed predecessor identity, kWh units, battery bounds, successor initial
+state, tolerance, policy, interval, replay, and provenance.
+
+The focused unit selection passed with `49 passed in 2.04s`:
+
+```bash
+uv run pytest \
+  tests/unit/control/test_fcr_rolling_orchestration.py \
+  tests/unit/control/test_fcr_rolling_manifest.py \
+  tests/unit/test_import_contract.py -q
+```
+
+The complete bounded HiGHS selection passed with `12 passed in 85.82s`. It
+includes a repeatable three-day source-rounded arbitrage chain and a native
+full-precision restriction chain that becomes activation-blocked, then starts
+a separately fingerprinted caller-supplied continuity segment. No state link
+bridges that gap.
+
+The combined causal and midnight Feature 012 replay selection passed with
+`6 passed in 105.42s`, within the 120-second focused-command limit. Its
+three-day policies have distinct manifest, day-input, problem, plan,
+state-link, and study identities; every realized successor initial state
+reconciles with its eligible predecessor carry. Nested volatile solver runtime
+metadata remains reportable but is excluded from envelope and study semantic
+fingerprints, so repeated semantic studies compare equal.

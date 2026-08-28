@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import date, timedelta
-from decimal import Decimal, ROUND_HALF_EVEN
 from typing import Any
 
 from .fcr_rolling_backtest import (
@@ -18,6 +17,7 @@ from .fcr_rolling_backtest import (
     RollingFCRValidationError,
     RollingFCRStateLink,
     _fingerprint,
+    derive_rolling_fcr_state_carry,
 )
 from .robust_fcr_bidding import (
     RobustFCRSolveResult,
@@ -45,15 +45,14 @@ class _CausalCutoffEvidence:
     causal_replay_fingerprint: str
     replay_checkpoint_kwh: float
     handed_off_checkpoint_kwh: float
+    state_carry_evidence: object
 
 
-def _source_three_decimal(value: float) -> float:
-    rounded = Decimal(str(value)).quantize(
-        Decimal("0.001"),
-        rounding=ROUND_HALF_EVEN,
-    )
-    result = float(rounded)
-    return 0.0 if result == 0.0 else result
+@dataclass(frozen=True, slots=True)
+class _MidnightReplayEvidence:
+    report: object
+    activation_fingerprint: str
+    state_carry_evidence: object
 
 
 def _causal_activation_fingerprint(trace: object) -> str:
@@ -200,7 +199,11 @@ def _derive_causal_0800_checkpoint(
         raise RollingFCRValidationError(
             "Feature 012 cutoff checkpoint lies outside declared battery bounds"
         )
-    handed_off = _source_three_decimal(checkpoint)
+    carry_evidence = derive_rolling_fcr_state_carry(
+        checkpoint,
+        state_carry_policy="source_three_decimal",
+    )
+    handed_off = carry_evidence.carried_stored_energy_kwh
     if not (
         battery.minimum_stored_energy_kwh
         <= handed_off
@@ -221,6 +224,9 @@ def _derive_causal_0800_checkpoint(
             "initial_stored_energy_kwh": initial_stored_energy_kwh,
             "replay_checkpoint_kwh": checkpoint,
             "handed_off_checkpoint_kwh": handed_off,
+            "state_carry_evidence_fingerprint": (
+                carry_evidence.evidence_fingerprint
+            ),
             "additive_metrics": dict(report.additive_metrics),
             "extrema": dict(report.extrema),
         }
@@ -234,6 +240,7 @@ def _derive_causal_0800_checkpoint(
         causal_replay_fingerprint=causal_replay,
         replay_checkpoint_kwh=checkpoint,
         handed_off_checkpoint_kwh=handed_off,
+        state_carry_evidence=carry_evidence,
     )
 
 
@@ -479,13 +486,16 @@ def _envelope_for_solved_day(
     solved: _SolvedRollingDay,
     *,
     predecessor_date: date | None,
+    continuity_segment_id: str | None = None,
 ) -> DeliveryDateRecordEnvelope:
     return DeliveryDateRecordEnvelope(
         manifest_fingerprint=manifest.manifest_fingerprint,
         profile_fingerprint=manifest.profile.profile_fingerprint,
         classification=solved.day_input.date_classification,
         predecessor_date=predecessor_date,
-        continuity_segment_id=f"{manifest.study_id}-segment-0",
+        continuity_segment_id=(
+            continuity_segment_id or f"{manifest.study_id}-segment-0"
+        ),
         revisions=(solved.original_revision,),
     )
 
@@ -591,7 +601,6 @@ def _cutoff_state_link(
     cutoff: _CausalCutoffEvidence,
 ) -> RollingFCRStateLink:
     carried = cutoff.handed_off_checkpoint_kwh
-    half_unit = 0.0005
     return RollingFCRStateLink(
         predecessor_date=(
             predecessor.day_input.date_classification.delivery_date
@@ -602,7 +611,7 @@ def _cutoff_state_link(
         replay_checkpoint_kwh=cutoff.replay_checkpoint_kwh,
         carried_stored_energy_kwh=carried,
         rounding_policy=manifest.numeric_policy.state_carry_policy,
-        source_interval_kwh=(carried - half_unit, carried + half_unit),
+        source_interval_kwh=cutoff.state_carry_evidence.source_interval_kwh,
         predecessor_plan_fingerprint=predecessor.plan.plan_fingerprint,
         replay_fingerprint=cutoff.causal_replay_fingerprint,
         activation_fingerprint=cutoff.causal_activation_fingerprint,
@@ -616,6 +625,15 @@ def _cutoff_state_link(
             successor_problem.rolling_problem_fingerprint
         ),
         causal_prefix_fingerprint=cutoff.causal_replay_fingerprint,
+        rounding_evidence_fingerprint=(
+            cutoff.state_carry_evidence.evidence_fingerprint
+        ),
+        successor_initial_stored_energy_kwh=(
+            successor_input.battery.initial_stored_energy_kwh
+        ),
+        reconciliation_tolerance_kwh=(
+            manifest.numeric_policy.state_link_tolerance_kwh
+        ),
     )
 
 
@@ -654,6 +672,292 @@ def _combined_realized_metrics(prefix: object, tail: object) -> dict[str, float]
     return values
 
 
+def _build_midnight_problem(
+    manifest: RollingFCRStudyManifest,
+    day_input: RollingFCRDayInput,
+) -> object:
+    if manifest.profile.profile_id == "script-15-restriction-rolling-midnight-v1":
+        return _ordinary_problem(manifest, day_input)
+    if manifest.profile.profile_id != "script-13-arbitrage-only-midnight-v1":
+        raise RollingFCRValidationError(
+            "midnight carry orchestration supports only scripts 13 and 15"
+        )
+    from .robust_fcr_rolling import build_robust_fcr_rolling_problem
+
+    return build_robust_fcr_rolling_problem(
+        problem_id=(
+            f"{manifest.study_id}-{day_input.date_classification.delivery_date}-"
+            "midnight-v1"
+        ),
+        profile=manifest.profile,
+        current_time_contract=day_input.time_contract,
+        battery=day_input.battery,
+        current_prices=day_input.prices,
+        uncertainty=manifest.uncertainty_profile,
+        terminal_rule=manifest.terminal_rule,
+        solve_policy=manifest.solve_policy,
+        information_cutoff_utc=day_input.information_cutoff_utc,
+        producer_input_fingerprints=day_input.producer_input_fingerprints,
+        provenance=day_input.provenance,
+    )
+
+
+def _solve_midnight_problem(
+    manifest: RollingFCRStudyManifest,
+    day_input: RollingFCRDayInput,
+    problem: object,
+) -> _SolvedRollingDay:
+    if manifest.profile.profile_id == "script-15-restriction-rolling-midnight-v1":
+        result = solve_robust_fcr_bid(problem, formulation="restriction")
+        plan = result.deployable_plan
+        classification = manifest.profile.plan_classification
+    else:
+        from .robust_fcr_rolling import solve_robust_fcr_rolling_bid
+
+        result = solve_robust_fcr_rolling_bid(problem)
+        plan = result.plan
+        classification = result.plan_classification
+    return _solved_day_from_result(
+        day_input,
+        problem,
+        result,
+        plan,
+        classification,
+    )
+
+
+def _evaluate_midnight_day(
+    manifest: RollingFCRStudyManifest,
+    solved: _SolvedRollingDay,
+    activation_trace: object,
+) -> _MidnightReplayEvidence:
+    period = solved.plan.energy_schedule.covered_period
+    report = _evaluate_exact_plan_period(
+        manifest,
+        solved,
+        period=period,
+        activation_trace=activation_trace,
+        initial_stored_energy_kwh=(
+            solved.day_input.battery.initial_stored_energy_kwh
+        ),
+        evaluation_suffix="midnight-full-day-v1",
+    )
+    carry = derive_rolling_fcr_state_carry(
+        report.terminal_stored_energy_kwh,
+        state_carry_policy=manifest.numeric_policy.state_carry_policy,
+    )
+    battery = manifest.battery_binding.optimization_battery
+    if not (
+        battery.minimum_stored_energy_kwh
+        <= carry.carried_stored_energy_kwh
+        <= battery.maximum_stored_energy_kwh
+    ):
+        raise RollingFCRValidationError(
+            "midnight carried state lies outside declared battery bounds"
+        )
+    return _MidnightReplayEvidence(
+        report=report,
+        activation_fingerprint=activation_trace.artifact_fingerprint,
+        state_carry_evidence=carry,
+    )
+
+
+def _build_midnight_successor_input(
+    manifest: RollingFCRStudyManifest,
+    base_input: RollingFCRDayInput,
+    predecessor: _SolvedRollingDay,
+    replay: _MidnightReplayEvidence,
+) -> RollingFCRDayInput:
+    if base_input.accepted_fixings is not None or base_input.predecessor_prices is not None:
+        raise RollingFCRValidationError(
+            "midnight carry input must not contain 08:00 predecessor fixings"
+        )
+    carried = replay.state_carry_evidence.carried_stored_energy_kwh
+    battery = replace(
+        base_input.battery,
+        initial_stored_energy_kwh=carried,
+    )
+    successor = replace(
+        base_input,
+        battery=battery,
+        producer_input_fingerprints={
+            **dict(base_input.producer_input_fingerprints),
+            "numeric_policy": manifest.numeric_policy.numeric_policy_fingerprint,
+            "state_carry_evidence": (
+                replay.state_carry_evidence.evidence_fingerprint
+            ),
+        },
+        provenance={
+            **dict(base_input.provenance),
+            "predecessor_delivery_date": (
+                predecessor.day_input.date_classification.delivery_date.isoformat()
+            ),
+            "state_handoff_rule": manifest.numeric_policy.state_carry_policy,
+        },
+    )
+    if (
+        abs(successor.battery.initial_stored_energy_kwh - carried)
+        > manifest.numeric_policy.state_link_tolerance_kwh
+    ):
+        raise RollingFCRValidationError(
+            "successor initial state does not reconcile with midnight carry"
+        )
+    return successor
+
+
+def _midnight_state_link(
+    manifest: RollingFCRStudyManifest,
+    predecessor: _SolvedRollingDay,
+    successor_input: RollingFCRDayInput,
+    successor_problem: object,
+    replay: _MidnightReplayEvidence,
+    *,
+    continuity_segment_id: str,
+) -> RollingFCRStateLink:
+    carry = replay.state_carry_evidence
+    return RollingFCRStateLink(
+        predecessor_date=(
+            predecessor.day_input.date_classification.delivery_date
+        ),
+        successor_date=successor_input.date_classification.delivery_date,
+        handoff_kind="midnight",
+        observation_cutoff_utc=(
+            predecessor.plan.energy_schedule.covered_period.end_utc
+        ),
+        replay_checkpoint_kwh=carry.replay_checkpoint_kwh,
+        carried_stored_energy_kwh=carry.carried_stored_energy_kwh,
+        rounding_policy=carry.state_carry_policy,
+        source_interval_kwh=carry.source_interval_kwh,
+        predecessor_plan_fingerprint=predecessor.plan.plan_fingerprint,
+        replay_fingerprint=replay.report.semantic_fingerprint,
+        activation_fingerprint=replay.activation_fingerprint,
+        continuity_segment_id=continuity_segment_id,
+        reconciles=True,
+        successor_problem_fingerprint=getattr(
+            successor_problem,
+            "problem_fingerprint",
+            getattr(successor_problem, "rolling_problem_fingerprint", None),
+        ),
+        rounding_evidence_fingerprint=carry.evidence_fingerprint,
+        successor_initial_stored_energy_kwh=(
+            successor_input.battery.initial_stored_energy_kwh
+        ),
+        reconciliation_tolerance_kwh=(
+            manifest.numeric_policy.state_link_tolerance_kwh
+        ),
+    )
+
+
+def _caller_successor_input(
+    manifest: RollingFCRStudyManifest,
+    base_input: RollingFCRDayInput,
+    declaration: object,
+) -> RollingFCRDayInput:
+    if declaration.observation_cutoff_utc != base_input.time_contract.delivery_period.start_utc:
+        raise RollingFCRValidationError(
+            "caller-supplied state cutoff must equal the delivery handoff"
+        )
+    battery = replace(
+        base_input.battery,
+        initial_stored_energy_kwh=declaration.stored_energy_kwh,
+    )
+    return replace(
+        base_input,
+        battery=battery,
+        producer_input_fingerprints={
+            **dict(base_input.producer_input_fingerprints),
+            "caller_state": declaration.state_fingerprint,
+            "numeric_policy": manifest.numeric_policy.numeric_policy_fingerprint,
+        },
+        provenance={
+            **dict(base_input.provenance),
+            "continuity_origin": "caller_supplied",
+        },
+    )
+
+
+def _caller_state_link(
+    manifest: RollingFCRStudyManifest,
+    declaration: object,
+    successor_input: RollingFCRDayInput,
+    successor_problem: object,
+    *,
+    continuity_segment_id: str,
+) -> RollingFCRStateLink:
+    value = declaration.stored_energy_kwh
+    return RollingFCRStateLink(
+        predecessor_date=declaration.delivery_date,
+        successor_date=declaration.delivery_date,
+        handoff_kind="caller_supplied",
+        observation_cutoff_utc=declaration.observation_cutoff_utc,
+        replay_checkpoint_kwh=value,
+        carried_stored_energy_kwh=value,
+        rounding_policy="caller_supplied",
+        source_interval_kwh=(value, value),
+        predecessor_plan_fingerprint=None,
+        replay_fingerprint=None,
+        activation_fingerprint=None,
+        continuity_segment_id=continuity_segment_id,
+        reconciles=True,
+        successor_problem_fingerprint=getattr(
+            successor_problem,
+            "problem_fingerprint",
+            getattr(successor_problem, "rolling_problem_fingerprint", None),
+        ),
+        rounding_evidence_fingerprint=declaration.state_fingerprint,
+        successor_initial_stored_energy_kwh=(
+            successor_input.battery.initial_stored_energy_kwh
+        ),
+        reconciliation_tolerance_kwh=(
+            manifest.numeric_policy.state_link_tolerance_kwh
+        ),
+    )
+
+
+def _finalized_midnight_revision(
+    solved: _SolvedRollingDay,
+    replay: _MidnightReplayEvidence,
+    *,
+    revision_number: int,
+    predecessor_revision_fingerprint: str,
+    state_link_fingerprint: str | None,
+) -> RollingFCRDayRevision:
+    fields = _result_fields(solved.result)
+    carry = replay.state_carry_evidence
+    return RollingFCRDayRevision(
+        revision_number=revision_number,
+        revision_kind="finalized",
+        lifecycle_status="finalized",
+        creation_cause="same_day_feature_012_replay_completed",
+        input_fingerprint=solved.day_input.day_input_fingerprint,
+        problem_fingerprint=getattr(
+            solved.problem,
+            "problem_fingerprint",
+            getattr(solved.problem, "rolling_problem_fingerprint", None),
+        ),
+        plan_fingerprint=solved.plan.plan_fingerprint,
+        plan_classification=solved.plan_classification,
+        activation_fingerprint=replay.activation_fingerprint,
+        replay_fingerprint=replay.report.semantic_fingerprint,
+        settlement_fingerprint=_fingerprint(
+            dict(replay.report.settlement_components_eur)
+        ),
+        state_link_fingerprint=state_link_fingerprint,
+        predecessor_revision_fingerprint=predecessor_revision_fingerprint,
+        initial_stored_energy_kwh=replay.report.initial_stored_energy_kwh,
+        realized_terminal_stored_energy_kwh=(
+            replay.report.terminal_stored_energy_kwh
+        ),
+        carried_stored_energy_kwh=carry.carried_stored_energy_kwh,
+        realized_metrics=_flatten_realized_metrics(replay.report),
+        diagnostics=(
+            f"state_carry_policy:{carry.state_carry_policy}",
+            "successor_state_uses_realized_not_modeled_terminal",
+        ),
+        **fields,
+    )
+
+
 def _failure_envelope(
     manifest: RollingFCRStudyManifest,
     classification: object,
@@ -661,6 +965,7 @@ def _failure_envelope(
     predecessor_date: date | None,
     lifecycle_status: str,
     reason: str,
+    continuity_segment_id: str | None = None,
 ) -> DeliveryDateRecordEnvelope:
     revision = RollingFCRDayRevision(
         revision_number=0,
@@ -689,7 +994,9 @@ def _failure_envelope(
         profile_fingerprint=manifest.profile.profile_fingerprint,
         classification=classification,
         predecessor_date=predecessor_date,
-        continuity_segment_id=f"{manifest.study_id}-segment-0",
+        continuity_segment_id=(
+            continuity_segment_id or f"{manifest.study_id}-segment-0"
+        ),
         revisions=(revision,),
     )
 
@@ -1197,6 +1504,294 @@ def _run_causal_0800_study(
     )
 
 
+def _run_midnight_carry_study(
+    manifest: RollingFCRStudyManifest,
+    day_inputs: tuple[RollingFCRDayInput, ...],
+    *,
+    activation_traces: Mapping[date, object] | None,
+) -> RollingFCRStudyResult:
+    """Run realized Feature 012 midnight carry with explicit continuity."""
+
+    by_date = {item.date_classification.delivery_date: item for item in day_inputs}
+    if len(by_date) != len(day_inputs):
+        raise RollingFCRValidationError("day_inputs must identify unique dates")
+    traces = {} if activation_traces is None else activation_traces
+    if not isinstance(traces, Mapping):
+        raise RollingFCRValidationError("activation_traces must be a date mapping")
+    declarations = {
+        item.delivery_date: item for item in manifest.caller_state_declarations
+    }
+    records: dict[date, DeliveryDateRecordEnvelope] = {}
+    state_links: list[RollingFCRStateLink] = []
+    segment_members: dict[str, list[date]] = {
+        f"{manifest.study_id}-segment-0": []
+    }
+    segment_reasons: dict[str, tuple[str, str | None]] = {
+        f"{manifest.study_id}-segment-0": ("manifest_start", None)
+    }
+    active_segment = f"{manifest.study_id}-segment-0"
+    pending_solved: _SolvedRollingDay | None = None
+    pending_replay: _MidnightReplayEvidence | None = None
+    blocked = False
+
+    for index, classification in enumerate(manifest.dates):
+        delivery_date = classification.delivery_date
+        predecessor_date = manifest.listed_predecessor_date(delivery_date)
+        declaration = declarations.get(delivery_date)
+        if classification.execution_role == "excluded":
+            records[delivery_date] = _failure_envelope(
+                manifest,
+                classification,
+                predecessor_date=predecessor_date,
+                lifecycle_status="excluded",
+                reason="date_excluded_by_manifest",
+                continuity_segment_id=active_segment,
+            )
+            blocked = True
+            pending_solved = None
+            pending_replay = None
+            continue
+        base_input = by_date.get(delivery_date)
+        if base_input is None:
+            records[delivery_date] = _failure_envelope(
+                manifest,
+                classification,
+                predecessor_date=predecessor_date,
+                lifecycle_status="failed" if index == 0 else "blocked_by_predecessor",
+                reason="required_day_input_unavailable",
+                continuity_segment_id=active_segment,
+            )
+            blocked = True
+            pending_solved = None
+            pending_replay = None
+            continue
+        if blocked and declaration is None:
+            records[delivery_date] = _failure_envelope(
+                manifest,
+                classification,
+                predecessor_date=predecessor_date,
+                lifecycle_status="blocked_by_predecessor",
+                reason="valid_realized_midnight_predecessor_unavailable",
+                continuity_segment_id=active_segment,
+            )
+            continue
+
+        incoming_link: RollingFCRStateLink | None = None
+        incoming_predecessor_revision: str | None = None
+        try:
+            if pending_solved is not None and pending_replay is not None:
+                if declaration is not None:
+                    raise RollingFCRValidationError(
+                        "caller state cannot override a valid physical predecessor"
+                    )
+                successor_input = _build_midnight_successor_input(
+                    manifest,
+                    base_input,
+                    pending_solved,
+                    pending_replay,
+                )
+                problem = _build_midnight_problem(manifest, successor_input)
+                incoming_link = _midnight_state_link(
+                    manifest,
+                    pending_solved,
+                    successor_input,
+                    problem,
+                    pending_replay,
+                    continuity_segment_id=active_segment,
+                )
+                state_links.append(incoming_link)
+                predecessor_delivery_date = (
+                    pending_solved.day_input.date_classification.delivery_date
+                )
+                predecessor_envelope = records[predecessor_delivery_date]
+                finalized = _finalized_midnight_revision(
+                    pending_solved,
+                    pending_replay,
+                    revision_number=len(predecessor_envelope.revisions),
+                    predecessor_revision_fingerprint=(
+                        predecessor_envelope.latest_revision.revision_fingerprint
+                    ),
+                    state_link_fingerprint=incoming_link.state_link_fingerprint,
+                )
+                records[predecessor_delivery_date] = _append_revision(
+                    predecessor_envelope,
+                    finalized,
+                )
+                incoming_predecessor_revision = finalized.revision_fingerprint
+            elif declaration is not None:
+                active_segment = f"{manifest.study_id}-segment-{len(segment_members)}"
+                segment_members[active_segment] = []
+                segment_reasons[active_segment] = (
+                    "caller_supplied",
+                    declaration.state_fingerprint,
+                )
+                successor_input = _caller_successor_input(
+                    manifest,
+                    base_input,
+                    declaration,
+                )
+                problem = _build_midnight_problem(manifest, successor_input)
+                incoming_link = _caller_state_link(
+                    manifest,
+                    declaration,
+                    successor_input,
+                    problem,
+                    continuity_segment_id=active_segment,
+                )
+                state_links.append(incoming_link)
+                blocked = False
+            elif index == 0:
+                successor_input = replace(
+                    base_input,
+                    producer_input_fingerprints={
+                        **dict(base_input.producer_input_fingerprints),
+                        "numeric_policy": (
+                            manifest.numeric_policy.numeric_policy_fingerprint
+                        ),
+                    },
+                )
+                expected_initial = (
+                    manifest.battery_binding.optimization_battery.initial_stored_energy_kwh
+                )
+                if (
+                    abs(
+                        successor_input.battery.initial_stored_energy_kwh
+                        - expected_initial
+                    )
+                    > manifest.numeric_policy.state_link_tolerance_kwh
+                ):
+                    raise RollingFCRValidationError(
+                        "first midnight state does not match the manifest battery"
+                    )
+                problem = _build_midnight_problem(manifest, successor_input)
+            else:
+                raise RollingFCRValidationError(
+                    "coupled midnight successor lacks an eligible state"
+                )
+
+            solved = _solve_midnight_problem(
+                manifest,
+                successor_input,
+                problem,
+            )
+            if incoming_link is not None:
+                original = replace(
+                    solved.original_revision,
+                    state_link_fingerprint=incoming_link.state_link_fingerprint,
+                    predecessor_revision_fingerprint=(
+                        incoming_predecessor_revision
+                    ),
+                )
+                solved = replace(solved, original_revision=original)
+            if solved.plan is None or solved.result.solver.solve_status not in {
+                "optimal",
+                "feasible",
+            }:
+                raise RollingFCRValidationError(
+                    "midnight solve produced no accepted audited plan"
+                )
+            records[delivery_date] = _envelope_for_solved_day(
+                manifest,
+                solved,
+                predecessor_date=predecessor_date,
+                continuity_segment_id=active_segment,
+            )
+            segment_members[active_segment].append(delivery_date)
+            trace = traces.get(delivery_date)
+            if trace is None:
+                pending_solved = None
+                pending_replay = None
+                blocked = True
+                continue
+            replay = _evaluate_midnight_day(manifest, solved, trace)
+            is_last = index == len(manifest.dates) - 1
+            if is_last:
+                envelope = records[delivery_date]
+                records[delivery_date] = _append_revision(
+                    envelope,
+                    _finalized_midnight_revision(
+                        solved,
+                        replay,
+                        revision_number=len(envelope.revisions),
+                        predecessor_revision_fingerprint=(
+                            envelope.latest_revision.revision_fingerprint
+                        ),
+                        state_link_fingerprint=None,
+                    ),
+                )
+                pending_solved = None
+                pending_replay = None
+            else:
+                pending_solved = solved
+                pending_replay = replay
+            blocked = False
+        except Exception as exc:
+            records[delivery_date] = _failure_envelope(
+                manifest,
+                classification,
+                predecessor_date=predecessor_date,
+                lifecycle_status="failed",
+                reason=f"midnight_carry_failed:{type(exc).__name__}:{exc}",
+                continuity_segment_id=active_segment,
+            )
+            blocked = True
+            pending_solved = None
+            pending_replay = None
+
+    if pending_solved is not None and pending_replay is not None:
+        delivery_date = pending_solved.day_input.date_classification.delivery_date
+        envelope = records[delivery_date]
+        records[delivery_date] = _append_revision(
+            envelope,
+            _finalized_midnight_revision(
+                pending_solved,
+                pending_replay,
+                revision_number=len(envelope.revisions),
+                predecessor_revision_fingerprint=(
+                    envelope.latest_revision.revision_fingerprint
+                ),
+                state_link_fingerprint=None,
+            ),
+        )
+    ordered_records = tuple(records[item.delivery_date] for item in manifest.dates)
+    continuity_segments = tuple(
+        ContinuitySegment(
+            segment_id=segment_id,
+            start_date=members[0],
+            end_date=members[-1],
+            start_reason=segment_reasons[segment_id][0],
+            source_state_fingerprint=segment_reasons[segment_id][1],
+        )
+        for segment_id, members in segment_members.items()
+        if members
+    )
+    statuses = tuple(item.latest_revision.lifecycle_status for item in ordered_records)
+    completeness = (
+        "failed"
+        if any(item == "failed" for item in statuses)
+        else "partial"
+        if any(
+            item in {"blocked_by_predecessor", "optimization_only"}
+            for item in statuses
+        )
+        else "complete"
+    )
+    return RollingFCRStudyResult(
+        manifest_fingerprint=manifest.manifest_fingerprint,
+        profile_fingerprint=manifest.profile.profile_fingerprint,
+        records=ordered_records,
+        continuity_segments=continuity_segments,
+        state_links=tuple(state_links),
+        aggregate_metrics=(),
+        completeness_status=completeness,
+        runtime_metadata={
+            "phase": "realized-midnight-carry-v1",
+            "state_carry_policy": manifest.numeric_policy.state_carry_policy,
+            "bidder_received_activation": False,
+        },
+    )
+
+
 def run_initial_rolling_fcr_study(
     manifest: RollingFCRStudyManifest,
     day_inputs: tuple[RollingFCRDayInput, ...],
@@ -1214,6 +1809,12 @@ def run_initial_rolling_fcr_study(
         )
     if manifest.profile.state_mode == "rolling_0800":
         return _run_causal_0800_study(
+            manifest,
+            day_inputs,
+            activation_traces=activation_traces,
+        )
+    if manifest.profile.state_mode == "midnight_carry":
+        return _run_midnight_carry_study(
             manifest,
             day_inputs,
             activation_traces=activation_traces,

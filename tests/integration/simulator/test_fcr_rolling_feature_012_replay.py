@@ -77,6 +77,8 @@ def test_two_traces_equal_through_0800_produce_identical_successor_bids(
     events: list[str] = []
     delegated_solve = rolling_solver.solve_robust_fcr_rolling_bid
     delegated_tail = orchestrator._tail_trace_for_solved_day
+    delegated_bootstrap = orchestrator._solve_day
+    cached_bootstrap = []
 
     def recording_solve(problem):
         events.append("successor_solve")
@@ -88,6 +90,14 @@ def test_two_traces_equal_through_0800_produce_identical_successor_bids(
         events.append("post_solve_tail_replay")
         return delegated_tail(*args, **kwargs)
 
+    def cached_bootstrap_solve(*args, **kwargs):
+        if kwargs.get("first_executed") and cached_bootstrap:
+            return cached_bootstrap[0]
+        result = delegated_bootstrap(*args, **kwargs)
+        if kwargs.get("first_executed"):
+            cached_bootstrap.append(result)
+        return result
+
     monkeypatch.setattr(
         rolling_solver,
         "solve_robust_fcr_rolling_bid",
@@ -97,6 +107,11 @@ def test_two_traces_equal_through_0800_produce_identical_successor_bids(
         orchestrator,
         "_tail_trace_for_solved_day",
         guarded_tail,
+    )
+    monkeypatch.setattr(
+        orchestrator,
+        "_solve_day",
+        cached_bootstrap_solve,
     )
     manifest = _bounded_manifest(2)
     inputs = tuple(
@@ -202,11 +217,48 @@ def test_prefix_checkpoint_uses_feature_012_saturation_and_rejects_invalid_initi
         )
 
 
-def test_missing_prefix_retains_optimization_and_blocks_successor() -> None:
+def test_missing_prefix_retains_optimization_and_blocks_successor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import open_energy_lab.control._fcr_rolling_orchestrator as orchestrator
+
     manifest = _bounded_manifest(2)
     inputs = tuple(
         _zero_input(manifest, item.delivery_date) for item in manifest.dates
     )
+    bootstrap_input = inputs[0]
+    plan = build_authored_fixed_plan(bootstrap_input.date_classification.delivery_date)
+    fake_problem = SimpleNamespace(problem_fingerprint="4" * 64)
+    fake_solver = SimpleNamespace(
+        solve_status="optimal",
+        termination_status="optimal",
+        objective_value_eur=0.0,
+        best_upper_bound_eur=0.0,
+        absolute_gap_eur=0.0,
+        relative_gap=0.0,
+    )
+    fake_decisions = SimpleNamespace(
+        energy_baseline_charge_positive_kw=(0.0,) * 24,
+        fcr_capacity_kw=(0.0,) * 6,
+    )
+    fake_audit = SimpleNamespace(
+        audit_fingerprint="5" * 64,
+        modeled_slacks={},
+    )
+    fake_result = SimpleNamespace(
+        solver=fake_solver,
+        decisions=fake_decisions,
+        semantic_result_fingerprint="6" * 64,
+        feasibility_audit=fake_audit,
+        runtime_metadata={},
+        diagnostics=(),
+    )
+
+    def fake_bootstrap(*args, **kwargs):
+        assert kwargs["first_executed"] is True
+        return fake_problem, fake_result, plan, "robust_candidate"
+
+    monkeypatch.setattr(orchestrator, "_solve_day", fake_bootstrap)
 
     result = run_rolling_fcr_study(manifest, inputs, activation_traces={})
 
@@ -268,3 +320,78 @@ def test_four_date_chain_retains_original_provisional_finalized_and_edges() -> N
         result.finalized_parity_exclusions["2023-06-20"]
     )
     assert result.completeness_status == "partial"
+
+
+def test_three_day_midnight_chains_separate_source_rounding_and_native_precision() -> None:
+    source_manifest_full = build_authored_manifest(
+        "script-13-arbitrage-only-midnight-v1",
+        state_carry_policy="source_three_decimal",
+    )
+    native_manifest_full = build_authored_manifest(
+        "script-15-restriction-rolling-midnight-v1",
+        state_carry_policy="native_full_precision",
+    )
+    source_manifest = replace(
+        source_manifest_full,
+        dates=source_manifest_full.dates[:3],
+    )
+    native_manifest = replace(
+        native_manifest_full,
+        dates=native_manifest_full.dates[:3],
+    )
+
+    def run(manifest):
+        inputs = tuple(
+            _zero_input(manifest, item.delivery_date) for item in manifest.dates
+        )
+        traces = {
+            item.delivery_date: build_authored_activation_trace(item.delivery_date)
+            for item in manifest.dates
+        }
+        return run_rolling_fcr_study(
+            manifest,
+            inputs,
+            activation_traces=traces,
+        )
+
+    source = run(source_manifest)
+    native = run(native_manifest)
+
+    assert source.completeness_status == native.completeness_status == "complete"
+    assert tuple(item.latest_revision.lifecycle_status for item in source.records) == (
+        "finalized",
+        "finalized",
+        "finalized",
+    )
+    assert len(source.state_links) == len(native.state_links) == 2
+    assert {item.rounding_policy for item in source.state_links} == {
+        "source_three_decimal"
+    }
+    assert {item.rounding_policy for item in native.state_links} == {
+        "native_full_precision"
+    }
+    assert all(
+        item.successor_initial_stored_energy_kwh
+        == item.carried_stored_energy_kwh
+        for item in (*source.state_links, *native.state_links)
+    )
+    assert all(
+        item.source_interval_kwh
+        == (item.replay_checkpoint_kwh, item.replay_checkpoint_kwh)
+        for item in native.state_links
+    )
+    assert all(
+        revision.latest_revision.realized_terminal_stored_energy_kwh is not None
+        and revision.latest_revision.modeled_terminal_stored_energy_kwh is None
+        for revision in (*source.records, *native.records)
+    )
+    assert tuple(item.revisions[0].problem_fingerprint for item in source.records) != (
+        tuple(item.revisions[0].problem_fingerprint for item in native.records)
+    )
+    assert tuple(item.revisions[0].plan_fingerprint for item in source.records) != (
+        tuple(item.revisions[0].plan_fingerprint for item in native.records)
+    )
+    assert tuple(item.state_link_fingerprint for item in source.state_links) != (
+        tuple(item.state_link_fingerprint for item in native.state_links)
+    )
+    assert source.semantic_fingerprint != native.semantic_fingerprint

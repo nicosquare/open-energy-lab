@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import UTC, datetime
 import math
 
 import pytest
 
 from open_energy_lab.control import (
     RobustFCRAcceptedDecisionFixings,
+    RollingFCRStateLink,
     RollingFCRValidationError,
+    derive_rolling_fcr_state_carry,
     extract_accepted_predecessor_fixings,
 )
 from open_energy_lab.control._robust_fcr_formulation import (
@@ -21,6 +24,7 @@ from open_energy_lab.control._robust_fcr_formulation import (
 from tests.fcr_rolling_case_utils import (
     AUTHORED_DELIVERY_DATES,
     build_authored_accepted_fixings,
+    build_authored_caller_state,
     build_authored_day_input,
     build_authored_fixed_plan,
     build_authored_manifest,
@@ -239,3 +243,126 @@ def test_terminal_constraint_uses_current_day_end_for_no_fcr_and_full_frame_for_
     assert no_fcr_terminal.upper is not None
     assert overlap_terminal.upper is not None
     assert math.isfinite(float(pyo.value(overlap_terminal.upper)))
+
+
+@pytest.mark.parametrize(
+    ("checkpoint", "expected"),
+    (
+        (1.2345, 1.234),
+        (1.2355, 1.236),
+        (0.0004, 0.0),
+        (19.9996, 20.0),
+    ),
+)
+def test_source_state_carry_uses_decimal_string_half_even_oracles(
+    checkpoint: float,
+    expected: float,
+) -> None:
+    evidence = derive_rolling_fcr_state_carry(
+        checkpoint,
+        state_carry_policy="source_three_decimal",
+    )
+
+    assert evidence.carried_stored_energy_kwh == expected
+    assert evidence.source_interval_kwh[0] <= checkpoint
+    assert evidence.source_interval_kwh[1] >= checkpoint
+    assert evidence.carried_decimal_text.count(".") == 1
+    assert len(evidence.carried_decimal_text.split(".")[1]) == 3
+
+
+def test_source_interval_is_closed_at_midpoint_and_signed_zero_is_normalized() -> None:
+    midpoint = derive_rolling_fcr_state_carry(
+        1.2345,
+        state_carry_policy="source_three_decimal",
+    )
+    signed_zero = derive_rolling_fcr_state_carry(
+        -0.0004,
+        state_carry_policy="source_three_decimal",
+    )
+
+    assert midpoint.source_interval_kwh == pytest.approx((1.2335, 1.2345))
+    assert midpoint.source_interval_kwh[1] == pytest.approx(1.2345)
+    assert signed_zero.carried_stored_energy_kwh == 0.0
+    assert math.copysign(1.0, signed_zero.carried_stored_energy_kwh) == 1.0
+    assert signed_zero.carried_decimal_text == "0.000"
+    assert signed_zero.signed_zero_normalized is True
+
+
+def test_native_state_carry_is_full_precision_identity_with_distinct_evidence() -> None:
+    checkpoint = 10.1234567890123
+    source = derive_rolling_fcr_state_carry(
+        checkpoint,
+        state_carry_policy="source_three_decimal",
+    )
+    native = derive_rolling_fcr_state_carry(
+        checkpoint,
+        state_carry_policy="native_full_precision",
+    )
+
+    assert native.carried_stored_energy_kwh == checkpoint
+    assert native.source_interval_kwh == (checkpoint, checkpoint)
+    assert native.rounding_applied is False
+    assert source.evidence_fingerprint != native.evidence_fingerprint
+    with pytest.raises(RollingFCRValidationError, match="closed source interval"):
+        replace(source, source_interval_kwh=(1.0, 1.1))
+
+
+def test_midnight_state_link_rejects_identity_unit_and_initial_mismatches() -> None:
+    carry = derive_rolling_fcr_state_carry(
+        10.1234,
+        state_carry_policy="source_three_decimal",
+    )
+    link = RollingFCRStateLink(
+        predecessor_date=AUTHORED_DELIVERY_DATES[0],
+        successor_date=AUTHORED_DELIVERY_DATES[1],
+        handoff_kind="midnight",
+        observation_cutoff_utc=datetime(2023, 6, 18, tzinfo=UTC),
+        replay_checkpoint_kwh=carry.replay_checkpoint_kwh,
+        carried_stored_energy_kwh=carry.carried_stored_energy_kwh,
+        rounding_policy=carry.state_carry_policy,
+        source_interval_kwh=carry.source_interval_kwh,
+        predecessor_plan_fingerprint="1" * 64,
+        replay_fingerprint="2" * 64,
+        activation_fingerprint="3" * 64,
+        continuity_segment_id="feature-015-segment-0",
+        reconciles=True,
+        rounding_evidence_fingerprint=carry.evidence_fingerprint,
+        successor_initial_stored_energy_kwh=carry.carried_stored_energy_kwh,
+        reconciliation_tolerance_kwh=1e-7,
+    )
+
+    assert link.unit == "kWh"
+    assert link.reconciles is True
+    with pytest.raises(RollingFCRValidationError, match="successor must follow"):
+        replace(link, successor_date=AUTHORED_DELIVERY_DATES[0])
+    with pytest.raises(RollingFCRValidationError, match="kWh units"):
+        replace(link, unit="MWh")
+    with pytest.raises(RollingFCRValidationError, match="reconciliation flag"):
+        replace(link, successor_initial_stored_energy_kwh=10.2)
+
+
+def test_caller_restart_is_fingerprinted_and_cannot_escape_battery_bounds() -> None:
+    declaration = build_authored_caller_state(
+        AUTHORED_DELIVERY_DATES[2],
+        stored_energy_kwh=9.875,
+    )
+    manifest = build_authored_manifest(
+        "script-15-restriction-rolling-midnight-v1",
+        caller_state_declarations=(declaration,),
+    )
+
+    assert manifest.caller_state_declarations == (declaration,)
+    assert declaration.unit == "kWh"
+    assert declaration.state_fingerprint in str(manifest.to_dict())
+    with pytest.raises(RollingFCRValidationError, match="unit must be kWh"):
+        replace(declaration, unit="MWh")
+    with pytest.raises(RollingFCRValidationError, match="battery bounds"):
+        build_authored_manifest(
+            "script-15-restriction-rolling-midnight-v1",
+            caller_state_declarations=(
+                build_authored_caller_state(
+                    AUTHORED_DELIVERY_DATES[2],
+                    stored_energy_kwh=21.0,
+                ),
+            ),
+        )

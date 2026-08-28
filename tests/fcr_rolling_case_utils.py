@@ -366,6 +366,7 @@ def build_authored_manifest(
     *,
     state_carry_policy: str = "source_three_decimal",
     solve_policy: Any | None = None,
+    caller_state_declarations: Sequence[Any] = (),
 ) -> Any:
     from open_energy_lab.control import (
         AGGREGATION_POLICY,
@@ -404,12 +405,43 @@ def build_authored_manifest(
         ),
         aggregation_policy=AGGREGATION_POLICY,
         resume_policy=RESUME_POLICY,
+        caller_state_declarations=tuple(caller_state_declarations),
         reference_lineage={
             "reference_revision": (
                 "7e44738bb30e5c8204efe40103b9be4c2203685c"
             ),
             "fixture_status": "not_required_for_authored_case",
         },
+    )
+
+
+def build_authored_caller_state(
+    delivery_date: date,
+    *,
+    stored_energy_kwh: float = 10.0,
+) -> Any:
+    """Build an explicit kWh restart state at one delivery handoff."""
+
+    from open_energy_lab.control import CallerSuppliedRollingState
+
+    cutoff = build_authored_time_contract(delivery_date).delivery_period.start_utc
+    source_fingerprint = fingerprint(
+        {
+            "delivery_date": delivery_date.isoformat(),
+            "stored_energy_kwh": stored_energy_kwh,
+            "cutoff": cutoff.isoformat(),
+        }
+    )
+    return CallerSuppliedRollingState(
+        delivery_date=delivery_date,
+        stored_energy_kwh=stored_energy_kwh,
+        observation_cutoff_utc=cutoff,
+        provenance={
+            "kind": "authored_explicit_restart",
+            "reason": "test_continuity_segment",
+        },
+        source_fingerprint=source_fingerprint,
+        unit="kWh",
     )
 
 
@@ -444,6 +476,7 @@ def build_authored_day_input(manifest: Any, delivery_date: date) -> Any:
             "uncertainty_profile": (
                 manifest.uncertainty_profile.uncertainty_profile_fingerprint
             ),
+            "numeric_policy": manifest.numeric_policy.numeric_policy_fingerprint,
         },
         provenance={
             "source_kind": "project_authored",
@@ -772,6 +805,7 @@ __all__ = [
     "build_authored_0800_day_input",
     "build_authored_battery",
     "build_authored_battery_binding",
+    "build_authored_caller_state",
     "build_authored_data_descriptor",
     "build_authored_day_input",
     "build_authored_fixed_plan",

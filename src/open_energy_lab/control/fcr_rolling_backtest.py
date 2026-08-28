@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
+from decimal import Decimal, ROUND_HALF_EVEN
 import math
 import re
 from types import MappingProxyType
@@ -39,6 +40,7 @@ ROLLING_FCR_BATTERY_BINDING_VERSION = "oel.fcr-rolling-battery-binding.v1"
 ROLLING_FCR_DAY_INPUT_VERSION = "oel.fcr-rolling-day-input.v1"
 ROLLING_FCR_STUDY_RESULT_VERSION = "oel.fcr-rolling-study-result.v1"
 ROLLING_FCR_PROFILE_VERSION = "oel.fcr-rolling-experiment-profile.v1"
+ROLLING_FCR_STATE_CARRY_EVIDENCE_VERSION = "oel.fcr-state-carry-evidence.v1"
 
 SOURCE_REFERENCE_REVISION = "7e44738bb30e5c8204efe40103b9be4c2203685c"
 FAILURE_POLICY_INDEPENDENT = "independent-days-continue-after-failure-v1"
@@ -446,6 +448,173 @@ class RollingFCRNumericPolicy:
 
 
 @dataclass(frozen=True, slots=True)
+class RollingFCRStateCarryEvidence:
+    """Deterministic full-precision or source-rounded state handoff."""
+
+    replay_checkpoint_kwh: float
+    carried_stored_energy_kwh: float
+    state_carry_policy: str
+    decimal_input_text: str
+    carried_decimal_text: str
+    source_interval_kwh: tuple[float, float]
+    rounding_applied: bool
+    signed_zero_normalized: bool
+    semantics_version: str = ROLLING_FCR_STATE_CARRY_EVIDENCE_VERSION
+    evidence_fingerprint: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        checkpoint = _finite(
+            self.replay_checkpoint_kwh,
+            field_name="replay_checkpoint_kwh",
+        )
+        carried = _finite(
+            self.carried_stored_energy_kwh,
+            field_name="carried_stored_energy_kwh",
+        )
+        if self.state_carry_policy not in {
+            "source_three_decimal",
+            "native_full_precision",
+        }:
+            raise RollingFCRValidationError("unsupported state-carry evidence policy")
+        if self.semantics_version != ROLLING_FCR_STATE_CARRY_EVIDENCE_VERSION:
+            raise RollingFCRValidationError("unsupported state-carry evidence version")
+        decimal_input = _non_empty(
+            self.decimal_input_text,
+            field_name="decimal_input_text",
+        )
+        carried_decimal = _non_empty(
+            self.carried_decimal_text,
+            field_name="carried_decimal_text",
+        )
+        try:
+            parsed_input = Decimal(decimal_input)
+            parsed_carried = Decimal(carried_decimal)
+        except Exception as exc:
+            raise RollingFCRValidationError(
+                "state-carry decimal evidence is malformed"
+            ) from exc
+        if parsed_input != Decimal(str(checkpoint)):
+            raise RollingFCRValidationError(
+                "decimal input evidence does not match the replay checkpoint"
+            )
+        if float(parsed_carried) != carried:
+            raise RollingFCRValidationError(
+                "carried decimal evidence does not match the carried state"
+            )
+        interval = tuple(
+            _finite(value, field_name="source_interval_kwh")
+            for value in self.source_interval_kwh
+        )
+        if len(interval) != 2 or interval[0] > interval[1]:
+            raise RollingFCRValidationError(
+                "state-carry source interval must contain two ordered endpoints"
+            )
+        if not interval[0] <= checkpoint <= interval[1]:
+            raise RollingFCRValidationError(
+                "closed source interval must contain the replay checkpoint"
+            )
+        if not interval[0] <= carried <= interval[1]:
+            raise RollingFCRValidationError(
+                "closed source interval must contain the carried state"
+            )
+        if self.state_carry_policy == "native_full_precision":
+            if carried != checkpoint or interval != (checkpoint, checkpoint):
+                raise RollingFCRValidationError(
+                    "native full-precision evidence must preserve the checkpoint exactly"
+                )
+            if self.rounding_applied:
+                raise RollingFCRValidationError(
+                    "native full-precision evidence cannot report rounding"
+                )
+        else:
+            if not self.rounding_applied:
+                raise RollingFCRValidationError(
+                    "source-three-decimal evidence must report rounding"
+                )
+            if parsed_carried.as_tuple().exponent != -3:
+                raise RollingFCRValidationError(
+                    "source carried decimal evidence must retain three places"
+                )
+        if not isinstance(self.signed_zero_normalized, bool):
+            raise RollingFCRValidationError(
+                "signed_zero_normalized must be boolean"
+            )
+        object.__setattr__(self, "replay_checkpoint_kwh", checkpoint)
+        object.__setattr__(self, "carried_stored_energy_kwh", carried)
+        object.__setattr__(self, "decimal_input_text", decimal_input)
+        object.__setattr__(self, "carried_decimal_text", carried_decimal)
+        object.__setattr__(self, "source_interval_kwh", interval)
+        object.__setattr__(self, "evidence_fingerprint", _fingerprint(self._payload()))
+
+    def _payload(self) -> dict[str, object]:
+        return {
+            "semantics_version": self.semantics_version,
+            "replay_checkpoint_kwh": self.replay_checkpoint_kwh,
+            "carried_stored_energy_kwh": self.carried_stored_energy_kwh,
+            "state_carry_policy": self.state_carry_policy,
+            "decimal_input_text": self.decimal_input_text,
+            "carried_decimal_text": self.carried_decimal_text,
+            "source_interval_kwh": list(self.source_interval_kwh),
+            "interval_closure": "closed",
+            "rounding_mode": "ROUND_HALF_EVEN",
+            "rounding_applied": self.rounding_applied,
+            "signed_zero_normalized": self.signed_zero_normalized,
+            "unit": "kWh",
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return {**self._payload(), "evidence_fingerprint": self.evidence_fingerprint}
+
+
+def derive_rolling_fcr_state_carry(
+    replay_checkpoint_kwh: float,
+    *,
+    state_carry_policy: str,
+) -> RollingFCRStateCarryEvidence:
+    """Apply the declared midnight/08:00 carry policy from Decimal(str(x))."""
+
+    checkpoint = _finite(
+        replay_checkpoint_kwh,
+        field_name="replay_checkpoint_kwh",
+    )
+    decimal_input = Decimal(str(checkpoint))
+    if state_carry_policy == "native_full_precision":
+        return RollingFCRStateCarryEvidence(
+            replay_checkpoint_kwh=checkpoint,
+            carried_stored_energy_kwh=checkpoint,
+            state_carry_policy=state_carry_policy,
+            decimal_input_text=str(decimal_input),
+            carried_decimal_text=str(decimal_input),
+            source_interval_kwh=(checkpoint, checkpoint),
+            rounding_applied=False,
+            signed_zero_normalized=False,
+        )
+    if state_carry_policy != "source_three_decimal":
+        raise RollingFCRValidationError("unsupported state-carry policy")
+    quantized = decimal_input.quantize(
+        Decimal("0.001"),
+        rounding=ROUND_HALF_EVEN,
+    )
+    signed_zero = quantized.is_zero() and quantized.is_signed()
+    if quantized.is_zero():
+        quantized = Decimal("0.000")
+    carried = float(quantized)
+    half_unit = Decimal("0.0005")
+    lower = float(quantized - half_unit)
+    upper = float(quantized + half_unit)
+    return RollingFCRStateCarryEvidence(
+        replay_checkpoint_kwh=checkpoint,
+        carried_stored_energy_kwh=carried,
+        state_carry_policy=state_carry_policy,
+        decimal_input_text=str(decimal_input),
+        carried_decimal_text=format(quantized, ".3f"),
+        source_interval_kwh=(lower, upper),
+        rounding_applied=True,
+        signed_zero_normalized=signed_zero,
+    )
+
+
+@dataclass(frozen=True, slots=True)
 class RollingFCRBatteryBinding:
     optimization_battery: RobustFCRBatteryParameters
     capacity_kwh: float
@@ -694,6 +863,7 @@ class CallerSuppliedRollingState:
     observation_cutoff_utc: datetime
     provenance: Mapping[str, object]
     source_fingerprint: str
+    unit: str = "kWh"
     state_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
@@ -702,6 +872,8 @@ class CallerSuppliedRollingState:
         object.__setattr__(self, "stored_energy_kwh", _finite(self.stored_energy_kwh, field_name="stored_energy_kwh"))
         object.__setattr__(self, "observation_cutoff_utc", _utc(self.observation_cutoff_utc, field_name="observation_cutoff_utc"))
         object.__setattr__(self, "source_fingerprint", _sha(self.source_fingerprint, field_name="source_fingerprint"))
+        if self.unit != "kWh":
+            raise RollingFCRValidationError("caller-supplied state unit must be kWh")
         provenance = _freeze_mapping(self.provenance, field_name="provenance")
         object.__setattr__(self, "provenance", provenance)
         object.__setattr__(self, "state_fingerprint", _fingerprint(self._payload()))
@@ -713,6 +885,7 @@ class CallerSuppliedRollingState:
             "observation_cutoff_utc": _utc_text(self.observation_cutoff_utc),
             "provenance": _thaw(self.provenance),
             "source_fingerprint": self.source_fingerprint,
+            "unit": self.unit,
         }
 
     def to_dict(self) -> dict[str, object]:
@@ -811,6 +984,16 @@ class RollingFCRStudyManifest:
         caller_dates = tuple(item.delivery_date for item in caller_states)
         if len(set(caller_dates)) != len(caller_dates) or any(item not in ordered for item in caller_dates):
             raise RollingFCRValidationError("caller states must identify unique manifest dates")
+        for item in caller_states:
+            battery = self.battery_binding.optimization_battery
+            if not (
+                battery.minimum_stored_energy_kwh
+                <= item.stored_energy_kwh
+                <= battery.maximum_stored_energy_kwh
+            ):
+                raise RollingFCRValidationError(
+                    "caller-supplied state lies outside the battery bounds"
+                )
         lineage = _freeze_mapping(self.reference_lineage or {}, field_name="reference_lineage")
         if lineage and lineage.get("reference_revision") != SOURCE_REFERENCE_REVISION:
             raise RollingFCRValidationError("reference lineage revision does not match the pinned source")
@@ -1022,6 +1205,11 @@ class RollingFCRStateLink:
     accepted_fixings_fingerprint: str | None = None
     successor_problem_fingerprint: str | None = None
     causal_prefix_fingerprint: str | None = None
+    rounding_evidence_fingerprint: str | None = None
+    successor_initial_stored_energy_kwh: float | None = None
+    modeled_terminal_stored_energy_kwh: float | None = None
+    reconciliation_tolerance_kwh: float = 1e-7
+    unit: str = "kWh"
     state_link_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
@@ -1033,8 +1221,17 @@ class RollingFCRStateLink:
         object.__setattr__(self, "replay_checkpoint_kwh", _finite(self.replay_checkpoint_kwh, field_name="replay_checkpoint_kwh"))
         object.__setattr__(self, "carried_stored_energy_kwh", _finite(self.carried_stored_energy_kwh, field_name="carried_stored_energy_kwh"))
         interval = tuple(_finite(value, field_name="source_interval_kwh") for value in self.source_interval_kwh)
-        if len(interval) != 2 or interval[0] > self.carried_stored_energy_kwh or interval[1] < self.carried_stored_energy_kwh:
-            raise RollingFCRValidationError("source interval must contain the carried state")
+        if (
+            len(interval) != 2
+            or interval[0] > interval[1]
+            or interval[0] > self.carried_stored_energy_kwh
+            or interval[1] < self.carried_stored_energy_kwh
+            or interval[0] > self.replay_checkpoint_kwh
+            or interval[1] < self.replay_checkpoint_kwh
+        ):
+            raise RollingFCRValidationError(
+                "closed source interval must contain replay and carried states"
+            )
         object.__setattr__(self, "source_interval_kwh", interval)
         for name in (
             "predecessor_plan_fingerprint",
@@ -1043,10 +1240,49 @@ class RollingFCRStateLink:
             "accepted_fixings_fingerprint",
             "successor_problem_fingerprint",
             "causal_prefix_fingerprint",
+            "rounding_evidence_fingerprint",
         ):
             value = getattr(self, name)
             if value is not None:
                 object.__setattr__(self, name, _sha(value, field_name=name))
+        successor_initial = (
+            self.carried_stored_energy_kwh
+            if self.successor_initial_stored_energy_kwh is None
+            else _finite(
+                self.successor_initial_stored_energy_kwh,
+                field_name="successor_initial_stored_energy_kwh",
+            )
+        )
+        object.__setattr__(
+            self,
+            "successor_initial_stored_energy_kwh",
+            successor_initial,
+        )
+        if self.modeled_terminal_stored_energy_kwh is not None:
+            object.__setattr__(
+                self,
+                "modeled_terminal_stored_energy_kwh",
+                _finite(
+                    self.modeled_terminal_stored_energy_kwh,
+                    field_name="modeled_terminal_stored_energy_kwh",
+                ),
+            )
+        tolerance = _positive(
+            self.reconciliation_tolerance_kwh,
+            field_name="reconciliation_tolerance_kwh",
+        )
+        object.__setattr__(self, "reconciliation_tolerance_kwh", tolerance)
+        if self.unit != "kWh":
+            raise RollingFCRValidationError("rolling state links require kWh units")
+        if not isinstance(self.reconciles, bool):
+            raise RollingFCRValidationError("state-link reconciles must be boolean")
+        expected_reconciliation = (
+            abs(successor_initial - self.carried_stored_energy_kwh) <= tolerance
+        )
+        if self.reconciles is not expected_reconciliation:
+            raise RollingFCRValidationError(
+                "state-link reconciliation flag disagrees with successor initial state"
+            )
         object.__setattr__(self, "continuity_segment_id", _non_empty(self.continuity_segment_id, field_name="continuity_segment_id"))
         object.__setattr__(self, "state_link_fingerprint", _fingerprint(self._payload()))
 
@@ -1068,6 +1304,11 @@ class RollingFCRStateLink:
             "accepted_fixings_fingerprint": self.accepted_fixings_fingerprint,
             "successor_problem_fingerprint": self.successor_problem_fingerprint,
             "causal_prefix_fingerprint": self.causal_prefix_fingerprint,
+            "rounding_evidence_fingerprint": self.rounding_evidence_fingerprint,
+            "successor_initial_stored_energy_kwh": self.successor_initial_stored_energy_kwh,
+            "modeled_terminal_stored_energy_kwh": self.modeled_terminal_stored_energy_kwh,
+            "reconciliation_tolerance_kwh": self.reconciliation_tolerance_kwh,
+            "unit": self.unit,
         }
 
     def to_dict(self) -> dict[str, object]:
@@ -1272,24 +1513,46 @@ class DeliveryDateRecordEnvelope:
         if tuple(item.revision_number for item in revisions) != tuple(range(len(revisions))):
             raise RollingFCRValidationError("revision numbers must be contiguous and monotonic")
         object.__setattr__(self, "revisions", revisions)
-        object.__setattr__(self, "envelope_fingerprint", _fingerprint(self._payload()))
+        object.__setattr__(
+            self,
+            "envelope_fingerprint",
+            _fingerprint(self._semantic_payload()),
+        )
 
     @property
     def latest_revision(self) -> RollingFCRDayRevision:
         return self.revisions[-1]
 
-    def _payload(self) -> dict[str, object]:
+    def _semantic_payload(self) -> dict[str, object]:
         return {
             "manifest_fingerprint": self.manifest_fingerprint,
             "profile_fingerprint": self.profile_fingerprint,
             "classification": self.classification.to_dict(),
             "predecessor_date": None if self.predecessor_date is None else self.predecessor_date.isoformat(),
             "continuity_segment_id": self.continuity_segment_id,
-            "revisions": [item.to_dict() for item in self.revisions],
+            "revisions": [
+                {
+                    **item._semantic_payload(),
+                    "revision_fingerprint": item.revision_fingerprint,
+                }
+                for item in self.revisions
+            ],
         }
 
     def to_dict(self) -> dict[str, object]:
-        return {**self._payload(), "envelope_fingerprint": self.envelope_fingerprint}
+        return {
+            "manifest_fingerprint": self.manifest_fingerprint,
+            "profile_fingerprint": self.profile_fingerprint,
+            "classification": self.classification.to_dict(),
+            "predecessor_date": (
+                None
+                if self.predecessor_date is None
+                else self.predecessor_date.isoformat()
+            ),
+            "continuity_segment_id": self.continuity_segment_id,
+            "revisions": [item.to_dict() for item in self.revisions],
+            "envelope_fingerprint": self.envelope_fingerprint,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -1366,7 +1629,13 @@ class RollingFCRStudyResult:
             "semantics_version": self.semantics_version,
             "manifest_fingerprint": self.manifest_fingerprint,
             "profile_fingerprint": self.profile_fingerprint,
-            "records": [item.to_dict() for item in self.records],
+            "records": [
+                {
+                    **item._semantic_payload(),
+                    "envelope_fingerprint": item.envelope_fingerprint,
+                }
+                for item in self.records
+            ],
             "continuity_segments": [item.to_dict() for item in self.continuity_segments],
             "state_links": [item.to_dict() for item in self.state_links],
             "aggregate_metrics": [item.to_dict() for item in self.aggregate_metrics],
@@ -1406,8 +1675,10 @@ class RollingFCRStudyResult:
         return MappingProxyType(dict(sorted(values.items())))
 
     def to_dict(self) -> dict[str, object]:
+        payload = self._semantic_payload()
+        payload["records"] = [item.to_dict() for item in self.records]
         return {
-            **self._semantic_payload(),
+            **payload,
             "runtime_metadata": _thaw(self.runtime_metadata),
             "semantic_fingerprint": self.semantic_fingerprint,
         }
@@ -1460,11 +1731,13 @@ __all__ = [
     "RollingFCRExperimentProfile",
     "RollingFCRNumericPolicy",
     "RollingFCRStateLink",
+    "RollingFCRStateCarryEvidence",
     "RollingFCRStudyManifest",
     "RollingFCRStudyResult",
     "RollingFCRValidationError",
     "SOURCE_REFERENCE_REVISION",
     "build_rolling_fcr_experiment_profile",
     "build_rolling_fcr_study_manifest",
+    "derive_rolling_fcr_state_carry",
     "run_rolling_fcr_study",
 ]

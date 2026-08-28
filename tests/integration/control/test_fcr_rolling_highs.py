@@ -18,6 +18,7 @@ from open_energy_lab.control.robust_fcr_rolling import (
 from tests.fcr_rolling_case_utils import (
     AUTHORED_DELIVERY_DATES,
     build_authored_activation_trace,
+    build_authored_caller_state,
     build_authored_day_input,
     build_authored_manifest,
     build_authored_rolling_problem,
@@ -62,7 +63,11 @@ def test_bounded_profile_solves_return_ordered_classified_evidence(
     result = run_rolling_fcr_study(manifest, (day_input,))
     revision = result.records[0].latest_revision
 
-    assert result.completeness_status == "complete"
+    if manifest.profile.state_mode == "midnight_carry":
+        assert result.completeness_status == "partial"
+        assert revision.lifecycle_status == "optimization_only"
+    else:
+        assert result.completeness_status == "complete"
     assert len(result.records) == 1
     assert revision.solve_status == "optimal"
     assert revision.plan_classification == classification
@@ -217,3 +222,91 @@ def test_feasible_incumbent_requires_the_fingerprinted_pre_solve_opt_in() -> Non
         has_incumbent=True,
         solve_policy=blocked,
     ) is True
+
+
+def test_midnight_failure_blocks_then_explicit_restart_opens_new_segment() -> None:
+    restart = build_authored_caller_state(
+        AUTHORED_DELIVERY_DATES[2],
+        stored_energy_kwh=9.875,
+    )
+    source = build_authored_manifest(
+        "script-15-restriction-rolling-midnight-v1",
+        state_carry_policy="native_full_precision",
+        caller_state_declarations=(restart,),
+    )
+    manifest = replace(source, dates=source.dates[:3])
+    inputs = tuple(
+        _zero_price_day_input(manifest, item.delivery_date)
+        for item in manifest.dates
+    )
+    traces = {
+        AUTHORED_DELIVERY_DATES[0]: build_authored_activation_trace(
+            AUTHORED_DELIVERY_DATES[0]
+        ),
+        AUTHORED_DELIVERY_DATES[2]: build_authored_activation_trace(
+            AUTHORED_DELIVERY_DATES[2]
+        ),
+    }
+
+    result = run_rolling_fcr_study(
+        manifest,
+        inputs,
+        activation_traces=traces,
+    )
+
+    assert tuple(item.latest_revision.lifecycle_status for item in result.records) == (
+        "finalized",
+        "optimization_only",
+        "finalized",
+    )
+    assert len(result.continuity_segments) == 2
+    assert result.continuity_segments[0].start_reason == "manifest_start"
+    assert result.continuity_segments[1].start_reason == "caller_supplied"
+    assert result.records[1].continuity_segment_id != (
+        result.records[2].continuity_segment_id
+    )
+    assert tuple(item.handoff_kind for item in result.state_links) == (
+        "midnight",
+        "caller_supplied",
+    )
+    assert result.state_links[0].rounding_policy == "native_full_precision"
+    assert result.state_links[-1].successor_date == AUTHORED_DELIVERY_DATES[2]
+    assert result.records[2].revisions[0].initial_stored_energy_kwh == 9.875
+    assert result.completeness_status == "partial"
+
+
+def test_source_rounded_arbitrage_midnight_three_day_case_is_repeatable() -> None:
+    source = build_authored_manifest(
+        "script-13-arbitrage-only-midnight-v1",
+        state_carry_policy="source_three_decimal",
+    )
+    manifest = replace(source, dates=source.dates[:3])
+    inputs = tuple(
+        _zero_price_day_input(manifest, item.delivery_date)
+        for item in manifest.dates
+    )
+    traces = {
+        item.delivery_date: build_authored_activation_trace(item.delivery_date)
+        for item in manifest.dates
+    }
+
+    first = run_rolling_fcr_study(
+        manifest,
+        inputs,
+        activation_traces=traces,
+    )
+    second = run_rolling_fcr_study(
+        manifest,
+        inputs,
+        activation_traces=traces,
+    )
+
+    assert first.semantic_fingerprint == second.semantic_fingerprint
+    assert first.completeness_status == "complete"
+    assert len(first.records) == 3
+    assert len(first.state_links) == 2
+    assert all(item.rounding_policy == "source_three_decimal" for item in first.state_links)
+    assert all(
+        item.latest_revision.fcr_capacity_kw == (0.0,) * 6
+        for item in first.records
+    )

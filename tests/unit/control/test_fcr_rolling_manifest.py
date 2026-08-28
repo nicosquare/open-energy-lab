@@ -170,6 +170,17 @@ def test_only_midnight_restriction_profile_allows_native_full_precision() -> Non
     assert source.manifest_fingerprint != native.manifest_fingerprint
     assert source.numeric_policy.state_carry_policy == "source_three_decimal"
     assert native.numeric_policy.state_carry_policy == "native_full_precision"
+    source_input = build_authored_day_input(source, AUTHORED_DELIVERY_DATES[1])
+    native_input = build_authored_day_input(native, AUTHORED_DELIVERY_DATES[1])
+    assert source_input.day_input_fingerprint != native_input.day_input_fingerprint
+    assert source_input.producer_input_fingerprints["numeric_policy"] != (
+        native_input.producer_input_fingerprints["numeric_policy"]
+    )
+    from open_energy_lab.control._fcr_rolling_orchestrator import _ordinary_problem
+
+    assert _ordinary_problem(source, source_input).problem_fingerprint != (
+        _ordinary_problem(native, native_input).problem_fingerprint
+    )
     with pytest.raises(RollingFCRValidationError, match="incompatible"):
         build_authored_manifest(
             "script-12-restriction-reset-midnight-v1",

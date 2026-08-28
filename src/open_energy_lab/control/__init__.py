@@ -27,12 +27,14 @@ if TYPE_CHECKING:
         RollingFCRDayRevision,
         RollingFCRExperimentProfile,
         RollingFCRNumericPolicy,
+        RollingFCRStateCarryEvidence,
         RollingFCRStateLink,
         RollingFCRStudyManifest,
         RollingFCRStudyResult,
         RollingFCRValidationError,
         build_rolling_fcr_experiment_profile,
         build_rolling_fcr_study_manifest,
+        derive_rolling_fcr_state_carry,
         run_rolling_fcr_study,
     )
     from .robust_fcr_reference import (
@@ -175,6 +177,10 @@ _EXPORT_MAP = {
     "RollingFCRNumericPolicy": (
         ".fcr_rolling_backtest",
         "RollingFCRNumericPolicy",
+    ),
+    "RollingFCRStateCarryEvidence": (
+        ".fcr_rolling_backtest",
+        "RollingFCRStateCarryEvidence",
     ),
     "RollingFCRStateLink": (
         ".fcr_rolling_backtest",
@@ -325,6 +331,10 @@ _EXPORT_MAP = {
     "derive_non_intraday_horizon_budget": (
         ".robust_fcr_bidding",
         "derive_non_intraday_horizon_budget",
+    ),
+    "derive_rolling_fcr_state_carry": (
+        ".fcr_rolling_backtest",
+        "derive_rolling_fcr_state_carry",
     ),
     "solve_robust_fcr_bid": (".robust_fcr_bidding", "solve_robust_fcr_bid"),
     "BidPlanProducer": (".fcr_bid_plan", "BidPlanProducer"),
@@ -498,6 +508,7 @@ __all__ = sorted([
     "RollingFCRDayRevision",
     "RollingFCRExperimentProfile",
     "RollingFCRNumericPolicy",
+    "RollingFCRStateCarryEvidence",
     "RollingFCRStateLink",
     "RollingFCRStudyManifest",
     "RollingFCRStudyResult",
@@ -528,6 +539,7 @@ __all__ = sorted([
     "compare_robust_fcr_bounds",
     "compare_robust_fcr_reference",
     "derive_non_intraday_horizon_budget",
+    "derive_rolling_fcr_state_carry",
     "extract_accepted_predecessor_fixings",
     "load_robust_fcr_reference_fixture",
     "run_rolling_fcr_study",

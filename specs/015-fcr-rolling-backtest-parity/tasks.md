@@ -147,18 +147,18 @@ policies, produces distinct fingerprints, and blocks invalid predecessors.
 
 ### Tests first
 
-- [ ] T042 [P] [US3] Add rounding oracles for Decimal-from-string half-even three-place values, midpoint endpoints, signed zero, boundary states, closed source intervals, and full-precision identity in `tests/unit/control/test_fcr_rolling_orchestration.py`
-- [ ] T043 [P] [US3] Add a three-day midnight replay test for source-rounded and native-full-precision state trajectories, distinct problem/plan/study fingerprints, and modeled-versus-realized terminal separation in `tests/integration/simulator/test_fcr_rolling_feature_012_replay.py`
-- [ ] T044 [P] [US3] Add coupled-predecessor failure, state mismatch, caller-supplied restart provenance, and no-cross-gap parity tests in `tests/unit/control/test_fcr_rolling_orchestration.py`
+- [x] T042 [P] [US3] Add rounding oracles for Decimal-from-string half-even three-place values, midpoint endpoints, signed zero, boundary states, closed source intervals, and full-precision identity in `tests/unit/control/test_fcr_rolling_orchestration.py`
+- [x] T043 [P] [US3] Add a three-day midnight replay test for source-rounded and native-full-precision state trajectories, distinct problem/plan/study fingerprints, and modeled-versus-realized terminal separation in `tests/integration/simulator/test_fcr_rolling_feature_012_replay.py`
+- [x] T044 [P] [US3] Add coupled-predecessor failure, state mismatch, caller-supplied restart provenance, and no-cross-gap parity tests in `tests/unit/control/test_fcr_rolling_orchestration.py`
 
 ### Implementation
 
-- [ ] T045 [US3] Implement source-three-decimal and native-full-precision state-carry helpers, rounding evidence, source intervals, and `RollingFCRStateLink` validation in `src/open_energy_lab/control/fcr_rolling_backtest.py`
-- [ ] T046 [US3] Implement midnight replay-terminal handoff and next-day Feature 013 battery construction from realized—not modeled—stored energy in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
-- [ ] T047 [US3] Enforce predecessor identity, state applicability, unit, tolerance, and initial-state reconciliation before every coupled solve in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
-- [ ] T048 [US3] Implement fingerprinted caller-supplied state validation and new continuity-segment creation without repairing the preceding gap in `src/open_energy_lab/control/fcr_rolling_backtest.py` and `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
-- [ ] T049 [US3] Reject full-precision script-14 manifests and give script-15 rounded/full-precision policies distinct manifest, day-input, state-link, and study identities in `src/open_energy_lab/control/fcr_rolling_backtest.py`
-- [ ] T050 [US3] Complete repeatable bounded HiGHS three-day cases for both midnight policies and their blocked/restarted variants in `tests/integration/control/test_fcr_rolling_highs.py`
+- [x] T045 [US3] Implement source-three-decimal and native-full-precision state-carry helpers, rounding evidence, source intervals, and `RollingFCRStateLink` validation in `src/open_energy_lab/control/fcr_rolling_backtest.py`
+- [x] T046 [US3] Implement midnight replay-terminal handoff and next-day Feature 013 battery construction from realized—not modeled—stored energy in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
+- [x] T047 [US3] Enforce predecessor identity, state applicability, unit, tolerance, and initial-state reconciliation before every coupled solve in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
+- [x] T048 [US3] Implement fingerprinted caller-supplied state validation and new continuity-segment creation without repairing the preceding gap in `src/open_energy_lab/control/fcr_rolling_backtest.py` and `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
+- [x] T049 [US3] Reject full-precision script-14 manifests and give script-15 rounded/full-precision policies distinct manifest, day-input, state-link, and study identities in `src/open_energy_lab/control/fcr_rolling_backtest.py`
+- [x] T050 [US3] Complete repeatable bounded HiGHS three-day cases for both midnight policies and their blocked/restarted variants in `tests/integration/control/test_fcr_rolling_highs.py`
 
 **Checkpoint**: Every coupled initial state has one valid realized predecessor
 or begins an explicitly separate caller-supplied continuity segment.
