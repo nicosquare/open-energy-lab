@@ -5,6 +5,8 @@ from __future__ import annotations
 import pytest
 
 import open_energy_lab.tpm.mio as mio_module
+from open_energy_lab.tpm import load_tpm_artifact
+from open_energy_lab.tpm.domains import TPMApproximationDomain
 from open_energy_lab.tpm.features import TPMFeatureSpec
 
 
@@ -85,6 +87,30 @@ def _supported_sum_product_graph():
 def _compile(model, **kwargs):
     compile_model = getattr(mio_module, "compile_spflow_model_to_mio")
     return compile_model(model, feature_schema=FEATURE_SCHEMA, **kwargs)
+
+
+def _compile_v2(model, *, domains=None, artifact=None, **kwargs):
+    fitted = artifact or load_tpm_artifact(
+        "tests/fixtures/tpm/tpm_artifact_domains_v3.json"
+    )
+    compile_model = getattr(mio_module, "compile_spflow_model_to_mio")
+    return compile_model(
+        model,
+        fitted_artifact=fitted,
+        approximation_domains=(
+            (
+                TPMApproximationDomain(
+                    feature_name="x",
+                    lower=60.0,
+                    upper=140.0,
+                    source="unit-compiler-contract",
+                ),
+            )
+            if domains is None
+            else domains
+        ),
+        **kwargs,
+    )
 
 
 def test_supported_sum_product_graph_compiles_with_canonical_five_breakpoints() -> None:
@@ -193,3 +219,93 @@ def test_unsupported_modules_report_type_and_scope(
     assert error.scope == expected_scope
     assert expected_type in str(error)
     assert "scope" in str(error).lower()
+
+
+def test_compiled_v2_persists_physical_and_derived_model_breakpoints() -> None:
+    compiled = _compile_v2(_supported_sum_product_graph())
+
+    assert compiled["schema_version"] == "v2"
+    assert compiled["compiler_version"] == "spflow-v1-mio-v2"
+    assert compiled["fitted_artifact"]["schema_version"] == "v3"
+    assert compiled["breakpoint_policy"]["relative_breakpoints"] == [
+        0.0,
+        0.25,
+        0.5,
+        0.75,
+        1.0,
+    ]
+    validity = compiled["compiled_validity"]
+    assert len(validity) == 1
+    assert validity[0]["physical_interval"] == [60.0, 140.0]
+    assert validity[0]["model_interval"] == pytest.approx([1.0 / 6.0, 5.0 / 6.0])
+    assert validity[0]["physical_breakpoints"] == [60.0, 80.0, 100.0, 120.0, 140.0]
+    assert validity[0]["model_breakpoints"] == pytest.approx(
+        [1.0 / 6.0, 1.0 / 3.0, 0.5, 2.0 / 3.0, 5.0 / 6.0]
+    )
+    normal_curves = [
+        curve
+        for node in compiled["nodes"]
+        if node["type"] == "normal"
+        for curve in node["curves"]
+    ]
+    assert all(
+        curve["breakpoints"] == pytest.approx(validity[0]["model_breakpoints"])
+        for curve in normal_curves
+    )
+    assert all(
+        curve["physical_breakpoints"] == validity[0]["physical_breakpoints"]
+        for curve in normal_curves
+    )
+
+
+def test_compiled_v2_never_falls_back_when_approximation_domain_is_missing() -> None:
+    with pytest.raises(ValueError, match="missing explicit approximation domain.*x"):
+        _compile_v2(_supported_sum_product_graph(), domains=())
+
+
+def test_compiled_v2_rejects_interval_outside_declared_decision_domain() -> None:
+    with pytest.raises(ValueError, match="within.*declared decision domain"):
+        _compile_v2(
+            _supported_sum_product_graph(),
+            domains=(
+                TPMApproximationDomain(
+                    feature_name="x",
+                    lower=20.0,
+                    upper=140.0,
+                    source="invalid-outside-domain",
+                ),
+            ),
+        )
+
+
+@pytest.mark.parametrize(
+    ("feature_name", "message"),
+    [
+        ("missing", "unknown approximation-domain feature"),
+        ("activation", "must be continuous"),
+        ("demand", "unused or marginalized"),
+    ],
+)
+def test_compiled_v2_rejects_unknown_discrete_and_unused_requests(
+    feature_name: str,
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        _compile_v2(
+            _supported_sum_product_graph(),
+            domains=(
+                TPMApproximationDomain(
+                    feature_name=feature_name,
+                    lower=60.0,
+                    upper=140.0,
+                    source="invalid-feature-treatment",
+                ),
+            ),
+        )
+
+
+def test_loaded_v2_fitted_artifact_cannot_be_promoted_by_an_interval() -> None:
+    legacy = load_tpm_artifact("tests/fixtures/tpm/tpm_artifact_v2.json")
+
+    with pytest.raises(ValueError, match="schema_version 'v3'.*refit"):
+        _compile_v2(_supported_sum_product_graph(), artifact=legacy)

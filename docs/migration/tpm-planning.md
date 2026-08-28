@@ -59,8 +59,10 @@ canonical source rows and reproducible production-fixture workflow live in
 regenerated with `--regenerate-fixture` and independently refitted and checked
 with `--verify-fixture`.
 
-Production artifacts use schema v2 JSON manifests plus hashed
-`spflow-model-sidecar` payloads. The manifest records current backend/API
+New production fits use schema v3 JSON manifests plus hashed
+`spflow-model-sidecar` payloads. Existing schema v2 manifests remain loadable
+through the labelled legacy-inferred compatibility path and are never silently
+promoted to v3. The manifest records current backend/API
 versions, feature schema, target semantics, deterministic fit configuration,
 compiler metadata, payload locator, and SHA-256 digest. Loading rejects a
 missing, corrupt, legacy, or incompatible sidecar before deserialization.
@@ -97,9 +99,13 @@ schema-v2 artifact contract intentionally changes.
   with any global or continuous-feature override recorded explicitly
 - MIO epsilon `1e-6`
 
-It emits versioned `spflow-v1-mio-v1` solver-neutral data. Planning validates
-the schema, compiler/backend versions, graph shape, breakpoint count, epsilon,
-feature scopes, and binary shortfall-event ordering before consuming it.
+The normalized-only compatibility call emits versioned `spflow-v1-mio-v1`
+solver-neutral data. A declared-domain v3 fitted artifact plus explicit
+physical approximation intervals emits compiled payload v2 with
+`spflow-v1-mio-v2` provenance. Planning validates the schema,
+compiler/backend versions, graph shape, breakpoint count, epsilon, feature
+scopes, physical/model validity, and binary shortfall-event ordering before
+consuming it.
 Normal log densities use the piecewise approximation; Bernoulli and
 Categorical probabilities and Sum/Product composition retain their declared
 probability semantics. Unsupported or custom leaves, legacy histogram

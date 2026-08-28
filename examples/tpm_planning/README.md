@@ -71,6 +71,41 @@ Semantic fit evidence is deterministic; pickle bytes are not used as the
 repeatability oracle. Each regenerated sidecar receives its actual SHA-256 in
 the manifest, and later loads verify that digest before deserialization.
 
+## Post-Feature Declared Feature Domains Walkthrough
+
+**Status**: Optional post-feature documentation extension retained after Feature 014 was completed,
+following a separate reviewed request. It does not amend Feature 014's normative scope or required
+acceptance surface; the canonical U-Bounds quickstart remains notebook-independent.
+
+[`declared_feature_domains_walkthrough.ipynb`](declared_feature_domains_walkthrough.ipynb)
+is the thin, offline U-Bounds walkthrough. It reloads the committed schema-v3
+artifact and real SPFlow sidecar instead of fitting a second model. The notebook
+demonstrates:
+
+- the distinction between a mathematical domain, observed training support,
+  normalization, and compiler validity;
+- stable coordinates for datasets with different observed extrema but the same
+  finite declared domain;
+- explicitly unbounded support with identity normalization and a declared but
+  unobserved category;
+- native-query acceptance inside the declaration and rejection outside it;
+- an explicitly selected compiler approximation interval, checked physical and
+  model-coordinate evaluation, and rejection outside compiled validity; and
+- a CPU Pyomo/HiGHS physical-to-model-coordinate decision link.
+
+Install the optional notebook tools and launch the source notebook from the
+repository root:
+
+```bash
+uv sync --group notebook
+uv run jupyter lab examples/tpm_planning/declared_feature_domains_walkthrough.ipynb
+```
+
+The notebook requires no network service, commercial solver, or generated
+output directory. Its quantitative behavior comes from reviewed library APIs
+and the checked-in declared-domain fixture. Fixture regeneration remains owned
+by `run_declared_domains_pipeline.py`.
+
 ## Simulator-To-Planning Pipeline
 
 `run_real_backend_pipeline.py` covers the broader simulator export and planning

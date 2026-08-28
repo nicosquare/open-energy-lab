@@ -1,12 +1,20 @@
 # TPM Fixtures
 
 This directory holds deterministic, offline fixtures for the
-`009-tpm-planning` dataset, TPM artifact, and query contracts. Schema-v2
-artifacts separate their JSON manifest from a project-relative sidecar and
-record a SHA-256 digest.
+`009-tpm-planning` dataset, TPM artifact, and query contracts. Schema-v2 and
+schema-v3 artifacts separate their JSON manifest from a project-relative
+sidecar and record a SHA-256 digest.
 
 ## Active Fixture Set
 
+- `declared_feature_domains_v1.json`: reviewable U-Bounds declarations,
+  physical training rows, and exact domain/compiler probes without fitted
+  model output.
+- `tpm_artifact_domains_v3.json`: reproducibly fitted schema-v3 production
+  manifest carrying declared domains, observed support, normalization meaning,
+  and native-query evidence.
+- `sidecars/tpm_artifact_domains_v3.spn_payload.pkl`: real current-SPFlow model
+  sidecar referenced by the declared-domain v3 manifest.
 - `planning_dataset_v1.json`: supported planning-dataset artifact.
 - `tpm_artifact_spflow_v1.json`: reproducibly fitted schema-v2 production
   manifest for required current SPFlow 1.1 validation.
@@ -64,6 +72,28 @@ feature, or query validation.
 supplementary deterministic evidence and must never be reported as production
 current-SPFlow evidence.
 
+`declared_feature_domains_v1.json` is the source-input contract for feature
+`014-declared-feature-domains`. It declares scalar decision $x\in[40,160]$,
+fully unbounded demand support, an ordered binary decision, and a complete
+categorical decision whose `priority` value is deliberately unobserved. Its
+physical rows cover only $x\in[60,140]$. Endpoint, adjacent-outside, identity,
+unobserved-category, and compiler-validity probes are mathematical expectations,
+not generated SPFlow or MIO results.
+
+`tpm_artifact_domains_v3.json` is the corresponding generated production
+evidence. It was fitted offline on CPU with seed `13`, schema `v3`, current
+SPFlow `1.1.0`, Torch `2.13.0`, and the manifest-recorded CPython version. The
+current sidecar SHA-256 is
+`4b3a9fcf0b5cfbcade6c2ae09e52ada8bbbf3b091323cebce13c6d99da438273`.
+The fixture records exact membership checks at $x=40$ and $x=160$ plus their
+adjacent representable outside values, caller-coordinate checks for the
+unobserved `priority` category, identity normalization at demand `250`, and
+real queries at both decision endpoints and the unobserved category. Domain
+membership has no tolerance; model-coordinate comparisons use `1e-12`, and
+native-probability repeatability uses `1e-6`. The probability for an
+unobserved declared value is evidence produced by the backend, not a
+theoretical claim or fabricated observation.
+
 ## Required Provenance Fields
 
 Every top-level TPM fixture keeps:
@@ -90,6 +120,40 @@ by `open_energy_lab.tpm.load_tpm_artifact`. Query fixtures retain the
 `TPMQueryRequest` fields and exact expected response.
 
 ## Fixture Records
+
+`declared_feature_domains_v1.json`
+
+- status: active model-output-free input fixture
+- validation target: declaration resolution, physical support, exact domain
+  membership, stable transforms, native querying, and explicit compiler
+  validity
+- seed: fitting seed `13`; the committed physical rows themselves are
+  reviewable source evidence rather than generated output
+- refresh policy: update only with an intentional U-Bounds contract change;
+  review declarations, rows, probes, and assertion-tolerance purposes together
+- domain membership: exact, with no borrowed numerical tolerance
+- future production refresh command:
+  `uv run --locked --no-sync python examples/tpm_planning/run_declared_domains_pipeline.py --regenerate-fixture`
+
+`tpm_artifact_domains_v3.json`
+
+- status: supported schema-v3 production manifest
+- backend contract: current SPFlow `1.1.0`, Torch `2.13.0`, CPU, seed `13`
+- source: `declared_feature_domains_v1.json` and its recorded SHA-256
+- sidecar: `sidecars/tpm_artifact_domains_v3.spn_payload.pkl`
+- sidecar SHA-256:
+  `4b3a9fcf0b5cfbcade6c2ae09e52ada8bbbf3b091323cebce13c6d99da438273`
+- validation target: declared versus observed support, persisted transforms,
+  exact boundary behavior, sidecar/manifest semantic agreement, reload,
+  endpoint queries outside observed support, and an unobserved category query
+- tolerances: exact domain membership, `1e-12` model coordinates, `1e-6`
+  native probability repeatability
+- generation command:
+  `uv run --locked --no-sync python examples/tpm_planning/run_declared_domains_pipeline.py --regenerate-fixture`
+- verification command:
+  `uv run --locked --no-sync python examples/tpm_planning/run_declared_domains_pipeline.py --verify-fixture`
+- refresh policy: compare semantic and numeric evidence rather than pickle-byte
+  identity; regenerate only after an intentional input or contract change
 
 `planning_dataset_v1.json`
 
@@ -170,6 +234,36 @@ uv run python examples/tpm_planning/run_generic_rows_pipeline.py --verify-fixtur
 
 Both commands require the locked SPFlow 1.1 installation. They do not use the
 network, notebooks, legacy runtimes, Pyomo, HiGHS, Gurobi, or external data.
+
+Regenerate or verify the separate declared-domain schema-v3 production
+evidence with:
+
+```bash
+uv run --locked --no-sync python \
+  examples/tpm_planning/run_declared_domains_pipeline.py --regenerate-fixture
+uv run --locked --no-sync python \
+  examples/tpm_planning/run_declared_domains_pipeline.py --verify-fixture
+```
+
+These commands consume `declared_feature_domains_v1.json` and verify the
+manifest-recorded source digest. They run offline on CPU after dependencies are
+installed; notebook, network, GPU, and commercial-solver paths are not part of
+this fixture.
+
+## U-Bounds Compatibility Freeze
+
+The following pre-feature evidence files are immutable compatibility anchors:
+
+- `tpm_artifact_v1.json`
+- `tpm_artifact_v2.json`
+- `sidecars/tpm_artifact_v2.fixture.json`
+- `tpm_artifact_spflow_v1.json`
+- `sidecars/tpm_artifact_spflow_v1.spn_payload.pkl`
+- `tpm_artifact_unsupported_version.json`
+
+U-Bounds tests may snapshot, load, query, and compare these files, but must not
+rewrite or regenerate them into schema v3. A changed byte requires a separate,
+explicit compatibility review; loading alone never authorizes a refresh.
 
 ## Replay Integrity Refresh
 

@@ -8,6 +8,7 @@ import pytest
 
 import open_energy_lab.tpm.features as features_module
 import open_energy_lab.tpm.query as query_module
+from open_energy_lab.tpm import load_tpm_artifact
 from open_energy_lab.tpm.query import TPMQueryRequest, query_tpm_artifact
 from tests.integration.tpm.spflow_v1_test_support import (
     QUERY_BUDGET_SECONDS,
@@ -15,6 +16,9 @@ from tests.integration.tpm.spflow_v1_test_support import (
     load_current_model_payload,
     normalized_training_tensor,
     valid_query_request,
+)
+from tests.integration.planning.fixture_utils import (
+    TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH,
 )
 
 
@@ -66,6 +70,25 @@ def test_production_query_returns_conditional_probability_within_budget(
     assert result["target_name"] == "shortfall"
     assert result["resolved_target_name"] == "shortfall_event"
     assert 0.0 <= result["conditional_probability"] <= 1.0
+
+
+def test_committed_production_v2_query_preserves_legacy_numeric_behavior() -> None:
+    artifact = load_tpm_artifact(TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH)
+    request = valid_query_request()
+
+    first = query_tpm_artifact(artifact, request)
+    second = query_tpm_artifact(
+        load_tpm_artifact(TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH),
+        request,
+    )
+
+    assert artifact.schema_version == "v2"
+    assert first["source"] == "spflow_backend"
+    assert first["conditional_probability"] == pytest.approx(
+        second["conditional_probability"],
+        abs=1e-12,
+        rel=0.0,
+    )
 
 
 @pytest.mark.parametrize(

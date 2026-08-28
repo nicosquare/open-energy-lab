@@ -4,10 +4,20 @@ from __future__ import annotations
 
 import hashlib
 import math
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+import open_energy_lab.tpm.query as query_module
 from open_energy_lab.tpm.artifact import load_tpm_artifact
+from open_energy_lab.tpm.data import normalize_training_data
+from open_energy_lab.tpm.domains import TPMFeatureDomain
+from open_energy_lab.tpm.features import (
+    TPMFeatureValidationError,
+    validate_spflow_feature_assignments,
+)
+from open_energy_lab.tpm.fit import TPMArtifactBuildRequest, fit_tpm_artifact_from_rows
 from open_energy_lab.tpm.query import TPMQueryRequest, query_tpm_artifact
 
 
@@ -248,3 +258,279 @@ def test_fixture_replay_uses_query_tolerance_for_zero_match_log_likelihood() -> 
     assert result["source"] == "empirical_fixture"
     assert result["matched_row_count"] == 0
     assert result["value"] == pytest.approx(math.log(1e-6))
+
+
+def _stub_production_result(*_args, **_kwargs) -> dict[str, object]:
+    return {
+        "matched_row_count": 0,
+        "total_row_count": 2,
+        "source": "spflow_backend",
+        "value": 0.5,
+        "resolved_target_name": "demand_event",
+    }
+
+
+def _fit_scalar_query_artifact(
+    tmp_path: Path,
+    *,
+    domain: TPMFeatureDomain,
+    x_values: tuple[float, float],
+):
+    return fit_tpm_artifact_from_rows(
+        (
+            {"x": x_values[0], "demand": 72.0},
+            {"x": x_values[1], "demand": 134.0},
+        ),
+        build_request=TPMArtifactBuildRequest(
+            artifact_id=f"query-{domain.shape}",
+            dataset_reference=f"query-{domain.shape}-rows",
+            decision_features=("x",),
+            target_name="demand",
+            target_threshold=100.0,
+            feature_domains={
+                "x": domain,
+                "demand": TPMFeatureDomain(
+                    feature_name="demand",
+                    feature_kind="continuous",
+                    purpose="distribution-support",
+                    shape="unbounded",
+                ),
+            },
+        ),
+        output_path=tmp_path / f"query-{domain.shape}.json",
+        spflow_backend=SimpleNamespace(
+            __name__="spflow.testing",
+            __version__="0.test",
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("shape", "lower", "upper", "x_values", "valid_value", "invalid_value"),
+    [
+        ("finite", 40.0, 160.0, (60.0, 140.0), 40.0, math.nextafter(40.0, -math.inf)),
+        ("finite", 100.0, 100.0, (100.0, 100.0), 100.0, math.nextafter(100.0, math.inf)),
+        ("lower-bounded", 0.0, None, (10.0, 20.0), 0.0, math.nextafter(0.0, -math.inf)),
+        ("upper-bounded", None, 100.0, (10.0, 20.0), 100.0, math.nextafter(100.0, math.inf)),
+    ],
+)
+def test_native_query_accepts_declared_endpoints_outside_training_and_rejects_adjacent_values(
+    shape: str,
+    lower: float | None,
+    upper: float | None,
+    x_values: tuple[float, float],
+    valid_value: float,
+    invalid_value: float,
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    artifact = _fit_scalar_query_artifact(
+        tmp_path,
+        domain=TPMFeatureDomain(
+            feature_name="x",
+            feature_kind="continuous",
+            purpose="decision-domain",
+            shape=shape,
+            lower=lower,
+            upper=upper,
+        ),
+        x_values=x_values,
+    )
+    monkeypatch.setattr(
+        query_module,
+        "_evaluate_current_spflow_query",
+        _stub_production_result,
+    )
+
+    result = query_tpm_artifact(
+        artifact,
+        TPMQueryRequest(decision_assignments={"x": valid_value}),
+    )
+
+    assert result["value"] == pytest.approx(0.5)
+    with pytest.raises(TPMFeatureValidationError) as exc_info:
+        query_tpm_artifact(
+            artifact,
+            TPMQueryRequest(decision_assignments={"x": invalid_value}),
+        )
+    assert exc_info.value.reason == "decision_domain_violation"
+
+
+def test_native_query_accepts_unobserved_declared_binary_and_category_values(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    artifact = fit_tpm_artifact_from_rows(
+        (
+            {
+                "activation": "off",
+                "service_tier": "economy",
+                "demand": 72.0,
+            },
+            {
+                "activation": "off",
+                "service_tier": "standard",
+                "demand": 134.0,
+            },
+        ),
+        build_request=TPMArtifactBuildRequest(
+            artifact_id="query-unobserved-discrete",
+            dataset_reference="query-unobserved-discrete-rows",
+            decision_features=("activation", "service_tier"),
+            target_name="demand",
+            target_threshold=100.0,
+            feature_domains={
+                "activation": TPMFeatureDomain(
+                    feature_name="activation",
+                    feature_kind="binary",
+                    purpose="decision-domain",
+                    values=("off", "on"),
+                ),
+                "service_tier": TPMFeatureDomain(
+                    feature_name="service_tier",
+                    feature_kind="categorical",
+                    purpose="decision-domain",
+                    values=("economy", "standard", "priority"),
+                ),
+                "demand": TPMFeatureDomain(
+                    feature_name="demand",
+                    feature_kind="continuous",
+                    purpose="distribution-support",
+                    shape="unbounded",
+                ),
+            },
+        ),
+        output_path=tmp_path / "query-unobserved-discrete.json",
+        spflow_backend=SimpleNamespace(
+            __name__="spflow.testing",
+            __version__="0.test",
+        ),
+    )
+    monkeypatch.setattr(
+        query_module,
+        "_evaluate_current_spflow_query",
+        _stub_production_result,
+    )
+
+    result = query_tpm_artifact(
+        artifact,
+        TPMQueryRequest(
+            decision_assignments={
+                "activation": "on",
+                "service_tier": "priority",
+            }
+        ),
+    )
+
+    assert result["value"] == pytest.approx(0.5)
+
+
+@pytest.mark.parametrize(
+    ("invalid_value", "expected_reason"),
+    [
+        (math.inf, "non_finite"),
+        (math.nextafter(40.0, -math.inf), "decision_domain_violation"),
+    ],
+)
+def test_native_query_reports_source_specific_declared_domain_failures(
+    invalid_value: float,
+    expected_reason: str,
+    tmp_path: Path,
+) -> None:
+    artifact = _fit_scalar_query_artifact(
+        tmp_path,
+        domain=TPMFeatureDomain(
+            feature_name="x",
+            feature_kind="continuous",
+            purpose="decision-domain",
+            shape="finite",
+            lower=40.0,
+            upper=160.0,
+        ),
+        x_values=(60.0, 140.0),
+    )
+
+    with pytest.raises(TPMFeatureValidationError) as exc_info:
+        query_tpm_artifact(
+            artifact,
+            TPMQueryRequest(decision_assignments={"x": invalid_value}),
+        )
+
+    assert exc_info.value.reason == expected_reason
+    assert exc_info.value.semantic_source == "decision-domain"
+
+
+def test_assignment_diagnostics_distinguish_support_discrete_and_legacy_sources() -> None:
+    distribution_spec = normalize_training_data(
+        ({"demand": 20.0}, {"demand": 80.0}),
+        feature_domains={
+            "demand": TPMFeatureDomain(
+                feature_name="demand",
+                feature_kind="continuous",
+                purpose="distribution-support",
+                shape="finite",
+                lower=0.0,
+                upper=100.0,
+            )
+        },
+        feature_roles={"demand": "metric_target"},
+    ).feature_schema[0]
+    discrete_spec = normalize_training_data(
+        ({"activation": "off"}, {"activation": "off"}),
+        feature_domains={
+            "activation": TPMFeatureDomain(
+                feature_name="activation",
+                feature_kind="binary",
+                purpose="decision-domain",
+                values=("off", "on"),
+            )
+        },
+        feature_roles={"activation": "decision"},
+    ).feature_schema[0]
+    legacy_spec = normalize_training_data(
+        ({"x": 60.0}, {"x": 140.0}),
+        feature_roles={"x": "decision"},
+    ).feature_schema[0]
+
+    cases = (
+        (
+            distribution_spec,
+            {"demand": 101.0},
+            "distribution_support_violation",
+            "distribution-support",
+        ),
+        (
+            discrete_spec,
+            {"activation": "invalid"},
+            "declared_discrete_violation",
+            "decision-domain",
+        ),
+        (legacy_spec, {"x": 160.0}, "out_of_bounds", "legacy-inferred"),
+    )
+    for spec, assignments, reason, semantic_source in cases:
+        with pytest.raises(TPMFeatureValidationError) as exc_info:
+            validate_spflow_feature_assignments((spec,), assignments)
+        assert exc_info.value.reason == reason
+        assert exc_info.value.semantic_source == semantic_source
+        if semantic_source == "legacy-inferred":
+            assert exc_info.value.reason != "decision_domain_violation"
+            assert exc_info.value.expected_domain == (60.0, 140.0)
+            assert "legacy-inferred" in str(exc_info.value).lower()
+
+
+def test_explicit_unknown_native_assignment_accepts_any_finite_physical_value() -> None:
+    spec = normalize_training_data(
+        ({"x": 60.0}, {"x": 140.0}),
+        feature_domains={
+            "x": TPMFeatureDomain(
+                feature_name="x",
+                feature_kind="continuous",
+                purpose="decision-domain",
+                shape="unknown",
+            )
+        },
+        feature_roles={"x": "decision"},
+    ).feature_schema[0]
+
+    validate_spflow_feature_assignments((spec,), {"x": -1_000_000.0})
+    assert spec.normalize_value(-1_000_000.0) == pytest.approx(-1_000_000.0)

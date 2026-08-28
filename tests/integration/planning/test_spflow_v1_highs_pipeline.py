@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 
 import pytest
 
@@ -12,11 +13,17 @@ from open_energy_lab.planning import (
     assemble_planning_problem,
     solve_planning_problem,
 )
+from open_energy_lab.planning.workflow import compile_planning_study_tpm
+from open_energy_lab.tpm import TPMApproximationDomain
 from open_energy_lab.tpm import compile_spflow_model_to_mio, load_tpm_artifact
 from open_energy_lab.tpm.optional_spflow import load_spflow_payload
+from open_energy_lab.tpm.query import marginalize_spflow_model
 from tests.integration.planning.fixture_utils import (
     TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH,
 )
+
+
+DECLARED_DOMAINS_ARTIFACT_PATH = "tests/fixtures/tpm/tpm_artifact_domains_v3.json"
 
 
 NUMERIC_TOLERANCE = 1e-9
@@ -48,8 +55,9 @@ def test_current_spflow_compiler_output_is_solved_by_real_highs() -> None:
     artifact = load_tpm_artifact(TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH)
     runtime_payload = load_spflow_payload(artifact)
     assert runtime_payload is not None
+    compilation_model = marginalize_spflow_model(runtime_payload["model"], [2, 3, 4])
     compiled = compile_spflow_model_to_mio(
-        runtime_payload["model"],
+        compilation_model,
         feature_schema=artifact.feature_specs,
     )
 
@@ -89,6 +97,7 @@ def test_current_spflow_compiler_output_is_solved_by_real_highs() -> None:
     assert assembled.risk_evaluation_mode == "spn_mip"
     planning_compiled = _find_compiled_mio(assembled.spn_mip_payload)
     assert planning_compiled == compiled
+    assert compilation_model.scope.query == (0, 1, 5)
 
     summary = solve_planning_problem(
         assembled,
@@ -115,3 +124,41 @@ def test_current_spflow_compiler_output_is_solved_by_real_highs() -> None:
     assert summary.solver_metadata["requested_solver_name"] == "highs"
     assert summary.solver_metadata["handoff_strategy"] == "native-pyomo-spn"
     assert summary.solver_metadata["solve_execution_mode"] == "native-pyomo-solver"
+
+
+def test_v3_planning_marginalizes_before_requesting_only_retained_intervals(
+    tmp_path: Path,
+) -> None:
+    artifact = load_tpm_artifact(DECLARED_DOMAINS_ARTIFACT_PATH)
+
+    result = compile_planning_study_tpm(
+        artifact,
+        output_path=tmp_path / "compiled-artifact.json",
+        decision_features=("x", "activation"),
+        approximation_domains=(
+            TPMApproximationDomain(
+                feature_name="x",
+                lower=60.0,
+                upper=140.0,
+                source="planning-integration",
+            ),
+        ),
+    )
+
+    compiled = result.compiled_payload
+    assert compiled["schema_version"] == "v2"
+    assert [record["feature_name"] for record in compiled["compiled_validity"]] == [
+        "x"
+    ]
+    retained_scopes = {
+        int(scope)
+        for node in compiled["nodes"]
+        for scope in node.get("scope", ())
+    }
+    assert retained_scopes == {0, 1, 4}
+    assert "demand" not in {
+        curve["feature_name"]
+        for node in compiled["nodes"]
+        if node["type"] == "normal"
+        for curve in node["curves"]
+    }

@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
-Current Spec Kit plan: `specs/013-reference-robust-fcr-bidding/plan.md`
+Current Spec Kit plan: `specs/014-declared-feature-domains/plan.md`
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan.

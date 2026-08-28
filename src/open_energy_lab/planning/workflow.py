@@ -7,10 +7,12 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from open_energy_lab.tpm.artifact import TPMArtifact
+from open_energy_lab.tpm.domains import TPMApproximationDomain
 from open_energy_lab.tpm.fit import TPMFitConfig, fit_tpm_artifact_from_study_manifest
 from open_energy_lab.tpm.mio import compile_spflow_model_to_mio
 from open_energy_lab.tpm.optional_spflow import load_spflow_payload
 from open_energy_lab.tpm.query import TPMQueryRequest, query_tpm_artifact
+from open_energy_lab.tpm.query import marginalize_spflow_model
 
 from .optional_solver import PlanningSolveConfig, PlanningSolveSummary, solve_planning_problem
 from .problem import PlanningProblemDefinition, assemble_planning_problem
@@ -65,15 +67,55 @@ def compile_planning_study_tpm(
     artifact: TPMArtifact,
     *,
     output_path: str | Path | None = None,
+    decision_features: tuple[str, ...] | None = None,
+    approximation_domains: tuple[TPMApproximationDomain, ...] | None = None,
 ) -> CompiledPlanningStudyTPM:
     """Compile and persist the supported current-SPFlow MIO contract."""
 
     runtime_payload = load_spflow_payload(artifact)
     if runtime_payload is None or runtime_payload.get("model") is None:
         raise ValueError("planning-study compilation requires a persisted SPFlow model")
-    compiled = compile_spflow_model_to_mio(
-        runtime_payload["model"], feature_schema=artifact.feature_specs
+    resolved_decisions = decision_features or tuple(
+        spec.feature_name
+        for spec in artifact.feature_specs
+        if spec.feature_role == "decision" and spec.modifiable
     )
+    event_target_name = str(artifact.target_definition.get("event_target_name", ""))
+    retained_names = {*resolved_decisions, event_target_name}
+    marginalized_indices = tuple(
+        index
+        for index, spec in enumerate(artifact.feature_specs)
+        if spec.feature_name not in retained_names
+    )
+    compilation_model = (
+        marginalize_spflow_model(runtime_payload["model"], marginalized_indices)
+        if marginalized_indices
+        else runtime_payload["model"]
+    )
+    retained_scope = tuple(int(index) for index in compilation_model.scope.query)
+    retained_continuous = tuple(
+        index
+        for index in retained_scope
+        if artifact.feature_specs[index].feature_type == "continuous"
+    )
+    if artifact.schema_version == "v3" and (
+        approximation_domains is not None or retained_continuous
+    ):
+        compiled = compile_spflow_model_to_mio(
+            compilation_model,
+            fitted_artifact=artifact,
+            approximation_domains=approximation_domains or (),
+        )
+    else:
+        if approximation_domains is not None:
+            raise ValueError(
+                "legacy fitted artifacts must be refit as v3 before physical "
+                "approximation domains can be supplied"
+            )
+        compiled = compile_spflow_model_to_mio(
+            compilation_model,
+            feature_schema=artifact.feature_specs,
+        )
     compiler_policy = dict(compiled["breakpoint_policy"])
     updated = replace(
         artifact,

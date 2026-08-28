@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 import open_energy_lab.tpm.optional_spflow as optional_spflow_module
 from open_energy_lab.tpm import detect_spflow_backend_capabilities
 
@@ -110,3 +112,22 @@ def test_detect_spflow_backend_capabilities_reports_missing_current_api_symbols(
     assert capabilities["missing_api_symbols"] == ["spflow.learn.learn_spn"]
     assert capabilities["supports_real_spn_training"] is False
     assert capabilities["fallback_query_strategy"] is None
+
+
+def test_backend_only_stabilization_regularizes_unobserved_categorical_values() -> None:
+    import torch
+    from spflow.meta.data import Scope
+    from spflow.modules.leaves import Categorical
+
+    leaf = Categorical(
+        scope=Scope(0),
+        K=3,
+        probs=torch.tensor([[[[1.0, 0.0, 0.0]]]], dtype=torch.float64),
+    )
+
+    optional_spflow_module.stabilize_spflow_leaf_parameters(leaf)
+    probabilities = leaf.probs.detach()
+
+    assert bool(torch.isfinite(probabilities).all())
+    assert bool((probabilities > 0.0).all())
+    assert float(probabilities.sum(dim=-1).reshape(-1)[0]) == pytest.approx(1.0)

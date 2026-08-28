@@ -20,6 +20,13 @@ if TYPE_CHECKING:
         load_tpm_artifact,
     )
     from .data import TPMTrainingData, normalize_training_data
+    from .domains import (
+        TPMApproximationDomain,
+        TPMCompiledValidityRecord,
+        TPMFeatureDomain,
+        TPMNormalizationSpec,
+        TPMTrainingSupport,
+    )
     from .features import (
         TPMFeatureSpec,
         dump_feature_schema,
@@ -44,6 +51,7 @@ if TYPE_CHECKING:
         UnsupportedSPFlowModuleError,
         build_spn_chance_model,
         build_spn_chance_model_from_artifact,
+        build_compiled_spflow_decision_link_model,
         build_spn_modeling_terms,
         compile_spflow_model_to_mio,
         evaluate_compiled_spflow_probability,
@@ -95,6 +103,11 @@ _EXPORT_MAP = {
     "load_tpm_artifact": (".artifact", "load_tpm_artifact"),
     "TPMTrainingData": (".data", "TPMTrainingData"),
     "normalize_training_data": (".data", "normalize_training_data"),
+    "TPMApproximationDomain": (".domains", "TPMApproximationDomain"),
+    "TPMCompiledValidityRecord": (".domains", "TPMCompiledValidityRecord"),
+    "TPMFeatureDomain": (".domains", "TPMFeatureDomain"),
+    "TPMNormalizationSpec": (".domains", "TPMNormalizationSpec"),
+    "TPMTrainingSupport": (".domains", "TPMTrainingSupport"),
     "TPMFeatureSpec": (".features", "TPMFeatureSpec"),
     "dump_feature_schema": (".features", "dump_feature_schema"),
     "infer_feature_role": (".features", "infer_feature_role"),
@@ -125,6 +138,10 @@ _EXPORT_MAP = {
     "build_spn_chance_model_from_artifact": (
         ".mio",
         "build_spn_chance_model_from_artifact",
+    ),
+    "build_compiled_spflow_decision_link_model": (
+        ".mio",
+        "build_compiled_spflow_decision_link_model",
     ),
     "build_spn_modeling_terms": (".mio", "build_spn_modeling_terms"),
     "compile_spflow_model_to_mio": (".mio", "compile_spflow_model_to_mio"),
@@ -198,6 +215,11 @@ __all__ = [
     "load_tpm_artifact",
     "TPMTrainingData",
     "normalize_training_data",
+    "TPMApproximationDomain",
+    "TPMCompiledValidityRecord",
+    "TPMFeatureDomain",
+    "TPMNormalizationSpec",
+    "TPMTrainingSupport",
     "TPMFeatureSpec",
     "dump_feature_schema",
     "infer_feature_role",
@@ -217,6 +239,7 @@ __all__ = [
     "UnsupportedSPFlowModuleError",
     "build_spn_chance_model",
     "build_spn_chance_model_from_artifact",
+    "build_compiled_spflow_decision_link_model",
     "build_spn_modeling_terms",
     "compile_spflow_model_to_mio",
     "evaluate_compiled_spflow_probability",
