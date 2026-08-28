@@ -57,6 +57,7 @@ _PROFILE_IDS = (
 _DATE_ROLES = {"included", "warm-up", "close-out", "excluded"}
 _LIFECYCLE_STATUSES = {
     "original",
+    "initialization_only",
     "optimization_only",
     "provisional",
     "finalized",
@@ -831,6 +832,18 @@ class RollingFCRStudyManifest:
     def information_cutoff_rule(self) -> str:
         return self.decision_cutoff_rule
 
+    def listed_predecessor_date(self, delivery_date: date) -> date | None:
+        """Return the immediately preceding manifest date, not calendar day."""
+
+        ordered = tuple(item.delivery_date for item in self.dates)
+        try:
+            index = ordered.index(delivery_date)
+        except ValueError as exc:
+            raise RollingFCRValidationError(
+                "delivery date is outside the rolling-study manifest"
+            ) from exc
+        return None if index == 0 else ordered[index - 1]
+
     def _payload(self) -> dict[str, object]:
         return {
             "semantics_version": self.semantics_version,
@@ -1006,6 +1019,9 @@ class RollingFCRStateLink:
     activation_fingerprint: str | None
     continuity_segment_id: str
     reconciles: bool
+    accepted_fixings_fingerprint: str | None = None
+    successor_problem_fingerprint: str | None = None
+    causal_prefix_fingerprint: str | None = None
     state_link_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
@@ -1020,7 +1036,14 @@ class RollingFCRStateLink:
         if len(interval) != 2 or interval[0] > self.carried_stored_energy_kwh or interval[1] < self.carried_stored_energy_kwh:
             raise RollingFCRValidationError("source interval must contain the carried state")
         object.__setattr__(self, "source_interval_kwh", interval)
-        for name in ("predecessor_plan_fingerprint", "replay_fingerprint", "activation_fingerprint"):
+        for name in (
+            "predecessor_plan_fingerprint",
+            "replay_fingerprint",
+            "activation_fingerprint",
+            "accepted_fixings_fingerprint",
+            "successor_problem_fingerprint",
+            "causal_prefix_fingerprint",
+        ):
             value = getattr(self, name)
             if value is not None:
                 object.__setattr__(self, name, _sha(value, field_name=name))
@@ -1042,6 +1065,9 @@ class RollingFCRStateLink:
             "activation_fingerprint": self.activation_fingerprint,
             "continuity_segment_id": self.continuity_segment_id,
             "reconciles": self.reconciles,
+            "accepted_fixings_fingerprint": self.accepted_fixings_fingerprint,
+            "successor_problem_fingerprint": self.successor_problem_fingerprint,
+            "causal_prefix_fingerprint": self.causal_prefix_fingerprint,
         }
 
     def to_dict(self) -> dict[str, object]:
@@ -1069,6 +1095,20 @@ class RollingFCRDayRevision:
     feasibility_slacks: Mapping[str, float]
     energy_decisions_charge_positive_kw: tuple[float, ...] | None
     fcr_capacity_kw: tuple[float, ...] | None
+    activation_fingerprint: str | None = None
+    replay_fingerprint: str | None = None
+    settlement_fingerprint: str | None = None
+    state_link_fingerprint: str | None = None
+    predecessor_revision_fingerprint: str | None = None
+    finalizer_problem_fingerprint: str | None = None
+    finalizer_result_fingerprint: str | None = None
+    initial_stored_energy_kwh: float | None = None
+    realized_cutoff_stored_energy_kwh: float | None = None
+    handed_off_cutoff_stored_energy_kwh: float | None = None
+    modeled_terminal_stored_energy_kwh: float | None = None
+    realized_terminal_stored_energy_kwh: float | None = None
+    carried_stored_energy_kwh: float | None = None
+    realized_metrics: Mapping[str, float] = field(default_factory=dict)
     diagnostics: tuple[str, ...] = ()
     runtime_metadata: Mapping[str, object] = field(default_factory=dict)
     revision_fingerprint: str = field(init=False)
@@ -1087,6 +1127,13 @@ class RollingFCRDayRevision:
             "solve_result_fingerprint",
             "plan_fingerprint",
             "feasibility_audit_fingerprint",
+            "activation_fingerprint",
+            "replay_fingerprint",
+            "settlement_fingerprint",
+            "state_link_fingerprint",
+            "predecessor_revision_fingerprint",
+            "finalizer_problem_fingerprint",
+            "finalizer_result_fingerprint",
         ):
             value = getattr(self, name)
             if value is not None:
@@ -1127,6 +1174,29 @@ class RollingFCRDayRevision:
             if len(fcr) != 6:
                 raise RollingFCRValidationError("an incumbent revision must carry six FCR decisions")
             object.__setattr__(self, "fcr_capacity_kw", fcr)
+        for name in (
+            "initial_stored_energy_kwh",
+            "realized_cutoff_stored_energy_kwh",
+            "handed_off_cutoff_stored_energy_kwh",
+            "modeled_terminal_stored_energy_kwh",
+            "realized_terminal_stored_energy_kwh",
+            "carried_stored_energy_kwh",
+        ):
+            value = getattr(self, name)
+            if value is not None:
+                object.__setattr__(self, name, _finite(value, field_name=name))
+        realized_metrics: dict[str, float] = {}
+        for name, value in self.realized_metrics.items():
+            normalized_name = _non_empty(name, field_name="realized metric name")
+            realized_metrics[normalized_name] = _finite(
+                value,
+                field_name=f"realized_metrics.{normalized_name}",
+            )
+        object.__setattr__(
+            self,
+            "realized_metrics",
+            MappingProxyType(dict(sorted(realized_metrics.items()))),
+        )
         object.__setattr__(self, "diagnostics", tuple(sorted(_string_tuple(self.diagnostics, field_name="diagnostics"))))
         object.__setattr__(self, "runtime_metadata", _freeze_mapping(self.runtime_metadata, field_name="runtime_metadata"))
         object.__setattr__(self, "revision_fingerprint", _fingerprint(self._semantic_payload()))
@@ -1152,6 +1222,23 @@ class RollingFCRDayRevision:
             "feasibility_slacks": dict(self.feasibility_slacks),
             "energy_decisions_charge_positive_kw": None if self.energy_decisions_charge_positive_kw is None else list(self.energy_decisions_charge_positive_kw),
             "fcr_capacity_kw": None if self.fcr_capacity_kw is None else list(self.fcr_capacity_kw),
+            "activation_fingerprint": self.activation_fingerprint,
+            "replay_fingerprint": self.replay_fingerprint,
+            "settlement_fingerprint": self.settlement_fingerprint,
+            "state_link_fingerprint": self.state_link_fingerprint,
+            "predecessor_revision_fingerprint": self.predecessor_revision_fingerprint,
+            "finalizer_problem_fingerprint": self.finalizer_problem_fingerprint,
+            "finalizer_result_fingerprint": self.finalizer_result_fingerprint,
+            "stored_energy_kwh": {
+                "initial": self.initial_stored_energy_kwh,
+                "realized_cutoff": self.realized_cutoff_stored_energy_kwh,
+                "handed_off_cutoff": self.handed_off_cutoff_stored_energy_kwh,
+                "modeled_terminal": self.modeled_terminal_stored_energy_kwh,
+                "realized_terminal": self.realized_terminal_stored_energy_kwh,
+                "carried": self.carried_stored_energy_kwh,
+                "unit": "kWh",
+            },
+            "realized_metrics": dict(self.realized_metrics),
             "diagnostics": list(self.diagnostics),
         }
 
@@ -1285,6 +1372,38 @@ class RollingFCRStudyResult:
             "aggregate_metrics": [item.to_dict() for item in self.aggregate_metrics],
             "completeness_status": self.completeness_status,
         }
+
+    @property
+    def finalized_parity_eligible_dates(self) -> tuple[date, ...]:
+        """Dates explicitly eligible for finalized comparison evidence."""
+
+        return tuple(
+            item.classification.delivery_date
+            for item in self.records
+            if item.classification.comparison_eligible
+            and item.latest_revision.lifecycle_status == "finalized"
+        )
+
+    @property
+    def finalized_parity_exclusions(self) -> Mapping[str, tuple[str, ...]]:
+        """Requested dates omitted from finalized parity with explicit reasons."""
+
+        values: dict[str, tuple[str, ...]] = {}
+        for item in self.records:
+            if (
+                item.classification.comparison_eligible
+                and item.latest_revision.lifecycle_status == "finalized"
+            ):
+                continue
+            reasons = [
+                f"execution_role:{item.classification.execution_role}",
+                f"lifecycle_status:{item.latest_revision.lifecycle_status}",
+            ]
+            reasons.extend(item.classification.reason_codes)
+            values[item.classification.delivery_date.isoformat()] = tuple(
+                sorted(set(reasons))
+            )
+        return MappingProxyType(dict(sorted(values.items())))
 
     def to_dict(self) -> dict[str, object]:
         return {

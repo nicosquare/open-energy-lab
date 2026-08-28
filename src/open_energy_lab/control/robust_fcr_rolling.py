@@ -243,6 +243,81 @@ class RobustFCRAcceptedDecisionFixings:
         return {**self._payload(), "fixings_fingerprint": self.fixings_fingerprint}
 
 
+def extract_accepted_predecessor_fixings(
+    *,
+    plan: object,
+    predecessor_problem_fingerprint: str,
+    predecessor_result_fingerprint: str,
+) -> RobustFCRAcceptedDecisionFixings:
+    """Extract the exact accepted 09–24 and block 3–6 predecessor tail.
+
+    Values come from the immutable native plan, never from the source fixture's
+    displayed three-decimal decisions.  The public charge-positive energy sign
+    is retained beside its explicit source-positive-discharge negation.
+    """
+
+    from .fcr_bid_plan import FixedFCRBidPlan
+
+    if not isinstance(plan, FixedFCRBidPlan):
+        raise RollingFCRValidationError(
+            "accepted predecessor fixings require a FixedFCRBidPlan"
+        )
+    if plan.producer.producer_kind != "robust":
+        raise RollingFCRValidationError(
+            "08:00 predecessor fixings require an accepted robust plan"
+        )
+    if plan.solve_status not in {"optimal", "feasible"}:
+        raise RollingFCRValidationError(
+            "08:00 predecessor fixings require a solved accepted plan"
+        )
+    energy = tuple(plan.energy_schedule.intervals)
+    fcr = tuple(plan.fcr_schedule.intervals)
+    if len(energy) != 24 or len(fcr) != 6:
+        raise RollingFCRValidationError(
+            "accepted predecessor plan must retain ordinary 24/6 coverage"
+        )
+    if (
+        energy[0].interval.start_utc
+        != plan.energy_schedule.covered_period.start_utc
+        or energy[-1].interval.end_utc
+        != plan.energy_schedule.covered_period.end_utc
+        or fcr[0].interval.start_utc
+        != plan.fcr_schedule.covered_period.start_utc
+        or fcr[-1].interval.end_utc
+        != plan.fcr_schedule.covered_period.end_utc
+    ):
+        raise RollingFCRValidationError(
+            "accepted predecessor schedules must retain exact interval coverage"
+        )
+    energy_tail = energy[8:]
+    fcr_tail = fcr[2:]
+
+    def interval_ref(kind: str, item: object) -> str:
+        interval = item.interval
+        return (
+            f"accepted:{kind}:"
+            f"{_utc_text(interval.start_utc)}/{_utc_text(interval.end_utc)}"
+        )
+
+    public_energy = tuple(item.power_kw for item in energy_tail)
+    return RobustFCRAcceptedDecisionFixings(
+        predecessor_plan_fingerprint=plan.plan_fingerprint,
+        predecessor_problem_fingerprint=predecessor_problem_fingerprint,
+        predecessor_result_fingerprint=predecessor_result_fingerprint,
+        energy_source_indices=tuple(range(-15, 1)),
+        energy_public_charge_positive_kw=public_energy,
+        source_energy_positive_discharge_kw=tuple(
+            -value for value in public_energy
+        ),
+        energy_interval_refs=tuple(
+            interval_ref("energy", item) for item in energy_tail
+        ),
+        fcr_source_indices=tuple(range(-3, 1)),
+        fcr_capacity_kw=tuple(item.capacity_kw for item in fcr_tail),
+        fcr_interval_refs=tuple(interval_ref("fcr", item) for item in fcr_tail),
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class RobustFCRRollingBiddingProblem:
     problem_id: str
@@ -1166,5 +1241,6 @@ __all__ = [
     "RobustFCRRollingBiddingProblem",
     "RobustFCRRollingSolveResult",
     "build_robust_fcr_rolling_problem",
+    "extract_accepted_predecessor_fixings",
     "solve_robust_fcr_rolling_bid",
 ]

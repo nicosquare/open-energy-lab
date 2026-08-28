@@ -48,6 +48,7 @@ if TYPE_CHECKING:
         RobustFCRRollingBiddingProblem,
         RobustFCRRollingSolveResult,
         build_robust_fcr_rolling_problem,
+        extract_accepted_predecessor_fixings,
         solve_robust_fcr_rolling_bid,
     )
     from .robust_fcr_bidding import (
@@ -218,6 +219,10 @@ _EXPORT_MAP = {
     "build_robust_fcr_rolling_problem": (
         ".robust_fcr_rolling",
         "build_robust_fcr_rolling_problem",
+    ),
+    "extract_accepted_predecessor_fixings": (
+        ".robust_fcr_rolling",
+        "extract_accepted_predecessor_fixings",
     ),
     "solve_robust_fcr_rolling_bid": (
         ".robust_fcr_rolling",
@@ -523,6 +528,7 @@ __all__ = sorted([
     "compare_robust_fcr_bounds",
     "compare_robust_fcr_reference",
     "derive_non_intraday_horizon_budget",
+    "extract_accepted_predecessor_fixings",
     "load_robust_fcr_reference_fixture",
     "run_rolling_fcr_study",
     "solve_robust_fcr_bid",

@@ -111,6 +111,7 @@ EXPECTED_CONTROL_EXPORTS = sorted([
     "compare_robust_fcr_bounds",
     "compare_robust_fcr_reference",
     "derive_non_intraday_horizon_budget",
+    "extract_accepted_predecessor_fixings",
     "load_robust_fcr_reference_fixture",
     "run_rolling_fcr_study",
     "solve_robust_fcr_bid",

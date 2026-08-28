@@ -131,3 +131,40 @@ residual audit, objective/bound/gap evidence, and only current-day 24/6 public
 charge-positive decisions. Complete causal 08:00 finalization and realized
 midnight state links remain deliberately deferred to their subsequent task
 groups; this checkpoint makes no such completion claim.
+
+### Phase 4 — causal 08:00 overlap and immutable finalization
+
+The 08:00 workflow now extracts the accepted predecessor plan's unchanged
+full-precision hours 09–24 and blocks 3–6, evaluates only the exact half-open
+00:00–08:00 prefix through Feature 012, and carries both the full-precision
+checkpoint and its deterministic three-decimal handoff. The successor's
+40-hour problem is constructed and solved before any post-cutoff tail replay;
+the tail is evaluation-only evidence used afterward to append a finalized
+revision without replacing the original plan.
+
+The authored causal replay selection passed with `5 passed in 91.77s`:
+
+```bash
+uv run pytest \
+  tests/integration/simulator/test_fcr_rolling_feature_012_replay.py -q
+```
+
+The twin traces have identical 00:00–08:00 samples and different later
+samples. They produced exactly identical cutoff state-link, accepted-fixing,
+successor-input, rolling-problem, 24/6 decision, and plan fingerprints. Their
+later finalized activation fingerprints differed, proving that post-cutoff
+information remains evaluation evidence rather than bid input. The guarded
+call-order assertion also proves the successor solve precedes tail access.
+
+The bounded four-date chain retained exactly one envelope per date with these
+latest lifecycle states: `initialization_only`, `finalized`, `finalized`, and
+`unfinalized`. The first three envelopes retain `original -> provisional ->
+finalized` histories; the close-out retains `original -> provisional`, is
+explicitly absent from finalized-parity eligibility, and remains present in
+the result. All three state links reconcile.
+
+After the lifecycle changes, the prior Feature 015 profile/import selection
+passed with `60 passed in 50.82s`, and the protected Feature 013 problem,
+solver, HiGHS, and fingerprint regressions passed with `80 passed in 85.67s`.
+No external activation CSV, baseline runtime read, Julia, Gurobi, network, or
+credential access was used.

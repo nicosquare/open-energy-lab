@@ -17,7 +17,7 @@ from open_energy_lab.control.robust_fcr_rolling import (
 )
 from tests.fcr_rolling_case_utils import (
     AUTHORED_DELIVERY_DATES,
-    build_authored_0800_day_input,
+    build_authored_activation_trace,
     build_authored_day_input,
     build_authored_manifest,
     build_authored_rolling_problem,
@@ -90,35 +90,32 @@ def test_0800_fixed_overlap_solves_with_40_160_10_frame_and_retains_edges() -> N
         reason_codes=("closes_predecessor",),
     )))
     warmup = _zero_price_day_input(manifest, AUTHORED_DELIVERY_DATES[0])
-    successor_original = build_authored_0800_day_input(
-        manifest,
-        AUTHORED_DELIVERY_DATES[1],
-    )
-    zero_prices = build_authored_zero_prices(AUTHORED_DELIVERY_DATES[1])
-    zero_predecessor = build_authored_zero_prices(AUTHORED_DELIVERY_DATES[0])
-    successor = replace(
-        successor_original,
-        prices=zero_prices,
-        predecessor_prices=zero_predecessor,
-        producer_input_fingerprints={
-            **successor_original.producer_input_fingerprints,
-            "market_prices": zero_prices.price_input_fingerprint,
-        },
-    )
+    successor = _zero_price_day_input(manifest, AUTHORED_DELIVERY_DATES[1])
+    trace = build_authored_activation_trace(AUTHORED_DELIVERY_DATES[0])
 
-    result = run_rolling_fcr_study(manifest, (warmup, successor))
+    result = run_rolling_fcr_study(
+        manifest,
+        (warmup, successor),
+        activation_traces={AUTHORED_DELIVERY_DATES[0]: trace},
+    )
     warmup_revision = result.records[0].latest_revision
     closeout_revision = result.records[1].latest_revision
 
     assert result.completeness_status == "partial"
     assert warmup_revision.solve_status == "optimal"
-    assert warmup_revision.lifecycle_status == "optimization_only"
+    assert warmup_revision.lifecycle_status == "initialization_only"
     assert closeout_revision.solve_status == "optimal"
     assert closeout_revision.lifecycle_status == "unfinalized"
     assert closeout_revision.plan_classification == "robust_candidate"
     assert closeout_revision.plan_fingerprint is not None
     assert closeout_revision.feasibility_audit_fingerprint is not None
     assert max(closeout_revision.feasibility_slacks.values(), default=0.0) <= 1e-6
+    assert tuple(item.revision_kind for item in result.records[0].revisions) == (
+        "original",
+        "provisional",
+        "finalized",
+    )
+    assert len(result.state_links) == 1
 
 
 def test_exact_zero_fcr_is_a_model_constraint_not_a_zero_price_inference() -> None:

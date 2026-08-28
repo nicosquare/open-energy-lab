@@ -10,6 +10,7 @@ import pytest
 from open_energy_lab.control import (
     RobustFCRAcceptedDecisionFixings,
     RollingFCRValidationError,
+    extract_accepted_predecessor_fixings,
 )
 from open_energy_lab.control._robust_fcr_formulation import (
     assemble_arbitrage_only_model,
@@ -20,6 +21,9 @@ from open_energy_lab.control._robust_fcr_formulation import (
 from tests.fcr_rolling_case_utils import (
     AUTHORED_DELIVERY_DATES,
     build_authored_accepted_fixings,
+    build_authored_day_input,
+    build_authored_fixed_plan,
+    build_authored_manifest,
     build_authored_rolling_problem,
 )
 
@@ -82,6 +86,54 @@ def test_accepted_fixings_enforce_explicit_public_to_source_sign_mapping() -> No
             fixings,
             source_energy_positive_discharge_kw=(0.0,) * 16,
         )
+
+
+def test_exact_fixings_are_extracted_from_the_unchanged_full_precision_plan() -> None:
+    energy = tuple(index / 13.0 + 1e-10 for index in range(24))
+    fcr = tuple(index / 7.0 + 2e-10 for index in range(6))
+    plan = build_authored_fixed_plan(
+        energy_charge_positive_kw=energy,
+        fcr_capacity_kw=fcr,
+    )
+
+    fixings = extract_accepted_predecessor_fixings(
+        plan=plan,
+        predecessor_problem_fingerprint="8" * 64,
+        predecessor_result_fingerprint="9" * 64,
+    )
+
+    assert fixings.predecessor_plan_fingerprint == plan.plan_fingerprint
+    assert fixings.energy_source_indices == tuple(range(-15, 1))
+    assert fixings.energy_public_charge_positive_kw == energy[8:]
+    assert fixings.source_energy_positive_discharge_kw == tuple(
+        -value for value in energy[8:]
+    )
+    assert fixings.fcr_source_indices == tuple(range(-3, 1))
+    assert fixings.fcr_capacity_kw == fcr[2:]
+    assert all("T" in value and "/" in value for value in fixings.energy_interval_refs)
+    assert all("T" in value and "/" in value for value in fixings.fcr_interval_refs)
+
+
+def test_0800_bootstrap_has_no_fixings_and_predecessors_follow_manifest_order() -> None:
+    original = build_authored_manifest(
+        "script-14-restriction-rolling-0800-v1"
+    )
+    warmup = original.dates[0]
+    non_adjacent_closeout = replace(
+        original.dates[-1],
+        execution_role="close-out",
+        comparison_eligible=False,
+        reason_codes=("closes_non_adjacent_listed_predecessor",),
+    )
+    manifest = replace(original, dates=(warmup, non_adjacent_closeout))
+    bootstrap = build_authored_day_input(manifest, warmup.delivery_date)
+
+    assert bootstrap.accepted_fixings is None
+    assert bootstrap.predecessor_prices is None
+    assert manifest.listed_predecessor_date(warmup.delivery_date) is None
+    assert manifest.listed_predecessor_date(
+        non_adjacent_closeout.delivery_date
+    ) == warmup.delivery_date
 
 
 def test_0800_problem_keeps_16_and_4_fixings_and_separates_fixed_tail_objective() -> None:

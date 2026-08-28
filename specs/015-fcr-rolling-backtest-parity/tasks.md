@@ -118,18 +118,18 @@ fingerprints; initialization and unfinalized edges remain explicit.
 
 ### Tests first
 
-- [ ] T033 [P] [US2] Add failing oracle tests for source bootstrap, listed-date predecessor semantics, exact 09–24 hourly and block 3–6 fixings, predecessor price-tail mapping, and fixed-tail objective accounting in `tests/unit/control/test_fcr_rolling_orchestration.py`
-- [ ] T034 [P] [US2] Add a causal twin-trace integration test proving post-08:00 activation changes zero cutoff, problem, fixing, decision, or plan fingerprints in `tests/integration/simulator/test_fcr_rolling_feature_012_replay.py`
-- [ ] T035 [P] [US2] Add guarded post-cutoff access, exact-boundary sample ownership, missing-prefix, saturation, and invalid-checkpoint tests in `tests/integration/simulator/test_fcr_rolling_feature_012_replay.py`
+- [x] T033 [P] [US2] Add failing oracle tests for source bootstrap, listed-date predecessor semantics, exact 09–24 hourly and block 3–6 fixings, predecessor price-tail mapping, and fixed-tail objective accounting in `tests/unit/control/test_fcr_rolling_orchestration.py`
+- [x] T034 [P] [US2] Add a causal twin-trace integration test proving post-08:00 activation changes zero cutoff, problem, fixing, decision, or plan fingerprints in `tests/integration/simulator/test_fcr_rolling_feature_012_replay.py`
+- [x] T035 [P] [US2] Add guarded post-cutoff access, exact-boundary sample ownership, missing-prefix, saturation, and invalid-checkpoint tests in `tests/integration/simulator/test_fcr_rolling_feature_012_replay.py`
 
 ### Implementation
 
-- [ ] T036 [US2] Implement extraction and validation of unchanged full-precision accepted predecessor decisions with signed interval identities and plan/problem/result lineage in `src/open_energy_lab/control/robust_fcr_rolling.py`
-- [ ] T037 [US2] Implement causal 00:00–08:00 Feature 012 prefix replay, full-precision checkpoint evidence, and required three-decimal handed-off state in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
-- [ ] T038 [US2] Implement successor 40-hour construction using only pre-cutoff state, accepted fixings, declared prices, and bidder-visible provenance in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
-- [ ] T039 [US2] Implement immutable original, provisional, and successor-finalized evaluation revisions while retaining the unchanged original full-day plan in `src/open_energy_lab/control/fcr_rolling_backtest.py` and `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
-- [ ] T040 [US2] Implement initialization-only first-date and unfinalized last-date handling plus explicit exclusion from finalized parity aggregates in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
-- [ ] T041 [US2] Complete the bounded four-date authored 08:00 chain, causal sentinels, edge statuses, and revision lineage assertions in `tests/integration/simulator/test_fcr_rolling_feature_012_replay.py`
+- [x] T036 [US2] Implement extraction and validation of unchanged full-precision accepted predecessor decisions with signed interval identities and plan/problem/result lineage in `src/open_energy_lab/control/robust_fcr_rolling.py`
+- [x] T037 [US2] Implement causal 00:00–08:00 Feature 012 prefix replay, full-precision checkpoint evidence, and required three-decimal handed-off state in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
+- [x] T038 [US2] Implement successor 40-hour construction using only pre-cutoff state, accepted fixings, declared prices, and bidder-visible provenance in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
+- [x] T039 [US2] Implement immutable original, provisional, and successor-finalized evaluation revisions while retaining the unchanged original full-day plan in `src/open_energy_lab/control/fcr_rolling_backtest.py` and `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
+- [x] T040 [US2] Implement initialization-only first-date and unfinalized last-date handling plus explicit exclusion from finalized parity aggregates in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
+- [x] T041 [US2] Complete the bounded four-date authored 08:00 chain, causal sentinels, edge statuses, and revision lineage assertions in `tests/integration/simulator/test_fcr_rolling_feature_012_replay.py`
 
 **Checkpoint**: The 08:00 chain is causal, fixes accepted overlap exactly, and
 never mutates or silently finalizes source evidence.

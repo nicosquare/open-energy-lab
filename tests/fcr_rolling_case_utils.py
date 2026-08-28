@@ -391,7 +391,7 @@ def build_authored_manifest(
         uncertainty_profile=build_authored_uncertainty(),
         terminal_rule=build_authored_terminal_rule(),
         solve_policy=policy,
-        settlement_profile="fcr-settlement-v1",
+        settlement_profile="robust-storage-bidding-reference-settlement-v1",
         acceptance_policy=build_authored_acceptance_policy(),
         numeric_policy=build_authored_numeric_policy(
             policy,
@@ -650,6 +650,107 @@ def build_authored_activation_trace(
     )
 
 
+def build_authored_fixed_plan(
+    delivery_date: date = AUTHORED_DELIVERY_DATES[0],
+    *,
+    energy_charge_positive_kw: Sequence[float] = (0.0,) * 24,
+    fcr_capacity_kw: Sequence[float] = (0.0,) * 6,
+) -> Any:
+    """Build one full-precision accepted robust plan without loading a solver."""
+
+    from open_energy_lab.control import (
+        BidPlanProducer,
+        OptimizationMetric,
+        build_fixed_fcr_bid_plan,
+    )
+    from open_energy_lab.simulator import (
+        build_energy_baseline_schedule,
+        build_fcr_capacity_schedule,
+    )
+
+    time_contract = build_authored_time_contract(delivery_date)
+    energy_values = tuple(float(value) for value in energy_charge_positive_kw)
+    fcr_values = tuple(float(value) for value in fcr_capacity_kw)
+    if len(energy_values) != 24 or len(fcr_values) != 6:
+        raise ValueError("authored fixed plan requires exact 24/6 decisions")
+    energy = build_energy_baseline_schedule(
+        schedule_id=f"feature-015-authored-{delivery_date}-energy-v1",
+        semantics_version="charge-positive-fixed-v1",
+        covered_start_utc=time_contract.delivery_period.start_utc,
+        covered_end_utc=time_contract.delivery_period.end_utc,
+        intervals=tuple(
+            {
+                "start_utc": interval.start_utc,
+                "end_utc": interval.end_utc,
+                "power_kw": value,
+                "schedule_source": "fixed",
+            }
+            for interval, value in zip(
+                time_contract.energy_intervals,
+                energy_values,
+                strict=True,
+            )
+        ),
+    )
+    fcr = build_fcr_capacity_schedule(
+        schedule_id=f"feature-015-authored-{delivery_date}-fcr-v1",
+        semantics_version="symmetric-fcr-fixed-v1",
+        product_identity={
+            "product": "symmetric-fcr",
+            "tender": "daily",
+            "block_duration": "PT4H",
+        },
+        covered_start_utc=time_contract.delivery_period.start_utc,
+        covered_end_utc=time_contract.delivery_period.end_utc,
+        intervals=tuple(
+            {
+                "start_utc": interval.start_utc,
+                "end_utc": interval.end_utc,
+                "capacity_kw": value,
+                "volume_observation_ref": f"authored:accepted:{index}",
+                "price_observation_ref": f"authored:fcr-price:{index}",
+            }
+            for index, (interval, value) in enumerate(
+                zip(time_contract.fcr_intervals, fcr_values, strict=True)
+            )
+        ),
+    )
+    return build_fixed_fcr_bid_plan(
+        plan_id=f"feature-015-authored-{delivery_date}-accepted-plan-v1",
+        producer=BidPlanProducer(
+            producer_id="feature-015-authored-robust-producer",
+            producer_kind="robust",
+            producer_version="authored-full-precision-v1",
+            configuration_fingerprint=fingerprint(
+                {"energy": energy_values, "fcr": fcr_values}
+            ),
+            configuration_unavailable_reason=None,
+        ),
+        information_cutoff_utc=(
+            time_contract.delivery_period.start_utc - timedelta(hours=12)
+        ),
+        energy_schedule=energy,
+        fcr_schedule=fcr,
+        producer_input_fingerprints={"authored_inputs": "7" * 64},
+        solve_status="optimal",
+        objective=OptimizationMetric(
+            availability="available",
+            value=0.0,
+            unit="EUR",
+            unavailable_reason=None,
+            meaning="optimization_objective",
+        ),
+        objective_bound=OptimizationMetric(
+            availability="available",
+            value=0.0,
+            unit="EUR",
+            unavailable_reason=None,
+            meaning="optimization_bound",
+        ),
+        diagnostics=(),
+    )
+
+
 def authored_date_window() -> tuple[date, ...]:
     """Return a detached copy of the ordered bounded authored dates."""
 
@@ -673,6 +774,7 @@ __all__ = [
     "build_authored_battery_binding",
     "build_authored_data_descriptor",
     "build_authored_day_input",
+    "build_authored_fixed_plan",
     "build_authored_manifest",
     "build_authored_numeric_policy",
     "build_authored_prices",
