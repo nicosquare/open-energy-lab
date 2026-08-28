@@ -45,20 +45,20 @@ ownership boundaries are in place.
 
 ### Tests first
 
-- [ ] T005 [P] Add regression assertions for Feature 013's existing 24/96/6 validation, public decisions, schedule fingerprints, result fingerprints, and deployability behavior in `tests/unit/control/test_robust_fcr_problem.py`, `tests/unit/control/test_robust_fcr_solver.py`, and `tests/integration/control/test_robust_fcr_highs.py`
-- [ ] T006 [P] Add half-open activation slicing tests for exact coverage, cutoff-boundary ownership, provenance, fingerprints, and invalid gaps in `tests/unit/market/test_activation.py`
-- [ ] T007 [P] Add failing accepted-plan market-context and segmented-evaluation tests covering assumed/evidence-backed acceptance, EUR/kWh-to-EUR/MWh conversion, exact segment partitions, state reconciliation, and delegation to Feature 012 in `tests/unit/simulator/test_fcr_rolling_evaluation.py`
-- [ ] T008 [P] Add failing lazy-import and forbidden-boundary tests for the planned rolling control, market, and simulator modules in `tests/unit/control/test_fcr_rolling_import_boundary.py`
+- [x] T005 [P] Add regression assertions for Feature 013's existing 24/96/6 validation, public decisions, schedule fingerprints, result fingerprints, and deployability behavior in `tests/unit/control/test_robust_fcr_problem.py`, `tests/unit/control/test_robust_fcr_solver.py`, and `tests/integration/control/test_robust_fcr_highs.py`
+- [x] T006 [P] Add half-open activation slicing tests for exact coverage, cutoff-boundary ownership, provenance, fingerprints, and invalid gaps in `tests/unit/market/test_activation.py`
+- [x] T007 [P] Add failing accepted-plan market-context and segmented-evaluation tests covering assumed/evidence-backed acceptance, EUR/kWh-to-EUR/MWh conversion, exact segment partitions, state reconciliation, and delegation to Feature 012 in `tests/unit/simulator/test_fcr_rolling_evaluation.py`
+- [x] T008 [P] Add failing lazy-import and forbidden-boundary tests for the planned rolling control, market, and simulator modules in `tests/unit/control/test_fcr_rolling_import_boundary.py`
 
 ### Shared implementation
 
-- [ ] T009 Refactor reusable normalized index, variable, objective, constraint-family, and witness-audit helpers without changing ordinary-day equations in `src/open_energy_lab/control/_robust_fcr_formulation.py`
-- [ ] T010 Refactor reusable backend loading, status normalization, incumbent extraction, decision canonicalization, and plan-mapping helpers without changing Feature 013 results in `src/open_energy_lab/control/_robust_fcr_solver.py` and `src/open_energy_lab/control/robust_fcr_bidding.py`
-- [ ] T011 [P] Implement exact half-open `slice_regulation_activation_trace` with detached samples and retained source lineage in `src/open_energy_lab/market/activation.py`
-- [ ] T012 [P] Add the explicit accepted-plan market context, reject system-volume-as-individual-acceptance evidence, and preserve existing context kinds in `src/open_energy_lab/simulator/fcr_bid_evaluation.py`
-- [ ] T013 Implement `FCRAcceptedPlanSegment`, `FCRSegmentedEvaluationReport`, plan/schedule slicing, fresh-battery segment construction, Feature 012 delegation, and deterministic reconciliation in `src/open_energy_lab/simulator/fcr_rolling_evaluation.py`
-- [ ] T014 Add lazy public exports for activation slicing and segmented evaluation without eager solver or pandas imports in `src/open_energy_lab/market/__init__.py` and `src/open_energy_lab/simulator/__init__.py`
-- [ ] T015 Run the protected Feature 012/013 unit and integration selections and record the unchanged golden fingerprints in `docs/migration/fcr-rolling-backtest-parity.md`
+- [x] T009 Refactor reusable normalized index, variable, objective, constraint-family, and witness-audit helpers without changing ordinary-day equations in `src/open_energy_lab/control/_robust_fcr_formulation.py`
+- [x] T010 Refactor reusable backend loading, status normalization, incumbent extraction, decision canonicalization, and plan-mapping helpers without changing Feature 013 results in `src/open_energy_lab/control/_robust_fcr_solver.py` and `src/open_energy_lab/control/robust_fcr_bidding.py`
+- [x] T011 [P] Implement exact half-open `slice_regulation_activation_trace` with detached samples and retained source lineage in `src/open_energy_lab/market/activation.py`
+- [x] T012 [P] Add the explicit accepted-plan market context, reject system-volume-as-individual-acceptance evidence, and preserve existing context kinds in `src/open_energy_lab/simulator/fcr_bid_evaluation.py`
+- [x] T013 Implement `FCRAcceptedPlanSegment`, `FCRSegmentedEvaluationReport`, plan/schedule slicing, fresh-battery segment construction, Feature 012 delegation, and deterministic reconciliation in `src/open_energy_lab/simulator/fcr_rolling_evaluation.py`
+- [x] T014 Add lazy public exports for activation slicing and segmented evaluation without eager solver or pandas imports in `src/open_energy_lab/market/__init__.py` and `src/open_energy_lab/simulator/__init__.py`
+- [x] T015 Run the protected Feature 012/013 unit and integration selections and record the unchanged golden fingerprints in `docs/migration/fcr-rolling-backtest-parity.md`
 
 **Checkpoint**: Existing Feature 013 evidence is unchanged, and partial/full
 accepted-plan replay is available solely by composing Feature 012.

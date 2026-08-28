@@ -209,12 +209,13 @@ def build_model_input(problem: RobustFCRBiddingProblem) -> RobustFCRModelInput:
         raise RobustFCRValidationError(
             "problem must be a validated RobustFCRBiddingProblem"
         )
-    index_sets = build_normalized_index_sets(96)
     battery = problem.battery
-    return RobustFCRModelInput(
+    return build_normalized_model_input(
         problem_fingerprint=problem.problem_fingerprint,
         planning_resolution_hours=0.25,
-        index_sets=index_sets,
+        planning_interval_count=96,
+        planning_intervals_per_energy_interval=4,
+        planning_intervals_per_fcr_block=16,
         payload={
             "source_minimum_power_kw": battery.source_minimum_power_kw,
             "source_maximum_power_kw": battery.source_maximum_power_kw,
@@ -244,6 +245,33 @@ def build_model_input(problem: RobustFCRBiddingProblem) -> RobustFCRModelInput:
                 problem.prices.fcr_capacity_prices_eur_per_kw_block
             ),
         },
+    )
+
+
+def build_normalized_model_input(
+    *,
+    problem_fingerprint: str,
+    planning_resolution_hours: float,
+    planning_interval_count: int,
+    planning_intervals_per_energy_interval: int,
+    planning_intervals_per_fcr_block: int,
+    payload: Mapping[str, object],
+) -> RobustFCRModelInput:
+    """Build a backend-neutral normalized frame for daily or rolling assembly."""
+
+    return RobustFCRModelInput(
+        problem_fingerprint=problem_fingerprint,
+        planning_resolution_hours=planning_resolution_hours,
+        index_sets=build_normalized_index_sets(
+            planning_interval_count,
+            planning_intervals_per_energy_interval=(
+                planning_intervals_per_energy_interval
+            ),
+            planning_intervals_per_fcr_block=(
+                planning_intervals_per_fcr_block
+            ),
+        ),
+        payload=payload,
     )
 
 
@@ -339,11 +367,33 @@ def assemble_robust_fcr_model(
 ) -> AssembledRobustFCRModel:
     """Assemble the preserved non-intraday formulation through injected Pyomo."""
 
+    if not isinstance(problem, RobustFCRBiddingProblem):
+        raise RobustFCRValidationError(
+            "problem must be a validated RobustFCRBiddingProblem"
+        )
+    return assemble_normalized_robust_fcr_model(
+        build_model_input(problem),
+        profile,
+        pyomo_environ=pyomo_environ,
+    )
+
+
+def assemble_normalized_robust_fcr_model(
+    data: RobustFCRModelInput,
+    profile: RobustFCRFormulationProfile,
+    *,
+    pyomo_environ: Any,
+) -> AssembledRobustFCRModel:
+    """Assemble one validated normalized frame through injected Pyomo."""
+
+    if not isinstance(data, RobustFCRModelInput):
+        raise RobustFCRValidationError(
+            "data must be a validated RobustFCRModelInput"
+        )
     if not isinstance(profile, RobustFCRFormulationProfile):
         raise RobustFCRValidationError(
             "profile must be RobustFCRFormulationProfile"
         )
-    data = build_model_input(problem)
     indices = data.index_sets
     values = data.payload
     pyo = pyomo_environ
@@ -757,7 +807,9 @@ __all__ = [
     "RobustFCRModelInput",
     "SOURCE_EQUATION_REFERENCES",
     "SOURCE_EQUATION_VERSION",
+    "assemble_normalized_robust_fcr_model",
     "build_normalized_index_sets",
+    "build_normalized_model_input",
     "build_model_input",
     "assemble_robust_fcr_model",
     "assemble_robust_fcr_reference_certificate",

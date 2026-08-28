@@ -267,10 +267,12 @@ def _component_values(component: Any, indices: tuple[Any, ...], pyo: Any) -> tup
     )
 
 
-def _extract_complete_witness(
+def extract_complete_witness(
     assembled: AssembledRobustFCRModel,
     pyo: Any,
 ) -> Mapping[str, object]:
+    """Extract a complete normalized witness from one assembled model."""
+
     handles = assembled.variable_handles
     index_sets = assembled.handoff.model_input.index_sets
     planning = index_sets.planning_indices
@@ -316,6 +318,15 @@ def _extract_complete_witness(
     return MappingProxyType(witness)
 
 
+def _extract_complete_witness(
+    assembled: AssembledRobustFCRModel,
+    pyo: Any,
+) -> Mapping[str, object]:
+    """Backward-compatible private alias for Feature 013 tests and callers."""
+
+    return extract_complete_witness(assembled, pyo)
+
+
 def _termination_text(results: Any) -> str:
     value = getattr(results.solver, "termination_condition", "unknown")
     return str(value).strip().lower().replace(" ", "_")
@@ -328,7 +339,13 @@ def _has_solver_confirmed_solution(results: Any) -> bool:
         return False
 
 
-def _normalized_status(termination: str, *, has_incumbent: bool) -> str:
+def normalize_backend_termination_status(
+    termination: str,
+    *,
+    has_incumbent: bool,
+) -> str:
+    """Normalize solver-specific termination text without solver imports."""
+
     compact = termination.replace("_", "")
     if compact == "optimal":
         return "optimal" if has_incumbent else "failed"
@@ -350,6 +367,15 @@ def _normalized_status(termination: str, *, has_incumbent: bool) -> str:
     ):
         return "feasible" if has_incumbent else "no_solution"
     return "feasible" if has_incumbent else "failed"
+
+
+def _normalized_status(termination: str, *, has_incumbent: bool) -> str:
+    """Backward-compatible private alias for Feature 013 tests and callers."""
+
+    return normalize_backend_termination_status(
+        termination,
+        has_incumbent=has_incumbent,
+    )
 
 
 def _result_upper_bound(results: Any) -> float | None:
@@ -672,11 +698,13 @@ __all__ = [
     "RawRobustFCRSolveResult",
     "GurobiBackendModules",
     "SolverBackendModules",
+    "extract_complete_witness",
     "require_highs_backend",
     "load_optional_gurobi_backend",
     "solve_exact_assembled_model",
     "solve_gurobi_assembled_model",
     "solve_assembled_model",
+    "normalize_backend_termination_status",
     "unavailable_exact_raw_result",
     "unavailable_gurobi_raw_result",
 ]

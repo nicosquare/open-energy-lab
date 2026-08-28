@@ -51,6 +51,47 @@ energy metric also require explicit discrepancy evidence.
 
 ## Validation record
 
-No implementation checkpoint has been claimed yet. Each phase will append its
-exact commands, pass counts, semantic fingerprints, and actionable optional
-skips here after the corresponding task group passes.
+### Phase 2 — Feature 012/013 compatibility foundation
+
+The protected Feature 012/013, activation, segmented-evaluation, package
+surface, and lazy-import selection passed with `307 passed in 138.23s`:
+
+```bash
+uv run pytest \
+  tests/unit/control/test_robust_fcr_problem.py \
+  tests/unit/control/test_robust_fcr_solver.py \
+  tests/unit/control/test_robust_fcr_equations.py \
+  tests/unit/control/test_robust_fcr_backend_compatibility.py \
+  tests/integration/control/test_robust_fcr_highs.py \
+  tests/unit/simulator/test_fcr_bid_evaluation.py \
+  tests/unit/simulator/test_fcr_settlement.py \
+  tests/integration/simulator/test_fcr_bid_evaluation_compatibility.py \
+  tests/integration/simulator/test_fcr_bid_evaluation_public_compatibility.py \
+  tests/integration/simulator/test_robust_fcr_feature_012_replay.py \
+  tests/unit/market/test_activation.py \
+  tests/unit/simulator/test_fcr_rolling_evaluation.py \
+  tests/unit/control/test_fcr_rolling_import_boundary.py \
+  tests/unit/market/test_package_surface.py \
+  tests/unit/market/test_import_boundary.py \
+  tests/unit/simulator/test_import_boundary.py \
+  tests/unit/test_lazy_dependency_boundaries.py \
+  tests/unit/test_import_contract.py -q
+```
+
+The Feature 013 authored ordinary-day identities remained unchanged:
+
+- problem: `60096175d66da13ee99eac05b0680a040e7d8dd15f8ebd6f9aca3f8f0a4c1a62`
+- comparison problem: `8b5b362db4bed3af10a3026ff678b3cc338e3ee96da134d0f432817e4968da52`
+- time contract: `9d584023b06e5a6f5ea4e475cd9aa49d1a4d63b0edef9aafb7c4181e78d63c56`
+- controlled semantic result: `15f1f5077033ecd7b7c2261bed82706ad26b56ead7c4f6889ab87e2f74ea2cae`
+- controlled decision vector: `a00a601eb3cdd1acabf87e3c58c75233b9af3c109675c5d41af0a797bc5a180c`
+- controlled energy schedule: `1e83cf52c59b1b85d6796bc063ef1d9f90b94d22fe076d58b30ca190debb73b2`
+- controlled FCR schedule: `1d1f4651e2bf2a691d227cdf3c7c315d558e798d7f24e510dc470d4a9f9a110a`
+- controlled fixed plan: `e81de0cad18c716aa8476883e90477e5a7dd056678bfe8391b9446be031d06e7`
+
+The real presolve-zero HiGHS case also retained result fingerprint
+`92b532198aae634948e96369dbd48101f9c7bb7cc8fbb0bd7c798ab010ff4deb`
+and plan fingerprint
+`5da0ba402a0f973117539b42d1f798c9adc24ac52ed841b15069409a3bd35992`.
+No optional source runtime, network, credentials, Julia, Gurobi, or external
+activation CSV was used by this checkpoint.
