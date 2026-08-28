@@ -10,6 +10,13 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from .fcr_rolling_reference import (
+        RollingFCRReferenceComparison,
+        RollingFCRReferenceFieldResult,
+        RollingFCRReferenceFixture,
+        compare_rolling_fcr_reference,
+        load_rolling_fcr_reference_fixture,
+    )
     from .fcr_rolling_backtest import (
         AGGREGATION_POLICY,
         FAILURE_POLICY_COUPLED,
@@ -133,6 +140,26 @@ if TYPE_CHECKING:
 
 
 _EXPORT_MAP = {
+    "RollingFCRReferenceComparison": (
+        ".fcr_rolling_reference",
+        "RollingFCRReferenceComparison",
+    ),
+    "RollingFCRReferenceFieldResult": (
+        ".fcr_rolling_reference",
+        "RollingFCRReferenceFieldResult",
+    ),
+    "RollingFCRReferenceFixture": (
+        ".fcr_rolling_reference",
+        "RollingFCRReferenceFixture",
+    ),
+    "compare_rolling_fcr_reference": (
+        ".fcr_rolling_reference",
+        "compare_rolling_fcr_reference",
+    ),
+    "load_rolling_fcr_reference_fixture": (
+        ".fcr_rolling_reference",
+        "load_rolling_fcr_reference_fixture",
+    ),
     "AGGREGATION_POLICY": (".fcr_rolling_backtest", "AGGREGATION_POLICY"),
     "FAILURE_POLICY_COUPLED": (
         ".fcr_rolling_backtest",
@@ -528,6 +555,9 @@ __all__ = sorted([
     "RollingFCRDayRevision",
     "RollingFCRExperimentProfile",
     "RollingFCRNumericPolicy",
+    "RollingFCRReferenceComparison",
+    "RollingFCRReferenceFieldResult",
+    "RollingFCRReferenceFixture",
     "RollingFCRResumeEvidence",
     "RollingFCRStateCarryEvidence",
     "RollingFCRStateLink",
@@ -561,10 +591,12 @@ __all__ = sorted([
     "build_stacked_heuristic_baseline",
     "compare_robust_fcr_bounds",
     "compare_robust_fcr_reference",
+    "compare_rolling_fcr_reference",
     "derive_non_intraday_horizon_budget",
     "derive_rolling_fcr_state_carry",
     "extract_accepted_predecessor_fixings",
     "load_robust_fcr_reference_fixture",
+    "load_rolling_fcr_reference_fixture",
     "load_rolling_fcr_study_result",
     "run_rolling_fcr_study",
     "solve_robust_fcr_bid",

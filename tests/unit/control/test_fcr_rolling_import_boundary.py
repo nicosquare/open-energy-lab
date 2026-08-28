@@ -11,6 +11,7 @@ import textwrap
 
 ROLLING_MODULES = (
     Path("src/open_energy_lab/control/fcr_rolling_backtest.py"),
+    Path("src/open_energy_lab/control/fcr_rolling_reference.py"),
     Path("src/open_energy_lab/control/robust_fcr_rolling.py"),
     Path("src/open_energy_lab/control/_fcr_rolling_orchestrator.py"),
     Path("src/open_energy_lab/market/activation.py"),
@@ -84,6 +85,7 @@ def test_feature_015_foundational_imports_load_no_solver_or_research_stack() -> 
         before = set(sys.modules)
         import open_energy_lab.market.activation
         import open_energy_lab.control.fcr_rolling_backtest
+        import open_energy_lab.control.fcr_rolling_reference
         import open_energy_lab.control.robust_fcr_rolling
         import open_energy_lab.control._fcr_rolling_orchestrator
         import open_energy_lab.simulator.fcr_bid_evaluation
@@ -121,6 +123,32 @@ def test_result_resume_and_persistence_exports_remain_lazy() -> None:
         assert callable(load_rolling_fcr_study_result)
         newly_loaded = set(sys.modules) - before
         forbidden = {"pyomo", "highspy", "gurobipy", "pandas"}
+        assert forbidden.isdisjoint({name.split(".", 1)[0] for name in newly_loaded})
+        """
+    )
+
+
+def test_normalized_reference_exports_remain_lazy_and_offline() -> None:
+    _run_isolated(
+        """
+        import sys
+
+        before = set(sys.modules)
+        from open_energy_lab.control import (
+            RollingFCRReferenceComparison,
+            RollingFCRReferenceFieldResult,
+            RollingFCRReferenceFixture,
+            compare_rolling_fcr_reference,
+            load_rolling_fcr_reference_fixture,
+        )
+
+        assert RollingFCRReferenceComparison.__name__ == "RollingFCRReferenceComparison"
+        assert RollingFCRReferenceFieldResult.__name__ == "RollingFCRReferenceFieldResult"
+        assert RollingFCRReferenceFixture.__name__ == "RollingFCRReferenceFixture"
+        assert callable(compare_rolling_fcr_reference)
+        assert callable(load_rolling_fcr_reference_fixture)
+        newly_loaded = set(sys.modules) - before
+        forbidden = {"pyomo", "highspy", "gurobipy", "pandas", "requests"}
         assert forbidden.isdisjoint({name.split(".", 1)[0] for name in newly_loaded})
         """
     )

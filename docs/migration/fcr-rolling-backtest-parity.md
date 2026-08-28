@@ -31,6 +31,12 @@ scripts 11/12/13/14/15 correspond to paper Experiments 1/2/4/5/3 and workbook
 columns 11/12/14/15/13. Script 13's executable time limit and the workbook's
 energy metric also require explicit discrepancy evidence.
 
+More precisely, script 13 retains the data-structure default of 3,600 seconds,
+whereas scripts 14 and 15 explicitly use 900 seconds. The workbook energy
+metric derives charging input multiplied by charging efficiency; it is not the
+paper's discharge-energy output. These differences are retained as governed
+fixture discrepancies rather than reconciled by renaming fields.
+
 ## Evidence limits
 
 - No Table A1 parity claim is made. The bounded four-day rerun cannot prove a
@@ -50,6 +56,63 @@ energy metric also require explicit discrepancy evidence.
   the governed Feature 012 CSV. No implementation searches for it.
 
 ## Validation record
+
+### Phase 7 — bounded source normalization and comparison semantics
+
+The bounded four-day rerun is normalized into a 99,635-byte fixture with
+semantic fingerprint
+`d9f12af283ff0377e651d7c7aaf5e81a40f85372a6e1bf62a4f90ab928659d93`
+and committed-byte SHA-256
+`c075d81cb8a388c82f57c78f3f36aedf9c0da9b0dadbed636b6422e87081be4f`.
+Its explicit input manifest has SHA-256
+`b84aef1734df9cb366696b9183b47610e540f5ecd47515ac012bf33e67875edc`
+and pins all 20 JSON files, 11 logs, ten cited source files, three input-data
+descriptors, the committed Julia Project/Manifest, README, workbook, and
+Feature 013 fixture. The reviewed post-promotion semantic diff is empty.
+
+Six retained source solves are time-limited feasible incumbents: scripts 14
+and 15 on 2023-06-17, 2023-06-18, and 2023-06-19. Their same-solve upper bounds
+remain distinct from incumbents. Source JSON's `bilinear_violations=0` is not
+used as feasibility evidence. Native source-precision compatibility instead
+requires one common witness across the closed three-decimal decision,
+objective, state, and accepted-overlap intervals plus Feature 013's modeled
+slack and independent residual audit.
+
+Field comparisons preserve nine distinct outcomes:
+
+- `exact_displayed_decision_parity`;
+- `source_precision_compatible`;
+- `alternative_optimum_compatible`, only with adequate two-sided optimality
+  and common-feasibility evidence;
+- `source_incumbent_equivalent` for audited objective-equivalent evidence
+  against a time-limited source incumbent;
+- `improved_feasible_incumbent_compatible_with_source_bound`;
+- `bound_incompatible`;
+- `mismatch`;
+- `unavailable`; and
+- `incomplete_or_unfinalized`.
+
+The deterministic summary is `incompatible` when any mandatory field proves a
+mismatch or bound incompatibility, `incomplete` when required evidence is
+unavailable or unfinalized without a proven conflict, and `compatible` only
+when every mandatory field has a compatible outcome. Canonically ordered field
+evidence remains authoritative. Two time-limited incumbents are never called
+alternative optima merely because their objectives are close.
+
+For script 14, displayed predecessor and successor overlap intervals can be
+jointly checked and the fixed-tail objective remains explicit, but exact
+full-precision restart parity is unavailable because the predecessor values
+fixed in memory were not persisted. The first bounded date remains
+initialization-only, the last is unfinalized, and primary paired evidence is
+limited to 2023-06-18 and 2023-06-19. This is a no Table A1 parity claim: the
+bounded rerun does not prove full-history aggregates or the paper's metric
+definitions.
+
+The normalization and pure comparison selection is routine, deterministic,
+and offline. Raw results, raw logs, the workbook, complete activation samples,
+machine identities, and license text are not redistributed. The generated
+candidate exactly reproduced the promoted fixture, and the governed Feature
+013 fixture remained byte-identical.
 
 ### Phase 2 — Feature 012/013 compatibility foundation
 

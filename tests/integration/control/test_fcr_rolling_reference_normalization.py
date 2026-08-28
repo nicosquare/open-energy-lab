@@ -71,6 +71,8 @@ def _source_json(profile: int, script: int, day_index: int) -> dict[str, object]
     day = DATES[day_index]
     model_type = PROFILE_DATA[profile - 1][2]
     bidding_time = PROFILE_DATA[profile - 1][3]
+    if profile == 4 and day_index == 0:
+        bidding_time = 24.0
     objective = round(5.0 + profile + day_index * 0.25, 3)
     bound = round(
         objective + (0.5 if profile in {4, 5} and day_index < 3 else 0.0),
@@ -78,6 +80,13 @@ def _source_json(profile: int, script: int, day_index: int) -> dict[str, object]
     )
     x0 = [round((profile * 0.1) + index * 0.01, 3) for index in range(24)]
     xr = [0.0] * 6 if profile == 3 else [round(profile * 0.05 + i * 0.01, 3) for i in range(6)]
+    if profile == 2 and day_index == 1:
+        governed = json.loads(COMMITTED_FEATURE_013_FIXTURE.read_text(encoding="utf-8"))
+        recorded = governed["recorded_result"]
+        objective = recorded["objective_value_eur"]
+        bound = recorded["objective_bound_eur"]
+        x0 = recorded["rounded_x0_kw"]
+        xr = recorded["rounded_xr_kw"]
     current = {
         "x0": x0,
         "xr": xr,
@@ -360,7 +369,7 @@ def test_normalizer_is_digest_first_explicit_redacting_and_byte_stable(
     assert repeated.candidate_path.read_bytes() == first_candidate
     assert repeated.semantic_diff_path.read_bytes() == first_diff
     assert first.candidate_path.is_relative_to(artifact_root)
-    assert not tuple(destination.glob("*.tmp"))
+    assert not tuple(path for path in destination.iterdir() if path.suffix == ".tmp")
     fixture = load_rolling_fcr_reference_fixture(first.candidate_path)
     assert len(fixture.solve_records) == 20
     candidate_text = first_candidate.decode("utf-8")
@@ -522,4 +531,3 @@ def test_normalizer_emits_ordered_semantic_diff(
     assert paths == sorted(paths)
     diff_payload = json.loads(result.semantic_diff_path.read_text(encoding="utf-8"))
     assert diff_payload["semantic_differences"] == list(result.semantic_differences)
-

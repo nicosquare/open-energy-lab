@@ -51,7 +51,8 @@
     },
     "problem_inputs": {
       "type": "array",
-      "minItems": 4,
+      "minItems": 20,
+      "maxItems": 20,
       "items": {
         "$ref": "#/$defs/problemInput"
       }
@@ -268,6 +269,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "profile_id",
         "delivery_date",
         "battery",
         "day_ahead_prices_eur_per_kwh",
@@ -277,6 +279,7 @@
         "input_fingerprint"
       ],
       "properties": {
+        "profile_id": {"$ref": "#/$defs/profileId"},
         "delivery_date": {"$ref": "#/$defs/date"},
         "battery": {"type": "object"},
         "day_ahead_prices_eur_per_kwh": {
@@ -341,6 +344,7 @@
         "initial_stored_energy_kwh",
         "cutoff_stored_energy_kwh",
         "terminal_stored_energy_kwh",
+        "accepted_overlap",
         "modeled_feasibility_claim",
         "record_fingerprint"
       ],
@@ -375,10 +379,44 @@
           ]
         },
         "terminal_stored_energy_kwh": {"$ref": "#/$defs/finiteNumber"},
+        "accepted_overlap": {
+          "oneOf": [
+            {"$ref": "#/$defs/acceptedOverlap"},
+            {"type": "null"}
+          ]
+        },
         "modeled_feasibility_claim": {
           "const": "unavailable_pending_independent_audit"
         },
         "record_fingerprint": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "acceptedOverlap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "predecessor_delivery_date",
+        "hourly_energy_source_positive_discharge_kw",
+        "fcr_capacity_kw",
+        "fixed_tail_objective_eur",
+        "overlap_fingerprint"
+      ],
+      "properties": {
+        "predecessor_delivery_date": {"$ref": "#/$defs/date"},
+        "hourly_energy_source_positive_discharge_kw": {
+          "type": "array",
+          "minItems": 16,
+          "maxItems": 16,
+          "items": {"$ref": "#/$defs/finiteNumber"}
+        },
+        "fcr_capacity_kw": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {"$ref": "#/$defs/finiteNumber"}
+        },
+        "fixed_tail_objective_eur": {"$ref": "#/$defs/finiteNumber"},
+        "overlap_fingerprint": {"$ref": "#/$defs/sha256"}
       }
     },
     "deliveryEvidence": {

@@ -29,6 +29,12 @@ FIXTURE_PATH = Path(
     "robust_storage_bidding_experiments_01_05_2023-06-17_20_v1.json"
 )
 REFERENCE_REVISION = "7e44738bb30e5c8204efe40103b9be4c2203685c"
+EXPECTED_FIXTURE_FINGERPRINT = (
+    "d9f12af283ff0377e651d7c7aaf5e81a40f85372a6e1bf62a4f90ab928659d93"
+)
+EXPECTED_FIXTURE_BYTES_SHA256 = (
+    "c075d81cb8a388c82f57c78f3f36aedf9c0da9b0dadbed636b6422e87081be4f"
+)
 PROFILES = (
     "script-11-relaxation-reset-midnight-v1",
     "script-12-restriction-reset-midnight-v1",
@@ -85,6 +91,10 @@ def test_fixture_loads_strict_five_by_four_provenance_and_fingerprint() -> None:
     assert fixture.schema_version == ROLLING_FCR_REFERENCE_FIXTURE_SCHEMA_VERSION
     assert fixture.fixture_id == ROLLING_FCR_REFERENCE_FIXTURE_ID
     assert fixture.reference_provenance.reference_revision == REFERENCE_REVISION
+    assert fixture.fixture_fingerprint == EXPECTED_FIXTURE_FINGERPRINT
+    assert hashlib.sha256(FIXTURE_PATH.read_bytes()).hexdigest() == (
+        EXPECTED_FIXTURE_BYTES_SHA256
+    )
     assert fixture.reference_provenance.runtime_evidence == {
         "gurobi_runtime_version": "11.0.3",
         "julia_version": "1.10.1",
@@ -143,6 +153,11 @@ def test_fixture_retains_status_edges_unavailable_fields_and_no_raw_payloads() -
     }
     assert (PROFILES[3], DATES[1]) in time_limited
     assert (PROFILES[4], DATES[2]) in time_limited
+    assert time_limited == {
+        (profile, day)
+        for profile in PROFILES[3:]
+        for day in DATES[:3]
+    }
     unavailable = {item.field_path for item in fixture.unavailable_fields}
     assert "source.unrounded_decisions" in unavailable
     assert "source.restriction_independent_residual_audit" in unavailable
@@ -173,7 +188,7 @@ def test_fixture_loader_rejects_unknown_keys_tampering_and_missing_evidence(
     payload["solve_records"][0]["objective_eur"] += 0.001
     tampered = tmp_path / "tampered.json"
     tampered.write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(ValueError, match="fingerprint"):
+    with pytest.raises(ValueError, match="fingerprint|reconcile"):
         load_rolling_fcr_reference_fixture(tampered)
 
     payload = _fixture_payload()
@@ -402,4 +417,3 @@ def test_field_result_is_immutable_fingerprinted_and_detects_bad_envelopes() -> 
     assert "detached" not in result.reason_codes
     with pytest.raises(ValueError, match="allowed envelope"):
         replace(result, allowed_envelope=(2.0, 1.0))
-
