@@ -14,16 +14,24 @@ from tempfile import TemporaryDirectory
 
 from open_energy_lab.tpm import (
     TPMArtifactBuildRequest,
+    TPMBinaryDecisionMapping,
+    TPMCategoricalDecisionMapping,
+    TPMContinuousDecisionMapping,
     TPMFeatureDomain,
     TPMFitConfig,
     TPMConditionalCompilationRequest,
     TPMConditionalEncodingPolicy,
     TPMConditionalNumericalPolicy,
+    attach_conditional_mio_pair,
+    build_compiler_fidelity_evidence,
+    build_embedding_parity_evidence,
     canonical_conditional_json_bytes,
     compile_conditional_mio_pair,
     evaluate_conditional_mio_pair,
+    evaluate_native_conditional_pair,
     detect_spflow_backend_capabilities,
     fit_tpm_artifact_from_rows,
+    inspect_conditional_mio_attachment,
     load_tpm_artifact,
     load_conditional_pair,
     publish_conditional_pair,
@@ -49,6 +57,7 @@ SIDECAR_PATH = (
 )
 MAX_PAIR_PATH = FIXTURE_DIRECTORY / "conditional_pair_max_v1.json"
 PWL_PAIR_PATH = FIXTURE_DIRECTORY / "conditional_pair_pwl_v1.json"
+EVIDENCE_PATH = FIXTURE_DIRECTORY / "conditional_mio_evidence_v1.json"
 FIXED_FIXTURE_TIMESTAMP = "2026-08-28T00:00:00Z"
 STAGING_COMMAND = (
     "uv run --offline --locked --no-sync python "
@@ -59,6 +68,11 @@ PAIR_STAGING_COMMAND = (
     "uv run --offline --locked --no-sync python "
     "examples/tpm_planning/run_conditional_mio_embedding.py "
     "--stage-pairs <fresh-directory>"
+)
+EVIDENCE_STAGING_COMMAND = (
+    "uv run --offline --locked --no-sync python "
+    "examples/tpm_planning/run_conditional_mio_embedding.py "
+    "--stage-evidence <fresh-directory>"
 )
 VERIFICATION_COMMAND = (
     "uv run --offline --locked --no-sync python "
@@ -382,6 +396,205 @@ def stage_pairs(staging_directory: Path) -> dict[str, object]:
     }
 
 
+def _fixed_assignment_diagnostics(
+    pair,
+    assignments: Mapping[str, object],
+    *,
+    namespace: str,
+):
+    import highspy
+    import pyomo.environ as pyo
+
+    model = pyo.ConcreteModel()
+    model.x = pyo.Var(bounds=(40.0, 160.0))
+    model.activation = pyo.Var(domain=pyo.Binary)
+    model.category = pyo.Set(
+        initialize=("economy", "standard", "priority"), ordered=True
+    )
+    model.service_tier = pyo.Var(model.category, domain=pyo.Binary)
+    attachment = attach_conditional_mio_pair(
+        pair,
+        model,
+        mappings=(
+            TPMContinuousDecisionMapping("x", model.x),
+            TPMBinaryDecisionMapping("activation", model.activation),
+            TPMCategoricalDecisionMapping(
+                "service_tier",
+                tuple(
+                    (label, model.service_tier[label]) for label in model.category
+                ),
+            ),
+        ),
+        namespace=namespace,
+    )
+    model.x.fix(float(assignments["x"]))
+    model.activation.fix(1 if assignments["activation"] == "on" else 0)
+    for label in model.category:
+        model.service_tier[label].fix(
+            int(label == assignments["service_tier"])
+        )
+    if tuple(model.component_objects(pyo.Objective, descend_into=True)):
+        raise AssertionError("fixed-assignment evidence must remain objective-free")
+    result = pyo.SolverFactory("highs").solve(model)
+    return inspect_conditional_mio_attachment(
+        attachment,
+        solver_metadata={
+            "solver_name": "highs",
+            "solver_version": highspy.Highs().version(),
+            "status": str(result.solver.status),
+            "termination_condition": str(result.solver.termination_condition),
+        },
+    )
+
+
+def _build_evidence_bundle() -> dict[str, object]:
+    artifact = load_tpm_artifact(ARTIFACT_PATH)
+    source = _load_source()
+    pairs = {
+        "max": load_conditional_pair(MAX_PAIR_PATH),
+        "pwl": load_conditional_pair(PWL_PAIR_PATH),
+    }
+    pair_before = {
+        "max": MAX_PAIR_PATH.read_bytes(),
+        "pwl": PWL_PAIR_PATH.read_bytes(),
+    }
+    parity_records = []
+    fidelity_records = []
+    for policy_name, pair in pairs.items():
+        parity_cases = {}
+        fidelity_cases = {}
+        for raw_case in source["representative_assignments"]:
+            case = _mapping(raw_case, field_name="representative_assignment")
+            case_name = str(case["case_name"])
+            assignments = _mapping(case["values"], field_name="values")
+            direct = evaluate_conditional_mio_pair(
+                pair,
+                declared_domain_assignments=assignments,
+            )
+            native = evaluate_native_conditional_pair(
+                artifact,
+                pair,
+                declared_domain_assignments=assignments,
+            )
+            diagnostics = _fixed_assignment_diagnostics(
+                pair,
+                assignments,
+                namespace=f"{policy_name}_{case_name.replace('-', '_')}",
+            )
+            parity_cases[case_name] = (direct, diagnostics)
+            fidelity_cases[case_name] = (direct, native)
+        provenance = {
+            "spec_feature": "016-conditional-mio-embedding",
+            "source_fixture_sha256": _sha256(SOURCE_PATH),
+            "artifact_manifest_sha256": _sha256(ARTIFACT_PATH),
+            "pair_sha256": _sha256(
+                MAX_PAIR_PATH if policy_name == "max" else PWL_PAIR_PATH
+            ),
+            "network_required": False,
+            "commercial_solver_required": False,
+        }
+        parity = build_embedding_parity_evidence(
+            pair,
+            case_results=parity_cases,
+            provenance={**provenance, "comparison": "embedding-solver-parity"},
+        )
+        if not parity.accepted:
+            raise AssertionError(
+                f"{policy_name} embedding parity did not meet the acceptance contract"
+            )
+        fidelity = build_compiler_fidelity_evidence(
+            pair,
+            case_results=fidelity_cases,
+            provenance={**provenance, "comparison": "native-compiler-fidelity"},
+        )
+        parity_records.append(parity.to_dict())
+        fidelity_records.append(fidelity.to_dict())
+    if MAX_PAIR_PATH.read_bytes() != pair_before["max"]:
+        raise AssertionError("max pair changed while building evidence")
+    if PWL_PAIR_PATH.read_bytes() != pair_before["pwl"]:
+        raise AssertionError("PWL pair changed while building evidence")
+    return {
+        "fixture_name": "conditional_mio_evidence_v1",
+        "fixture_status": "active-generated-evidence",
+        "record_kind": "conditional-mio-evidence-fixture-v1",
+        "schema_version": "v1",
+        "spec_feature": "016-conditional-mio-embedding",
+        "purpose": (
+            "Separate immutable embedding/solver parity and native/compiler "
+            "fidelity records for the reviewed mixed conditional pairs."
+        ),
+        "source": {
+            "artifact_id": artifact.artifact_id,
+            "source_fixture_sha256": _sha256(SOURCE_PATH),
+            "artifact_manifest_sha256": _sha256(ARTIFACT_PATH),
+            "artifact_sidecar_sha256": _sha256(SIDECAR_PATH),
+        },
+        "pairs": [
+            {
+                "policy": policy_name,
+                "pair_id": pairs[policy_name].pair_id,
+                "sha256": _sha256(
+                    MAX_PAIR_PATH if policy_name == "max" else PWL_PAIR_PATH
+                ),
+            }
+            for policy_name in ("max", "pwl")
+        ],
+        "representative_assignments": source["representative_assignments"],
+        "embedding_parity_records": parity_records,
+        "compiler_fidelity_records": fidelity_records,
+        "provenance": {
+            "author": "OpenAI Codex",
+            "origin": (
+                "Generated deterministically from the reviewed feature-016 source "
+                "artifact and immutable max/PWL pairs."
+            ),
+            "legacy_evidence_paths": [],
+            "generation_command": EVIDENCE_STAGING_COMMAND,
+            "random_seed": 16028,
+            "refresh_policy": (
+                "Stage once in a fresh directory after an intentional semantic "
+                "change; never retry, adapt, repair, or overwrite during verification."
+            ),
+            "staging_command": EVIDENCE_STAGING_COMMAND,
+            "verification_command": VERIFICATION_COMMAND,
+            "cpu_only": True,
+            "network_required": False,
+            "commercial_solver_required": False,
+            "retry_policy": "none",
+        },
+        "notes": [
+            "Parity compares attached Pyomo roots with direct execution of the identical selected max or PWL semantics and is gated at 1e-6.",
+            "Fidelity compares direct compiled values with current-SPFlow and intentionally has no numerical adequacy gate.",
+            "The published pair files remain byte-identical before and after all evidence cases.",
+        ],
+    }
+
+
+def stage_evidence(staging_directory: Path) -> dict[str, object]:
+    """Build reviewed evidence once in a fresh directory without rewriting fixtures."""
+
+    destination = Path(staging_directory).resolve()
+    destination.mkdir(parents=True, exist_ok=False)
+    output = destination / EVIDENCE_PATH.name
+    bundle = _build_evidence_bundle()
+    _write_json_new(output, bundle)
+    output.chmod(0o644)
+    return {
+        "mode": "stage_evidence",
+        "staging_directory": str(destination),
+        "evidence": str(output),
+        "evidence_sha256": _sha256(output),
+        "parity_evidence_ids": [
+            record["evidence_id"]
+            for record in bundle["embedding_parity_records"]
+        ],
+        "fidelity_evidence_ids": [
+            record["evidence_id"]
+            for record in bundle["compiler_fidelity_records"]
+        ],
+    }
+
+
 def _native_evidence(artifact) -> tuple[dict[str, object], ...]:
     import torch
 
@@ -458,6 +671,7 @@ def verify_fixtures() -> dict[str, object]:
         "max": MAX_PAIR_PATH.read_bytes(),
         "pwl": PWL_PAIR_PATH.read_bytes(),
     }
+    evidence_before = EVIDENCE_PATH.read_bytes()
     committed = load_tpm_artifact(ARTIFACT_PATH)
     if committed.provenance.get("source_fixture_sha256") != _sha256(SOURCE_PATH):
         raise AssertionError("committed artifact source digest is stale")
@@ -490,6 +704,17 @@ def verify_fixtures() -> dict[str, object]:
             )
             if not math.isfinite(evaluation.conditional_log_risk):
                 raise AssertionError(f"{policy_name} pair evaluation is nonfinite")
+    committed_evidence = _mapping(
+        json.loads(EVIDENCE_PATH.read_text(encoding="utf-8")),
+        field_name="conditional_mio_evidence_v1",
+    )
+    recomputed_evidence = _build_evidence_bundle()
+    _assert_nested_close(
+        committed_evidence,
+        recomputed_evidence,
+        path="conditional_mio_evidence",
+        tolerance=1e-9,
+    )
     with TemporaryDirectory(prefix="oel-conditional-mio-verify-", dir="/tmp") as raw:
         fresh = _fit_to_path(Path(raw) / ARTIFACT_PATH.name)
         fresh_semantics = _semantic_projection(fresh)
@@ -509,6 +734,8 @@ def verify_fixtures() -> dict[str, object]:
         raise AssertionError("max pair changed during verification")
     if PWL_PAIR_PATH.read_bytes() != pair_before["pwl"]:
         raise AssertionError("PWL pair changed during verification")
+    if EVIDENCE_PATH.read_bytes() != evidence_before:
+        raise AssertionError("conditional evidence changed during verification")
     capabilities = detect_spflow_backend_capabilities()
     return {
         "mode": "verify_fixtures",
@@ -520,6 +747,15 @@ def verify_fixtures() -> dict[str, object]:
         "max_pair_id": committed_pairs["max"].pair_id,
         "pwl_pair_sha256": _sha256(PWL_PAIR_PATH),
         "pwl_pair_id": committed_pairs["pwl"].pair_id,
+        "evidence_sha256": _sha256(EVIDENCE_PATH),
+        "parity_evidence_ids": [
+            record["evidence_id"]
+            for record in committed_evidence["embedding_parity_records"]
+        ],
+        "fidelity_evidence_ids": [
+            record["evidence_id"]
+            for record in committed_evidence["compiler_fidelity_records"]
+        ],
         "backend_generation": committed.backend_generation,
         "backend_api_version": committed.backend_api_version,
         "adapter_name": capabilities["backend_adapter_name"],
@@ -598,6 +834,12 @@ def _parse_args() -> argparse.Namespace:
         help="create final max/PWL pairs from the committed source artifact",
     )
     mode.add_argument(
+        "--stage-evidence",
+        type=Path,
+        metavar="FRESH_DIRECTORY",
+        help="create separate parity/fidelity evidence from committed pairs",
+    )
+    mode.add_argument(
         "--verify-fixtures",
         action="store_true",
         help="read and refit committed source evidence without rewriting it",
@@ -611,6 +853,8 @@ def main() -> None:
         result = stage_fixtures(args.stage_fixtures)
     elif args.stage_pairs is not None:
         result = stage_pairs(args.stage_pairs)
+    elif args.stage_evidence is not None:
+        result = stage_evidence(args.stage_evidence)
     else:
         result = verify_fixtures()
     print(json.dumps(result, indent=2, sort_keys=True))

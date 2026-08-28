@@ -20,6 +20,7 @@ from open_energy_lab.tpm.conditional import (
 )
 from open_energy_lab.tpm.conditional_mio import (
     attach_conditional_mio_pair,
+    build_compiler_fidelity_evidence,
     compile_conditional_mio_pair,
     evaluate_conditional_mio_pair,
 )
@@ -325,3 +326,46 @@ def test_real_mixed_pair_attaches_representative_binary_and_categories_without_g
 
     assert seen_binary == {"off", "on"}
     assert seen_categories == {"economy", "standard", "priority"}
+
+
+@pytest.mark.parametrize("mode", ["max", "pwl"])
+def test_native_compiler_fidelity_retains_four_signed_differences_without_gate(
+    real_conditional_campaign,
+    mode: str,
+) -> None:
+    artifact, source, pairs = real_conditional_campaign
+    pair = pairs[mode]
+    case_results = {}
+
+    for raw_case in source["representative_assignments"]:
+        case = _mapping(raw_case, field_name="representative_assignment")
+        assignments = _mapping(case["values"], field_name="values")
+        compiled = evaluate_conditional_mio_pair(
+            pair, declared_domain_assignments=assignments
+        )
+        native = evaluate_native_conditional_pair(
+            artifact,
+            pair,
+            declared_domain_assignments=assignments,
+        )
+        case_results[str(case["case_name"])] = (compiled, native)
+
+    evidence = build_compiler_fidelity_evidence(
+        pair,
+        case_results=case_results,
+        provenance={"purpose": "required native/compiler integration fidelity"},
+    )
+
+    assert len(evidence.cases) == 3
+    for case in evidence.cases:
+        assert set(case["differences"]) == {
+            "numerator_log",
+            "denominator_log",
+            "conditional_log_risk",
+            "conditional_probability",
+        }
+        assert all(math.isfinite(value) for value in case["differences"].values())
+    serialized = evidence.to_dict()
+    assert "accepted" not in serialized
+    assert "numerical_gate" in serialized["metric_definitions"]
+    assert serialized["metric_definitions"]["numerical_gate"] == "none"

@@ -23,6 +23,10 @@ from typing import Any, ClassVar
 CONDITIONAL_PAIR_RECORD_KIND = "conditional-pair-v1"
 CONDITIONAL_PAIR_SCHEMA_VERSION = "v1"
 CONDITIONAL_PAIR_COMPILER_VERSION = "conditional-mio-v1"
+CONDITIONAL_EMBEDDING_PARITY_RECORD_KIND = "conditional-embedding-parity-v1"
+CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND = "conditional-compiler-fidelity-v1"
+CONDITIONAL_EVIDENCE_SCHEMA_VERSION = "v1"
+CONDITIONAL_EVIDENCE_EVALUATOR_VERSION = "conditional-evidence-v1"
 
 _SUPPORTED_NODE_TYPES = frozenset(
     {
@@ -1171,6 +1175,147 @@ class TPMConditionalAttachment:
 
 
 @dataclass(frozen=True, slots=True)
+class TPMConditionalAttachmentDiagnostics:
+    """Read-only numerical state observed from one solved attachment."""
+
+    pair_id: str
+    namespace: str
+    solver_metadata: Mapping[str, object]
+    numerator_log: float
+    denominator_log: float
+    conditional_log_risk: float
+    conditional_probability: float
+    classification: str
+    constraint_residuals: Mapping[str, float]
+    maximum_constraint_residual: float
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "pair_id",
+            _sha256_digest(self.pair_id, field_name="pair_id"),
+        )
+        object.__setattr__(
+            self,
+            "namespace",
+            _non_empty_string(self.namespace, "namespace"),
+        )
+        solver = _strict_mapping(
+            self.solver_metadata,
+            record_name="conditional solver metadata",
+            required={
+                "solver_name",
+                "solver_version",
+                "status",
+                "termination_condition",
+            },
+        )
+        normalized_solver = {
+            name: _non_empty_string(value, f"solver_metadata.{name}")
+            for name, value in solver.items()
+        }
+        object.__setattr__(
+            self,
+            "solver_metadata",
+            _freeze_json(
+                normalized_solver, field_name="conditional solver metadata"
+            ),
+        )
+        for field_name in (
+            "numerator_log",
+            "denominator_log",
+            "conditional_log_risk",
+            "conditional_probability",
+        ):
+            object.__setattr__(
+                self,
+                field_name,
+                _finite_float(getattr(self, field_name), field_name=field_name),
+            )
+        if self.conditional_probability < 0.0:
+            raise ValueError("conditional_probability must be non-negative")
+        _require_numeric_identity(
+            self.conditional_log_risk,
+            self.numerator_log - self.denominator_log,
+            field_name="conditional_log_risk",
+        )
+        _require_numeric_identity(
+            self.conditional_probability,
+            math.exp(self.conditional_log_risk),
+            field_name="conditional_probability",
+        )
+        if self.classification not in {"valid", "positive-numerical-noise"}:
+            raise ValueError(
+                "classification must be 'valid' or 'positive-numerical-noise'"
+            )
+        if not isinstance(self.constraint_residuals, Mapping):
+            raise TypeError("constraint_residuals must be a mapping")
+        residuals: dict[str, float] = {}
+        for raw_name, raw_value in self.constraint_residuals.items():
+            name = _non_empty_string(raw_name, "constraint residual name")
+            value = _finite_float(
+                raw_value, field_name=f"constraint_residuals.{name}"
+            )
+            if value < 0.0:
+                raise ValueError("constraint residuals must be non-negative")
+            residuals[name] = value
+        maximum = _finite_float(
+            self.maximum_constraint_residual,
+            field_name="maximum_constraint_residual",
+        )
+        if maximum < 0.0:
+            raise ValueError("maximum_constraint_residual must be non-negative")
+        expected_maximum = max(residuals.values(), default=0.0)
+        _require_numeric_identity(
+            maximum,
+            expected_maximum,
+            field_name="maximum_constraint_residual",
+        )
+        object.__setattr__(
+            self,
+            "constraint_residuals",
+            MappingProxyType(residuals),
+        )
+        object.__setattr__(self, "maximum_constraint_residual", maximum)
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "pair_id": self.pair_id,
+            "namespace": self.namespace,
+            "solver_metadata": _thaw_json(self.solver_metadata),
+            "numerator_log": self.numerator_log,
+            "denominator_log": self.denominator_log,
+            "conditional_log_risk": self.conditional_log_risk,
+            "conditional_probability": self.conditional_probability,
+            "classification": self.classification,
+            "constraint_residuals": dict(self.constraint_residuals),
+            "maximum_constraint_residual": self.maximum_constraint_residual,
+        }
+
+    @classmethod
+    def from_dict(
+        cls, payload: Mapping[str, object]
+    ) -> "TPMConditionalAttachmentDiagnostics":
+        data = _strict_mapping(
+            payload,
+            record_name="conditional attachment diagnostics",
+            required={
+                "pair_id",
+                "namespace",
+                "solver_metadata",
+                "numerator_log",
+                "denominator_log",
+                "conditional_log_risk",
+                "conditional_probability",
+                "classification",
+                "constraint_residuals",
+                "maximum_constraint_residual",
+            },
+        )
+        return cls(**data)
+
+
+@dataclass(frozen=True, slots=True)
 class TPMConditionalEvaluation:
     """Raw direct evaluation of one immutable conditional pair."""
 
@@ -1226,6 +1371,26 @@ class TPMConditionalEvaluation:
             "conditional_probability": self.conditional_probability,
             "classification": self.classification,
         }
+
+    @classmethod
+    def from_dict(
+        cls, payload: Mapping[str, object]
+    ) -> "TPMConditionalEvaluation":
+        data = _strict_mapping(
+            payload,
+            record_name="conditional direct evaluation",
+            required={
+                "pair_id",
+                "assignment_mode",
+                "assignments",
+                "numerator_log",
+                "denominator_log",
+                "conditional_log_risk",
+                "conditional_probability",
+                "classification",
+            },
+        )
+        return cls(**data)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1294,6 +1459,308 @@ class TPMNativeConditionalEvaluation:
             "backend_api_version": self.backend_api_version,
         }
 
+    @classmethod
+    def from_dict(
+        cls, payload: Mapping[str, object]
+    ) -> "TPMNativeConditionalEvaluation":
+        data = _strict_mapping(
+            payload,
+            record_name="native conditional evaluation",
+            required={
+                "pair_id",
+                "artifact_id",
+                "assignments",
+                "numerator_log",
+                "denominator_log",
+                "conditional_log_risk",
+                "conditional_probability",
+                "backend_generation",
+                "backend_api_version",
+            },
+        )
+        return cls(**data)
+
+
+@dataclass(frozen=True, slots=True)
+class TPMEmbeddingParityEvidence:
+    """Immutable direct-versus-attached acceptance evidence for one pair."""
+
+    pair_id: str
+    encoding: Mapping[str, object]
+    numerical_policy: Mapping[str, object]
+    cases: tuple[Mapping[str, object], ...]
+    metric_definitions: Mapping[str, object]
+    evaluator_version: str = CONDITIONAL_EVIDENCE_EVALUATOR_VERSION
+    provenance: Mapping[str, object] = field(default_factory=dict)
+    evidence_id: str = ""
+    record_kind: str = CONDITIONAL_EMBEDDING_PARITY_RECORD_KIND
+    schema_version: str = CONDITIONAL_EVIDENCE_SCHEMA_VERSION
+
+    def __post_init__(self) -> None:
+        if self.record_kind != CONDITIONAL_EMBEDDING_PARITY_RECORD_KIND:
+            raise ValueError(
+                "embedding parity record_kind must be "
+                f"{CONDITIONAL_EMBEDDING_PARITY_RECORD_KIND!r}"
+            )
+        if self.schema_version != CONDITIONAL_EVIDENCE_SCHEMA_VERSION:
+            raise ValueError(
+                "embedding parity schema_version must be "
+                f"{CONDITIONAL_EVIDENCE_SCHEMA_VERSION!r}"
+            )
+        object.__setattr__(
+            self,
+            "pair_id",
+            _sha256_digest(self.pair_id, field_name="pair_id"),
+        )
+        object.__setattr__(
+            self,
+            "evaluator_version",
+            _non_empty_string(self.evaluator_version, "evaluator_version"),
+        )
+        encoding = _frozen_mapping(self.encoding, field_name="evidence encoding")
+        numerical_policy = _frozen_mapping(
+            self.numerical_policy, field_name="evidence numerical_policy"
+        )
+        tolerances = _evidence_tolerances(numerical_policy)
+        metrics = _frozen_mapping(
+            self.metric_definitions,
+            field_name="embedding parity metric_definitions",
+        )
+        _validate_parity_metric_definitions(metrics)
+        cases = tuple(
+            _normalize_parity_case(
+                value,
+                pair_id=self.pair_id,
+                parity_tolerance=tolerances[
+                    "embedding_parity_absolute_tolerance"
+                ],
+                residual_tolerance=tolerances[
+                    "constraint_residual_absolute_tolerance"
+                ],
+            )
+            for value in self.cases
+        )
+        if not cases:
+            raise ValueError("embedding parity evidence requires at least one case")
+        case_names = tuple(str(value["case_name"]) for value in cases)
+        if len(set(case_names)) != len(case_names):
+            raise ValueError("embedding parity case names must be unique")
+        provenance = _frozen_mapping(
+            self.provenance, field_name="embedding parity provenance"
+        )
+        object.__setattr__(self, "encoding", encoding)
+        object.__setattr__(self, "numerical_policy", numerical_policy)
+        object.__setattr__(self, "metric_definitions", metrics)
+        object.__setattr__(self, "cases", cases)
+        object.__setattr__(self, "provenance", provenance)
+        expected_id = hashlib.sha256(
+            canonical_conditional_json_bytes(self.identity_payload())
+        ).hexdigest()
+        if self.evidence_id:
+            supplied = _sha256_digest(
+                self.evidence_id, field_name="evidence_id"
+            )
+            if supplied != expected_id:
+                raise ValueError(
+                    "embedding parity evidence_id mismatch: "
+                    f"expected {expected_id}, found {supplied}"
+                )
+        object.__setattr__(self, "evidence_id", expected_id)
+
+    @property
+    def accepted(self) -> bool:
+        return all(bool(value["accepted"]) for value in self.cases)
+
+    def identity_payload(self) -> dict[str, object]:
+        return {
+            "record_kind": self.record_kind,
+            "schema_version": self.schema_version,
+            "evaluator_version": self.evaluator_version,
+            "pair_id": self.pair_id,
+            "encoding": _thaw_json(self.encoding),
+            "numerical_policy": _thaw_json(self.numerical_policy),
+            "cases": _thaw_json(self.cases),
+            "metric_definitions": _thaw_json(self.metric_definitions),
+            "provenance": _identity_provenance(self.provenance),
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return {"evidence_id": self.evidence_id, **self.identity_payload()}
+
+    @classmethod
+    def from_dict(
+        cls, payload: Mapping[str, object]
+    ) -> "TPMEmbeddingParityEvidence":
+        data = _strict_mapping(
+            payload,
+            record_name="embedding parity evidence",
+            required={
+                "record_kind",
+                "schema_version",
+                "evaluator_version",
+                "evidence_id",
+                "pair_id",
+                "encoding",
+                "numerical_policy",
+                "cases",
+                "metric_definitions",
+                "provenance",
+            },
+        )
+        if not _is_sequence(data["cases"]):
+            raise TypeError("embedding parity cases must be a sequence")
+        return cls(
+            pair_id=data["pair_id"],
+            encoding=data["encoding"],
+            numerical_policy=data["numerical_policy"],
+            cases=tuple(data["cases"]),
+            metric_definitions=data["metric_definitions"],
+            evaluator_version=data["evaluator_version"],
+            provenance=data["provenance"],
+            evidence_id=data["evidence_id"],
+            record_kind=data["record_kind"],
+            schema_version=data["schema_version"],
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class TPMCompilerFidelityEvidence:
+    """Immutable compiled-versus-native scientific evidence without a gate."""
+
+    pair_id: str
+    source: TPMConditionalSourceReference
+    encoding: Mapping[str, object]
+    numerical_policy: Mapping[str, object]
+    cases: tuple[Mapping[str, object], ...]
+    metric_definitions: Mapping[str, object]
+    evaluator_version: str = CONDITIONAL_EVIDENCE_EVALUATOR_VERSION
+    provenance: Mapping[str, object] = field(default_factory=dict)
+    evidence_id: str = ""
+    record_kind: str = CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND
+    schema_version: str = CONDITIONAL_EVIDENCE_SCHEMA_VERSION
+
+    def __post_init__(self) -> None:
+        if self.record_kind != CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND:
+            raise ValueError(
+                "compiler fidelity record_kind must be "
+                f"{CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND!r}"
+            )
+        if self.schema_version != CONDITIONAL_EVIDENCE_SCHEMA_VERSION:
+            raise ValueError(
+                "compiler fidelity schema_version must be "
+                f"{CONDITIONAL_EVIDENCE_SCHEMA_VERSION!r}"
+            )
+        object.__setattr__(
+            self,
+            "pair_id",
+            _sha256_digest(self.pair_id, field_name="pair_id"),
+        )
+        if not isinstance(self.source, TPMConditionalSourceReference):
+            raise TypeError("source must be a TPMConditionalSourceReference")
+        object.__setattr__(
+            self,
+            "evaluator_version",
+            _non_empty_string(self.evaluator_version, "evaluator_version"),
+        )
+        encoding = _frozen_mapping(self.encoding, field_name="evidence encoding")
+        numerical_policy = _frozen_mapping(
+            self.numerical_policy, field_name="evidence numerical_policy"
+        )
+        _evidence_tolerances(numerical_policy)
+        metrics = _frozen_mapping(
+            self.metric_definitions,
+            field_name="compiler fidelity metric_definitions",
+        )
+        _validate_fidelity_metric_definitions(metrics)
+        cases = tuple(
+            _normalize_fidelity_case(
+                value,
+                pair_id=self.pair_id,
+                source=self.source,
+            )
+            for value in self.cases
+        )
+        if not cases:
+            raise ValueError("compiler fidelity evidence requires at least one case")
+        case_names = tuple(str(value["case_name"]) for value in cases)
+        if len(set(case_names)) != len(case_names):
+            raise ValueError("compiler fidelity case names must be unique")
+        provenance = _frozen_mapping(
+            self.provenance, field_name="compiler fidelity provenance"
+        )
+        object.__setattr__(self, "encoding", encoding)
+        object.__setattr__(self, "numerical_policy", numerical_policy)
+        object.__setattr__(self, "metric_definitions", metrics)
+        object.__setattr__(self, "cases", cases)
+        object.__setattr__(self, "provenance", provenance)
+        expected_id = hashlib.sha256(
+            canonical_conditional_json_bytes(self.identity_payload())
+        ).hexdigest()
+        if self.evidence_id:
+            supplied = _sha256_digest(
+                self.evidence_id, field_name="evidence_id"
+            )
+            if supplied != expected_id:
+                raise ValueError(
+                    "compiler fidelity evidence_id mismatch: "
+                    f"expected {expected_id}, found {supplied}"
+                )
+        object.__setattr__(self, "evidence_id", expected_id)
+
+    def identity_payload(self) -> dict[str, object]:
+        return {
+            "record_kind": self.record_kind,
+            "schema_version": self.schema_version,
+            "evaluator_version": self.evaluator_version,
+            "pair_id": self.pair_id,
+            "source": self.source.to_dict(),
+            "encoding": _thaw_json(self.encoding),
+            "numerical_policy": _thaw_json(self.numerical_policy),
+            "cases": _thaw_json(self.cases),
+            "metric_definitions": _thaw_json(self.metric_definitions),
+            "provenance": _identity_provenance(self.provenance),
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return {"evidence_id": self.evidence_id, **self.identity_payload()}
+
+    @classmethod
+    def from_dict(
+        cls, payload: Mapping[str, object]
+    ) -> "TPMCompilerFidelityEvidence":
+        data = _strict_mapping(
+            payload,
+            record_name="compiler fidelity evidence",
+            required={
+                "record_kind",
+                "schema_version",
+                "evaluator_version",
+                "evidence_id",
+                "pair_id",
+                "source",
+                "encoding",
+                "numerical_policy",
+                "cases",
+                "metric_definitions",
+                "provenance",
+            },
+        )
+        if not _is_sequence(data["cases"]):
+            raise TypeError("compiler fidelity cases must be a sequence")
+        return cls(
+            pair_id=data["pair_id"],
+            source=TPMConditionalSourceReference.from_dict(data["source"]),
+            encoding=data["encoding"],
+            numerical_policy=data["numerical_policy"],
+            cases=tuple(data["cases"]),
+            metric_definitions=data["metric_definitions"],
+            evaluator_version=data["evaluator_version"],
+            provenance=data["provenance"],
+            evidence_id=data["evidence_id"],
+            record_kind=data["record_kind"],
+            schema_version=data["schema_version"],
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class TPMConditionalPublication:
@@ -1354,12 +1821,58 @@ def publish_conditional_pair(
     )
 
 
+def load_conditional_evidence(
+    path: str | Path,
+) -> TPMEmbeddingParityEvidence | TPMCompilerFidelityEvidence:
+    """Load and validate one focused conditional evidence record."""
+
+    source = Path(path)
+    try:
+        payload = json.loads(source.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError(
+            f"conditional evidence {source} is unreadable or corrupt"
+        ) from exc
+    if not isinstance(payload, Mapping):
+        raise TypeError(f"conditional evidence {source} must contain a JSON object")
+    record_kind = payload.get("record_kind")
+    if record_kind == CONDITIONAL_EMBEDDING_PARITY_RECORD_KIND:
+        return TPMEmbeddingParityEvidence.from_dict(payload)
+    if record_kind == CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND:
+        return TPMCompilerFidelityEvidence.from_dict(payload)
+    raise ValueError(
+        f"conditional evidence {source} has unsupported record_kind {record_kind!r}"
+    )
+
+
+def publish_conditional_evidence(
+    evidence: TPMEmbeddingParityEvidence | TPMCompilerFidelityEvidence,
+    path: str | Path,
+) -> TPMConditionalPublication:
+    """Create one evidence path or verify an identical published record."""
+
+    if not isinstance(
+        evidence, (TPMEmbeddingParityEvidence, TPMCompilerFidelityEvidence)
+    ):
+        raise TypeError("evidence must be a conditional parity or fidelity record")
+    output_path = Path(path)
+    payload = canonical_conditional_json_bytes(evidence)
+    return _publish_create_or_verify(
+        output_path,
+        payload,
+        validator=load_conditional_evidence,
+        expected_identity=evidence.evidence_id,
+        identity_attribute="evidence_id",
+    )
+
+
 def _publish_create_or_verify(
     path: Path,
     payload: bytes,
     *,
     validator: Any,
     expected_identity: str,
+    identity_attribute: str = "pair_id",
 ) -> TPMConditionalPublication:
     parent = path.parent
     if not parent.is_dir():
@@ -1377,7 +1890,7 @@ def _publish_create_or_verify(
                 f"conditional publication target {path} conflicts with immutable evidence"
             )
         validated = validator(path)
-        actual_identity = getattr(validated, "pair_id", None)
+        actual_identity = getattr(validated, identity_attribute, None)
         if actual_identity != expected_identity:
             raise FileExistsError(
                 f"conditional publication target {path} has a mismatched identity"
@@ -1420,6 +1933,290 @@ def _fsync_directory(path: Path) -> None:
         os.fsync(descriptor)
     finally:
         os.close(descriptor)
+
+
+def _frozen_mapping(
+    value: object,
+    *,
+    field_name: str,
+) -> Mapping[str, object]:
+    frozen = _freeze_json(value, field_name=field_name)
+    if not isinstance(frozen, Mapping):
+        raise TypeError(f"{field_name} must be a mapping")
+    return frozen
+
+
+def _identity_provenance(value: Mapping[str, object]) -> dict[str, object]:
+    return {
+        key: _thaw_json(item)
+        for key, item in value.items()
+        if key not in {
+            "created_at",
+            "output_path",
+            "publication_timestamp",
+        }
+    }
+
+
+def _evidence_tolerances(
+    numerical_policy: Mapping[str, object],
+) -> dict[str, float]:
+    data = _strict_mapping(
+        numerical_policy,
+        record_name="evidence numerical policy",
+        required={"tolerances"},
+    )
+    if not isinstance(data["tolerances"], Mapping):
+        raise TypeError("evidence numerical policy tolerances must be a mapping")
+    tolerances = {
+        str(name): _finite_float(
+            value, field_name=f"evidence tolerance {name}"
+        )
+        for name, value in data["tolerances"].items()
+    }
+    missing = sorted(_REQUIRED_NUMERICAL_TOLERANCES - set(tolerances))
+    if missing:
+        raise ValueError(
+            "evidence numerical policy is missing tolerances: "
+            + ", ".join(missing)
+        )
+    for name in (
+        "embedding_parity_absolute_tolerance",
+        "constraint_residual_absolute_tolerance",
+        "positive_log_risk_limit",
+    ):
+        if tolerances[name] <= 0.0:
+            raise ValueError(f"evidence tolerance {name} must be positive")
+    if tolerances["domain_membership_tolerance"] != 0.0:
+        raise ValueError("domain membership tolerance must remain exactly zero")
+    return tolerances
+
+
+def _validate_parity_metric_definitions(
+    metrics: Mapping[str, object],
+) -> None:
+    expected = {
+        "delta_direction": "attached-minus-direct",
+        "acceptance_gate": "absolute-1e-6",
+        "constraint_residual": (
+            "active-attachment-only-violation-magnitude"
+        ),
+        "probability_delta": "diagnostic-not-gated",
+    }
+    for name, expected_value in expected.items():
+        if metrics.get(name) != expected_value:
+            raise ValueError(
+                f"embedding parity metric {name} must be {expected_value!r}"
+            )
+
+
+def _validate_fidelity_metric_definitions(
+    metrics: Mapping[str, object],
+) -> None:
+    expected = {
+        "delta_direction": "compiled-minus-native",
+        "numerical_gate": "none",
+    }
+    for name, expected_value in expected.items():
+        if metrics.get(name) != expected_value:
+            raise ValueError(
+                f"compiler fidelity metric {name} must be {expected_value!r}"
+            )
+
+
+def _numeric_metric_mapping(
+    value: object,
+    *,
+    field_name: str,
+    required: set[str],
+) -> dict[str, float]:
+    data = _strict_mapping(
+        value,
+        record_name=field_name,
+        required=required,
+    )
+    return {
+        name: _finite_float(raw_value, field_name=f"{field_name}.{name}")
+        for name, raw_value in data.items()
+    }
+
+
+def _normalize_parity_case(
+    value: object,
+    *,
+    pair_id: str,
+    parity_tolerance: float,
+    residual_tolerance: float,
+) -> Mapping[str, object]:
+    data = _strict_mapping(
+        value,
+        record_name="embedding parity case",
+        required={
+            "case_name",
+            "assignment_mode",
+            "assignments",
+            "direct",
+            "attached",
+            "deltas",
+            "absolute_errors",
+            "accepted",
+        },
+    )
+    case_name = _non_empty_string(data["case_name"], "parity case_name")
+    direct = TPMConditionalEvaluation.from_dict(data["direct"])
+    attached = TPMConditionalAttachmentDiagnostics.from_dict(data["attached"])
+    if direct.pair_id != pair_id or attached.pair_id != pair_id:
+        raise ValueError("embedding parity case pair identity is mismatched")
+    if data["assignment_mode"] != direct.assignment_mode:
+        raise ValueError("embedding parity assignment_mode is mismatched")
+    assignments = _frozen_mapping(
+        data["assignments"], field_name="embedding parity assignments"
+    )
+    if assignments != direct.assignments:
+        raise ValueError("embedding parity assignments differ from direct evaluation")
+    fields = {
+        "numerator_log",
+        "denominator_log",
+        "conditional_log_risk",
+        "conditional_probability",
+    }
+    deltas = _numeric_metric_mapping(
+        data["deltas"],
+        field_name="embedding parity deltas",
+        required=fields,
+    )
+    absolute_errors = _numeric_metric_mapping(
+        data["absolute_errors"],
+        field_name="embedding parity absolute_errors",
+        required=fields,
+    )
+    for name in fields:
+        expected_delta = float(getattr(attached, name)) - float(
+            getattr(direct, name)
+        )
+        _require_numeric_identity(
+            deltas[name],
+            expected_delta,
+            field_name=f"embedding parity delta {name}",
+        )
+        _require_numeric_identity(
+            absolute_errors[name],
+            abs(expected_delta),
+            field_name=f"embedding parity absolute error {name}",
+        )
+        if absolute_errors[name] < 0.0:
+            raise ValueError("embedding parity absolute errors must be non-negative")
+    if not isinstance(data["accepted"], bool):
+        raise TypeError("embedding parity accepted must be boolean")
+    solver = attached.solver_metadata
+    solver_success = (
+        str(solver["status"]).casefold() == "ok"
+        and str(solver["termination_condition"]).casefold() == "optimal"
+    )
+    expected_accepted = (
+        solver_success
+        and all(
+            absolute_errors[name] <= parity_tolerance
+            for name in (
+                "numerator_log",
+                "denominator_log",
+                "conditional_log_risk",
+            )
+        )
+        and attached.maximum_constraint_residual <= residual_tolerance
+    )
+    if data["accepted"] is not expected_accepted:
+        raise ValueError("embedding parity accepted verdict is inconsistent")
+    return _frozen_mapping(
+        {
+            "case_name": case_name,
+            "assignment_mode": direct.assignment_mode,
+            "assignments": _thaw_json(assignments),
+            "direct": direct.to_dict(),
+            "attached": attached.to_dict(),
+            "deltas": deltas,
+            "absolute_errors": absolute_errors,
+            "accepted": expected_accepted,
+        },
+        field_name=f"embedding parity case {case_name}",
+    )
+
+
+def _normalize_fidelity_case(
+    value: object,
+    *,
+    pair_id: str,
+    source: TPMConditionalSourceReference,
+) -> Mapping[str, object]:
+    data = _strict_mapping(
+        value,
+        record_name="compiler fidelity case",
+        required={
+            "case_name",
+            "assignment_mode",
+            "assignments",
+            "compiled",
+            "native",
+            "differences",
+        },
+    )
+    case_name = _non_empty_string(data["case_name"], "fidelity case_name")
+    compiled = TPMConditionalEvaluation.from_dict(data["compiled"])
+    native = TPMNativeConditionalEvaluation.from_dict(data["native"])
+    if compiled.pair_id != pair_id or native.pair_id != pair_id:
+        raise ValueError("compiler fidelity case pair identity is mismatched")
+    if native.artifact_id != source.artifact_id:
+        raise ValueError("compiler fidelity source artifact identity is mismatched")
+    if compiled.assignment_mode != "declared-domain":
+        raise ValueError("compiler fidelity requires declared-domain assignments")
+    if data["assignment_mode"] != compiled.assignment_mode:
+        raise ValueError("compiler fidelity assignment_mode is mismatched")
+    assignments = _frozen_mapping(
+        data["assignments"], field_name="compiler fidelity assignments"
+    )
+    if assignments != compiled.assignments or assignments != native.assignments:
+        raise ValueError("compiler fidelity assignments are mismatched")
+    fields = {
+        "numerator_log",
+        "denominator_log",
+        "conditional_log_risk",
+        "conditional_probability",
+    }
+    differences = _numeric_metric_mapping(
+        data["differences"],
+        field_name="compiler fidelity differences",
+        required=fields,
+    )
+    for name in fields:
+        expected = float(getattr(compiled, name)) - float(getattr(native, name))
+        _require_numeric_identity(
+            differences[name],
+            expected,
+            field_name=f"compiler fidelity difference {name}",
+        )
+    return _frozen_mapping(
+        {
+            "case_name": case_name,
+            "assignment_mode": compiled.assignment_mode,
+            "assignments": _thaw_json(assignments),
+            "compiled": compiled.to_dict(),
+            "native": native.to_dict(),
+            "differences": differences,
+        },
+        field_name=f"compiler fidelity case {case_name}",
+    )
+
+
+def _require_numeric_identity(
+    actual: float,
+    expected: float,
+    *,
+    field_name: str,
+) -> None:
+    if not math.isclose(actual, expected, rel_tol=1e-12, abs_tol=1e-12):
+        raise ValueError(
+            f"{field_name} is inconsistent: expected {expected!r}, found {actual!r}"
+        )
 
 
 def _strict_mapping(
@@ -1527,6 +2324,10 @@ def _sha256_digest(value: object, *, field_name: str) -> str:
 
 
 __all__ = [
+    "CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND",
+    "CONDITIONAL_EMBEDDING_PARITY_RECORD_KIND",
+    "CONDITIONAL_EVIDENCE_EVALUATOR_VERSION",
+    "CONDITIONAL_EVIDENCE_SCHEMA_VERSION",
     "CONDITIONAL_PAIR_COMPILER_VERSION",
     "CONDITIONAL_PAIR_RECORD_KIND",
     "CONDITIONAL_PAIR_SCHEMA_VERSION",
@@ -1534,6 +2335,7 @@ __all__ = [
     "TPMConditionalCircuitNode",
     "TPMConditionalCompilationRequest",
     "TPMConditionalAttachment",
+    "TPMConditionalAttachmentDiagnostics",
     "TPMBinaryDecisionLink",
     "TPMBinaryDecisionMapping",
     "TPMCategoricalDecisionLink",
@@ -1548,8 +2350,12 @@ __all__ = [
     "TPMConditionalPair",
     "TPMConditionalPublication",
     "TPMConditionalSourceReference",
+    "TPMCompilerFidelityEvidence",
     "TPMContinuousDecisionMapping",
+    "TPMEmbeddingParityEvidence",
     "canonical_conditional_json_bytes",
+    "load_conditional_evidence",
     "load_conditional_pair",
+    "publish_conditional_evidence",
     "publish_conditional_pair",
 ]

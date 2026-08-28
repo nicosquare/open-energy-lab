@@ -14,6 +14,7 @@ from .conditional import (
     TPMCategoricalDecisionLink,
     TPMCategoricalDecisionMapping,
     TPMConditionalAttachment,
+    TPMConditionalAttachmentDiagnostics,
     TPMConditionalCircuit,
     TPMConditionalCircuitNode,
     TPMConditionalCompilationRequest,
@@ -24,7 +25,10 @@ from .conditional import (
     TPMConditionalFeatureValidity,
     TPMConditionalPair,
     TPMConditionalSourceReference,
+    TPMCompilerFidelityEvidence,
     TPMContinuousDecisionMapping,
+    TPMEmbeddingParityEvidence,
+    TPMNativeConditionalEvaluation,
 )
 from .domains import (
     TPMApproximationDomain,
@@ -55,6 +59,19 @@ class TPMConditionalEvaluationError(ValueError):
 
     def __init__(self, message: str, *, evaluation: TPMConditionalEvaluation) -> None:
         self.evaluation = evaluation
+        super().__init__(message)
+
+
+class TPMConditionalDiagnosticsError(ValueError):
+    """Raised when finite attached values violate conditional probability meaning."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        diagnostics: TPMConditionalAttachmentDiagnostics,
+    ) -> None:
+        self.diagnostics = diagnostics
         super().__init__(message)
 
 
@@ -371,6 +388,293 @@ def attach_conditional_mio_pair(
             model.del_component(block)
         raise
     return result
+
+
+def inspect_conditional_mio_attachment(
+    attachment: TPMConditionalAttachment,
+    *,
+    solver_metadata: Mapping[str, object],
+) -> TPMConditionalAttachmentDiagnostics:
+    """Read solved values and active violation magnitudes inside one attachment."""
+
+    if not isinstance(attachment, TPMConditionalAttachment):
+        raise TypeError("attachment must be a TPMConditionalAttachment")
+    if not isinstance(solver_metadata, Mapping):
+        raise TypeError("solver_metadata must be a mapping")
+    backend = require_pyomo_backend()
+    try:
+        numerator = _finite_float(
+            backend.value(attachment.numerator_root),
+            field_name="attached numerator root",
+        )
+        denominator = _finite_float(
+            backend.value(attachment.denominator_root),
+            field_name="attached denominator root",
+        )
+    except (ArithmeticError, TypeError, ValueError) as exc:
+        raise ValueError("attachment roots must be evaluable and finite") from exc
+    conditional_log_risk = numerator - denominator
+    if not math.isfinite(conditional_log_risk):
+        raise ValueError("attached conditional log-risk must be finite")
+    try:
+        probability = math.exp(conditional_log_risk)
+    except OverflowError as exc:
+        raise ValueError("attached conditional probability must be finite") from exc
+    if not math.isfinite(probability):
+        raise ValueError("attached conditional probability must be finite")
+
+    residuals: dict[str, float] = {}
+    for constraint in attachment.block.component_data_objects(
+        backend.Constraint,
+        active=True,
+        descend_into=True,
+    ):
+        name = constraint.getname(fully_qualified=True)
+        try:
+            body = _finite_float(
+                backend.value(constraint.body),
+                field_name=f"constraint {name} body",
+            )
+            lower = (
+                None
+                if constraint.lower is None
+                else _finite_float(
+                    backend.value(constraint.lower),
+                    field_name=f"constraint {name} lower bound",
+                )
+            )
+            upper = (
+                None
+                if constraint.upper is None
+                else _finite_float(
+                    backend.value(constraint.upper),
+                    field_name=f"constraint {name} upper bound",
+                )
+            )
+        except (ArithmeticError, TypeError, ValueError) as exc:
+            raise ValueError(
+                f"attachment constraint {name} must be evaluable and finite"
+            ) from exc
+        if constraint.equality:
+            bound = lower if lower is not None else upper
+            if bound is None:  # pragma: no cover - Pyomo equality invariant
+                raise ValueError(f"attachment equality {name} has no finite bound")
+            residual = abs(body - bound)
+        else:
+            residual = max(
+                0.0,
+                (lower - body) if lower is not None else 0.0,
+                (body - upper) if upper is not None else 0.0,
+            )
+        if not math.isfinite(residual):
+            raise ValueError(f"attachment constraint {name} residual must be finite")
+        residuals[name] = residual
+
+    numerical_policy = attachment.pair_metadata.get("numerical_policy")
+    if not isinstance(numerical_policy, Mapping):
+        raise ValueError("attachment lacks persisted numerical policy metadata")
+    tolerances = numerical_policy.get("tolerances")
+    if not isinstance(tolerances, Mapping):
+        raise ValueError("attachment lacks persisted purpose-labelled tolerances")
+    positive_limit = _finite_float(
+        tolerances.get("positive_log_risk_limit"),
+        field_name="positive_log_risk_limit",
+    )
+    if positive_limit <= 0.0:
+        raise ValueError("positive_log_risk_limit must be positive")
+    classification = (
+        "positive-numerical-noise"
+        if 0.0 < conditional_log_risk <= positive_limit
+        else "valid"
+    )
+    diagnostics = TPMConditionalAttachmentDiagnostics(
+        pair_id=attachment.pair_id,
+        namespace=attachment.namespace,
+        solver_metadata=solver_metadata,
+        numerator_log=numerator,
+        denominator_log=denominator,
+        conditional_log_risk=conditional_log_risk,
+        conditional_probability=probability,
+        classification=classification,
+        constraint_residuals=residuals,
+        maximum_constraint_residual=max(residuals.values(), default=0.0),
+    )
+    if conditional_log_risk > positive_limit:
+        raise TPMConditionalDiagnosticsError(
+            "attached conditional log-risk exceeds its positive numerical limit",
+            diagnostics=diagnostics,
+        )
+    return diagnostics
+
+
+def build_embedding_parity_evidence(
+    pair: TPMConditionalPair,
+    *,
+    case_results: Mapping[
+        str, tuple[TPMConditionalEvaluation, TPMConditionalAttachmentDiagnostics]
+    ],
+    provenance: Mapping[str, object] | None = None,
+) -> TPMEmbeddingParityEvidence:
+    """Compare attached values with direct execution of the identical pair."""
+
+    if not isinstance(pair, TPMConditionalPair):
+        raise TypeError("pair must be a TPMConditionalPair")
+    if not isinstance(case_results, Mapping) or not case_results:
+        raise ValueError("embedding parity case_results must be a nonempty mapping")
+    tolerances = pair.numerical_policy.tolerances
+    parity_tolerance = float(tolerances["embedding_parity_absolute_tolerance"])
+    residual_tolerance = float(
+        tolerances["constraint_residual_absolute_tolerance"]
+    )
+    cases = []
+    for raw_case_name, raw_result in case_results.items():
+        case_name = str(raw_case_name)
+        if not case_name:
+            raise ValueError("embedding parity case names must be nonempty")
+        if not isinstance(raw_result, Sequence) or isinstance(
+            raw_result, (str, bytes)
+        ) or len(raw_result) != 2:
+            raise TypeError(
+                "each embedding parity result must contain direct and attached values"
+            )
+        direct, attached = raw_result
+        if not isinstance(direct, TPMConditionalEvaluation):
+            raise TypeError("embedding parity direct result has the wrong type")
+        if not isinstance(attached, TPMConditionalAttachmentDiagnostics):
+            raise TypeError("embedding parity attached result has the wrong type")
+        if direct.pair_id != pair.pair_id or attached.pair_id != pair.pair_id:
+            raise ValueError("embedding parity result references a different pair")
+        fields = (
+            "numerator_log",
+            "denominator_log",
+            "conditional_log_risk",
+            "conditional_probability",
+        )
+        deltas = {
+            name: float(getattr(attached, name)) - float(getattr(direct, name))
+            for name in fields
+        }
+        absolute_errors = {name: abs(value) for name, value in deltas.items()}
+        solver = attached.solver_metadata
+        accepted = (
+            str(solver["status"]).casefold() == "ok"
+            and str(solver["termination_condition"]).casefold() == "optimal"
+            and all(
+                absolute_errors[name] <= parity_tolerance
+                for name in (
+                    "numerator_log",
+                    "denominator_log",
+                    "conditional_log_risk",
+                )
+            )
+            and attached.maximum_constraint_residual <= residual_tolerance
+        )
+        cases.append(
+            {
+                "case_name": case_name,
+                "assignment_mode": direct.assignment_mode,
+                "assignments": dict(direct.assignments),
+                "direct": direct.to_dict(),
+                "attached": attached.to_dict(),
+                "deltas": deltas,
+                "absolute_errors": absolute_errors,
+                "accepted": accepted,
+            }
+        )
+    return TPMEmbeddingParityEvidence(
+        pair_id=pair.pair_id,
+        encoding=pair.encoding.to_dict(),
+        numerical_policy=pair.numerical_policy.to_dict(),
+        cases=tuple(cases),
+        metric_definitions={
+            "delta_direction": "attached-minus-direct",
+            "acceptance_gate": "absolute-1e-6",
+            "constraint_residual": (
+                "active-attachment-only-violation-magnitude"
+            ),
+            "probability_delta": "diagnostic-not-gated",
+        },
+        provenance=provenance or {},
+    )
+
+
+def build_compiler_fidelity_evidence(
+    pair: TPMConditionalPair,
+    *,
+    case_results: Mapping[
+        str, tuple[TPMConditionalEvaluation, TPMNativeConditionalEvaluation]
+    ],
+    provenance: Mapping[str, object] | None = None,
+) -> TPMCompilerFidelityEvidence:
+    """Retain signed compiled-minus-native differences without an accuracy gate."""
+
+    if not isinstance(pair, TPMConditionalPair):
+        raise TypeError("pair must be a TPMConditionalPair")
+    if not isinstance(case_results, Mapping) or not case_results:
+        raise ValueError("compiler fidelity case_results must be a nonempty mapping")
+    cases = []
+    for raw_case_name, raw_result in case_results.items():
+        case_name = str(raw_case_name)
+        if not case_name:
+            raise ValueError("compiler fidelity case names must be nonempty")
+        if not isinstance(raw_result, Sequence) or isinstance(
+            raw_result, (str, bytes)
+        ) or len(raw_result) != 2:
+            raise TypeError(
+                "each compiler fidelity result must contain compiled and native values"
+            )
+        compiled, native = raw_result
+        if not isinstance(compiled, TPMConditionalEvaluation):
+            raise TypeError("compiler fidelity compiled result has the wrong type")
+        if not isinstance(native, TPMNativeConditionalEvaluation):
+            raise TypeError("compiler fidelity native result has the wrong type")
+        if compiled.pair_id != pair.pair_id or native.pair_id != pair.pair_id:
+            raise ValueError("compiler fidelity result references a different pair")
+        if native.artifact_id != pair.source.artifact_id:
+            raise ValueError("compiler fidelity result references a different artifact")
+        if (
+            native.backend_generation != pair.source.backend_generation
+            or native.backend_api_version != pair.source.backend_api_version
+        ):
+            raise ValueError("compiler fidelity native backend identity is mismatched")
+        fields = (
+            "numerator_log",
+            "denominator_log",
+            "conditional_log_risk",
+            "conditional_probability",
+        )
+        differences = {
+            name: float(getattr(compiled, name)) - float(getattr(native, name))
+            for name in fields
+        }
+        cases.append(
+            {
+                "case_name": case_name,
+                "assignment_mode": compiled.assignment_mode,
+                "assignments": dict(compiled.assignments),
+                "compiled": compiled.to_dict(),
+                "native": native.to_dict(),
+                "differences": differences,
+            }
+        )
+    return TPMCompilerFidelityEvidence(
+        pair_id=pair.pair_id,
+        source=pair.source,
+        encoding=pair.encoding.to_dict(),
+        numerical_policy=pair.numerical_policy.to_dict(),
+        cases=tuple(cases),
+        metric_definitions={
+            "delta_direction": "compiled-minus-native",
+            "reported_fields": [
+                "numerator_log",
+                "denominator_log",
+                "conditional_log_risk",
+                "conditional_probability",
+            ],
+            "numerical_gate": "none",
+        },
+        provenance=provenance or {},
+    )
 
 
 def _validate_attachment_namespace(model: object, *, namespace: str) -> str:
@@ -1193,8 +1497,12 @@ def _finite_float(value: object, *, field_name: str) -> float:
 
 
 __all__ = [
+    "TPMConditionalDiagnosticsError",
     "TPMConditionalEvaluationError",
     "attach_conditional_mio_pair",
+    "build_compiler_fidelity_evidence",
+    "build_embedding_parity_evidence",
     "compile_conditional_mio_pair",
     "evaluate_conditional_mio_pair",
+    "inspect_conditional_mio_attachment",
 ]

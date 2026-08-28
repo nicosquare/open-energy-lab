@@ -30,8 +30,8 @@ evidence. The active feature evidence is:
 - `conditional_pair_max_v1.json` and `conditional_pair_pwl_v1.json` are the immutable max and PWL
   pairs compiled from that artifact after mixed symbolic continuous/binary/categorical support was
   implemented; and
-- `conditional_mio_evidence_v1.json` only after direct/native/HiGHS evidence is separated and
-  validated.
+- `conditional_mio_evidence_v1.json` contains separate immutable direct/HiGHS parity and
+  native/compiler fidelity records for both pairs.
 
 Committed source or derived evidence is never repaired or overwritten in place. A refresh writes to
 a fresh staging directory, records row/configuration digests and backend/compiler versions, and is
@@ -50,7 +50,15 @@ contracts are base MIO compiler `spflow-v1-mio-v2` and conditional-pair compiler
   pair ID `17e45b6b387b637a0444bf021c7ea3b2d3d2703635d8fd83b4250cdc6363dea9`;
   and
 - PWL pair: SHA-256 `87eeaff775dfc3ec0f276cd5080d90e5d5dcce71e20e5ae1f82b5f03e19c1a3f`,
-  pair ID `f51291a32167baa744bbc7ba0232a50d2bc5f2be941c990c40a7c39b52774a83`.
+  pair ID `f51291a32167baa744bbc7ba0232a50d2bc5f2be941c990c40a7c39b52774a83`;
+- evidence bundle: SHA-256
+  `8a80c32139b25d8c97de2d654a131031c4df59cf91a96fbbfd012c78433f533b`;
+- max/PWL parity evidence IDs:
+  `830d50d24483d512fdc4952306186adb8eea6b77bbcbb3e96be8405353fa16e2` and
+  `547c580da250fbc593ec09e45ee97c5d017eb73dc3213a34c14235eed3ec44df`; and
+- max/PWL fidelity evidence IDs:
+  `5792a07a8b5f6e7c1089d174cfb7c08225a3441e966e92233ed4246d95faaea9` and
+  `c61869f3a8dfda6f65eb73deb898f062b0148a1e77685cca943f491fc6c86f3b`.
 
 Maintainers create candidate evidence only in a fresh directory:
 
@@ -66,6 +74,14 @@ Final pairs can be restaged from the already-reviewed committed artifact without
 uv run --offline --locked --no-sync python \
   examples/tpm_planning/run_conditional_mio_embedding.py \
   --stage-pairs /tmp/oel-conditional-mio-pairs-review
+```
+
+Separate parity and fidelity evidence can be staged from the immutable pairs:
+
+```bash
+uv run --offline --locked --no-sync python \
+  examples/tpm_planning/run_conditional_mio_embedding.py \
+  --stage-evidence /tmp/oel-conditional-mio-evidence-review
 ```
 
 Routine verification is read-only and includes a one-shot temporary semantic refit:
@@ -92,6 +108,8 @@ sidecar and record a SHA-256 digest.
   sum encoding.
 - `conditional_pair_pwl_v1.json`: immutable mixed-decision conditional pair using the declared PWL
   sum encoding.
+- `conditional_mio_evidence_v1.json`: reviewed six-case evidence bundle containing independent
+  max/PWL embedding-parity and compiler-fidelity records.
 - `declared_feature_domains_v1.json`: reviewable U-Bounds declarations,
   physical training rows, and exact domain/compiler probes without fitted
   model output.
@@ -250,6 +268,28 @@ by `open_energy_lab.tpm.load_tpm_artifact`. Query fixtures retain the
   and read-only serialization verification
 - refresh policy: changed semantic inputs create distinguishable pair identities; committed pair
   files are never overwritten or repaired during normal verification
+
+`conditional_mio_evidence_v1.json`
+
+- status: active generated validation evidence
+- evidence bundle SHA-256:
+  `8a80c32139b25d8c97de2d654a131031c4df59cf91a96fbbfd012c78433f533b`
+- assignment coverage: lower boundary, interior, and upper boundary for both max and PWL; together
+  the cases cover both binary states and all ordered categories without a Cartesian grid
+- parity record IDs:
+  `830d50d24483d512fdc4952306186adb8eea6b77bbcbb3e96be8405353fa16e2` and
+  `547c580da250fbc593ec09e45ee97c5d017eb73dc3213a34c14235eed3ec44df`
+- fidelity record IDs:
+  `5792a07a8b5f6e7c1089d174cfb7c08225a3441e966e92233ed4246d95faaea9` and
+  `c61869f3a8dfda6f65eb73deb898f062b0148a1e77685cca943f491fc6c86f3b`
+- parity meaning: objective-free Pyomo/HiGHS roots and attachment-only violation magnitudes are
+  compared with direct execution of the identical selected circuit and gated at absolute `1e-6`
+- fidelity meaning: compiled-minus-native numerator, denominator, conditional-log-risk, and
+  probability differences are retained without an adequacy gate
+- staging command: `uv run --offline --locked --no-sync python examples/tpm_planning/run_conditional_mio_embedding.py --stage-evidence <fresh-directory>`
+- verification command: `uv run --offline --locked --no-sync python examples/tpm_planning/run_conditional_mio_embedding.py --verify-fixtures`
+- refresh policy: evidence changes require new record identities and an ordinary reviewed fixture
+  replacement; verification never repairs source, pair, or evidence bytes
 
 `declared_feature_domains_v1.json`
 
