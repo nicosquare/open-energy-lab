@@ -3122,15 +3122,40 @@ def solve_robust_fcr_bid(
         )
         return _finalize_solve_result(problem, profile, raw)
 
-    from ._robust_fcr_solver import require_highs_backend, solve_assembled_model
+    if problem.solve_policy.solver_name == "gurobi":
+        from ._robust_fcr_solver import (
+            load_optional_gurobi_backend,
+            solve_gurobi_assembled_model,
+            unavailable_gurobi_raw_result,
+        )
 
-    backend = require_highs_backend()
-    assembled = assemble_robust_fcr_model(
-        problem,
-        profile,
-        pyomo_environ=backend.pyomo_environ,
-    )
-    raw = solve_assembled_model(assembled, problem.solve_policy, backend=backend)
+        backend, unavailable_reason = load_optional_gurobi_backend()
+        if backend is None:
+            raw = unavailable_gurobi_raw_result(
+                unavailable_reason or "optional Gurobi evidence is unavailable",
+                problem.solve_policy,
+            )
+            return _finalize_solve_result(problem, profile, raw)
+        assembled = assemble_robust_fcr_model(
+            problem,
+            profile,
+            pyomo_environ=backend.pyomo_environ,
+        )
+        raw = solve_gurobi_assembled_model(
+            assembled,
+            problem.solve_policy,
+            backend=backend,
+        )
+    else:
+        from ._robust_fcr_solver import require_highs_backend, solve_assembled_model
+
+        backend = require_highs_backend()
+        assembled = assemble_robust_fcr_model(
+            problem,
+            profile,
+            pyomo_environ=backend.pyomo_environ,
+        )
+        raw = solve_assembled_model(assembled, problem.solve_policy, backend=backend)
     return _finalize_solve_result(problem, profile, raw)
 
 

@@ -280,9 +280,9 @@ Alternatives considered: coupling Phase 6 validation to these stacks was rejecte
 
 ## Reference Robust FCR Bidding Classification
 
-Feature `013-reference-robust-fcr-bidding` adds no dependency to
-`pyproject.toml` or `uv.lock`. It reuses the locked open-source optimization
-stack introduced by Feature 009 while enforcing a distinct lazy boundary.
+Feature `013-reference-robust-fcr-bidding` reuses the locked open-source
+optimization stack introduced by Feature 009 and adds Gurobi only through a
+separately selected optional extra. Both enforce distinct lazy boundaries.
 
 ```text
 Dependency: Pyomo 6.10.1 and highspy 1.15.1
@@ -290,7 +290,7 @@ Requested by: 013-reference-robust-fcr-bidding restriction, relaxation, and join
 Target module: explicit solve/certificate functions below src/open_energy_lab/control; never the package root or pure contract import path
 Classification: required
 Import boundary: importlib-loaded only after solve or certification is explicitly requested
-Install mechanism: existing uv sync --dev lock; Feature 013 adds no dependency
+Install mechanism: existing required environment via `uv sync --dev`; the optional Gurobi extra is not selected
 Fallback or skip behavior: missing, incompatible, or unavailable required Pyomo/HiGHS is a failed required-backend check, not a successful skip
 External service, license, hardware, or scheduler assumptions: offline CPU only; no service, credential, license, GPU, or scheduler
 Rationale: HiGHS is the routine license-free backend while pure bidding contracts stay import-light
@@ -298,16 +298,16 @@ Alternatives considered: eager backend imports and solver-dependent public contr
 ```
 
 ```text
-Dependency: Gurobi/gurobipy
-Requested by: optional exact bilinear Feature 013 evidence only
-Target module: explicitly selected exact adapter in src/open_energy_lab/control/_robust_fcr_solver.py
+Dependency: Gurobi/gurobipy 13.0.2
+Requested by: optional Feature 013 cross-backend restriction/relaxation and exact-bilinear evidence
+Target module: explicitly selected Gurobi adapter in src/open_energy_lab/control/_robust_fcr_solver.py
 Classification: optional and license-backed
-Import boundary: probed only when solver_name="gurobi" and exact is requested; required HiGHS paths never import or inspect it
-Install mechanism: caller-managed package, binary, and valid license outside the project lock
-Fallback or skip behavior: report structured unavailable evidence or an actionable optional-test skip; never fall through to HiGHS while labelled exact and never weaken restriction <= relaxation
+Import boundary: probed only when solver_name="gurobi" is explicitly selected; required HiGHS paths never import or inspect it
+Install mechanism: pinned project extra via `uv sync --dev --extra gurobi`, plus a caller-managed valid license
+Fallback or skip behavior: report structured unavailable evidence or an actionable optional-test skip; never silently fall through to HiGHS and never weaken routine restriction <= relaxation
 External service, license, hardware, or scheduler assumptions: compatible local Gurobi binary and license
-Rationale: exact evidence is useful but is not required for the deployable restriction
-Alternatives considered: making Gurobi routine or silently substituting another formulation were rejected
+Rationale: matching the reference solver family can reduce backend-performance uncertainty, while exact evidence remains useful and neither is required for the deployable routine restriction
+Alternatives considered: making Gurobi routine, leaving installation unpinned, or silently substituting another backend were rejected
 ```
 
 ```text

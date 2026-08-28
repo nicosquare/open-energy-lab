@@ -34,8 +34,8 @@ independently selected `external_reference_data` replay input.
 - **Primary Dependencies**: Existing required `pyomo==6.10.1` and
 `highspy==1.15.1`, imported only inside the private solver boundary; existing
 Feature 012 control, market-time, schedule, evaluator, and settlement
-contracts; optional compatible Gurobi for exact small-case evidence; no new
-dependency
+contracts; optional pinned compatible Gurobi extra for cross-backend linear and
+exact small-case evidence; no new required dependency
 - **Storage/Data**: Deeply immutable in-memory Python value objects and one
 canonical JSON fixture under `tests/fixtures/fcr_bidding/`; solve outputs are
 not persisted by the public v1 API

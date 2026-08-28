@@ -119,9 +119,10 @@ Behavior:
 1. Validate/fingerprint before importing the backend.
 2. Use the problem's immutable solve policy; callers cannot toggle incumbent
    acceptance after termination.
-3. Use HiGHS for routine restriction and relaxation. `exact` requires explicit
-   compatible Gurobi selection and nonconvex mode; it never falls through to
-   HiGHS.
+3. Use HiGHS for routine restriction and relaxation. An explicitly selected
+   compatible Gurobi extra may solve the same assembled linear formulations.
+   `exact` requires Gurobi and nonconvex mode; no explicitly selected backend
+   ever silently falls through to another solver.
 4. Solve without implicit solution loading. Load values only if backend results
    contain a solver-confirmed incumbent.
 5. Reject incomplete or non-finite incumbent values.
@@ -140,8 +141,8 @@ Behavior:
 Missing/incompatible required Pyomo or HiGHS raises an actionable
 `RobustFCRSolverDependencyUnavailableError`; an unavailable required HiGHS
 execution raises `RobustFCRSolverUnavailableError`. An explicitly requested
-optional exact backend may instead return structured `unavailable` evidence so
-the restriction/relaxation result remains usable.
+optional Gurobi backend may instead return structured `unavailable` evidence;
+routine HiGHS results remain independently usable.
 
 ### Status invariants
 

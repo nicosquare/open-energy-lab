@@ -63,7 +63,8 @@ by `specs/013-reference-robust-fcr-bidding/contracts/python-api.md` and the
 exact package export contract tests.
 
 The stable scope is one ordinary delivery day, the 24/96/6 non-intraday
-restriction/relaxation, HiGHS solve evidence, independent equation audit,
+restriction/relaxation, routine HiGHS solve evidence, explicitly selected
+optional Gurobi cross-backend evidence, independent equation audit,
 charge-positive `FixedFCRBidPlan` extraction, and bounded normalized-reference
 comparison. Exact Gurobi is optional evidence. Rolling horizons, multi-day SOC
 carry-over, intraday recourse, scenarios, TPM bid selection, degradation, live

@@ -12,9 +12,17 @@ uv sync --dev
 uv run python -c "import pyomo, highspy; print(pyomo.__version__, highspy.Highs().version())"
 ```
 
-The required versions are Pyomo `6.10.1` and highspy `1.15.1`. They are already
-pinned project dependencies; Feature 013 adds no dependency. Ordinary package
-imports remain solver-free even though the backends are installed.
+The required versions are Pyomo `6.10.1` and highspy `1.15.1`. They are pinned
+project dependencies. Gurobi remains an explicit optional extra and is omitted
+from this routine installation. Ordinary package imports remain solver-free
+even when optional backends are installed.
+
+For selected licensed Gurobi evidence, install the separate pinned extra:
+
+```bash
+uv sync --dev --extra gurobi
+uv run python -c "import gurobipy; print(gurobipy.gurobi.version())"
+```
 
 ## 2. Run the routine Feature 013 gate
 
@@ -165,6 +173,20 @@ uv run python examples/robust_fcr_bidding/run_reference_benchmark.py \
   --time-limit-seconds 3600
 ```
 
+With the optional extra installed and a valid local license configured, the
+same assembled restriction can instead be sent to Gurobi under the distinct
+`native-reference-benchmark-gurobi-v1` policy identity:
+
+```bash
+uv run python examples/robust_fcr_bidding/run_reference_benchmark.py \
+  --fixture tests/fixtures/fcr_bidding/robust_storage_bidding_2023-06-18_restriction_v1.json \
+  --solver gurobi \
+  --time-limit-seconds 3600
+```
+
+This is cross-backend native evidence. It does not infer the unrecorded Julia
+solver tolerances or erase the Gurobi-version difference from the source run.
+
 The benchmark reports:
 
 - native objective, upper bound, gap, termination, and independent feasibility;
@@ -184,9 +206,10 @@ audit, and incomplete comparison evidence. Do not turn it into optimality or a
 routine-test claim. A feasible incumbent emits no plan by default; its policy
 cannot be changed after the solve.
 
-## 6. Run the optional exact-bilinear check
+## 6. Run the optional Gurobi checks
 
-A compatible installed and licensed Gurobi environment may run:
+A compatible installed and licensed Gurobi environment may solve the linear
+restriction/relaxation pair and the nonconvex exact model:
 
 ```bash
 uv run pytest \

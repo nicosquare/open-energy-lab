@@ -12,6 +12,7 @@ from open_energy_lab.control._robust_fcr_solver import (
     _normalized_status,
     require_highs_backend,
     unavailable_exact_raw_result,
+    unavailable_gurobi_raw_result,
 )
 from open_energy_lab.control.robust_fcr_bidding import (
     DEPLOYABILITY_THRESHOLD,
@@ -221,6 +222,32 @@ def test_unavailable_optional_exact_is_structured_not_a_required_failure() -> No
     assert result.deployable_plan is None
     assert [value.code for value in result.diagnostics] == [
         "optional_exact_unavailable"
+    ]
+    assert result.solver.configured_options["NonConvex"] == 2
+
+
+def test_unavailable_optional_linear_gurobi_does_not_claim_nonconvex_mode() -> None:
+    problem = build_authored_problem()
+    gurobi_problem = replace(
+        problem,
+        solve_policy=replace(problem.solve_policy, solver_name="gurobi"),
+    )
+    raw = unavailable_gurobi_raw_result(
+        "licensed Gurobi evidence was not selected",
+        gurobi_problem.solve_policy,
+    )
+    result = _finalize_solve_result(
+        gurobi_problem,
+        RobustFCRFormulationProfile.for_kind("restriction"),
+        raw,
+    )
+
+    assert result.solver.solve_status == "unavailable"
+    assert result.deployability_status == "blocked"
+    assert result.deployable_plan is None
+    assert "NonConvex" not in result.solver.configured_options
+    assert [value.code for value in result.diagnostics] == [
+        "optional_gurobi_unavailable"
     ]
 
 

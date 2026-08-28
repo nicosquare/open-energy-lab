@@ -16,12 +16,15 @@ from open_energy_lab.control import (
 )
 
 
-PROFILE_ID = "native-reference-benchmark-highs-v1"
+PROFILE_IDS = {
+    "highs": "native-reference-benchmark-highs-v1",
+    "gurobi": "native-reference-benchmark-gurobi-v1",
+}
 
 
-def _policy(time_limit_seconds: float) -> RobustFCRSolvePolicy:
+def _policy(solver_name: str, time_limit_seconds: float) -> RobustFCRSolvePolicy:
     return RobustFCRSolvePolicy(
-        solver_name="highs",
+        solver_name=solver_name,
         time_limit_seconds=time_limit_seconds,
         threads=1,
         random_seed=13,
@@ -53,10 +56,16 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--fixture", type=Path, required=True)
     parser.add_argument(
+        "--solver",
+        choices=tuple(PROFILE_IDS),
+        default="highs",
+        help="explicit native backend; Gurobi requires the optional extra and license",
+    )
+    parser.add_argument(
         "--time-limit-seconds",
         type=float,
         default=3600.0,
-        help="explicit native HiGHS limit; the source fixture owns no native policy",
+        help="explicit native solver limit; the source fixture owns no native policy",
     )
     return parser
 
@@ -64,7 +73,7 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = _parser().parse_args()
     fixture = load_robust_fcr_reference_fixture(args.fixture)
-    policy = _policy(args.time_limit_seconds)
+    policy = _policy(args.solver, args.time_limit_seconds)
     problem = build_robust_fcr_reference_problem(
         fixture,
         solve_policy=policy,
@@ -72,7 +81,7 @@ def main() -> int:
 
     _print_json(
         "Native benchmark policy (caller-owned, not Julia evidence)",
-        {"profile_id": PROFILE_ID, **policy.to_dict()},
+        {"profile_id": PROFILE_IDS[args.solver], **policy.to_dict()},
     )
     _print_json(
         "Normalized source evidence",

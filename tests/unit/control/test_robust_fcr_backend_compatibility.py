@@ -117,6 +117,7 @@ def test_optional_gurobi_absence_is_structured_and_does_not_weaken_highs(
 
     assert optional is None
     assert reason is not None
-    assert "optional exact Gurobi evidence is unavailable" in reason
+    assert "optional Gurobi evidence is unavailable" in reason
+    assert "uv sync --extra gurobi" in reason
     assert "restriction and relaxation remain available in HiGHS" in reason
     assert require_highs_backend().highspy_version == REQUIRED_HIGHSPY_VERSION

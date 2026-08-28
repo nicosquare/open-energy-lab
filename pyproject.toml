@@ -19,6 +19,11 @@ dependencies = [
     "timezonefinder",
 ]
 
+[project.optional-dependencies]
+gurobi = [
+    "gurobipy==13.0.2",
+]
+
 [dependency-groups]
 dev = [
     "pytest>=8.0",

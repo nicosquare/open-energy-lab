@@ -81,17 +81,19 @@ ten-second Julia trace parity is not claimed.
 
 ## Reference Robust FCR Bidding Notes
 
-Feature `013-reference-robust-fcr-bidding` reuses the already locked Pyomo
-`6.10.1` and `highspy` `1.15.1` dependencies. It adds no project dependency.
-Routine validation is CPU-local and offline after `uv sync --dev`; importing
+Feature `013-reference-robust-fcr-bidding` uses the locked Pyomo `6.10.1` and
+highspy `1.15.1` core dependencies and offers locked `gurobipy` `13.0.2` only
+through the `gurobi` extra. Routine validation is CPU-local and offline after
+`uv sync --dev`; importing
 `open_energy_lab.control` or either robust-FCR contract module must remain lazy
 and must not load either backend until an explicit solve or certificate.
 
 - HiGHS is the required restriction/relaxation backend. A missing or
   incompatible Pyomo/HiGHS stack is a required-backend failure, never a skip.
-- Gurobi is optional licensed evidence for the explicitly selected exact
-  bilinear check. Its package, binary, or license may be unavailable without
-  weakening the required HiGHS inequalities.
+- Gurobi is optional licensed evidence for explicitly selected linear
+  restriction/relaxation cross-backend solves and the exact bilinear check.
+  Its package or license may be unavailable without weakening the required
+  HiGHS inequalities.
 - The normalized optimization fixture is committed and always available to
   routine tests. It owns no native solve policy: each full native benchmark
   supplies and fingerprints the complete

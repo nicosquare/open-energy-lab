@@ -3,7 +3,9 @@
 Feature 013 selects one ordinary delivery day's hourly day-ahead baseline and
 six four-hour symmetric-FCR capacity bids before realized activation is known.
 It reproduces the pinned reference implementation's non-intraday mixed-binary
-restriction and relaxation with native Python, Pyomo, and HiGHS.
+restriction and relaxation with native Python and Pyomo. HiGHS remains the
+routine backend; the explicitly installed `gurobi` extra provides optional
+licensed cross-backend evidence.
 
 This example area is deliberately separated into three evidence paths:
 
