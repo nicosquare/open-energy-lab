@@ -123,3 +123,46 @@ Confirm from the committed records and notebook that:
 git diff --check
 git status --short
 ```
+
+## Executed acceptance record — 2026-08-29
+
+The Feature 016 implementation was validated from the OEL repository root with the locked offline
+environment. No acceptance step required a commercial solver, GPU, network service, fixture rewrite,
+or dependency change.
+
+- `uv --cache-dir /tmp/oel-uv-cache lock --check` completed successfully and reported the existing
+  149-package lock resolution.
+- `uv --cache-dir /tmp/oel-uv-cache run --offline --locked --no-sync python
+  examples/tpm_planning/run_conditional_mio_embedding.py --verify-fixtures` verified the semantic
+  refit, exact source/artifact/sidecar/pair/evidence digests and identities, create-only reuse,
+  corruption/mismatch non-repair, and unchanged committed bytes.
+- The focused conditional unit command passed 91 tests.
+- The real current-SPFlow and Pyomo/HiGHS command passed 10 tests.
+- The blocked-network headless notebook command passed 5 tests and left source/fixture bytes
+  unchanged.
+- The complete bounded TPM/planning regression command passed 490 tests.
+- The package-wide lazy dependency, public import, no-legacy, focused TPM import-boundary, and TPM
+  package-surface command passed 113 tests.
+- `uv --cache-dir /tmp/oel-uv-cache run --offline --locked --no-sync python -c "import
+  open_energy_lab; import open_energy_lab.tpm; import open_energy_lab.planning"` succeeded.
+- The documented `rg "from legacy|import legacy" ...` command produced no matches (its expected
+  no-match exit status is 1).
+- `git diff --check` succeeded. Before this acceptance record was appended, OEL `git status
+  --short --branch` contained only the branch header.
+
+The fixture audit recomputed these committed SHA-256 values:
+
+- source: `394f4ab76de48457f36ea03e451fbb608b66b8660ca1374b92f6260396b110bd`;
+- artifact manifest: `58e56e7adf850d604e41933479260cce22e90da4f40ac5838fab7578d88dac44`;
+- current-SPFlow sidecar: `2157d35ec4d18c230e8c01a074dae271c0cb161af1520582325420361bb7bc6f`;
+- max pair: `73a7cc0c4e6736e3f84c699ef9279fc88345b8349e92c3add630394e8811d8f7`;
+- PWL pair: `87eeaff775dfc3ec0f276cd5080d90e5d5dcce71e20e5ae1f82b5f03e19c1a3f`;
+  and
+- evidence bundle: `8a80c32139b25d8c97de2d654a131031c4df59cf91a96fbbfd012c78433f533b`.
+
+`tests/fixtures/tpm/README.md` records the origin, fit/compiler inputs, backend versions, digests,
+pair/evidence identities, staging commands, verification command, and create-only refresh policy for
+every conditional source/artifact/pair/evidence file. A diff from OEL `main` confirmed no
+`pyproject.toml` or `uv.lock` change and no generalized artifact framework. The parent repository
+contained only the expected uncommitted `references/oel` gitlink movement; Feature 016 created no
+parent file or parent commit. There was no genuine environmental limitation to record.
