@@ -64,26 +64,16 @@ jobs:
           PY
 
       # Required jobs intentionally have no condition or continue-on-error.
-      # Legacy/fake-backend, selected historical/external-data, and optional
-      # Gurobi tests are excluded; bounded real SPFlow/HiGHS tests are collected.
-      - name: Run focused TPM, planning, and robust FCR suite (120-second limit)
+      # Legacy/fake-backend and optional Gurobi tests are excluded; bounded real
+      # SPFlow/HiGHS tests are collected.
+      - name: Run focused TPM and planning suite (120-second limit)
         run: |
           timeout --signal=TERM --kill-after=10s 120s \
             uv run --locked --no-sync pytest \
               tests/unit/tpm \
               tests/unit/planning \
-              tests/unit/control/test_robust_fcr_backend_compatibility.py \
-              tests/unit/control/test_robust_fcr_equations.py \
-              tests/unit/control/test_robust_fcr_import_boundary.py \
-              tests/unit/control/test_robust_fcr_problem.py \
-              tests/unit/control/test_robust_fcr_reference.py \
-              tests/unit/control/test_robust_fcr_solver.py \
-              tests/unit/control/test_robust_fcr_source_documentation.py \
               tests/integration/tpm \
               tests/integration/planning \
-              tests/integration/control/test_robust_fcr_highs.py \
-              tests/integration/control/test_robust_fcr_reference_normalization.py \
-              tests/integration/simulator/test_robust_fcr_feature_012_replay.py \
               --ignore=tests/integration/tpm/test_backend_adapter_workflow.py \
               --ignore=tests/integration/tpm/test_generic_rows_workflow.py \
               --ignore=tests/integration/tpm/test_mio_solver.py \
@@ -94,6 +84,78 @@ jobs:
               --ignore=tests/integration/planning/test_spn_mio_gurobi.py \
               --ignore=tests/integration/planning/test_tpm_fit_workflow.py \
               --ignore=tests/integration/planning/test_tpm_fixture_schema.py \
+              --strict-markers \
+              -ra
+
+  robust-fcr-required-backends:
+    name: Robust FCR backends (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.5"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-suffix: robust-fcr-py${{ matrix.python-version }}
+
+      - name: Install locked project environment
+        run: uv sync --locked --group dev
+
+      - name: Verify robust FCR backend installation
+        run: |
+          uv run --locked --no-sync python - <<'PY'
+          from importlib.metadata import version
+
+          import highspy
+          import pyomo.environ as pyo
+
+          expected = {
+              "pyomo": "6.10.1",
+              "highspy": "1.15.1",
+          }
+          actual = {package: version(package) for package in expected}
+          if actual != expected:
+              raise RuntimeError(f"required robust FCR backend versions differ: {actual!r}")
+
+          solver = pyo.SolverFactory("highs")
+          if not solver.available(exception_flag=False):
+              raise RuntimeError("required Pyomo HiGHS solver is unavailable")
+
+          print(f"required robust FCR backend versions: {actual}")
+          print(f"HiGHS runtime version: {highspy.Highs().version()}")
+          PY
+
+      # The historical reference benchmark, external activation replay, and
+      # licensed Gurobi evidence remain explicitly selected non-routine paths.
+      - name: Run bounded robust FCR suite (240-second limit)
+        run: |
+          timeout --signal=TERM --kill-after=10s 240s \
+            uv run --locked --no-sync pytest \
+              tests/unit/control/test_robust_fcr_backend_compatibility.py \
+              tests/unit/control/test_robust_fcr_equations.py \
+              tests/unit/control/test_robust_fcr_import_boundary.py \
+              tests/unit/control/test_robust_fcr_problem.py \
+              tests/unit/control/test_robust_fcr_reference.py \
+              tests/unit/control/test_robust_fcr_solver.py \
+              tests/unit/control/test_robust_fcr_source_documentation.py \
+              tests/integration/control/test_robust_fcr_highs.py \
+              tests/integration/control/test_robust_fcr_reference_normalization.py \
+              tests/integration/simulator/test_robust_fcr_feature_012_replay.py \
               --ignore=tests/integration/control/test_robust_fcr_optional_gurobi.py \
               -m "not reference_benchmark and not external_reference_data" \
               --strict-markers \
@@ -134,8 +196,6 @@ jobs:
               tests/unit/demand \
               tests/integration/weather \
               tests/integration/demand \
-              tests/integration/control/test_robust_fcr_highs.py \
-              tests/integration/control/test_robust_fcr_reference_normalization.py \
               tests/integration/simulator \
               tests/unit/test_ci_workflow.py \
               tests/unit/test_lazy_dependency_boundaries.py \
