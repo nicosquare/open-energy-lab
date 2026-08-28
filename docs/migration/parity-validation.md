@@ -94,6 +94,41 @@ OEL-invariant evidence or `unavailable`, never inferred parity. Dynamic
 saturation is valid OEL behavior but outside the initial no-curtailment parity
 domain.
 
+## Reference Robust-FCR Bid-Selection Validation
+
+Feature `013-reference-robust-fcr-bidding` compares bid selection directly,
+before Feature 012 receives realized activation. The committed normalized
+optimization fixture reconstructs identical declared battery, prices, 24/96/6
+mapping, terminal rule, uncertainty sets, and restriction profile. Routine
+validation never reads the runtime reference tree or activation CSV and never
+invokes Julia or Gurobi.
+
+Every comparison field receives exactly one category:
+
+- `exact`: native and recorded exact evidence are equal;
+- `source_precision_compatible`: the native value or one jointly feasible
+  latent source schedule is within the declared rounded-source envelope;
+- `alternative_optimum_compatible`: decisions differ, but both native and one
+  joint source schedule pass common feasibility and objective-equivalence
+  evidence;
+- `mismatch`: required common feasibility, objective equivalence, or field
+  compatibility fails; or
+- `unavailable`: the source record or selected environment does not contain the
+  evidence, without inferring a substitute.
+
+Alternative-optimum acceptance requires one simultaneous 30-decision box,
+common restriction feasibility, all modeled slacks at or below `1e-6`, and the
+intersection of the source objective interval with the separately declared
+native objective-equivalence band. Thirty independent rounded comparisons or a
+matching three-decimal objective are insufficient.
+
+The complete solve is a selected `reference_benchmark`, not routine CI. Its
+caller supplies every field of `native-reference-benchmark-highs-v1`; the
+fixture's absent source tolerances remain unavailable and are never populated
+from native policy. Feature 012 replay is a later ex-post validation using the
+same emitted plan and evaluator. It neither proves robust feasibility nor
+changes the bid-selection parity category.
+
 ## TPM-Backed Planning Validation Governance
 
 The `009-tpm-planning` migration validates current library behavior rather

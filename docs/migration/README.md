@@ -52,6 +52,30 @@ parity validation, and environment assumptions.
 - `fcr-bid-evaluation-parity.md`: Feature 012 fixed-plan common environment,
   pinned reference implementation mappings, bounded aggregate evidence,
   external-data governance, and no-bid-generation boundary
+- `reference-robust-fcr-bidding.md`: Feature 013 preserved equations,
+  restriction/relaxation roles, native solve/audit evidence, normalized Julia
+  bid-selection comparison, and Feature 012 handoff boundary
+
+## Reference Robust-FCR Bidding Review Path
+
+For `013-reference-robust-fcr-bidding`, review these artifacts in order:
+
+1. [Feature 013 plan](../../specs/013-reference-robust-fcr-bidding/plan.md) and
+   [Python API contract](../../specs/013-reference-robust-fcr-bidding/contracts/python-api.md)
+   for the single-day restriction/relaxation scope and stable lazy surface.
+2. [Migration/equation ledger](./reference-robust-fcr-bidding.md) for exact
+   pinned source paths, sign/unit mappings, audit semantics, and evidence limits.
+3. `fixture-provenance.md` and `tests/fixtures/fcr_bidding/README.md` for the
+   digest-pinned normalized optimization fixture and no-runtime-baseline rule.
+4. `api-maturity.md`, `dependency-policy.md`, and `parity-validation.md` for
+   stable API, required HiGHS/optional Gurobi, and the five comparison statuses.
+5. [Feature 013 quickstart](../../specs/013-reference-robust-fcr-bidding/quickstart.md)
+   for routine checks, the separately owned native benchmark policy, and
+   optional post-acceptance Feature 012 replay.
+
+Feature 013 reuses Feature 009's dependency stack without using its planning or
+TPM APIs. It emits Feature 012's existing plan contract and never owns replay,
+activation, or realized settlement.
 
 ## FCR Bid-Evaluation Parity Review Path
 
