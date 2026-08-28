@@ -269,15 +269,61 @@ was certified. This resource-limited result is retained as incomplete
 comparison evidence; it neither establishes Julia parity nor identifies a
 formulation discrepancy by itself, and it does not weaken routine acceptance.
 
-### Optional exact Gurobi evidence (2026-08-27)
+### Selected full Gurobi reference benchmark (2026-08-28)
 
-The explicitly selected optional exact-bilinear gate completed with one passed
-test and one actionable skip in 0.57 seconds. `gurobipy` is not installed in
-the selected environment, so no licensed exact solve or three-way
-`restriction <= exact <= relaxation` claim is available. The test confirmed
-that an exact request selects Gurobi explicitly, never falls back to HiGHS,
-never emits a plan, and reports the missing backend without weakening the
-required HiGHS restriction/relaxation evidence.
+The optional `gurobi` extra installed `gurobipy` 13.0.2 under Python 3.14.6,
+and the caller-configured ignored `GRB_LICENSE_FILE` passed a local licensed
+solve probe. The full restriction then used the separate
+`native-reference-benchmark-gurobi-v1` profile with the same declared limit,
+thread, seed, tolerances, incumbent policy, and canonicalization as the HiGHS
+benchmark. Its policy fingerprint was
+`420682797823ce0ce61f0c3034937b6f602c3508f33b6ae397df7561806edca2`.
+This native policy is not attributed to Julia, and Gurobi 13.0.2 is not the
+source environment's recorded Gurobi_jll 11.0.3.
+
+Gurobi reached `maxtimelimit` after 3,602.20 seconds with a complete feasible,
+independently audited incumbent. It did not prove optimality: objective and
+same-solve upper bound were `11.028269482283491 EUR` and
+`11.189539354884609 EUR`, for an absolute gap of `0.16126987260111747 EUR`
+and a relative gap of `0.014412556896787514`. Feasible-incumbent plan opt-in
+remained disabled, so the result correctly emitted no market plan.
+
+Unlike the HiGHS incumbent, all 24 positive-discharge `x0` decisions, all six
+`xr` decisions, and the objective lie inside the Julia artifact's declared
+three-decimal source-precision intervals. The independent audit passed with
+zero modeled slack and maximum equation residual
+`3.1177194159681676e-10`. Stable native identities were:
+
+- semantic result
+  `949812bb9348fe20ee6953312733f46aa1f24f665d0fc044a0348bbb0bfa8e90`;
+- decision vector
+  `4a119bbd2e8792a072746a724149de90b96a3c6265e2abf576009dc60cd530d8`;
+- independent audit
+  `79d8c1d350529a63a1b69df57e8f2304d0c81168782861b4f9668f3636b95eb1`;
+- certification request
+  `c42d844acd848ebce8f9e58b56132eae84567154ba2248208cc0bd9d1bc5fa66`;
+  and
+- direct audited-witness certificate
+  `d98ef6bee6c7f3b786f85f7a0ac77c8aa11e866490925e927d4b64375517e02e`.
+
+The comparison therefore has `3 exact`, `34 source_precision_compatible`,
+`0 alternative_optimum_compatible`, `0 mismatch`, and `7 unavailable` fields,
+with overall status `source_precision_compatible`. The unavailable fields are
+the source bound proof and producer-specific plan/schedule identities. This is
+strong reproduction of the saved Julia result at its available precision, but
+not exact Julia parity: the native solve is not proven optimal, the Gurobi
+versions differ, and the Julia record omits unrounded decisions, tolerances,
+termination, and proof metadata.
+
+### Optional Gurobi formulation evidence (2026-08-28)
+
+The explicitly selected optional Gurobi gate completed with three passing
+tests in 28.57 seconds. It exercised the linear restriction, linear relaxation,
+and nonconvex exact route under the configured license; verified that the
+restriction alone may emit a plan; and satisfied
+`restriction <= exact <= relaxation` on the deterministic bounded case.
+Gurobi remains absent from routine validation, imports lazily only after
+explicit selection, and never silently falls through to HiGHS.
 
 ### External Feature 012 replay (2026-08-27)
 
