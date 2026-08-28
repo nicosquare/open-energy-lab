@@ -33,6 +33,7 @@ FEATURE_014_DOMAIN_MODULES = (
     TARGET_PACKAGE / "planning" / "piecewise.py",
     TARGET_PACKAGE / "planning" / "problem.py",
     TARGET_PACKAGE / "planning" / "workflow.py",
+)
 FEATURE_013_OFFLINE_MODULES = (
     TARGET_PACKAGE / "control" / "robust_fcr_bidding.py",
     TARGET_PACKAGE / "control" / "_robust_fcr_formulation.py",
@@ -204,6 +205,8 @@ def test_feature_014_domain_and_planning_modules_import_no_legacy_code() -> None
             offending_files.append(path.as_posix())
 
     assert offending_files == []
+
+
 def test_feature_013_pure_modules_import_no_reference_solver_or_external_data_code() -> None:
     violations: dict[str, list[str]] = {}
     runtime_read_tokens = (
