@@ -71,7 +71,11 @@ Semantic fit evidence is deterministic; pickle bytes are not used as the
 repeatability oracle. Each regenerated sidecar receives its actual SHA-256 in
 the manifest, and later loads verify that digest before deserialization.
 
-## Declared Feature Domains Walkthrough
+## Post-Feature Declared Feature Domains Walkthrough
+
+**Status**: Optional post-feature documentation extension retained after Feature 014 was completed,
+following a separate reviewed request. It does not amend Feature 014's normative scope or required
+acceptance surface; the canonical U-Bounds quickstart remains notebook-independent.
 
 [`declared_feature_domains_walkthrough.ipynb`](declared_feature_domains_walkthrough.ipynb)
 is the thin, offline U-Bounds walkthrough. It reloads the committed schema-v3

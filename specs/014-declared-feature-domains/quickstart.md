@@ -52,6 +52,8 @@ uv run --locked --no-sync python \
 uv run --locked --no-sync pytest \
   tests/unit/planning tests/unit/tpm \
   tests/integration/planning tests/integration/tpm \
+  --ignore=tests/unit/tpm/test_declared_domains_notebook.py \
+  --ignore=tests/integration/tpm/test_declared_domains_notebook_execution.py \
   --ignore=tests/integration/tpm/test_mio_solver.py \
   --ignore=tests/integration/tpm/test_real_spflow_backend.py \
   --ignore=tests/integration/planning/test_gurobi_solver.py \
@@ -61,6 +63,24 @@ uv run --locked --no-sync pytest \
 The ignored files are existing optional/commercial or separately invoked checks; the new declared-
 domain SPFlow and HiGHS evidence must live in the required paths above and must not depend on these
 ignores.
+
+## Optional post-feature notebook validation
+
+The declared-domain notebook was retained after Feature 014 completion under a separate reviewed
+documentation request. It does not amend the feature's required acceptance surface. Validate it
+separately only when the optional notebook dependency group is installed:
+
+```bash
+uv sync --locked --group dev --group notebook
+
+uv run --locked --no-sync pytest \
+  tests/unit/tpm/test_declared_domains_notebook.py \
+  tests/integration/tpm/test_declared_domains_notebook_execution.py
+```
+
+These checks keep the source notebook output-free, execute it through a real local kernel with
+network access blocked, and verify its declared-domain, SPFlow, compiled-validity, and HiGHS
+examples. They are documentation checks rather than Feature 014 acceptance evidence.
 
 ## Check import and legacy boundaries
 
@@ -110,3 +130,8 @@ current-SPFlow and HiGHS tests ran and passed. `uv lock --check`, the isolated p
 fixture JSON validation, declared-domain fixture verification, and `git diff --check` also passed.
 The no-legacy `rg` command returned no matches, as required. No dependency or lockfile change was
 needed.
+
+On 2026-08-28, the notebook-independent regression command was rerun after the optional walkthrough
+was separated from Feature 014 acceptance: 394 tests passed and the same two optional Gurobi checks
+were skipped. The separately invoked source and real-kernel notebook checks completed with five
+tests passed through the notebook dependency group.

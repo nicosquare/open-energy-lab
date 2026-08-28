@@ -82,6 +82,9 @@ def test_notebook_is_documented_as_offline_and_thin() -> None:
     migration = Path("docs/migration/declared-feature-domains.md").read_text(
         encoding="utf-8"
     )
+    quickstart = Path(
+        "specs/014-declared-feature-domains/quickstart.md"
+    ).read_text(encoding="utf-8")
 
     for required in (
         "offline and cpu-only",
@@ -92,3 +95,11 @@ def test_notebook_is_documented_as_offline_and_thin() -> None:
         assert required in source
     assert "declared_feature_domains_walkthrough.ipynb" in readme
     assert "declared_feature_domains_walkthrough.ipynb" in migration
+    assert "optional post-feature documentation extension" in readme.lower()
+    assert "optional post-feature documentation extension" in migration.lower()
+    assert "## Optional post-feature notebook validation" in quickstart
+    assert "--ignore=tests/unit/tpm/test_declared_domains_notebook.py" in quickstart
+    assert (
+        "--ignore=tests/integration/tpm/test_declared_domains_notebook_execution.py"
+        in quickstart
+    )

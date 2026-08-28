@@ -119,6 +119,11 @@ not part of this feature.
 
 ## Notebook walkthrough
 
+**Status**: This is an optional post-feature documentation extension retained under a separate
+reviewed request after Feature 014 was completed. It is not a Feature 014 implementation
+deliverable or required acceptance criterion, and it does not change the notebook-independent
+quickstart contract.
+
 `examples/tpm_planning/declared_feature_domains_walkthrough.ipynb` is an optional, thin
 demonstration of these semantics. It reuses the committed schema-v3 fitted artifact and real SPFlow
 sidecar rather than refitting or reimplementing the domain rules. It compares two observed supports
