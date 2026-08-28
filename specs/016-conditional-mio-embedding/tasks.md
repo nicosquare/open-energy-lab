@@ -23,9 +23,9 @@ reviewable increments.
 **Purpose**: Establish the reviewed nonuniform mixed input and fixture helpers without generating
 derived SPFlow or compiler evidence prematurely.
 
-- [ ] T001 Add the human-reviewable nonuniform continuous, binary, ordered categorical, marginalized uncertainty, and binary event rows plus declared domains, fixed fit seed/options, max/PWL policies, representative assignments, and purpose-labelled tolerances to `tests/fixtures/tpm/conditional_mio_embedding_v1.json`
-- [ ] T002 Document the source-row provenance, deliberate nonuniformity, no-retry refresh policy, expected current-SPFlow Sum-node invariant, representative non-Cartesian cases, and future derived fixture paths in `tests/fixtures/tpm/README.md`
-- [ ] T003 Add source/config loading, deterministic semantic comparison, artifact/pair/evidence byte snapshots, and temporary-output helpers in `tests/integration/tpm/conditional_mio_test_support.py`
+- [X] T001 Add the human-reviewable nonuniform continuous, binary, ordered categorical, marginalized uncertainty, and binary event rows plus declared domains, fixed fit seed/options, max/PWL policies, representative assignments, and purpose-labelled tolerances to `tests/fixtures/tpm/conditional_mio_embedding_v1.json`
+- [X] T002 Document the source-row provenance, deliberate nonuniformity, no-retry refresh policy, expected current-SPFlow Sum-node invariant, representative non-Cartesian cases, and future derived fixture paths in `tests/fixtures/tpm/README.md`
+- [X] T003 Add source/config loading, deterministic semantic comparison, artifact/pair/evidence byte snapshots, and temporary-output helpers in `tests/integration/tpm/conditional_mio_test_support.py`
 
 ---
 

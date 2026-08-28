@@ -1,5 +1,41 @@
 # TPM Fixtures
 
+## Conditional MIO embedding input (`conditional_mio_embedding_v1.json`)
+
+`conditional_mio_embedding_v1.json` is the authoritative, human-reviewable source input for
+feature `016-conditional-mio-embedding`. The rows were written and reviewed directly; they are not
+generated model output and do not come from a legacy repository. Each row contains physical values
+for one continuous decision (`x`), one binary decision (`activation`), one ordered categorical
+decision (`service_tier`), one unbounded marginalized uncertainty (`demand`), and the explicit
+binary event `violation = 1[demand > x]`.
+
+The continuous observations are deliberately nonuniform: most source rows lie below `x = 90`, even
+though the declared decision domain and compiler interval are `[40, 160]`. This makes the learned
+denominator scientifically material and prevents a uniform-density shortcut from passing the
+reviewed case accidentally. Both binary states, all three categories, and both event values occur
+in the source table.
+
+The fixture fixes one fit seed and one set of SPFlow structure-learning options. A maintainer refresh
+performs exactly one fit and fails if the retained graph and conditioned circuits do not contain a
+genuine learned Sum node; it does not change seeds, retry, or adapt fitting options. The three
+representative assignments cover both continuous boundaries, one interior point, both binary states,
+and all categories without enumerating their Cartesian product.
+
+The JSON also declares the max and PWL compiler policies, the physical approximation interval, and
+purpose-labelled numerical tolerances. Those are source inputs, not claims that derived artifacts
+already exist. Derived files are introduced only by their corresponding implementation tasks:
+
+- `tpm_artifact_conditional_mio_v3.json` and its sidecar after the real fit path exists;
+- `conditional_pair_max_v1.json` and `conditional_pair_pwl_v1.json` only after mixed symbolic
+  continuous/binary/categorical support is implemented; and
+- `conditional_mio_evidence_v1.json` only after direct/native/HiGHS evidence is separated and
+  validated.
+
+Committed source or derived evidence is never repaired or overwritten in place. A refresh writes to
+a fresh staging directory, records row/configuration digests and backend/compiler versions, and is
+reviewed as an ordinary source-control change. Normal verification is read-only and fails on any
+mismatch.
+
 This directory holds deterministic, offline fixtures for the
 `009-tpm-planning` dataset, TPM artifact, and query contracts. Schema-v2 and
 schema-v3 artifacts separate their JSON manifest from a project-relative
