@@ -360,6 +360,111 @@ def build_manifest(
     )
 
 
+def build_explicit_manifest(
+    profile_id: str,
+    *,
+    study_id: str,
+    dates: Sequence[date],
+    state_carry_policy: str,
+    solve_policy: RobustFCRSolvePolicy,
+    battery_values: Mapping[str, object],
+    capacity_kwh: float,
+    terminal_values: Mapping[str, object],
+    data_fingerprints: Mapping[str, str],
+    acceptance_policy: Mapping[str, object],
+    bundle_fingerprint: str,
+) -> object:
+    """Build one caller-supplied research manifest without path discovery."""
+
+    ordered_dates = tuple(dates)
+    required_fingerprints = {
+        "day_ahead_price",
+        "fcr_capacity_price",
+        "regulation_activation",
+    }
+    if set(data_fingerprints) != required_fingerprints:
+        raise ValueError(
+            "explicit data fingerprints must identify price, FCR, and activation"
+        )
+    battery = _battery_from_mapping(battery_values)
+    terminal = _terminal_from_mapping(terminal_values)
+    profile = build_rolling_fcr_experiment_profile(profile_id)
+    kind = acceptance_policy.get("kind")
+    if kind == "assumed_accepted":
+        accepted = AcceptedBidPolicy(
+            policy_id=f"{study_id}-accepted-bid-v1",
+            kind=kind,
+            assumption_statement=str(acceptance_policy.get("statement", "")),
+        )
+    elif kind == "evidence_backed_accepted":
+        descriptor = acceptance_policy.get("evidence_descriptor")
+        if not isinstance(descriptor, Mapping):
+            raise ValueError(
+                "evidence-backed acceptance requires an evidence_descriptor"
+            )
+        accepted = AcceptedBidPolicy(
+            policy_id=f"{study_id}-accepted-bid-v1",
+            kind=kind,
+            evidence_descriptor=descriptor,
+        )
+    else:
+        raise ValueError("explicit manifest requires an accepted-bid policy")
+    binding = RollingFCRBatteryBinding(
+        optimization_battery=battery,
+        capacity_kwh=capacity_kwh,
+        component_name=f"{study_id}-battery",
+        replay_timestep_seconds=10,
+    )
+    return build_rolling_fcr_study_manifest(
+        study_id=study_id,
+        profile=profile,
+        dates=_date_classifications(profile_id, ordered_dates),
+        day_ahead_descriptor=_data_descriptor(
+            "day_ahead_price",
+            coverage_dates=ordered_dates,
+            content_fingerprint=data_fingerprints["day_ahead_price"],
+            source_kind="explicit_full_history",
+        ),
+        fcr_capacity_descriptor=_data_descriptor(
+            "fcr_capacity_price",
+            coverage_dates=ordered_dates,
+            content_fingerprint=data_fingerprints["fcr_capacity_price"],
+            source_kind="explicit_full_history",
+        ),
+        activation_descriptor=_data_descriptor(
+            "regulation_activation",
+            coverage_dates=ordered_dates,
+            content_fingerprint=data_fingerprints["regulation_activation"],
+            source_kind="explicit_full_history",
+        ),
+        battery_binding=binding,
+        uncertainty_profile=build_uncertainty(),
+        terminal_rule=terminal,
+        solve_policy=solve_policy,
+        settlement_profile="robust-storage-bidding-reference-settlement-v1",
+        acceptance_policy=accepted,
+        numeric_policy=RollingFCRNumericPolicy(
+            solve_policy_fingerprint=solve_policy.solve_policy_fingerprint,
+            state_carry_policy=state_carry_policy,
+            decimal_places=(
+                3 if state_carry_policy == "source_three_decimal" else 0
+            ),
+        ),
+        failure_policy=(
+            FAILURE_POLICY_INDEPENDENT
+            if profile.is_independent
+            else FAILURE_POLICY_COUPLED
+        ),
+        aggregation_policy=AGGREGATION_POLICY,
+        resume_policy=RESUME_POLICY,
+        reference_lineage={
+            "reference_revision": REFERENCE_REVISION,
+            "explicit_data_bundle_fingerprint": bundle_fingerprint,
+            "research_scope": "optional_full_history_non_release_gate",
+        },
+    )
+
+
 def _authored_prices(delivery_date: date) -> RobustFCRPriceInputs:
     offset = float((delivery_date - BOUNDED_DATES[0]).days)
     energy = tuple(
@@ -471,6 +576,165 @@ def build_day_inputs(
     return tuple(values)
 
 
+def build_explicit_day_inputs(
+    manifest: object,
+    rows: Sequence[Mapping[str, object]],
+) -> tuple[RollingFCRDayInput, ...]:
+    """Build canonical bidder-visible inputs from an explicit ordered bundle."""
+
+    ordered_rows = tuple(rows)
+    expected_dates = tuple(item.delivery_date for item in manifest.dates)
+    if len(ordered_rows) != len(expected_dates):
+        raise ValueError("explicit day inputs must cover every manifest date")
+    values = []
+    for expected_date, row in zip(expected_dates, ordered_rows, strict=True):
+        required = {
+            "delivery_date",
+            "day_ahead_prices_eur_per_kwh",
+            "fcr_capacity_prices_eur_per_kw_block",
+        }
+        if set(row) != required:
+            raise ValueError("explicit day input keys differ from the v1 bundle")
+        delivery_date = date.fromisoformat(str(row["delivery_date"]))
+        if delivery_date != expected_date:
+            raise ValueError("explicit day inputs differ from manifest date order")
+        energy = row["day_ahead_prices_eur_per_kwh"]
+        fcr = row["fcr_capacity_prices_eur_per_kw_block"]
+        if (
+            not isinstance(energy, Sequence)
+            or isinstance(energy, (str, bytes))
+            or not isinstance(fcr, Sequence)
+            or isinstance(fcr, (str, bytes))
+        ):
+            raise ValueError("explicit price inputs must be sequences")
+        prices = _prices(
+            delivery_date,
+            energy=energy,
+            fcr=fcr,
+            source="explicit_full_history",
+        )
+        contract = build_robust_fcr_time_contract(
+            delivery_date=delivery_date,
+            market_timezone=MARKET_TIMEZONE,
+        )
+        cutoff = (
+            datetime.combine(
+                delivery_date - timedelta(days=1),
+                time(8),
+                tzinfo=ZoneInfo(MARKET_TIMEZONE),
+            ).astimezone(UTC)
+            if manifest.profile.state_mode == "rolling_0800"
+            else contract.delivery_period.start_utc - timedelta(hours=12)
+        )
+        row_fingerprint = fingerprint(
+            {
+                "delivery_date": delivery_date.isoformat(),
+                "day_ahead_prices_eur_per_kwh": list(energy),
+                "fcr_capacity_prices_eur_per_kw_block": list(fcr),
+            }
+        )
+        values.append(
+            RollingFCRDayInput(
+                manifest_fingerprint=manifest.manifest_fingerprint,
+                profile_fingerprint=manifest.profile.profile_fingerprint,
+                date_classification=manifest.dates[len(values)],
+                time_contract=contract,
+                battery=manifest.battery_binding.optimization_battery,
+                prices=prices,
+                decision_cutoff_utc=cutoff,
+                information_cutoff_utc=cutoff,
+                producer_input_fingerprints={
+                    "market_prices": prices.price_input_fingerprint,
+                    "battery_binding": manifest.battery_binding.binding_fingerprint,
+                    "uncertainty_profile": (
+                        manifest.uncertainty_profile.uncertainty_profile_fingerprint
+                    ),
+                    "numeric_policy": (
+                        manifest.numeric_policy.numeric_policy_fingerprint
+                    ),
+                    "explicit_day_row": row_fingerprint,
+                },
+                provenance={
+                    "source_kind": "explicit_full_history_data_bundle",
+                    "information_boundary": "pre_delivery_only",
+                },
+            )
+        )
+    return tuple(values)
+
+
+def build_explicit_activation_traces(
+    manifest: object,
+    rows: Sequence[Mapping[str, object]],
+) -> dict[date, object]:
+    """Import explicitly embedded ten-second samples without searching for data."""
+
+    traces = {}
+    manifest_dates = {item.delivery_date for item in manifest.dates}
+    for row in rows:
+        if set(row) != {"delivery_date", "source_revision", "values"}:
+            raise ValueError("explicit activation keys differ from the v1 bundle")
+        delivery_date = date.fromisoformat(str(row["delivery_date"]))
+        if delivery_date not in manifest_dates or delivery_date in traces:
+            raise ValueError("explicit activation date is duplicated or undeclared")
+        raw_values = row["values"]
+        if not isinstance(raw_values, Sequence) or isinstance(
+            raw_values, (str, bytes)
+        ):
+            raise ValueError("explicit activation values must be a sequence")
+        values = tuple(float(item) for item in raw_values)
+        if len(values) != 8_640:
+            raise ValueError(
+                "ordinary full-history activation requires exactly 8,640 samples"
+            )
+        contract = build_robust_fcr_time_contract(
+            delivery_date=delivery_date,
+            market_timezone=MARKET_TIMEZONE,
+        )
+        request = ActivationImportRequest(
+            source_name="Feature 015 explicit full-history activation",
+            source_locator="explicit-full-history-data-bundle",
+            source_revision=str(row["source_revision"]),
+            source_timezone=MARKET_TIMEZONE,
+            requested_start_utc=contract.delivery_period.start_utc,
+            requested_end_utc=contract.delivery_period.end_utc,
+            source_resolution="PT10S",
+            source_value_kind="interval_average",
+            source_sign_meaning="positive requests upward/discharge",
+            normalization_rule={
+                "conversion": "identity",
+                "formula": "activation = explicit_value",
+                "point_to_interval": "already_interval_average",
+                "clip_min": -1.0,
+                "clip_max": 1.0,
+                "target_sign": "positive is upward/discharge",
+            },
+            redistribution_basis={
+                "source": "caller-supplied fingerprinted research bundle",
+                "terms": "caller-governed",
+            },
+        )
+        timestep = timedelta(seconds=10)
+        traces[delivery_date] = import_regulation_activation_trace(
+            request,
+            tuple(
+                {
+                    "start_utc": contract.delivery_period.start_utc
+                    + index * timestep,
+                    "end_utc": contract.delivery_period.start_utc
+                    + (index + 1) * timestep,
+                    "value": value,
+                    "source_value": value,
+                    "source_unit": "dimensionless",
+                }
+                for index, value in enumerate(values)
+            ),
+            trace_id=f"feature-015-explicit-{delivery_date}-activation-v1",
+            created_at_utc=ACTIVATION_CREATED_AT_UTC,
+        )
+    return traces
+
+
 def build_authored_activation_traces(
     dates: Sequence[date],
 ) -> dict[date, object]:
@@ -550,6 +814,9 @@ __all__ = [
     "REFERENCE_REVISION",
     "build_authored_activation_traces",
     "build_day_inputs",
+    "build_explicit_activation_traces",
+    "build_explicit_day_inputs",
+    "build_explicit_manifest",
     "build_manifest",
     "build_solve_policy",
     "fingerprint",

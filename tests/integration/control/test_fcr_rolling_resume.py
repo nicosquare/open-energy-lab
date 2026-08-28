@@ -8,6 +8,11 @@ import json
 
 import pytest
 
+from examples.fcr_rolling_backtest.run_authored_study import (
+    AUTHORED_BUNDLE_SCHEMA_VERSION,
+    _load_resume_bundle,
+    _partial_result,
+)
 from open_energy_lab.control import (
     RollingFCRValidationError,
     aggregate_rolling_fcr_records,
@@ -131,6 +136,37 @@ def test_prefix_resume_reuses_completed_record_and_matches_uninterrupted_result(
     assert resumed.resume_lineage.prior_result_semantic_fingerprint == (
         partial.semantic_fingerprint
     )
+
+
+def test_authored_command_checkpoint_retains_full_manifest_identity_and_resumes(
+    completed_authored_study: tuple[object, tuple[object, ...], dict[date, object], object],
+    tmp_path: object,
+) -> None:
+    manifest, inputs, traces, uninterrupted = completed_authored_study
+    partial = _partial_result(manifest, uninterrupted, 1)
+    payload = {
+        "schema_version": AUTHORED_BUNDLE_SCHEMA_VERSION,
+        "profiles": [
+            {
+                "profile_id": partial.profile_id,
+                "result": partial.to_dict(),
+            }
+        ],
+    }
+    checkpoint = tmp_path / "authored-checkpoint.json"
+    checkpoint.write_text(json.dumps(payload), encoding="utf-8")
+
+    loaded = _load_resume_bundle(checkpoint)[partial.profile_id]
+    resumed = run_rolling_fcr_study(
+        manifest,
+        inputs,
+        activation_traces=traces,
+        resume_from=loaded,
+    )
+
+    assert len(loaded.records) == 1
+    assert loaded.manifest_fingerprint == manifest.manifest_fingerprint
+    assert resumed.semantic_fingerprint == uninterrupted.semantic_fingerprint
 
 
 @pytest.mark.parametrize(
