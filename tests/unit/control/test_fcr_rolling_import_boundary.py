@@ -8,6 +8,8 @@ import subprocess
 import sys
 import textwrap
 
+import pytest
+
 
 ROLLING_MODULES = (
     Path("src/open_energy_lab/control/fcr_rolling_backtest.py"),
@@ -172,3 +174,124 @@ def test_feature_015_foundational_sources_do_not_probe_external_state() -> None:
         if found:
             violations[path.as_posix()] = found
     assert violations == {}
+
+
+def test_feature_015_sources_never_open_raw_reference_or_credential_locators() -> None:
+    raw_locators = (
+        "baselines/",
+        "legacy/",
+        "results/",
+        "regulation_signal.csv",
+    )
+    credential_tokens = (
+        "GRB_LICENSE_FILE",
+        "gurobi.lic",
+        ".netrc",
+        "ENTSOE_API",
+        "RTE_API",
+    )
+    violations: dict[str, list[str]] = {}
+    for path in ROLLING_MODULES:
+        source = path.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=path.as_posix())
+        found = [token for token in credential_tokens if token in source]
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            function_name = (
+                node.func.attr
+                if isinstance(node.func, ast.Attribute)
+                else node.func.id
+                if isinstance(node.func, ast.Name)
+                else ""
+            )
+            if function_name not in {
+                "Path",
+                "open",
+                "read_bytes",
+                "read_text",
+                "glob",
+                "rglob",
+            }:
+                continue
+            literal_arguments = (
+                item.value
+                for item in node.args
+                if isinstance(item, ast.Constant)
+                and isinstance(item.value, str)
+            )
+            found.extend(
+                value
+                for value in literal_arguments
+                if any(locator in value for locator in raw_locators)
+            )
+        if found:
+            violations[path.as_posix()] = sorted(set(found))
+    assert violations == {}
+
+
+def test_public_rolling_contracts_remain_offline_when_external_access_is_poisoned() -> None:
+    _run_isolated(
+        """
+        import builtins
+        import os
+        from pathlib import Path
+        import socket
+        import subprocess
+
+        def forbidden(action):
+            def fail(*args, **kwargs):
+                raise AssertionError(f"rolling contract attempted {action}")
+            return fail
+
+        socket.socket = forbidden("network access")
+        subprocess.run = forbidden("subprocess execution")
+        subprocess.Popen = forbidden("subprocess execution")
+        builtins.input = forbidden("credential input")
+        os.getenv = forbidden("environment credential read")
+
+        from open_energy_lab.control import (
+            build_rolling_fcr_experiment_profile,
+            load_rolling_fcr_reference_fixture,
+        )
+
+        profile = build_rolling_fcr_experiment_profile(
+            "script-12-restriction-reset-midnight-v1"
+        )
+        fixture = load_rolling_fcr_reference_fixture(
+            Path(
+                "tests/fixtures/fcr_rolling_backtest/"
+                "robust_storage_bidding_experiments_01_05_2023-06-17_20_v1.json"
+            )
+        )
+        assert profile.profile_id.startswith("script-12-")
+        assert len(fixture.solve_records) == 20
+        """
+    )
+
+
+def test_bid_selection_entry_points_have_no_activation_argument() -> None:
+    import inspect
+
+    from open_energy_lab.control import _fcr_rolling_orchestrator as orchestrator
+    from open_energy_lab.control import robust_fcr_rolling
+
+    for function in (
+        orchestrator._solve_day,
+        robust_fcr_rolling.solve_robust_fcr_rolling_bid,
+    ):
+        parameters = inspect.signature(function).parameters
+        assert all("activation" not in name.casefold() for name in parameters)
+
+
+def test_future_activation_cannot_be_attached_to_rolling_problem() -> None:
+    from dataclasses import replace
+
+    from open_energy_lab.control import RollingFCRValidationError
+    from tests.fcr_rolling_case_utils import build_authored_rolling_problem
+
+    problem = build_authored_rolling_problem(
+        "script-14-restriction-rolling-0800-v1"
+    )
+    with pytest.raises((TypeError, RollingFCRValidationError)):
+        replace(problem, activation_trace=object())

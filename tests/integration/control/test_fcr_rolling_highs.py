@@ -8,6 +8,7 @@ import pytest
 
 from open_energy_lab.control import (
     RobustFCRBatteryParameters,
+    RobustFCRSolverDependencyUnavailableError,
     TerminalStoredEnergyRule,
     run_rolling_fcr_study,
     solve_robust_fcr_rolling_bid,
@@ -86,7 +87,24 @@ def test_bounded_profile_solves_return_ordered_classified_evidence(
         assert revision.fcr_capacity_kw == (0.0,) * 6
 
 
-def test_0800_fixed_overlap_solves_with_40_160_10_frame_and_retains_edges() -> None:
+def test_0800_fixed_overlap_solves_with_40_160_10_frame_and_retains_edges(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import open_energy_lab.control.robust_fcr_rolling as rolling_solver
+
+    delegated_solve = rolling_solver.solve_robust_fcr_rolling_bid
+    captured_results = []
+
+    def recording_solve(problem):
+        result = delegated_solve(problem)
+        captured_results.append(result)
+        return result
+
+    monkeypatch.setattr(
+        rolling_solver,
+        "solve_robust_fcr_rolling_bid",
+        recording_solve,
+    )
     original = build_authored_manifest(
         "script-14-restriction-rolling-0800-v1"
     )
@@ -123,6 +141,13 @@ def test_0800_fixed_overlap_solves_with_40_160_10_frame_and_retains_edges() -> N
         "finalized",
     )
     assert len(result.state_links) == 1
+    assert len(captured_results) == 1
+    cardinality = captured_results[0].solver.model_cardinality
+    assert cardinality["planning_intervals"] == 160
+    assert cardinality["energy_intervals"] == 40
+    assert cardinality["fcr_intervals"] == 10
+    assert cardinality["fixed_predecessor_energy_decisions"] == 16
+    assert cardinality["fixed_predecessor_fcr_decisions"] == 4
 
 
 def test_exact_zero_fcr_is_a_model_constraint_not_a_zero_price_inference() -> None:
@@ -184,7 +209,67 @@ def test_repeated_exact_zero_fcr_solves_have_identical_semantic_evidence() -> No
     assert first.decisions == second.decisions
     assert first.plan is not None and second.plan is not None
     assert first.plan.plan_fingerprint == second.plan.plan_fingerprint
+    assert first.solver.model_cardinality == second.solver.model_cardinality
     assert first.runtime_metadata != {}
+
+
+@pytest.mark.parametrize(
+    "reason",
+    (
+        "Feature 013 requires highspy 1.15.1; run `uv sync --dev` and retry",
+        "Feature 013 requires Pyomo 6.10.1; installed version is incompatible",
+    ),
+)
+def test_rolling_solve_propagates_required_backend_failure_without_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+    reason: str,
+) -> None:
+    import open_energy_lab.control._robust_fcr_solver as solver_adapter
+
+    def unavailable():
+        raise RobustFCRSolverDependencyUnavailableError(reason)
+
+    def forbidden_optional_backend():
+        raise AssertionError("rolling HiGHS solve attempted optional fallback")
+
+    monkeypatch.setattr(solver_adapter, "require_highs_backend", unavailable)
+    monkeypatch.setattr(
+        solver_adapter,
+        "load_optional_gurobi_backend",
+        forbidden_optional_backend,
+    )
+    problem = build_authored_rolling_problem(
+        "script-13-arbitrage-only-midnight-v1"
+    )
+
+    with pytest.raises(RobustFCRSolverDependencyUnavailableError, match="Feature 013"):
+        solve_robust_fcr_rolling_bid(problem)
+
+
+def test_declared_model_operation_counts_have_exact_quadratic_growth() -> None:
+    from open_energy_lab.control._robust_fcr_formulation import (
+        build_normalized_index_sets,
+        model_cardinality_metadata,
+    )
+
+    ordinary = model_cardinality_metadata(
+        build_normalized_index_sets(96),
+        "restriction",
+    )
+    overlap = model_cardinality_metadata(
+        build_normalized_index_sets(160),
+        "restriction",
+    )
+
+    assert ordinary["triangular_pairs"] == 96 * 97 // 2
+    assert overlap["triangular_pairs"] == 160 * 161 // 2
+    assert ordinary["strict_triangular_pairs"] == 96 * 95 // 2
+    assert overlap["strict_triangular_pairs"] == 160 * 159 // 2
+    assert ordinary["quadratic_index_power"] == 2
+    assert overlap["quadratic_index_power"] == 2
+    assert overlap["variables"] > ordinary["variables"]
+    assert overlap["active_constraints"] > ordinary["active_constraints"]
+    assert overlap["quadratic_structure_entries"] < 4 * 160**2
 
 
 def test_midnight_coupled_problem_identity_changes_with_explicit_initial_state() -> None:
