@@ -210,15 +210,15 @@ forms, distinguishes parity from fidelity, and leaves notebook and evidence byte
 
 ### Tests for User Story 6
 
-- [ ] T052 [P] [US6] Add notebook source contracts for output-free cells, required mathematical/ownership explanations, public OEL imports, fixture-only usage, all three mapping forms, max/PWL, parity-versus-fidelity labels, and prohibited fitting/regeneration/compiler/grid/benchmark code in `tests/unit/tpm/test_conditional_mio_notebook.py`
-- [ ] T053 [P] [US6] Add blocked-network headless execution through a copied local kernel, semantic result markers, source-byte preservation, and fixture-byte preservation in `tests/integration/tpm/test_conditional_mio_notebook_execution.py`
-- [ ] T054 [P] [US6] Add CI contract tests requiring a Python 3.11 notebook job with locked `dev` and `notebook` groups while keeping notebook execution out of the Python 3.11-3.14 backend matrix in `tests/unit/test_ci_workflow.py`
+- [X] T052 [P] [US6] Add notebook source contracts for output-free cells, required mathematical/ownership explanations, public OEL imports, fixture-only usage, all three mapping forms, max/PWL, parity-versus-fidelity labels, and prohibited fitting/regeneration/compiler/grid/benchmark code in `tests/unit/tpm/test_conditional_mio_notebook.py`
+- [X] T053 [P] [US6] Add blocked-network headless execution through a copied local kernel, semantic result markers, source-byte preservation, and fixture-byte preservation in `tests/integration/tpm/test_conditional_mio_notebook_execution.py`
+- [X] T054 [P] [US6] Add CI contract tests requiring a Python 3.11 notebook job with locked `dev` and `notebook` groups while keeping notebook execution out of the Python 3.11-3.14 backend matrix in `tests/unit/test_ci_workflow.py`
 
 ### Implementation for User Story 6
 
-- [ ] T055 [US6] Create the thin output-free walkthrough with numerator/denominator density meaning, explicit learned denominator, caller/OEL ownership, continuous affine, binary, and ordered categorical mappings, representative max/PWL fixed solves, separate parity/fidelity presentation, and an unsolved caller-policy composition in `examples/tpm_planning/conditional_mio_embedding_walkthrough.ipynb`
-- [ ] T056 [US6] Document notebook kernel setup, offline execution, reviewed fixture provenance, expected sections, and the no-regeneration/no-benchmark boundary in `examples/tpm_planning/README.md`
-- [ ] T057 [US6] Add the required locked Python 3.11 headless notebook job to `.github/workflows/ci.yml`, explicitly verify installed SPFlow, Pyomo, HiGHS availability, and notebook dependencies before testing, run both notebook test files through the `notebook` group, and resolve the fail-closed CI assertions in `tests/unit/test_ci_workflow.py`
+- [X] T055 [US6] Create the thin output-free walkthrough with numerator/denominator density meaning, explicit learned denominator, caller/OEL ownership, continuous affine, binary, and ordered categorical mappings, representative max/PWL fixed solves, separate parity/fidelity presentation, and an unsolved caller-policy composition in `examples/tpm_planning/conditional_mio_embedding_walkthrough.ipynb`
+- [X] T056 [US6] Document notebook kernel setup, offline execution, reviewed fixture provenance, expected sections, and the no-regeneration/no-benchmark boundary in `examples/tpm_planning/README.md`
+- [X] T057 [US6] Add the required locked Python 3.11 headless notebook job to `.github/workflows/ci.yml`, explicitly verify installed SPFlow, Pyomo, HiGHS availability, and notebook dependencies before testing, run both notebook test files through the `notebook` group, and resolve the fail-closed CI assertions in `tests/unit/test_ci_workflow.py`
 
 **Checkpoint**: A reviewer can understand and execute the complete composition example without
 reading compiler internals, while tests and persisted evidence remain authoritative.

@@ -71,6 +71,52 @@ Semantic fit evidence is deterministic; pickle bytes are not used as the
 repeatability oracle. Each regenerated sidecar receives its actual SHA-256 in
 the manifest, and later loads verify that digest before deserialization.
 
+## Conditional MIO Composition Walkthrough
+
+[`conditional_mio_embedding_walkthrough.ipynb`](conditional_mio_embedding_walkthrough.ipynb)
+is the required, thin Feature 016 demonstration of composable conditional risk
+in a caller-owned Pyomo model. It uses only public OEL APIs and reloads the
+reviewed current-SPFlow artifact, immutable max/PWL conditional pairs, and
+separate parity/fidelity evidence under `tests/fixtures/tpm/`. It does not fit or
+compile a model, regenerate evidence, enumerate a decision grid, or perform a
+benchmark optimization.
+
+Install the locked development and notebook groups from the OEL repository
+root, then select the repository's `.venv/bin/python` as the notebook kernel:
+
+```bash
+uv sync --locked --group dev --group notebook
+uv run jupyter lab examples/tpm_planning/conditional_mio_embedding_walkthrough.ipynb
+```
+
+The walkthrough explains numerator and denominator density roots, the learned
+denominator, and caller-versus-OEL ownership. It demonstrates continuous affine,
+binary, and ordered categorical mappings; representative objective-free max and
+PWL fixed-assignment solves; embedding/solver parity separately from
+native/compiler fidelity; and one caller policy with its own objective,
+deterministic constraint, threshold, and chance constraint deliberately left
+unsolved.
+
+The reviewed inputs are:
+
+- `conditional_mio_embedding_v1.json`, the human-reviewed nonuniform source;
+- `tpm_artifact_conditional_mio_v3.json` and its checked sidecar;
+- `conditional_pair_max_v1.json` and `conditional_pair_pwl_v1.json`; and
+- `conditional_mio_evidence_v1.json`.
+
+Run the same required source and headless execution checks offline on CPU:
+
+```bash
+uv run --offline --locked --no-sync pytest \
+  tests/unit/tpm/test_conditional_mio_notebook.py \
+  tests/integration/tpm/test_conditional_mio_notebook_execution.py
+```
+
+The execution check blocks network access and verifies that neither the source
+notebook nor reviewed fixtures change. Unlike the optional post-Feature 014
+U-Bounds notebook below, this walkthrough is part of Feature 016's required
+acceptance evidence.
+
 ## Post-Feature Declared Feature Domains Walkthrough
 
 **Status**: Optional post-feature documentation extension retained after Feature 014 was completed,
