@@ -294,3 +294,10 @@ meaning and adding real-SPFlow evidence.
   by this feature is required.
 - Every generated result must retain its declared inputs, seed/configuration, backend/compiler
   versions, digest, transforms, validity intervals, and assertion tolerance.
+
+---
+
+## Phase 8: Convergence
+
+- [X] T057 Restore source-only state in `examples/tpm_planning/declared_feature_domains_walkthrough.ipynb` by clearing persisted execution counts and outputs, then rerun the complete TPM/planning regression command and the focused notebook source and real-kernel checks per T054 (partial)
+- [X] T058 Review the optional declared-domain notebook, its documentation, and its tests as a post-feature addition; either retain them under an explicitly separate reviewed authorization outside Feature 014's required acceptance surface or remove them from this feature branch while preserving the notebook-independent quickstart path per spec: Out of Scope and plan: Scope controls (unrequested)
