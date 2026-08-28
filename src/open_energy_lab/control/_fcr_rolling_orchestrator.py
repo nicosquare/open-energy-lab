@@ -17,6 +17,8 @@ from .fcr_rolling_backtest import (
     RollingFCRValidationError,
     RollingFCRStateLink,
     _fingerprint,
+    aggregate_rolling_fcr_records,
+    assess_rolling_fcr_resume,
     derive_rolling_fcr_state_carry,
 )
 from .robust_fcr_bidding import (
@@ -53,6 +55,48 @@ class _MidnightReplayEvidence:
     report: object
     activation_fingerprint: str
     state_carry_evidence: object
+
+
+_PROCESS_INTEGRITY_ERRORS = (MemoryError, RecursionError)
+
+
+def _normalized_date_failure(phase: str, exc: Exception) -> str:
+    """Return stable per-date failure evidence or preserve process integrity."""
+
+    if isinstance(exc, _PROCESS_INTEGRITY_ERRORS):
+        raise exc
+    return f"{phase}_failed:{type(exc).__name__}"
+
+
+def _requested_day_input_fingerprints(
+    day_inputs: tuple[RollingFCRDayInput, ...],
+) -> dict[str, str]:
+    return {
+        item.date_classification.delivery_date.isoformat(): (
+            item.day_input_fingerprint
+        )
+        for item in day_inputs
+    }
+
+
+def _supplied_activation_fingerprints(
+    activation_traces: Mapping[date, object] | None,
+) -> dict[str, str]:
+    if activation_traces is None:
+        return {}
+    values: dict[str, str] = {}
+    for delivery_date, trace in activation_traces.items():
+        if not isinstance(delivery_date, date):
+            raise RollingFCRValidationError(
+                "activation trace keys must be delivery dates"
+            )
+        fingerprint = getattr(trace, "artifact_fingerprint", None)
+        if not isinstance(fingerprint, str):
+            raise RollingFCRValidationError(
+                "activation trace must expose an artifact fingerprint"
+            )
+        values[delivery_date.isoformat()] = fingerprint
+    return dict(sorted(values.items()))
 
 
 def _causal_activation_fingerprint(trace: object) -> str:
@@ -411,6 +455,14 @@ def _result_fields(result: object) -> dict[str, object]:
         "feasibility_slacks": (
             {} if audit is None else dict(audit.modeled_slacks)
         ),
+        "independent_residuals": (
+            {}
+            if audit is None
+            else {
+                item.family_id: item.maximum_positive_violation
+                for item in getattr(audit, "constraint_families", ())
+            }
+        ),
         "energy_decisions_charge_positive_kw": (
             None
             if decisions is None
@@ -474,10 +526,13 @@ def _append_revision(
     return DeliveryDateRecordEnvelope(
         manifest_fingerprint=envelope.manifest_fingerprint,
         profile_fingerprint=envelope.profile_fingerprint,
+        profile_id=envelope.profile_id,
         classification=envelope.classification,
         predecessor_date=envelope.predecessor_date,
         continuity_segment_id=envelope.continuity_segment_id,
         revisions=(*envelope.revisions, revision),
+        decision_cutoff_utc=envelope.decision_cutoff_utc,
+        information_cutoff_utc=envelope.information_cutoff_utc,
     )
 
 
@@ -491,12 +546,15 @@ def _envelope_for_solved_day(
     return DeliveryDateRecordEnvelope(
         manifest_fingerprint=manifest.manifest_fingerprint,
         profile_fingerprint=manifest.profile.profile_fingerprint,
+        profile_id=manifest.profile.profile_id,
         classification=solved.day_input.date_classification,
         predecessor_date=predecessor_date,
         continuity_segment_id=(
             continuity_segment_id or f"{manifest.study_id}-segment-0"
         ),
         revisions=(solved.original_revision,),
+        decision_cutoff_utc=solved.day_input.decision_cutoff_utc,
+        information_cutoff_utc=solved.day_input.information_cutoff_utc,
     )
 
 
@@ -992,6 +1050,7 @@ def _failure_envelope(
     return DeliveryDateRecordEnvelope(
         manifest_fingerprint=manifest.manifest_fingerprint,
         profile_fingerprint=manifest.profile.profile_fingerprint,
+        profile_id=manifest.profile.profile_id,
         classification=classification,
         predecessor_date=predecessor_date,
         continuity_segment_id=(
@@ -1453,7 +1512,7 @@ def _run_causal_0800_study(
                 classification,
                 predecessor_date=predecessor_date,
                 lifecycle_status="failed",
-                reason=f"rolling_0800_failed:{type(exc).__name__}:{exc}",
+                reason=_normalized_date_failure("rolling_0800", exc),
             )
             blocked = True
             pending_solved = None
@@ -1489,13 +1548,23 @@ def _run_causal_0800_study(
         else "complete"
     )
     return RollingFCRStudyResult(
+        study_id=manifest.study_id,
         manifest_fingerprint=manifest.manifest_fingerprint,
+        profile_id=manifest.profile.profile_id,
         profile_fingerprint=manifest.profile.profile_fingerprint,
         records=ordered_records,
         continuity_segments=(segment,),
         state_links=tuple(state_links),
-        aggregate_metrics=(),
+        aggregate_metrics=aggregate_rolling_fcr_records(
+            manifest, ordered_records
+        ),
         completeness_status=completeness,
+        requested_day_input_fingerprints=_requested_day_input_fingerprints(
+            day_inputs
+        ),
+        supplied_activation_fingerprints=_supplied_activation_fingerprints(
+            activation_traces
+        ),
         runtime_metadata={
             "phase": "causal-0800-rolling-v1",
             "bidder_received_activation": False,
@@ -1731,7 +1800,7 @@ def _run_midnight_carry_study(
                 classification,
                 predecessor_date=predecessor_date,
                 lifecycle_status="failed",
-                reason=f"midnight_carry_failed:{type(exc).__name__}:{exc}",
+                reason=_normalized_date_failure("midnight_carry", exc),
                 continuity_segment_id=active_segment,
             )
             blocked = True
@@ -1754,6 +1823,11 @@ def _run_midnight_carry_study(
             ),
         )
     ordered_records = tuple(records[item.delivery_date] for item in manifest.dates)
+    record_dates_by_segment: dict[str, list[date]] = {}
+    for record in ordered_records:
+        record_dates_by_segment.setdefault(record.continuity_segment_id, []).append(
+            record.classification.delivery_date
+        )
     continuity_segments = tuple(
         ContinuitySegment(
             segment_id=segment_id,
@@ -1762,8 +1836,7 @@ def _run_midnight_carry_study(
             start_reason=segment_reasons[segment_id][0],
             source_state_fingerprint=segment_reasons[segment_id][1],
         )
-        for segment_id, members in segment_members.items()
-        if members
+        for segment_id, members in record_dates_by_segment.items()
     )
     statuses = tuple(item.latest_revision.lifecycle_status for item in ordered_records)
     completeness = (
@@ -1777,13 +1850,23 @@ def _run_midnight_carry_study(
         else "complete"
     )
     return RollingFCRStudyResult(
+        study_id=manifest.study_id,
         manifest_fingerprint=manifest.manifest_fingerprint,
+        profile_id=manifest.profile.profile_id,
         profile_fingerprint=manifest.profile.profile_fingerprint,
         records=ordered_records,
         continuity_segments=continuity_segments,
         state_links=tuple(state_links),
-        aggregate_metrics=(),
+        aggregate_metrics=aggregate_rolling_fcr_records(
+            manifest, ordered_records
+        ),
         completeness_status=completeness,
+        requested_day_input_fingerprints=_requested_day_input_fingerprints(
+            day_inputs
+        ),
+        supplied_activation_fingerprints=_supplied_activation_fingerprints(
+            activation_traces
+        ),
         runtime_metadata={
             "phase": "realized-midnight-carry-v1",
             "state_carry_policy": manifest.numeric_policy.state_carry_policy,
@@ -1802,10 +1885,78 @@ def run_initial_rolling_fcr_study(
     """Build ordered optimization evidence; causal replay is added in later phases."""
 
     if resume_from is not None:
-        if resume_from.manifest_fingerprint != manifest.manifest_fingerprint:
-            raise RollingFCRValidationError("resume result belongs to another manifest")
-        raise RollingFCRValidationError(
-            "resume reuse is not available until the Feature 015 resume phase"
+        resume_evidence = assess_rolling_fcr_resume(manifest, resume_from)
+        if resume_evidence.status != "compatible":
+            raise RollingFCRValidationError(
+                "resume evidence is incompatible: "
+                + ",".join(resume_evidence.diagnostics)
+            )
+        current_input_fingerprints = _requested_day_input_fingerprints(day_inputs)
+        expected_input_fingerprints = dict(
+            resume_from.requested_day_input_fingerprints
+        )
+        if any(
+            current_input_fingerprints.get(key) != value
+            for key, value in expected_input_fingerprints.items()
+        ):
+            raise RollingFCRValidationError(
+                "resume day input fingerprints changed"
+            )
+        current_activation_fingerprints = (
+            {}
+            if manifest.profile.is_independent
+            else _supplied_activation_fingerprints(activation_traces)
+        )
+        expected_activation_fingerprints = dict(
+            resume_from.supplied_activation_fingerprints
+        )
+        if any(
+            current_activation_fingerprints.get(key) != value
+            for key, value in expected_activation_fingerprints.items()
+        ):
+            raise RollingFCRValidationError(
+                "resume activation fingerprints changed"
+            )
+        is_complete_record_set = len(resume_from.records) == len(manifest.dates)
+        if is_complete_record_set:
+            if current_input_fingerprints != expected_input_fingerprints:
+                raise RollingFCRValidationError(
+                    "resume complete day input set changed"
+                )
+            if current_activation_fingerprints != expected_activation_fingerprints:
+                raise RollingFCRValidationError(
+                    "resume complete activation set changed"
+                )
+            return replace(resume_from, resume_lineage=resume_evidence)
+        fresh = run_initial_rolling_fcr_study(
+            manifest,
+            day_inputs,
+            activation_traces=activation_traces,
+            resume_from=None,
+        )
+        if len(resume_from.records) > len(fresh.records):
+            raise RollingFCRValidationError(
+                "resume contains more dates than the requested study"
+            )
+        fresh_prefix = fresh.records[: len(resume_from.records)]
+        if tuple(item.envelope_fingerprint for item in fresh_prefix) != tuple(
+            item.envelope_fingerprint for item in resume_from.records
+        ):
+            raise RollingFCRValidationError(
+                "resume day input, activation, revision, or carried-state evidence changed"
+            )
+        merged_records = (
+            resume_from.records
+            if len(resume_from.records) == len(fresh.records)
+            else (*resume_from.records, *fresh.records[len(resume_from.records) :])
+        )
+        return replace(
+            fresh,
+            records=merged_records,
+            aggregate_metrics=aggregate_rolling_fcr_records(
+                manifest, merged_records
+            ),
+            resume_lineage=resume_evidence,
         )
     if manifest.profile.state_mode == "rolling_0800":
         return _run_causal_0800_study(
@@ -1909,10 +2060,13 @@ def run_initial_rolling_fcr_study(
                 DeliveryDateRecordEnvelope(
                     manifest_fingerprint=manifest.manifest_fingerprint,
                     profile_fingerprint=manifest.profile.profile_fingerprint,
+                    profile_id=manifest.profile.profile_id,
                     classification=classification,
                     predecessor_date=predecessor,
                     continuity_segment_id=f"{manifest.study_id}-segment-0",
                     revisions=(revision,),
+                    decision_cutoff_utc=day_input.decision_cutoff_utc,
+                    information_cutoff_utc=day_input.information_cutoff_utc,
                 )
             )
             if result.solver.solve_status not in {"optimal", "feasible"}:
@@ -1924,7 +2078,7 @@ def run_initial_rolling_fcr_study(
                     classification,
                     predecessor_date=predecessor,
                     lifecycle_status="failed",
-                    reason=f"optimization_failed:{type(exc).__name__}:{exc}",
+                    reason=_normalized_date_failure("optimization", exc),
                 )
             )
             coupled_blocked = not manifest.profile.is_independent
@@ -1948,13 +2102,21 @@ def run_initial_rolling_fcr_study(
     else:
         completeness = "complete"
     return RollingFCRStudyResult(
+        study_id=manifest.study_id,
         manifest_fingerprint=manifest.manifest_fingerprint,
+        profile_id=manifest.profile.profile_id,
         profile_fingerprint=manifest.profile.profile_fingerprint,
         records=tuple(records),
         continuity_segments=(segment,),
         state_links=(),
-        aggregate_metrics=(),
+        aggregate_metrics=aggregate_rolling_fcr_records(
+            manifest, tuple(records)
+        ),
         completeness_status=completeness,
+        requested_day_input_fingerprints=_requested_day_input_fingerprints(
+            day_inputs
+        ),
+        supplied_activation_fingerprints={},
         runtime_metadata={
             "phase": "initial-profile-optimization-v1",
             "activation_inspected": False,

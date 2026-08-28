@@ -206,3 +206,33 @@ state-link, and study identities; every realized successor initial state
 reconciles with its eligible predecessor carry. Nested volatile solver runtime
 metadata remains reportable but is excluded from envelope and study semantic
 fingerprints, so repeated semantic studies compare equal.
+
+### Phase 6 — self-auditing results, aggregates, and resume
+
+Rolling studies now persist a strict immutable evidence graph for day
+revisions, envelopes, state links, continuity segments, aggregates, and the
+study result. Loading recomputes every nested fingerprint and rejects unknown,
+missing, malformed, or contradictory evidence without consulting solvers,
+source artifacts, paths, environment state, or the network. Volatile runtime
+duration and process-local metadata remain reportable but do not enter semantic
+identity; solver versions and other stable backend evidence do.
+
+Aggregation preserves failed, blocked, excluded, provisional, and unfinalized
+dates explicitly. It reports exact contributors and omissions and keeps
+optimization objectives, best bounds, realized settlement, realized profit,
+directional FCR energy, and throughput as separate metrics. Missing quantities
+remain unavailable rather than being silently replaced with zero.
+
+Resume validation is fail-closed across the manifest, semantic profile, date
+ordering and classification, solver and numeric policies, source lineage,
+settlement and acceptance assumptions, input and activation fingerprints,
+completed revisions, continuity segments, and carried state. A complete
+compatible result can be returned without invoking the solver. A compatible
+prefix retains the prior immutable records, recomputes the remaining study,
+and produces the same semantic result as an uninterrupted run. Coupled failures
+remain visible and block their dependents unless an explicit validated caller
+state begins a new continuity segment; independent reset profiles continue.
+
+The focused Phase 6 result, orchestration, import-boundary, and resume
+selection passed with `75 passed in 3.67s`. The protected Feature 013 problem,
+solver, and bounded HiGHS regressions passed with `80 passed in 94.05s`.

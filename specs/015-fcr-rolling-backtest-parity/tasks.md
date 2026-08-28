@@ -176,21 +176,21 @@ execution while every fingerprint-bearing change is rejected.
 
 ### Tests first
 
-- [ ] T051 [P] [US4] Add failing result-contract tests for deep immutability, revision ordering, explicit unavailable fingerprints, absolute/relative gaps, runtime separation, lifecycle invariants, and exact status counts in `tests/unit/control/test_fcr_rolling_results.py`
-- [ ] T052 [P] [US4] Add independent-continuation, coupled-blocking, caller-restart, and no-disappearing-date failure tests in `tests/unit/control/test_fcr_rolling_results.py`
-- [ ] T053 [P] [US4] Add aggregate tests for eligible/contributing/omitted dates, reasons, complete/partial/unavailable coverage, no zero fill, and separate objective/bound/settlement/profit/throughput metrics in `tests/unit/control/test_fcr_rolling_results.py`
-- [ ] T054 [P] [US4] Add resume tests for exact reuse and mismatches in profile, ordering, solver, numeric, rounding, source, activation, acceptance, settlement, revision, continuity, and carried-state evidence in `tests/integration/control/test_fcr_rolling_resume.py`
-- [ ] T055 [P] [US4] Add serialization/load tests proving changes to retained volatile start, finish, and duration evidence do not alter semantic identity; execution-host, process-local, and caller-path data cannot enter semantic payloads; and solver version, artifact digest, cutoff, malformed schema, and nested fingerprint changes are detected in `tests/integration/control/test_fcr_rolling_resume.py`
+- [x] T051 [P] [US4] Add failing result-contract tests for deep immutability, revision ordering, explicit unavailable fingerprints, absolute/relative gaps, runtime separation, lifecycle invariants, and exact status counts in `tests/unit/control/test_fcr_rolling_results.py`
+- [x] T052 [P] [US4] Add independent-continuation, coupled-blocking, caller-restart, and no-disappearing-date failure tests in `tests/unit/control/test_fcr_rolling_results.py`
+- [x] T053 [P] [US4] Add aggregate tests for eligible/contributing/omitted dates, reasons, complete/partial/unavailable coverage, no zero fill, and separate objective/bound/settlement/profit/throughput metrics in `tests/unit/control/test_fcr_rolling_results.py`
+- [x] T054 [P] [US4] Add resume tests for exact reuse and mismatches in profile, ordering, solver, numeric, rounding, source, activation, acceptance, settlement, revision, continuity, and carried-state evidence in `tests/integration/control/test_fcr_rolling_resume.py`
+- [x] T055 [P] [US4] Add serialization/load tests proving changes to retained volatile start, finish, and duration evidence do not alter semantic identity; execution-host, process-local, and caller-path data cannot enter semantic payloads; and solver version, artifact digest, cutoff, malformed schema, and nested fingerprint changes are detected in `tests/integration/control/test_fcr_rolling_resume.py`
 
 ### Implementation
 
-- [ ] T056 [US4] Complete strict `to_dict`/`from_dict` validation and nested fingerprint recomputation for revisions, envelopes, state links, continuity segments, aggregates, and study results in `src/open_energy_lab/control/fcr_rolling_backtest.py`
-- [ ] T057 [US4] Implement deterministic per-date exception normalization, independent continuation, coupled blocking, and ordered diagnostics without swallowing process-integrity errors in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
-- [ ] T058 [US4] Implement `aggregate_rolling_fcr_records` with status-count reconciliation, exact contributor/omission lineage, coverage labels, and distinct ex-ante/ex-post quantities in `src/open_energy_lab/control/fcr_rolling_backtest.py`
-- [ ] T059 [US4] Implement `assess_rolling_fcr_resume` with fail-closed semantic checks and continuity-state validation in `src/open_energy_lab/control/fcr_rolling_backtest.py`
-- [ ] T060 [US4] Implement strict offline `load_rolling_fcr_study_result` for the v1 result schema without loading paths, environments, solvers, or source artifacts in `src/open_energy_lab/control/fcr_rolling_backtest.py`
-- [ ] T061 [US4] Integrate compatible resume reuse, new-segment caller states, lifecycle finalization, aggregate recomputation, and stable runtime-independent study identity in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
-- [ ] T062 [US4] Complete uninterrupted-versus-resumed, tamper, failure propagation, coverage, and status-count integration assertions in `tests/integration/control/test_fcr_rolling_resume.py`
+- [x] T056 [US4] Complete strict `to_dict`/`from_dict` validation and nested fingerprint recomputation for revisions, envelopes, state links, continuity segments, aggregates, and study results in `src/open_energy_lab/control/fcr_rolling_backtest.py`
+- [x] T057 [US4] Implement deterministic per-date exception normalization, independent continuation, coupled blocking, and ordered diagnostics without swallowing process-integrity errors in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
+- [x] T058 [US4] Implement `aggregate_rolling_fcr_records` with status-count reconciliation, exact contributor/omission lineage, coverage labels, and distinct ex-ante/ex-post quantities in `src/open_energy_lab/control/fcr_rolling_backtest.py`
+- [x] T059 [US4] Implement `assess_rolling_fcr_resume` with fail-closed semantic checks and continuity-state validation in `src/open_energy_lab/control/fcr_rolling_backtest.py`
+- [x] T060 [US4] Implement strict offline `load_rolling_fcr_study_result` for the v1 result schema without loading paths, environments, solvers, or source artifacts in `src/open_energy_lab/control/fcr_rolling_backtest.py`
+- [x] T061 [US4] Integrate compatible resume reuse, new-segment caller states, lifecycle finalization, aggregate recomputation, and stable runtime-independent study identity in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
+- [x] T062 [US4] Complete uninterrupted-versus-resumed, tamper, failure propagation, coverage, and status-count integration assertions in `tests/integration/control/test_fcr_rolling_resume.py`
 
 **Checkpoint**: A result is self-auditing for dates, lifecycle, continuity,
 coverage, and resume compatibility; no missing work can masquerade as zero.

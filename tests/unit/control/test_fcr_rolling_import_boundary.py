@@ -102,6 +102,30 @@ def test_feature_015_foundational_imports_load_no_solver_or_research_stack() -> 
     )
 
 
+def test_result_resume_and_persistence_exports_remain_lazy() -> None:
+    _run_isolated(
+        """
+        import sys
+
+        before = set(sys.modules)
+        from open_energy_lab.control import (
+            RollingFCRResumeEvidence,
+            aggregate_rolling_fcr_records,
+            assess_rolling_fcr_resume,
+            load_rolling_fcr_study_result,
+        )
+
+        assert RollingFCRResumeEvidence.__name__ == "RollingFCRResumeEvidence"
+        assert callable(aggregate_rolling_fcr_records)
+        assert callable(assess_rolling_fcr_resume)
+        assert callable(load_rolling_fcr_study_result)
+        newly_loaded = set(sys.modules) - before
+        forbidden = {"pyomo", "highspy", "gurobipy", "pandas"}
+        assert forbidden.isdisjoint({name.split(".", 1)[0] for name in newly_loaded})
+        """
+    )
+
+
 def test_feature_015_foundational_sources_do_not_probe_external_state() -> None:
     forbidden_tokens = (
         "os.environ",

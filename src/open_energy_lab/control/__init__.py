@@ -27,6 +27,7 @@ if TYPE_CHECKING:
         RollingFCRDayRevision,
         RollingFCRExperimentProfile,
         RollingFCRNumericPolicy,
+        RollingFCRResumeEvidence,
         RollingFCRStateCarryEvidence,
         RollingFCRStateLink,
         RollingFCRStudyManifest,
@@ -34,7 +35,10 @@ if TYPE_CHECKING:
         RollingFCRValidationError,
         build_rolling_fcr_experiment_profile,
         build_rolling_fcr_study_manifest,
+        aggregate_rolling_fcr_records,
+        assess_rolling_fcr_resume,
         derive_rolling_fcr_state_carry,
+        load_rolling_fcr_study_result,
         run_rolling_fcr_study,
     )
     from .robust_fcr_reference import (
@@ -178,6 +182,10 @@ _EXPORT_MAP = {
         ".fcr_rolling_backtest",
         "RollingFCRNumericPolicy",
     ),
+    "RollingFCRResumeEvidence": (
+        ".fcr_rolling_backtest",
+        "RollingFCRResumeEvidence",
+    ),
     "RollingFCRStateCarryEvidence": (
         ".fcr_rolling_backtest",
         "RollingFCRStateCarryEvidence",
@@ -205,6 +213,18 @@ _EXPORT_MAP = {
     "build_rolling_fcr_study_manifest": (
         ".fcr_rolling_backtest",
         "build_rolling_fcr_study_manifest",
+    ),
+    "aggregate_rolling_fcr_records": (
+        ".fcr_rolling_backtest",
+        "aggregate_rolling_fcr_records",
+    ),
+    "assess_rolling_fcr_resume": (
+        ".fcr_rolling_backtest",
+        "assess_rolling_fcr_resume",
+    ),
+    "load_rolling_fcr_study_result": (
+        ".fcr_rolling_backtest",
+        "load_rolling_fcr_study_result",
     ),
     "run_rolling_fcr_study": (
         ".fcr_rolling_backtest",
@@ -508,6 +528,7 @@ __all__ = sorted([
     "RollingFCRDayRevision",
     "RollingFCRExperimentProfile",
     "RollingFCRNumericPolicy",
+    "RollingFCRResumeEvidence",
     "RollingFCRStateCarryEvidence",
     "RollingFCRStateLink",
     "RollingFCRStudyManifest",
@@ -535,6 +556,8 @@ __all__ = sorted([
     "build_robust_fcr_time_contract",
     "build_rolling_fcr_experiment_profile",
     "build_rolling_fcr_study_manifest",
+    "aggregate_rolling_fcr_records",
+    "assess_rolling_fcr_resume",
     "build_stacked_heuristic_baseline",
     "compare_robust_fcr_bounds",
     "compare_robust_fcr_reference",
@@ -542,6 +565,7 @@ __all__ = sorted([
     "derive_rolling_fcr_state_carry",
     "extract_accepted_predecessor_fixings",
     "load_robust_fcr_reference_fixture",
+    "load_rolling_fcr_study_result",
     "run_rolling_fcr_study",
     "solve_robust_fcr_bid",
     "solve_robust_fcr_rolling_bid",

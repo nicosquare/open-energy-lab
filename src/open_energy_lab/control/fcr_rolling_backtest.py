@@ -13,7 +13,9 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal, ROUND_HALF_EVEN
+import json
 import math
+from pathlib import Path
 import re
 from types import MappingProxyType
 from typing import Any
@@ -39,6 +41,7 @@ ROLLING_FCR_NUMERIC_POLICY_VERSION = "oel.fcr-rolling-numeric-policy.v1"
 ROLLING_FCR_BATTERY_BINDING_VERSION = "oel.fcr-rolling-battery-binding.v1"
 ROLLING_FCR_DAY_INPUT_VERSION = "oel.fcr-rolling-day-input.v1"
 ROLLING_FCR_STUDY_RESULT_VERSION = "oel.fcr-rolling-study-result.v1"
+ROLLING_FCR_RESUME_EVIDENCE_VERSION = "oel.fcr-rolling-resume-evidence.v1"
 ROLLING_FCR_PROFILE_VERSION = "oel.fcr-rolling-experiment-profile.v1"
 ROLLING_FCR_STATE_CARRY_EVIDENCE_VERSION = "oel.fcr-state-carry-evidence.v1"
 
@@ -69,6 +72,36 @@ _LIFECYCLE_STATUSES = {
     "unfinalized",
 }
 _REVISION_KINDS = {"original", "optimization_only", "provisional", "finalized"}
+_TERMINAL_LIFECYCLE_STATUSES = {
+    "initialization_only",
+    "optimization_only",
+    "provisional",
+    "finalized",
+    "failed",
+    "blocked_by_predecessor",
+    "excluded",
+    "unfinalized",
+}
+_VOLATILE_RUNTIME_KEY_TERMS = (
+    "duration",
+    "runtime_seconds",
+    "elapsed",
+    "started_at",
+    "finished_at",
+    "wall_clock",
+    "cpu_time",
+    "host",
+    "hostname",
+    "process",
+    "pid",
+    "path",
+    "directory",
+    "cwd",
+    "filename",
+    "log_text",
+    "temporary",
+    "tee",
+)
 _DESCRIPTOR_RULES = {
     "day_ahead_price": ("EUR/kWh", "PT1H", "hourly-delivery-interval-v1"),
     "fcr_capacity_price": (
@@ -200,6 +233,90 @@ def _contract_dict(value: object, *, field_name: str) -> Mapping[str, object]:
     if not isinstance(payload, Mapping):
         raise RollingFCRValidationError(f"{field_name}.to_dict() must return a mapping")
     return payload
+
+
+def _strict_mapping(
+    value: object,
+    *,
+    field_name: str,
+    required_keys: frozenset[str],
+    optional_keys: frozenset[str] = frozenset(),
+) -> Mapping[str, object]:
+    """Return one mapping only when its schema keys match exactly."""
+
+    if not isinstance(value, Mapping):
+        raise RollingFCRValidationError(f"{field_name} must be a mapping")
+    keys = set(value)
+    missing = required_keys - keys
+    unknown = keys - required_keys - optional_keys
+    if missing:
+        raise RollingFCRValidationError(
+            f"{field_name} is missing required keys: {sorted(missing)}"
+        )
+    if unknown:
+        raise RollingFCRValidationError(
+            f"{field_name} contains unknown keys: {sorted(unknown)}"
+        )
+    if any(not isinstance(key, str) for key in keys):
+        raise RollingFCRValidationError(f"{field_name} keys must be strings")
+    return value
+
+
+def _date_from_text(value: object, *, field_name: str) -> date:
+    if not isinstance(value, str):
+        raise RollingFCRValidationError(f"{field_name} must be an ISO date")
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError as exc:
+        raise RollingFCRValidationError(f"{field_name} must be an ISO date") from exc
+    return parsed
+
+
+def _utc_from_text(value: object, *, field_name: str) -> datetime:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        raise RollingFCRValidationError(f"{field_name} must be an ISO UTC timestamp")
+    try:
+        parsed = datetime.fromisoformat(f"{value[:-1]}+00:00")
+    except ValueError as exc:
+        raise RollingFCRValidationError(
+            f"{field_name} must be an ISO UTC timestamp"
+        ) from exc
+    return _utc(parsed, field_name=field_name)
+
+
+def _semantic_runtime_metadata(value: Mapping[str, object]) -> dict[str, object]:
+    """Keep stable backend/version evidence and remove volatile execution facts."""
+
+    def filtered(inner: object) -> object:
+        if isinstance(inner, Mapping):
+            result: dict[str, object] = {}
+            for key, item in sorted(inner.items()):
+                normalized = str(key)
+                lowered = normalized.casefold()
+                if any(term in lowered for term in _VOLATILE_RUNTIME_KEY_TERMS):
+                    continue
+                result[normalized] = filtered(item)
+            return result
+        if isinstance(inner, tuple):
+            return [filtered(item) for item in inner]
+        return inner
+
+    result = filtered(value)
+    assert isinstance(result, dict)
+    return result
+
+
+def _verify_persisted_fingerprint(
+    *,
+    field_name: str,
+    provided: object,
+    recomputed: str,
+) -> None:
+    normalized = _sha(provided, field_name=field_name)
+    if normalized != recomputed:
+        raise RollingFCRValidationError(
+            f"{field_name} does not match recomputed semantic evidence"
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -393,6 +510,41 @@ class DeliveryDateClassification:
 
     def to_dict(self) -> dict[str, object]:
         return {**self._payload(), "classification_fingerprint": self.classification_fingerprint}
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, object]) -> DeliveryDateClassification:
+        data = _strict_mapping(
+            payload,
+            field_name="date classification",
+            required_keys=frozenset(
+                {
+                    "delivery_date",
+                    "execution_role",
+                    "comparison_eligible",
+                    "reason_codes",
+                    "classification_fingerprint",
+                }
+            ),
+        )
+        reasons = data["reason_codes"]
+        if not isinstance(reasons, Sequence) or isinstance(reasons, (str, bytes)):
+            raise RollingFCRValidationError(
+                "date classification reason_codes must be a sequence"
+            )
+        result = cls(
+            delivery_date=_date_from_text(
+                data["delivery_date"], field_name="classification.delivery_date"
+            ),
+            execution_role=data["execution_role"],  # type: ignore[arg-type]
+            comparison_eligible=data["comparison_eligible"],  # type: ignore[arg-type]
+            reason_codes=tuple(reasons),  # type: ignore[arg-type]
+        )
+        _verify_persisted_fingerprint(
+            field_name="classification_fingerprint",
+            provided=data["classification_fingerprint"],
+            recomputed=result.classification_fingerprint,
+        )
+        return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -1169,6 +1321,10 @@ class ContinuitySegment:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "segment_id", _non_empty(self.segment_id, field_name="segment_id"))
+        if not isinstance(self.start_date, date) or isinstance(self.start_date, datetime):
+            raise RollingFCRValidationError("continuity start_date must be a date")
+        if not isinstance(self.end_date, date) or isinstance(self.end_date, datetime):
+            raise RollingFCRValidationError("continuity end_date must be a date")
         if self.end_date < self.start_date:
             raise RollingFCRValidationError("continuity segment dates are reversed")
         object.__setattr__(self, "start_reason", _non_empty(self.start_reason, field_name="start_reason"))
@@ -1185,6 +1341,36 @@ class ContinuitySegment:
             "source_state_fingerprint": self.source_state_fingerprint,
         }
         return {**payload, **({"continuity_fingerprint": self.continuity_fingerprint} if include_fingerprint else {})}
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, object]) -> ContinuitySegment:
+        data = _strict_mapping(
+            payload,
+            field_name="continuity segment",
+            required_keys=frozenset(
+                {
+                    "segment_id",
+                    "start_date",
+                    "end_date",
+                    "start_reason",
+                    "source_state_fingerprint",
+                    "continuity_fingerprint",
+                }
+            ),
+        )
+        result = cls(
+            segment_id=data["segment_id"],  # type: ignore[arg-type]
+            start_date=_date_from_text(data["start_date"], field_name="segment.start_date"),
+            end_date=_date_from_text(data["end_date"], field_name="segment.end_date"),
+            start_reason=data["start_reason"],  # type: ignore[arg-type]
+            source_state_fingerprint=data["source_state_fingerprint"],  # type: ignore[arg-type]
+        )
+        _verify_persisted_fingerprint(
+            field_name="continuity_fingerprint",
+            provided=data["continuity_fingerprint"],
+            recomputed=result.continuity_fingerprint,
+        )
+        return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -1213,6 +1399,14 @@ class RollingFCRStateLink:
     state_link_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
+        if not isinstance(self.predecessor_date, date) or isinstance(
+            self.predecessor_date, datetime
+        ):
+            raise RollingFCRValidationError("state-link predecessor_date must be a date")
+        if not isinstance(self.successor_date, date) or isinstance(
+            self.successor_date, datetime
+        ):
+            raise RollingFCRValidationError("state-link successor_date must be a date")
         if self.handoff_kind not in {"midnight", "cutoff_0800", "caller_supplied"}:
             raise RollingFCRValidationError("unsupported state-link handoff kind")
         if self.successor_date <= self.predecessor_date and self.handoff_kind != "caller_supplied":
@@ -1314,6 +1508,83 @@ class RollingFCRStateLink:
     def to_dict(self) -> dict[str, object]:
         return {**self._payload(), "state_link_fingerprint": self.state_link_fingerprint}
 
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, object]) -> RollingFCRStateLink:
+        required = frozenset(
+            {
+                "predecessor_date",
+                "successor_date",
+                "handoff_kind",
+                "observation_cutoff_utc",
+                "replay_checkpoint_kwh",
+                "carried_stored_energy_kwh",
+                "rounding_policy",
+                "source_interval_kwh",
+                "predecessor_plan_fingerprint",
+                "replay_fingerprint",
+                "activation_fingerprint",
+                "continuity_segment_id",
+                "reconciles",
+                "accepted_fixings_fingerprint",
+                "successor_problem_fingerprint",
+                "causal_prefix_fingerprint",
+                "rounding_evidence_fingerprint",
+                "successor_initial_stored_energy_kwh",
+                "modeled_terminal_stored_energy_kwh",
+                "reconciliation_tolerance_kwh",
+                "unit",
+                "state_link_fingerprint",
+            }
+        )
+        data = _strict_mapping(
+            payload,
+            field_name="state link",
+            required_keys=required,
+        )
+        interval = data["source_interval_kwh"]
+        if not isinstance(interval, Sequence) or isinstance(interval, (str, bytes)):
+            raise RollingFCRValidationError("source_interval_kwh must be a sequence")
+        result = cls(
+            predecessor_date=_date_from_text(
+                data["predecessor_date"], field_name="state_link.predecessor_date"
+            ),
+            successor_date=_date_from_text(
+                data["successor_date"], field_name="state_link.successor_date"
+            ),
+            handoff_kind=data["handoff_kind"],  # type: ignore[arg-type]
+            observation_cutoff_utc=_utc_from_text(
+                data["observation_cutoff_utc"],
+                field_name="state_link.observation_cutoff_utc",
+            ),
+            replay_checkpoint_kwh=data["replay_checkpoint_kwh"],  # type: ignore[arg-type]
+            carried_stored_energy_kwh=data["carried_stored_energy_kwh"],  # type: ignore[arg-type]
+            rounding_policy=data["rounding_policy"],  # type: ignore[arg-type]
+            source_interval_kwh=tuple(interval),  # type: ignore[arg-type]
+            predecessor_plan_fingerprint=data["predecessor_plan_fingerprint"],  # type: ignore[arg-type]
+            replay_fingerprint=data["replay_fingerprint"],  # type: ignore[arg-type]
+            activation_fingerprint=data["activation_fingerprint"],  # type: ignore[arg-type]
+            continuity_segment_id=data["continuity_segment_id"],  # type: ignore[arg-type]
+            reconciles=data["reconciles"],  # type: ignore[arg-type]
+            accepted_fixings_fingerprint=data["accepted_fixings_fingerprint"],  # type: ignore[arg-type]
+            successor_problem_fingerprint=data["successor_problem_fingerprint"],  # type: ignore[arg-type]
+            causal_prefix_fingerprint=data["causal_prefix_fingerprint"],  # type: ignore[arg-type]
+            rounding_evidence_fingerprint=data["rounding_evidence_fingerprint"],  # type: ignore[arg-type]
+            successor_initial_stored_energy_kwh=data[
+                "successor_initial_stored_energy_kwh"
+            ],  # type: ignore[arg-type]
+            modeled_terminal_stored_energy_kwh=data[
+                "modeled_terminal_stored_energy_kwh"
+            ],  # type: ignore[arg-type]
+            reconciliation_tolerance_kwh=data["reconciliation_tolerance_kwh"],  # type: ignore[arg-type]
+            unit=data["unit"],  # type: ignore[arg-type]
+        )
+        _verify_persisted_fingerprint(
+            field_name="state_link_fingerprint",
+            provided=data["state_link_fingerprint"],
+            recomputed=result.state_link_fingerprint,
+        )
+        return result
+
 
 @dataclass(frozen=True, slots=True)
 class RollingFCRDayRevision:
@@ -1336,6 +1607,7 @@ class RollingFCRDayRevision:
     feasibility_slacks: Mapping[str, float]
     energy_decisions_charge_positive_kw: tuple[float, ...] | None
     fcr_capacity_kw: tuple[float, ...] | None
+    independent_residuals: Mapping[str, float] = field(default_factory=dict)
     activation_fingerprint: str | None = None
     replay_fingerprint: str | None = None
     settlement_fingerprint: str | None = None
@@ -1361,6 +1633,31 @@ class RollingFCRDayRevision:
             raise RollingFCRValidationError("unsupported revision kind")
         if self.lifecycle_status not in _LIFECYCLE_STATUSES:
             raise RollingFCRValidationError("unsupported lifecycle status")
+        if self.lifecycle_status == "original":
+            raise RollingFCRValidationError(
+                "original is a revision kind, not a terminal lifecycle status"
+            )
+        if self.revision_kind == "finalized" and self.lifecycle_status not in {
+            "finalized",
+            "initialization_only",
+        }:
+            raise RollingFCRValidationError(
+                "a finalized revision requires finalized or initialization_only lifecycle"
+            )
+        if self.revision_kind == "provisional" and self.lifecycle_status not in {
+            "provisional",
+            "unfinalized",
+        }:
+            raise RollingFCRValidationError(
+                "a provisional revision requires provisional or unfinalized lifecycle"
+            )
+        if self.revision_kind == "optimization_only" and self.lifecycle_status not in {
+            "optimization_only",
+            "unfinalized",
+        }:
+            raise RollingFCRValidationError(
+                "an optimization_only revision has an incompatible lifecycle"
+            )
         object.__setattr__(self, "creation_cause", _non_empty(self.creation_cause, field_name="creation_cause"))
         for name in (
             "input_fingerprint",
@@ -1385,6 +1682,20 @@ class RollingFCRDayRevision:
                 "termination_status",
                 _non_empty(self.termination_status, field_name="termination_status"),
             )
+        if self.solve_status is not None:
+            object.__setattr__(
+                self,
+                "solve_status",
+                _non_empty(self.solve_status, field_name="solve_status"),
+            )
+        if self.plan_classification is not None:
+            object.__setattr__(
+                self,
+                "plan_classification",
+                _non_empty(
+                    self.plan_classification, field_name="plan_classification"
+                ),
+            )
         for name in (
             "objective_value_eur",
             "best_upper_bound_eur",
@@ -1397,6 +1708,37 @@ class RollingFCRDayRevision:
                 if name in {"absolute_gap_eur", "relative_gap"} and normalized < 0.0:
                     raise RollingFCRValidationError(f"{name} must be non-negative")
                 object.__setattr__(self, name, normalized)
+        if (self.absolute_gap_eur is None) is not (self.relative_gap is None):
+            raise RollingFCRValidationError(
+                "absolute and relative solve gaps must be available together"
+            )
+        if self.absolute_gap_eur is not None and (
+            self.objective_value_eur is None or self.best_upper_bound_eur is None
+        ):
+            raise RollingFCRValidationError(
+                "solve gaps require both objective and upper-bound evidence"
+            )
+        if self.objective_value_eur is not None and self.best_upper_bound_eur is not None:
+            expected_gap = max(
+                0.0,
+                self.best_upper_bound_eur - self.objective_value_eur,
+            )
+            tolerance = max(1e-8, abs(expected_gap) * 1e-9)
+            if self.absolute_gap_eur is None or abs(self.absolute_gap_eur - expected_gap) > tolerance:
+                raise RollingFCRValidationError(
+                    "absolute gap does not reconcile objective and upper bound"
+                )
+            expected_relative = expected_gap / max(
+                abs(self.objective_value_eur),
+                abs(self.best_upper_bound_eur),
+                1.0,
+            )
+            if self.relative_gap is None or abs(self.relative_gap - expected_relative) > max(
+                1e-8, abs(expected_relative) * 1e-9
+            ):
+                raise RollingFCRValidationError(
+                    "relative gap does not reconcile objective and upper bound"
+                )
         slacks: dict[str, float] = {}
         for name, value in self.feasibility_slacks.items():
             normalized_name = _non_empty(name, field_name="feasibility slack name")
@@ -1405,6 +1747,24 @@ class RollingFCRDayRevision:
                 raise RollingFCRValidationError("feasibility slacks must be non-negative")
             slacks[normalized_name] = normalized
         object.__setattr__(self, "feasibility_slacks", MappingProxyType(dict(sorted(slacks.items()))))
+        residuals: dict[str, float] = {}
+        for name, value in self.independent_residuals.items():
+            normalized_name = _non_empty(
+                name, field_name="independent residual name"
+            )
+            normalized = _finite(
+                value, field_name=f"independent_residuals.{name}"
+            )
+            if normalized < 0.0:
+                raise RollingFCRValidationError(
+                    "independent residuals must be non-negative"
+                )
+            residuals[normalized_name] = normalized
+        object.__setattr__(
+            self,
+            "independent_residuals",
+            MappingProxyType(dict(sorted(residuals.items()))),
+        )
         if self.energy_decisions_charge_positive_kw is not None:
             energy = tuple(_finite(value, field_name="energy decision") for value in self.energy_decisions_charge_positive_kw)
             if len(energy) != 24:
@@ -1415,6 +1775,23 @@ class RollingFCRDayRevision:
             if len(fcr) != 6:
                 raise RollingFCRValidationError("an incumbent revision must carry six FCR decisions")
             object.__setattr__(self, "fcr_capacity_kw", fcr)
+        if (self.energy_decisions_charge_positive_kw is None) is not (
+            self.fcr_capacity_kw is None
+        ):
+            raise RollingFCRValidationError(
+                "energy and FCR decisions must be available together"
+            )
+        if self.solve_status is None and any(
+            value is not None
+            for value in (
+                self.objective_value_eur,
+                self.best_upper_bound_eur,
+                self.energy_decisions_charge_positive_kw,
+            )
+        ):
+            raise RollingFCRValidationError(
+                "solve evidence cannot exist without solve_status"
+            )
         for name in (
             "initial_stored_energy_kwh",
             "realized_cutoff_stored_energy_kwh",
@@ -1461,6 +1838,7 @@ class RollingFCRDayRevision:
             "relative_gap": self.relative_gap,
             "feasibility_audit_fingerprint": self.feasibility_audit_fingerprint,
             "feasibility_slacks": dict(self.feasibility_slacks),
+            "independent_residuals": dict(self.independent_residuals),
             "energy_decisions_charge_positive_kw": None if self.energy_decisions_charge_positive_kw is None else list(self.energy_decisions_charge_positive_kw),
             "fcr_capacity_kw": None if self.fcr_capacity_kw is None else list(self.fcr_capacity_kw),
             "activation_fingerprint": self.activation_fingerprint,
@@ -1481,37 +1859,235 @@ class RollingFCRDayRevision:
             },
             "realized_metrics": dict(self.realized_metrics),
             "diagnostics": list(self.diagnostics),
+            "stable_runtime_evidence": _semantic_runtime_metadata(
+                self.runtime_metadata
+            ),
         }
+
+    def _fingerprint_evidence(self) -> dict[str, object]:
+        values: dict[str, object] = {}
+        for name in (
+            "input_fingerprint",
+            "problem_fingerprint",
+            "solve_result_fingerprint",
+            "plan_fingerprint",
+            "activation_fingerprint",
+            "replay_fingerprint",
+            "settlement_fingerprint",
+            "state_link_fingerprint",
+            "predecessor_revision_fingerprint",
+            "finalizer_problem_fingerprint",
+            "finalizer_result_fingerprint",
+            "feasibility_audit_fingerprint",
+        ):
+            value = getattr(self, name)
+            if value is not None:
+                values[name] = value
+                continue
+            evidence_name = name.removesuffix("_fingerprint")
+            values[name] = {
+                "status": "unavailable",
+                "reason_codes": [
+                    f"{evidence_name}_unavailable_for_{self.lifecycle_status}"
+                ],
+            }
+        return values
 
     def to_dict(self) -> dict[str, object]:
         return {
             **self._semantic_payload(),
+            "fingerprint_evidence": self._fingerprint_evidence(),
             "runtime_metadata": _thaw(self.runtime_metadata),
             "revision_fingerprint": self.revision_fingerprint,
         }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, object]) -> RollingFCRDayRevision:
+        semantic_keys = frozenset(
+            {
+                "revision_number",
+                "revision_kind",
+                "lifecycle_status",
+                "creation_cause",
+                "input_fingerprint",
+                "problem_fingerprint",
+                "solve_result_fingerprint",
+                "plan_fingerprint",
+                "plan_classification",
+                "solve_status",
+                "termination_status",
+                "objective_value_eur",
+                "best_upper_bound_eur",
+                "absolute_gap_eur",
+                "relative_gap",
+                "feasibility_audit_fingerprint",
+                "feasibility_slacks",
+                "independent_residuals",
+                "energy_decisions_charge_positive_kw",
+                "fcr_capacity_kw",
+                "activation_fingerprint",
+                "replay_fingerprint",
+                "settlement_fingerprint",
+                "state_link_fingerprint",
+                "predecessor_revision_fingerprint",
+                "finalizer_problem_fingerprint",
+                "finalizer_result_fingerprint",
+                "stored_energy_kwh",
+                "realized_metrics",
+                "diagnostics",
+                "stable_runtime_evidence",
+            }
+        )
+        data = _strict_mapping(
+            payload,
+            field_name="day revision",
+            required_keys=semantic_keys
+            | frozenset(
+                {
+                    "fingerprint_evidence",
+                    "runtime_metadata",
+                    "revision_fingerprint",
+                }
+            ),
+        )
+        stored = _strict_mapping(
+            data["stored_energy_kwh"],
+            field_name="stored_energy_kwh",
+            required_keys=frozenset(
+                {
+                    "initial",
+                    "realized_cutoff",
+                    "handed_off_cutoff",
+                    "modeled_terminal",
+                    "realized_terminal",
+                    "carried",
+                    "unit",
+                }
+            ),
+        )
+        if stored["unit"] != "kWh":
+            raise RollingFCRValidationError("stored energy unit must be kWh")
+        diagnostics = data["diagnostics"]
+        energy = data["energy_decisions_charge_positive_kw"]
+        fcr = data["fcr_capacity_kw"]
+        for name, values in (
+            ("diagnostics", diagnostics),
+            ("energy_decisions_charge_positive_kw", energy),
+            ("fcr_capacity_kw", fcr),
+        ):
+            if values is not None and (
+                not isinstance(values, Sequence) or isinstance(values, (str, bytes))
+            ):
+                raise RollingFCRValidationError(f"{name} must be a sequence or null")
+        result = cls(
+            revision_number=data["revision_number"],  # type: ignore[arg-type]
+            revision_kind=data["revision_kind"],  # type: ignore[arg-type]
+            lifecycle_status=data["lifecycle_status"],  # type: ignore[arg-type]
+            creation_cause=data["creation_cause"],  # type: ignore[arg-type]
+            input_fingerprint=data["input_fingerprint"],  # type: ignore[arg-type]
+            problem_fingerprint=data["problem_fingerprint"],  # type: ignore[arg-type]
+            solve_result_fingerprint=data["solve_result_fingerprint"],  # type: ignore[arg-type]
+            plan_fingerprint=data["plan_fingerprint"],  # type: ignore[arg-type]
+            plan_classification=data["plan_classification"],  # type: ignore[arg-type]
+            solve_status=data["solve_status"],  # type: ignore[arg-type]
+            termination_status=data["termination_status"],  # type: ignore[arg-type]
+            objective_value_eur=data["objective_value_eur"],  # type: ignore[arg-type]
+            best_upper_bound_eur=data["best_upper_bound_eur"],  # type: ignore[arg-type]
+            absolute_gap_eur=data["absolute_gap_eur"],  # type: ignore[arg-type]
+            relative_gap=data["relative_gap"],  # type: ignore[arg-type]
+            feasibility_audit_fingerprint=data["feasibility_audit_fingerprint"],  # type: ignore[arg-type]
+            feasibility_slacks=data["feasibility_slacks"],  # type: ignore[arg-type]
+            independent_residuals=data["independent_residuals"],  # type: ignore[arg-type]
+            energy_decisions_charge_positive_kw=(
+                None if energy is None else tuple(energy)
+            ),  # type: ignore[arg-type]
+            fcr_capacity_kw=None if fcr is None else tuple(fcr),  # type: ignore[arg-type]
+            activation_fingerprint=data["activation_fingerprint"],  # type: ignore[arg-type]
+            replay_fingerprint=data["replay_fingerprint"],  # type: ignore[arg-type]
+            settlement_fingerprint=data["settlement_fingerprint"],  # type: ignore[arg-type]
+            state_link_fingerprint=data["state_link_fingerprint"],  # type: ignore[arg-type]
+            predecessor_revision_fingerprint=data[
+                "predecessor_revision_fingerprint"
+            ],  # type: ignore[arg-type]
+            finalizer_problem_fingerprint=data["finalizer_problem_fingerprint"],  # type: ignore[arg-type]
+            finalizer_result_fingerprint=data["finalizer_result_fingerprint"],  # type: ignore[arg-type]
+            initial_stored_energy_kwh=stored["initial"],  # type: ignore[arg-type]
+            realized_cutoff_stored_energy_kwh=stored["realized_cutoff"],  # type: ignore[arg-type]
+            handed_off_cutoff_stored_energy_kwh=stored["handed_off_cutoff"],  # type: ignore[arg-type]
+            modeled_terminal_stored_energy_kwh=stored["modeled_terminal"],  # type: ignore[arg-type]
+            realized_terminal_stored_energy_kwh=stored["realized_terminal"],  # type: ignore[arg-type]
+            carried_stored_energy_kwh=stored["carried"],  # type: ignore[arg-type]
+            realized_metrics=data["realized_metrics"],  # type: ignore[arg-type]
+            diagnostics=tuple(diagnostics),  # type: ignore[arg-type]
+            runtime_metadata=data["runtime_metadata"],  # type: ignore[arg-type]
+        )
+        if data["stable_runtime_evidence"] != _semantic_runtime_metadata(
+            result.runtime_metadata
+        ):
+            raise RollingFCRValidationError(
+                "stable_runtime_evidence does not match runtime metadata"
+            )
+        _verify_persisted_fingerprint(
+            field_name="revision_fingerprint",
+            provided=data["revision_fingerprint"],
+            recomputed=result.revision_fingerprint,
+        )
+        expected_evidence = result._fingerprint_evidence()
+        if data["fingerprint_evidence"] != expected_evidence:
+            raise RollingFCRValidationError(
+                "fingerprint_evidence does not match revision availability"
+            )
+        return result
 
 
 @dataclass(frozen=True, slots=True)
 class DeliveryDateRecordEnvelope:
     manifest_fingerprint: str
     profile_fingerprint: str
+    profile_id: str
     classification: DeliveryDateClassification
     predecessor_date: date | None
     continuity_segment_id: str
     revisions: tuple[RollingFCRDayRevision, ...]
+    decision_cutoff_utc: datetime | None = None
+    information_cutoff_utc: datetime | None = None
     envelope_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "manifest_fingerprint", _sha(self.manifest_fingerprint, field_name="manifest_fingerprint"))
         object.__setattr__(self, "profile_fingerprint", _sha(self.profile_fingerprint, field_name="profile_fingerprint"))
+        if self.profile_id not in _PROFILE_IDS:
+            raise RollingFCRValidationError("envelope profile_id is unsupported")
         if not isinstance(self.classification, DeliveryDateClassification):
             raise RollingFCRValidationError("envelope classification has the wrong type")
+        if self.predecessor_date is not None and (
+            not isinstance(self.predecessor_date, date)
+            or isinstance(self.predecessor_date, datetime)
+        ):
+            raise RollingFCRValidationError("envelope predecessor_date must be a date")
+        for name in ("decision_cutoff_utc", "information_cutoff_utc"):
+            value = getattr(self, name)
+            if value is not None:
+                object.__setattr__(self, name, _utc(value, field_name=name))
+        if (
+            self.decision_cutoff_utc is not None
+            and self.information_cutoff_utc is not None
+            and self.information_cutoff_utc > self.decision_cutoff_utc
+        ):
+            raise RollingFCRValidationError(
+                "envelope information cutoff cannot follow decision cutoff"
+            )
         object.__setattr__(self, "continuity_segment_id", _non_empty(self.continuity_segment_id, field_name="continuity_segment_id"))
         revisions = tuple(self.revisions)
         if not revisions or any(not isinstance(item, RollingFCRDayRevision) for item in revisions):
             raise RollingFCRValidationError("envelope must retain immutable revisions")
         if tuple(item.revision_number for item in revisions) != tuple(range(len(revisions))):
             raise RollingFCRValidationError("revision numbers must be contiguous and monotonic")
+        for previous, current in zip(revisions, revisions[1:]):
+            if current.predecessor_revision_fingerprint != previous.revision_fingerprint:
+                raise RollingFCRValidationError(
+                    "revision lineage must reference the immediately preceding revision"
+                )
         object.__setattr__(self, "revisions", revisions)
         object.__setattr__(
             self,
@@ -1527,8 +2103,19 @@ class DeliveryDateRecordEnvelope:
         return {
             "manifest_fingerprint": self.manifest_fingerprint,
             "profile_fingerprint": self.profile_fingerprint,
+            "profile_id": self.profile_id,
             "classification": self.classification.to_dict(),
             "predecessor_date": None if self.predecessor_date is None else self.predecessor_date.isoformat(),
+            "decision_cutoff_utc": (
+                None
+                if self.decision_cutoff_utc is None
+                else _utc_text(self.decision_cutoff_utc)
+            ),
+            "information_cutoff_utc": (
+                None
+                if self.information_cutoff_utc is None
+                else _utc_text(self.information_cutoff_utc)
+            ),
             "continuity_segment_id": self.continuity_segment_id,
             "revisions": [
                 {
@@ -1543,16 +2130,93 @@ class DeliveryDateRecordEnvelope:
         return {
             "manifest_fingerprint": self.manifest_fingerprint,
             "profile_fingerprint": self.profile_fingerprint,
+            "profile_id": self.profile_id,
             "classification": self.classification.to_dict(),
             "predecessor_date": (
                 None
                 if self.predecessor_date is None
                 else self.predecessor_date.isoformat()
             ),
+            "decision_cutoff_utc": (
+                None
+                if self.decision_cutoff_utc is None
+                else _utc_text(self.decision_cutoff_utc)
+            ),
+            "information_cutoff_utc": (
+                None
+                if self.information_cutoff_utc is None
+                else _utc_text(self.information_cutoff_utc)
+            ),
             "continuity_segment_id": self.continuity_segment_id,
             "revisions": [item.to_dict() for item in self.revisions],
             "envelope_fingerprint": self.envelope_fingerprint,
         }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, object]) -> DeliveryDateRecordEnvelope:
+        data = _strict_mapping(
+            payload,
+            field_name="date envelope",
+            required_keys=frozenset(
+                {
+                    "manifest_fingerprint",
+                    "profile_fingerprint",
+                    "profile_id",
+                    "classification",
+                    "predecessor_date",
+                    "decision_cutoff_utc",
+                    "information_cutoff_utc",
+                    "continuity_segment_id",
+                    "revisions",
+                    "envelope_fingerprint",
+                }
+            ),
+        )
+        revisions = data["revisions"]
+        if not isinstance(revisions, Sequence) or isinstance(revisions, (str, bytes)):
+            raise RollingFCRValidationError("date envelope revisions must be a sequence")
+        predecessor = data["predecessor_date"]
+        decision_cutoff = data["decision_cutoff_utc"]
+        information_cutoff = data["information_cutoff_utc"]
+        result = cls(
+            manifest_fingerprint=data["manifest_fingerprint"],  # type: ignore[arg-type]
+            profile_fingerprint=data["profile_fingerprint"],  # type: ignore[arg-type]
+            profile_id=data["profile_id"],  # type: ignore[arg-type]
+            classification=DeliveryDateClassification.from_dict(
+                data["classification"]  # type: ignore[arg-type]
+            ),
+            predecessor_date=(
+                None
+                if predecessor is None
+                else _date_from_text(predecessor, field_name="envelope.predecessor_date")
+            ),
+            continuity_segment_id=data["continuity_segment_id"],  # type: ignore[arg-type]
+            revisions=tuple(
+                RollingFCRDayRevision.from_dict(item)  # type: ignore[arg-type]
+                for item in revisions
+            ),
+            decision_cutoff_utc=(
+                None
+                if decision_cutoff is None
+                else _utc_from_text(
+                    decision_cutoff, field_name="envelope.decision_cutoff_utc"
+                )
+            ),
+            information_cutoff_utc=(
+                None
+                if information_cutoff is None
+                else _utc_from_text(
+                    information_cutoff,
+                    field_name="envelope.information_cutoff_utc",
+                )
+            ),
+        )
+        _verify_persisted_fingerprint(
+            field_name="envelope_fingerprint",
+            provided=data["envelope_fingerprint"],
+            recomputed=result.envelope_fingerprint,
+        )
+        return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -1564,6 +2228,9 @@ class AggregateMetricEvidence:
     eligible_dates: tuple[date, ...]
     contributing_dates: tuple[date, ...]
     omitted_dates_with_reasons: Mapping[str, tuple[str, ...]]
+    aggregation_rule: str = "sum-v1"
+    source_fingerprints: tuple[str, ...] = ()
+    reconciliation_residual: float | None = None
     aggregate_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
@@ -1573,9 +2240,94 @@ class AggregateMetricEvidence:
             raise RollingFCRValidationError("unsupported aggregate coverage status")
         if self.value is not None:
             object.__setattr__(self, "value", _finite(self.value, field_name="aggregate value"))
-        object.__setattr__(self, "eligible_dates", tuple(self.eligible_dates))
-        object.__setattr__(self, "contributing_dates", tuple(self.contributing_dates))
-        object.__setattr__(self, "omitted_dates_with_reasons", _freeze_mapping(self.omitted_dates_with_reasons, field_name="omitted_dates_with_reasons"))
+        object.__setattr__(
+            self,
+            "aggregation_rule",
+            _non_empty(self.aggregation_rule, field_name="aggregation_rule"),
+        )
+        eligible = tuple(self.eligible_dates)
+        contributors = tuple(self.contributing_dates)
+        for name, values in (("eligible_dates", eligible), ("contributing_dates", contributors)):
+            if any(
+                not isinstance(item, date) or isinstance(item, datetime)
+                for item in values
+            ):
+                raise RollingFCRValidationError(f"{name} must contain dates")
+            if values != tuple(sorted(values)) or len(set(values)) != len(values):
+                raise RollingFCRValidationError(f"{name} must be ordered and unique")
+        if any(item not in eligible for item in contributors):
+            raise RollingFCRValidationError(
+                "aggregate contributing dates must be eligible"
+            )
+        omissions: dict[str, tuple[str, ...]] = {}
+        for date_text, reasons in self.omitted_dates_with_reasons.items():
+            parsed = _date_from_text(date_text, field_name="omitted date")
+            if parsed not in eligible or parsed in contributors:
+                raise RollingFCRValidationError(
+                    "omitted dates must be eligible non-contributors"
+                )
+            normalized_reasons = tuple(
+                sorted(_string_tuple(reasons, field_name=f"omissions.{date_text}"))
+            )
+            if not normalized_reasons:
+                raise RollingFCRValidationError(
+                    "every omitted date requires at least one reason"
+                )
+            omissions[parsed.isoformat()] = normalized_reasons
+        expected_omissions = {
+            item.isoformat() for item in eligible if item not in contributors
+        }
+        if set(omissions) != expected_omissions:
+            raise RollingFCRValidationError(
+                "aggregate omissions must account for exactly eligible non-contributors"
+            )
+        expected_status = (
+            "unavailable"
+            if not contributors
+            else "complete"
+            if len(contributors) == len(eligible)
+            else "partial"
+        )
+        if self.coverage_status != expected_status:
+            raise RollingFCRValidationError(
+                "aggregate coverage must reconcile exactly eligible contributors"
+            )
+        if self.coverage_status == "unavailable" and self.value is not None:
+            raise RollingFCRValidationError(
+                "unavailable aggregate must not zero-fill a value"
+            )
+        if contributors and self.value is None:
+            raise RollingFCRValidationError(
+                "aggregate contributors require an available value"
+            )
+        source_fingerprints = tuple(
+            _sha(value, field_name="source_fingerprints")
+            for value in self.source_fingerprints
+        )
+        if len(source_fingerprints) != len(contributors):
+            raise RollingFCRValidationError(
+                "aggregate source fingerprints must identify every contributor"
+            )
+        residual = self.reconciliation_residual
+        if residual is not None:
+            residual = _finite(residual, field_name="reconciliation_residual")
+            if residual < 0.0:
+                raise RollingFCRValidationError(
+                    "aggregate reconciliation residual must be non-negative"
+                )
+        if contributors and residual is None:
+            raise RollingFCRValidationError(
+                "aggregate contributors require reconciliation evidence"
+            )
+        object.__setattr__(self, "eligible_dates", eligible)
+        object.__setattr__(self, "contributing_dates", contributors)
+        object.__setattr__(
+            self,
+            "omitted_dates_with_reasons",
+            MappingProxyType(dict(sorted(omissions.items()))),
+        )
+        object.__setattr__(self, "source_fingerprints", source_fingerprints)
+        object.__setattr__(self, "reconciliation_residual", residual)
         object.__setattr__(self, "aggregate_fingerprint", _fingerprint(self._payload()))
 
     def _payload(self) -> dict[str, object]:
@@ -1584,51 +2336,444 @@ class AggregateMetricEvidence:
             "unit": self.unit,
             "value": self.value,
             "coverage_status": self.coverage_status,
+            "aggregation_rule": self.aggregation_rule,
             "eligible_dates": [item.isoformat() for item in self.eligible_dates],
             "contributing_dates": [item.isoformat() for item in self.contributing_dates],
             "omitted_dates_with_reasons": _thaw(self.omitted_dates_with_reasons),
+            "source_fingerprints": list(self.source_fingerprints),
+            "reconciliation_residual": self.reconciliation_residual,
         }
 
     def to_dict(self) -> dict[str, object]:
         return {**self._payload(), "aggregate_fingerprint": self.aggregate_fingerprint}
 
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, object]) -> AggregateMetricEvidence:
+        data = _strict_mapping(
+            payload,
+            field_name="aggregate metric",
+            required_keys=frozenset(
+                {
+                    "metric_id",
+                    "unit",
+                    "value",
+                    "coverage_status",
+                    "aggregation_rule",
+                    "eligible_dates",
+                    "contributing_dates",
+                    "omitted_dates_with_reasons",
+                    "source_fingerprints",
+                    "reconciliation_residual",
+                    "aggregate_fingerprint",
+                }
+            ),
+        )
+        eligible = data["eligible_dates"]
+        contributors = data["contributing_dates"]
+        fingerprints = data["source_fingerprints"]
+        for name, values in (
+            ("eligible_dates", eligible),
+            ("contributing_dates", contributors),
+            ("source_fingerprints", fingerprints),
+        ):
+            if not isinstance(values, Sequence) or isinstance(values, (str, bytes)):
+                raise RollingFCRValidationError(f"aggregate {name} must be a sequence")
+        result = cls(
+            metric_id=data["metric_id"],  # type: ignore[arg-type]
+            unit=data["unit"],  # type: ignore[arg-type]
+            value=data["value"],  # type: ignore[arg-type]
+            coverage_status=data["coverage_status"],  # type: ignore[arg-type]
+            aggregation_rule=data["aggregation_rule"],  # type: ignore[arg-type]
+            eligible_dates=tuple(
+                _date_from_text(item, field_name="aggregate eligible date")
+                for item in eligible
+            ),
+            contributing_dates=tuple(
+                _date_from_text(item, field_name="aggregate contributing date")
+                for item in contributors
+            ),
+            omitted_dates_with_reasons=data["omitted_dates_with_reasons"],  # type: ignore[arg-type]
+            source_fingerprints=tuple(fingerprints),  # type: ignore[arg-type]
+            reconciliation_residual=data["reconciliation_residual"],  # type: ignore[arg-type]
+        )
+        _verify_persisted_fingerprint(
+            field_name="aggregate_fingerprint",
+            provided=data["aggregate_fingerprint"],
+            recomputed=result.aggregate_fingerprint,
+        )
+        return result
+
+
+@dataclass(frozen=True, slots=True)
+class RollingFCRResumeEvidence:
+    """Fail-closed evidence for reusing immutable rolling-study records."""
+
+    prior_result_semantic_fingerprint: str
+    manifest_fingerprint: str
+    profile_fingerprint: str
+    reused_envelope_fingerprints: tuple[str, ...]
+    reused_revision_fingerprints: tuple[str, ...]
+    last_continuity_fingerprint: str | None
+    last_state_link_fingerprint: str | None
+    checks: Mapping[str, bool]
+    diagnostics: tuple[str, ...]
+    status: str
+    semantics_version: str = ROLLING_FCR_RESUME_EVIDENCE_VERSION
+    resume_fingerprint: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        for name in (
+            "prior_result_semantic_fingerprint",
+            "manifest_fingerprint",
+            "profile_fingerprint",
+        ):
+            object.__setattr__(self, name, _sha(getattr(self, name), field_name=name))
+        for name in ("last_continuity_fingerprint", "last_state_link_fingerprint"):
+            value = getattr(self, name)
+            if value is not None:
+                object.__setattr__(self, name, _sha(value, field_name=name))
+        object.__setattr__(
+            self,
+            "reused_envelope_fingerprints",
+            tuple(
+                _sha(value, field_name="reused_envelope_fingerprints")
+                for value in self.reused_envelope_fingerprints
+            ),
+        )
+        object.__setattr__(
+            self,
+            "reused_revision_fingerprints",
+            tuple(
+                _sha(value, field_name="reused_revision_fingerprints")
+                for value in self.reused_revision_fingerprints
+            ),
+        )
+        normalized_checks: dict[str, bool] = {}
+        for key, value in self.checks.items():
+            normalized_key = _non_empty(key, field_name="resume check")
+            if not isinstance(value, bool):
+                raise RollingFCRValidationError("resume checks must be boolean")
+            normalized_checks[normalized_key] = value
+        expected_status = (
+            "compatible" if normalized_checks and all(normalized_checks.values()) else "incompatible"
+        )
+        if self.status != expected_status:
+            raise RollingFCRValidationError(
+                "resume status does not reconcile exact compatibility checks"
+            )
+        diagnostics = tuple(
+            sorted(_string_tuple(self.diagnostics, field_name="resume diagnostics"))
+        )
+        if self.status == "incompatible" and not diagnostics:
+            raise RollingFCRValidationError(
+                "incompatible resume evidence requires diagnostics"
+            )
+        object.__setattr__(
+            self, "checks", MappingProxyType(dict(sorted(normalized_checks.items())))
+        )
+        object.__setattr__(self, "diagnostics", diagnostics)
+        object.__setattr__(self, "resume_fingerprint", _fingerprint(self._payload()))
+
+    def _payload(self) -> dict[str, object]:
+        return {
+            "semantics_version": self.semantics_version,
+            "prior_result_semantic_fingerprint": self.prior_result_semantic_fingerprint,
+            "manifest_fingerprint": self.manifest_fingerprint,
+            "profile_fingerprint": self.profile_fingerprint,
+            "reused_envelope_fingerprints": list(
+                self.reused_envelope_fingerprints
+            ),
+            "reused_revision_fingerprints": list(
+                self.reused_revision_fingerprints
+            ),
+            "last_continuity_fingerprint": self.last_continuity_fingerprint,
+            "last_state_link_fingerprint": self.last_state_link_fingerprint,
+            "checks": dict(self.checks),
+            "diagnostics": list(self.diagnostics),
+            "status": self.status,
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return {**self._payload(), "resume_fingerprint": self.resume_fingerprint}
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, object]) -> RollingFCRResumeEvidence:
+        data = _strict_mapping(
+            payload,
+            field_name="resume evidence",
+            required_keys=frozenset(
+                {
+                    "semantics_version",
+                    "prior_result_semantic_fingerprint",
+                    "manifest_fingerprint",
+                    "profile_fingerprint",
+                    "reused_envelope_fingerprints",
+                    "reused_revision_fingerprints",
+                    "last_continuity_fingerprint",
+                    "last_state_link_fingerprint",
+                    "checks",
+                    "diagnostics",
+                    "status",
+                    "resume_fingerprint",
+                }
+            ),
+        )
+        for name in (
+            "reused_envelope_fingerprints",
+            "reused_revision_fingerprints",
+            "diagnostics",
+        ):
+            if not isinstance(data[name], Sequence) or isinstance(
+                data[name], (str, bytes)
+            ):
+                raise RollingFCRValidationError(f"resume {name} must be a sequence")
+        result = cls(
+            semantics_version=data["semantics_version"],  # type: ignore[arg-type]
+            prior_result_semantic_fingerprint=data[
+                "prior_result_semantic_fingerprint"
+            ],  # type: ignore[arg-type]
+            manifest_fingerprint=data["manifest_fingerprint"],  # type: ignore[arg-type]
+            profile_fingerprint=data["profile_fingerprint"],  # type: ignore[arg-type]
+            reused_envelope_fingerprints=tuple(
+                data["reused_envelope_fingerprints"]  # type: ignore[arg-type]
+            ),
+            reused_revision_fingerprints=tuple(
+                data["reused_revision_fingerprints"]  # type: ignore[arg-type]
+            ),
+            last_continuity_fingerprint=data[
+                "last_continuity_fingerprint"
+            ],  # type: ignore[arg-type]
+            last_state_link_fingerprint=data[
+                "last_state_link_fingerprint"
+            ],  # type: ignore[arg-type]
+            checks=data["checks"],  # type: ignore[arg-type]
+            diagnostics=tuple(data["diagnostics"]),  # type: ignore[arg-type]
+            status=data["status"],  # type: ignore[arg-type]
+        )
+        _verify_persisted_fingerprint(
+            field_name="resume_fingerprint",
+            provided=data["resume_fingerprint"],
+            recomputed=result.resume_fingerprint,
+        )
+        return result
+
 
 @dataclass(frozen=True, slots=True)
 class RollingFCRStudyResult:
+    study_id: str
     manifest_fingerprint: str
+    profile_id: str
     profile_fingerprint: str
     records: tuple[DeliveryDateRecordEnvelope, ...]
     continuity_segments: tuple[ContinuitySegment, ...]
     state_links: tuple[RollingFCRStateLink, ...]
     aggregate_metrics: tuple[AggregateMetricEvidence, ...]
     completeness_status: str
+    requested_day_input_fingerprints: Mapping[str, str] = field(
+        default_factory=dict
+    )
+    supplied_activation_fingerprints: Mapping[str, str] = field(
+        default_factory=dict
+    )
     runtime_metadata: Mapping[str, object] = field(default_factory=dict)
+    resume_lineage: RollingFCRResumeEvidence | None = None
+    diagnostics: tuple[str, ...] = ()
+    comparisons: tuple[Mapping[str, object], ...] = ()
     semantics_version: str = ROLLING_FCR_STUDY_RESULT_VERSION
     semantic_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "study_id", _non_empty(self.study_id, field_name="study_id"))
         object.__setattr__(self, "manifest_fingerprint", _sha(self.manifest_fingerprint, field_name="manifest_fingerprint"))
         object.__setattr__(self, "profile_fingerprint", _sha(self.profile_fingerprint, field_name="profile_fingerprint"))
+        if self.profile_id not in _PROFILE_IDS:
+            raise RollingFCRValidationError("study profile_id is unsupported")
+        if self.semantics_version != ROLLING_FCR_STUDY_RESULT_VERSION:
+            raise RollingFCRValidationError("unsupported rolling study result version")
         records = tuple(self.records)
-        if any(not isinstance(item, DeliveryDateRecordEnvelope) for item in records):
-            raise RollingFCRValidationError("study records contain an invalid envelope")
+        if not records or any(
+            not isinstance(item, DeliveryDateRecordEnvelope) for item in records
+        ):
+            raise RollingFCRValidationError(
+                "study records must retain at least one valid envelope"
+            )
         dates = tuple(item.classification.delivery_date for item in records)
         if dates != tuple(sorted(dates)) or len(set(dates)) != len(dates):
             raise RollingFCRValidationError("study records must retain ordered unique dates")
-        if self.completeness_status not in {"complete", "partial", "failed"}:
+        if any(
+            item.manifest_fingerprint != self.manifest_fingerprint
+            or item.profile_fingerprint != self.profile_fingerprint
+            or item.profile_id != self.profile_id
+            for item in records
+        ):
+            raise RollingFCRValidationError(
+                "study envelopes must retain the study manifest and profile identities"
+            )
+        if self.completeness_status not in {
+            "complete",
+            "partial",
+            "failed",
+            "incomplete",
+        }:
             raise RollingFCRValidationError("unsupported study completeness status")
+        segments = tuple(self.continuity_segments)
+        if any(not isinstance(item, ContinuitySegment) for item in segments):
+            raise RollingFCRValidationError("study continuity segment has the wrong type")
+        segment_ids = tuple(item.segment_id for item in segments)
+        if len(set(segment_ids)) != len(segment_ids):
+            raise RollingFCRValidationError("continuity segment identities must be unique")
+        if any(item.continuity_segment_id not in segment_ids for item in records):
+            raise RollingFCRValidationError(
+                "every date envelope must belong to a retained continuity segment"
+            )
+        segment_by_id = {item.segment_id: item for item in segments}
+        if any(
+            not (
+                segment_by_id[item.continuity_segment_id].start_date
+                <= item.classification.delivery_date
+                <= segment_by_id[item.continuity_segment_id].end_date
+            )
+            for item in records
+        ):
+            raise RollingFCRValidationError(
+                "date envelope lies outside its continuity segment"
+            )
+        links = tuple(self.state_links)
+        if any(not isinstance(item, RollingFCRStateLink) for item in links):
+            raise RollingFCRValidationError("study state link has the wrong type")
+        if any(item.continuity_segment_id not in segment_ids for item in links):
+            raise RollingFCRValidationError(
+                "every state link must belong to a retained continuity segment"
+            )
+        if tuple(item.successor_date for item in links) != tuple(
+            sorted(item.successor_date for item in links)
+        ):
+            raise RollingFCRValidationError("study state links must be date ordered")
+        metrics = tuple(self.aggregate_metrics)
+        if any(not isinstance(item, AggregateMetricEvidence) for item in metrics):
+            raise RollingFCRValidationError("study aggregate has the wrong type")
+        if len({item.metric_id for item in metrics}) != len(metrics):
+            raise RollingFCRValidationError("study aggregate metric identities must be unique")
+        if tuple(item.metric_id for item in metrics) != tuple(
+            sorted(item.metric_id for item in metrics)
+        ):
+            raise RollingFCRValidationError("study aggregates must be canonically ordered")
+        eligible_dates = tuple(
+            item.classification.delivery_date
+            for item in records
+            if item.classification.execution_role == "included"
+        )
+        if any(item.eligible_dates != eligible_dates for item in metrics):
+            raise RollingFCRValidationError(
+                "study aggregate eligibility must match included date records"
+            )
+        if self.resume_lineage is not None and not isinstance(
+            self.resume_lineage, RollingFCRResumeEvidence
+        ):
+            raise RollingFCRValidationError("resume_lineage has the wrong type")
+        diagnostics = tuple(
+            sorted(_string_tuple(self.diagnostics, field_name="study diagnostics"))
+        )
+        comparisons = tuple(
+            _freeze_mapping(item, field_name="comparison") for item in self.comparisons
+        )
+        identity_maps: dict[str, MappingProxyType[str, str]] = {}
+        record_date_texts = {item.isoformat() for item in dates}
+        for field_name in (
+            "requested_day_input_fingerprints",
+            "supplied_activation_fingerprints",
+        ):
+            raw = getattr(self, field_name)
+            if not isinstance(raw, Mapping):
+                raise RollingFCRValidationError(f"{field_name} must be a mapping")
+            normalized: dict[str, str] = {}
+            for raw_date, fingerprint in raw.items():
+                parsed = _date_from_text(raw_date, field_name=f"{field_name} date")
+                if parsed.isoformat() not in record_date_texts:
+                    raise RollingFCRValidationError(
+                        f"{field_name} contains a date outside retained records"
+                    )
+                normalized[parsed.isoformat()] = _sha(
+                    fingerprint, field_name=f"{field_name}.{raw_date}"
+                )
+            identity_maps[field_name] = MappingProxyType(
+                dict(sorted(normalized.items()))
+            )
         object.__setattr__(self, "records", records)
-        object.__setattr__(self, "continuity_segments", tuple(self.continuity_segments))
-        object.__setattr__(self, "state_links", tuple(self.state_links))
-        object.__setattr__(self, "aggregate_metrics", tuple(self.aggregate_metrics))
+        object.__setattr__(self, "continuity_segments", segments)
+        object.__setattr__(self, "state_links", links)
+        object.__setattr__(self, "aggregate_metrics", metrics)
+        object.__setattr__(self, "diagnostics", diagnostics)
+        object.__setattr__(self, "comparisons", comparisons)
+        object.__setattr__(
+            self,
+            "requested_day_input_fingerprints",
+            identity_maps["requested_day_input_fingerprints"],
+        )
+        object.__setattr__(
+            self,
+            "supplied_activation_fingerprints",
+            identity_maps["supplied_activation_fingerprints"],
+        )
         object.__setattr__(self, "runtime_metadata", _freeze_mapping(self.runtime_metadata, field_name="runtime_metadata"))
+        statuses = tuple(item.latest_revision.lifecycle_status for item in records)
+        if ("failed" in statuses) != (self.completeness_status == "failed"):
+            raise RollingFCRValidationError(
+                "study failed completeness must reconcile failed date records"
+            )
+        if self.completeness_status == "complete" and any(
+            item in {"blocked_by_predecessor", "provisional", "unfinalized"}
+            for item in statuses
+        ):
+            raise RollingFCRValidationError(
+                "complete study cannot retain blocked, provisional, or unfinalized dates"
+            )
         object.__setattr__(self, "semantic_fingerprint", _fingerprint(self._semantic_payload()))
+
+    @property
+    def requested_dates(self) -> tuple[date, ...]:
+        return tuple(item.classification.delivery_date for item in self.records)
+
+    @property
+    def status_counts(self) -> Mapping[str, int]:
+        roles = tuple(item.classification.execution_role for item in self.records)
+        statuses = tuple(item.latest_revision.lifecycle_status for item in self.records)
+        values = {
+            "requested": len(self.records),
+            "included": roles.count("included"),
+            "compared": sum(
+                item.classification.comparison_eligible for item in self.records
+            ),
+            "warm-up": roles.count("warm-up"),
+            "close-out": roles.count("close-out"),
+            "excluded": statuses.count("excluded"),
+            "initialization_only": statuses.count("initialization_only"),
+            "optimization_only": statuses.count("optimization_only"),
+            "provisional": statuses.count("provisional"),
+            "finalized": statuses.count("finalized"),
+            "failed": statuses.count("failed"),
+            "blocked_by_predecessor": statuses.count("blocked_by_predecessor"),
+            "unfinalized": statuses.count("unfinalized"),
+        }
+        terminal_total = sum(
+            values[key]
+            for key in _TERMINAL_LIFECYCLE_STATUSES
+            if key != "original"
+        )
+        if terminal_total != values["requested"]:
+            raise RollingFCRValidationError(
+                "study lifecycle status counts do not reconcile requested dates"
+            )
+        return MappingProxyType(values)
 
     def _semantic_payload(self) -> dict[str, object]:
         return {
             "semantics_version": self.semantics_version,
+            "study_id": self.study_id,
             "manifest_fingerprint": self.manifest_fingerprint,
+            "profile_id": self.profile_id,
             "profile_fingerprint": self.profile_fingerprint,
+            "requested_dates": [item.isoformat() for item in self.requested_dates],
             "records": [
                 {
                     **item._semantic_payload(),
@@ -1638,8 +2783,20 @@ class RollingFCRStudyResult:
             ],
             "continuity_segments": [item.to_dict() for item in self.continuity_segments],
             "state_links": [item.to_dict() for item in self.state_links],
+            "status_counts": dict(self.status_counts),
+            "requested_day_input_fingerprints": dict(
+                self.requested_day_input_fingerprints
+            ),
+            "supplied_activation_fingerprints": dict(
+                self.supplied_activation_fingerprints
+            ),
             "aggregate_metrics": [item.to_dict() for item in self.aggregate_metrics],
             "completeness_status": self.completeness_status,
+            "diagnostics": list(self.diagnostics),
+            "comparisons": [_thaw(item) for item in self.comparisons],
+            "stable_runtime_evidence": _semantic_runtime_metadata(
+                self.runtime_metadata
+            ),
         }
 
     @property
@@ -1679,9 +2836,385 @@ class RollingFCRStudyResult:
         payload["records"] = [item.to_dict() for item in self.records]
         return {
             **payload,
+            "resume_lineage": (
+                None
+                if self.resume_lineage is None
+                else self.resume_lineage.to_dict()
+            ),
             "runtime_metadata": _thaw(self.runtime_metadata),
             "semantic_fingerprint": self.semantic_fingerprint,
         }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, object]) -> RollingFCRStudyResult:
+        data = _strict_mapping(
+            payload,
+            field_name="rolling study result",
+            required_keys=frozenset(
+                {
+                    "semantics_version",
+                    "study_id",
+                    "manifest_fingerprint",
+                    "profile_id",
+                    "profile_fingerprint",
+                    "requested_dates",
+                    "records",
+                    "continuity_segments",
+                    "state_links",
+                    "status_counts",
+                    "requested_day_input_fingerprints",
+                    "supplied_activation_fingerprints",
+                    "aggregate_metrics",
+                    "completeness_status",
+                    "diagnostics",
+                    "comparisons",
+                    "stable_runtime_evidence",
+                    "resume_lineage",
+                    "runtime_metadata",
+                    "semantic_fingerprint",
+                }
+            ),
+        )
+        sequence_names = (
+            "requested_dates",
+            "records",
+            "continuity_segments",
+            "state_links",
+            "aggregate_metrics",
+            "diagnostics",
+            "comparisons",
+        )
+        for name in sequence_names:
+            if not isinstance(data[name], Sequence) or isinstance(
+                data[name], (str, bytes)
+            ):
+                raise RollingFCRValidationError(f"study {name} must be a sequence")
+        result = cls(
+            semantics_version=data["semantics_version"],  # type: ignore[arg-type]
+            study_id=data["study_id"],  # type: ignore[arg-type]
+            manifest_fingerprint=data["manifest_fingerprint"],  # type: ignore[arg-type]
+            profile_id=data["profile_id"],  # type: ignore[arg-type]
+            profile_fingerprint=data["profile_fingerprint"],  # type: ignore[arg-type]
+            records=tuple(
+                DeliveryDateRecordEnvelope.from_dict(item)  # type: ignore[arg-type]
+                for item in data["records"]  # type: ignore[union-attr]
+            ),
+            continuity_segments=tuple(
+                ContinuitySegment.from_dict(item)  # type: ignore[arg-type]
+                for item in data["continuity_segments"]  # type: ignore[union-attr]
+            ),
+            state_links=tuple(
+                RollingFCRStateLink.from_dict(item)  # type: ignore[arg-type]
+                for item in data["state_links"]  # type: ignore[union-attr]
+            ),
+            aggregate_metrics=tuple(
+                AggregateMetricEvidence.from_dict(item)  # type: ignore[arg-type]
+                for item in data["aggregate_metrics"]  # type: ignore[union-attr]
+            ),
+            completeness_status=data["completeness_status"],  # type: ignore[arg-type]
+            requested_day_input_fingerprints=data[
+                "requested_day_input_fingerprints"
+            ],  # type: ignore[arg-type]
+            supplied_activation_fingerprints=data[
+                "supplied_activation_fingerprints"
+            ],  # type: ignore[arg-type]
+            resume_lineage=(
+                None
+                if data["resume_lineage"] is None
+                else RollingFCRResumeEvidence.from_dict(
+                    data["resume_lineage"]  # type: ignore[arg-type]
+                )
+            ),
+            diagnostics=tuple(data["diagnostics"]),  # type: ignore[arg-type]
+            comparisons=tuple(data["comparisons"]),  # type: ignore[arg-type]
+            runtime_metadata=data["runtime_metadata"],  # type: ignore[arg-type]
+        )
+        requested_dates = tuple(
+            _date_from_text(item, field_name="requested_dates")
+            for item in data["requested_dates"]  # type: ignore[union-attr]
+        )
+        if requested_dates != result.requested_dates:
+            raise RollingFCRValidationError(
+                "requested_dates do not match retained record order"
+            )
+        if data["status_counts"] != dict(result.status_counts):
+            raise RollingFCRValidationError(
+                "status_counts do not reconcile retained records"
+            )
+        if data["stable_runtime_evidence"] != _semantic_runtime_metadata(
+            result.runtime_metadata
+        ):
+            raise RollingFCRValidationError(
+                "stable_runtime_evidence does not match runtime metadata"
+            )
+        _verify_persisted_fingerprint(
+            field_name="semantic_fingerprint",
+            provided=data["semantic_fingerprint"],
+            recomputed=result.semantic_fingerprint,
+        )
+        return result
+
+
+def _aggregate_value_for_revision(
+    revision: RollingFCRDayRevision,
+    metric_id: str,
+) -> float | None:
+    if metric_id == "optimization_objective_eur":
+        return revision.objective_value_eur
+    if metric_id == "best_upper_bound_eur":
+        return revision.best_upper_bound_eur
+    realized_fields = {
+        "realized_settlement_eur": "settlement.total_profit_eur",
+        "realized_profit_eur": "total_profit_eur",
+        "delivered_fcr_up_energy_kwh": (
+            "delivered_fcr_energy_kwh.upward_discharge"
+        ),
+        "delivered_fcr_down_energy_kwh": (
+            "delivered_fcr_energy_kwh.downward_charge"
+        ),
+        "throughput_kwh": "throughput_kwh",
+    }
+    field_name = realized_fields[metric_id]
+    return revision.realized_metrics.get(field_name)
+
+
+def aggregate_rolling_fcr_records(
+    manifest: RollingFCRStudyManifest,
+    records: tuple[DeliveryDateRecordEnvelope, ...],
+) -> tuple[AggregateMetricEvidence, ...]:
+    """Aggregate eligible evidence without dropping or zero-filling dates."""
+
+    if not isinstance(manifest, RollingFCRStudyManifest):
+        raise RollingFCRValidationError("manifest has the wrong contract type")
+    ordered = tuple(records)
+    expected_prefix = tuple(item.delivery_date for item in manifest.dates[: len(ordered)])
+    actual_dates = tuple(item.classification.delivery_date for item in ordered)
+    if actual_dates != expected_prefix:
+        raise RollingFCRValidationError(
+            "aggregate records must be an ordered manifest prefix"
+        )
+    if any(
+        item.manifest_fingerprint != manifest.manifest_fingerprint
+        or item.profile_fingerprint != manifest.profile.profile_fingerprint
+        for item in ordered
+    ):
+        raise RollingFCRValidationError(
+            "aggregate records belong to another manifest or profile"
+        )
+    eligible_records = tuple(
+        item
+        for item in ordered
+        if item.classification.execution_role == "included"
+    )
+    eligible_dates = tuple(
+        item.classification.delivery_date for item in eligible_records
+    )
+    definitions = (
+        ("best_upper_bound_eur", "EUR"),
+        ("delivered_fcr_down_energy_kwh", "kWh"),
+        ("delivered_fcr_up_energy_kwh", "kWh"),
+        ("optimization_objective_eur", "EUR"),
+        ("realized_profit_eur", "EUR"),
+        ("realized_settlement_eur", "EUR"),
+        ("throughput_kwh", "kWh"),
+    )
+    aggregates: list[AggregateMetricEvidence] = []
+    for metric_id, unit in definitions:
+        contributor_rows: list[tuple[date, float, str]] = []
+        omissions: dict[str, tuple[str, ...]] = {}
+        for envelope in eligible_records:
+            revision = envelope.latest_revision
+            value = _aggregate_value_for_revision(revision, metric_id)
+            delivery_date = envelope.classification.delivery_date
+            if value is None:
+                omissions[delivery_date.isoformat()] = (
+                    f"metric_unavailable:{metric_id}",
+                    f"lifecycle_status:{revision.lifecycle_status}",
+                )
+            else:
+                contributor_rows.append(
+                    (delivery_date, float(value), revision.revision_fingerprint)
+                )
+        contributing_dates = tuple(item[0] for item in contributor_rows)
+        values = tuple(item[1] for item in contributor_rows)
+        value = None if not values else math.fsum(values)
+        coverage = (
+            "unavailable"
+            if not contributing_dates
+            else "complete"
+            if len(contributing_dates) == len(eligible_dates)
+            else "partial"
+        )
+        aggregates.append(
+            AggregateMetricEvidence(
+                metric_id=metric_id,
+                unit=unit,
+                value=value,
+                coverage_status=coverage,
+                eligible_dates=eligible_dates,
+                contributing_dates=contributing_dates,
+                omitted_dates_with_reasons=omissions,
+                aggregation_rule="ordered-math-fsum-v1",
+                source_fingerprints=tuple(item[2] for item in contributor_rows),
+                reconciliation_residual=(None if value is None else 0.0),
+            )
+        )
+    return tuple(aggregates)
+
+
+def assess_rolling_fcr_resume(
+    manifest: RollingFCRStudyManifest,
+    prior_result: RollingFCRStudyResult,
+) -> RollingFCRResumeEvidence:
+    """Assess exact semantic reuse without partly approving any mismatch."""
+
+    if not isinstance(manifest, RollingFCRStudyManifest):
+        raise RollingFCRValidationError("manifest has the wrong contract type")
+    if not isinstance(prior_result, RollingFCRStudyResult):
+        raise RollingFCRValidationError("prior_result has the wrong contract type")
+    expected_dates = tuple(
+        item.delivery_date for item in manifest.dates[: len(prior_result.records)]
+    )
+    record_dates = prior_result.requested_dates
+    segment_ids = {item.segment_id for item in prior_result.continuity_segments}
+    caller_state_fingerprints = {
+        item.state_fingerprint for item in manifest.caller_state_declarations
+    }
+    continuity_origins_match = all(
+        (
+            index == 0
+            and item.start_reason == "manifest_start"
+            and item.source_state_fingerprint is None
+        )
+        or (
+            index > 0
+            and item.start_reason == "caller_supplied"
+            and item.source_state_fingerprint in caller_state_fingerprints
+        )
+        for index, item in enumerate(prior_result.continuity_segments)
+    )
+    record_by_date = {
+        item.classification.delivery_date: item for item in prior_result.records
+    }
+    state_link_evidence_matches = True
+    for link in prior_result.state_links:
+        successor = record_by_date.get(link.successor_date)
+        predecessor = record_by_date.get(link.predecessor_date)
+        if successor is None:
+            state_link_evidence_matches = False
+            break
+        successor_initial = successor.revisions[0].initial_stored_energy_kwh
+        if (
+            successor_initial is None
+            or abs(successor_initial - link.successor_initial_stored_energy_kwh)
+            > link.reconciliation_tolerance_kwh
+        ):
+            state_link_evidence_matches = False
+            break
+        linked_revisions = tuple(successor.revisions) + (
+            () if predecessor is None else tuple(predecessor.revisions)
+        )
+        if not any(
+            item.state_link_fingerprint == link.state_link_fingerprint
+            for item in linked_revisions
+        ):
+            state_link_evidence_matches = False
+            break
+    try:
+        expected_aggregates = aggregate_rolling_fcr_records(
+            manifest, prior_result.records
+        )
+        aggregate_match = tuple(
+            item.aggregate_fingerprint for item in expected_aggregates
+        ) == tuple(
+            item.aggregate_fingerprint for item in prior_result.aggregate_metrics
+        )
+    except RollingFCRValidationError:
+        aggregate_match = False
+    checks = {
+        "aggregate_evidence": aggregate_match,
+        "continuity_membership": all(
+            item.continuity_segment_id in segment_ids
+            for item in (*prior_result.records, *prior_result.state_links)
+        ),
+        "continuity_origins": continuity_origins_match,
+        "manifest_fingerprint": (
+            prior_result.manifest_fingerprint == manifest.manifest_fingerprint
+        ),
+        "ordered_dates": bool(prior_result.records) and record_dates == expected_dates,
+        "profile_fingerprint": (
+            prior_result.profile_fingerprint
+            == manifest.profile.profile_fingerprint
+            and prior_result.profile_id == manifest.profile.profile_id
+        ),
+        "record_classifications": all(
+            prior.classification.classification_fingerprint
+            == expected.classification_fingerprint
+            for prior, expected in zip(
+                prior_result.records,
+                manifest.dates,
+                strict=False,
+            )
+        ),
+        "record_manifest_identity": all(
+            item.manifest_fingerprint == manifest.manifest_fingerprint
+            and item.profile_fingerprint == manifest.profile.profile_fingerprint
+            for item in prior_result.records
+        ),
+        "state_link_reconciliation": all(
+            item.reconciles for item in prior_result.state_links
+        ),
+        "state_link_evidence": state_link_evidence_matches,
+        "study_identity": prior_result.study_id == manifest.study_id,
+    }
+    diagnostics = tuple(
+        f"resume_mismatch:{name}"
+        for name, compatible in sorted(checks.items())
+        if not compatible
+    )
+    return RollingFCRResumeEvidence(
+        prior_result_semantic_fingerprint=prior_result.semantic_fingerprint,
+        manifest_fingerprint=manifest.manifest_fingerprint,
+        profile_fingerprint=manifest.profile.profile_fingerprint,
+        reused_envelope_fingerprints=tuple(
+            item.envelope_fingerprint for item in prior_result.records
+        ),
+        reused_revision_fingerprints=tuple(
+            revision.revision_fingerprint
+            for item in prior_result.records
+            for revision in item.revisions
+        ),
+        last_continuity_fingerprint=(
+            None
+            if not prior_result.continuity_segments
+            else prior_result.continuity_segments[-1].continuity_fingerprint
+        ),
+        last_state_link_fingerprint=(
+            None
+            if not prior_result.state_links
+            else prior_result.state_links[-1].state_link_fingerprint
+        ),
+        checks=checks,
+        diagnostics=diagnostics,
+        status="compatible" if all(checks.values()) else "incompatible",
+    )
+
+
+def load_rolling_fcr_study_result(path: Path) -> RollingFCRStudyResult:
+    """Load one strict result without resolving any referenced artifact."""
+
+    if not isinstance(path, Path):
+        raise RollingFCRValidationError("rolling study result path must be a Path")
+    try:
+        with path.open("r", encoding="utf-8") as stream:
+            payload = json.load(stream)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RollingFCRValidationError(
+            f"unable to load rolling study result: {type(exc).__name__}"
+        ) from exc
+    if not isinstance(payload, Mapping):
+        raise RollingFCRValidationError("rolling study result root must be a mapping")
+    return RollingFCRStudyResult.from_dict(payload)
 
 
 def run_rolling_fcr_study(
@@ -1730,6 +3263,7 @@ __all__ = [
     "RollingFCRDayRevision",
     "RollingFCRExperimentProfile",
     "RollingFCRNumericPolicy",
+    "RollingFCRResumeEvidence",
     "RollingFCRStateLink",
     "RollingFCRStateCarryEvidence",
     "RollingFCRStudyManifest",
@@ -1738,6 +3272,9 @@ __all__ = [
     "SOURCE_REFERENCE_REVISION",
     "build_rolling_fcr_experiment_profile",
     "build_rolling_fcr_study_manifest",
+    "aggregate_rolling_fcr_records",
+    "assess_rolling_fcr_resume",
     "derive_rolling_fcr_state_carry",
+    "load_rolling_fcr_study_result",
     "run_rolling_fcr_study",
 ]
