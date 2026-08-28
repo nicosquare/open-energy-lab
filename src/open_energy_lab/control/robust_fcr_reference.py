@@ -1905,9 +1905,80 @@ def _certify_reference_decision_box(
             witness_fingerprint=None,
             unavailable_reason=None,
         )
+    audit = native_result.feasibility_audit
+    decisions = native_result.decisions
+    objective = native_result.solver.objective_value_eur
+    objective_interval = request.certification_objective_interval
+    if (
+        audit is not None
+        and audit.passes_deployability_audit
+        and decisions is not None
+        and objective is not None
+        and objective_interval is not None
+        and native_result.solver.solve_status in {"optimal", "feasible"}
+    ):
+        source_x0 = tuple(
+            -value for value in decisions.energy_baseline_charge_positive_kw
+        )
+        source_xr = decisions.fcr_capacity_kw
+        decision_box_residual = 0.0
+        for interval in request.decision_intervals:
+            value = (
+                source_x0[interval.index]
+                if interval.decision_kind == "energy_x0"
+                else source_xr[interval.index]
+            )
+            decision_box_residual = max(
+                decision_box_residual,
+                interval.lower - value,
+                value - interval.upper,
+                0.0,
+            )
+        objective_box_residual = max(
+            objective_interval[0] - objective,
+            objective - objective_interval[1],
+            0.0,
+        )
+        maximum_slack = max(audit.modeled_slacks.values(), default=0.0)
+        common_maximum_residual = max(
+            (
+                value.maximum_positive_violation
+                for value in audit.constraint_families
+            ),
+            default=0.0,
+        )
+        maximum_residual = max(
+            common_maximum_residual,
+            decision_box_residual,
+            objective_box_residual,
+        )
+        if (
+            maximum_slack <= DEPLOYABILITY_THRESHOLD
+            and maximum_residual <= DEPLOYABILITY_THRESHOLD
+        ):
+            # The independently audited native incumbent is already one joint
+            # witness inside every recorded source interval.  Re-solving the
+            # same feasibility question is necessary only when the native
+            # market decisions lie outside that box.
+            return JointReferenceCertificate(
+                request_fingerprint=request.request_fingerprint,
+                solve_status=native_result.solver.solve_status,
+                joint_feasible=True,
+                objective_equivalent=True,
+                maximum_slack=maximum_slack,
+                maximum_residual=maximum_residual,
+                certified_objective_value_eur=objective,
+                witness_fingerprint=audit.canonical_witness_fingerprint,
+                unavailable_reason=None,
+            )
     try:
         policy_payload = dict(native_result.solver.configured_options["solve_policy"])
         policy_payload.pop("solve_policy_fingerprint", None)
+        # The joint rounded-vector certificate is independent validation, not a
+        # continuation of the native optimization solve.  Keep it on the
+        # required open-source backend even when the compared result came from
+        # explicitly selected optional Gurobi evidence.
+        policy_payload["solver_name"] = "highs"
         policy = RobustFCRSolvePolicy(**policy_payload)
         problem = build_robust_fcr_reference_problem(fixture, solve_policy=policy)
         from ._robust_fcr_formulation import assemble_robust_fcr_reference_certificate

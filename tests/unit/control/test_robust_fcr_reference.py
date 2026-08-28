@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import socket
 import subprocess
+from types import SimpleNamespace
 
 import pytest
 
@@ -59,11 +60,12 @@ def _fixture_payload() -> dict[str, object]:
     return json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
 
 
-def _native_policy():
+def _native_policy(*, solver_name: str = "highs"):
     from open_energy_lab.control import RobustFCRSolvePolicy
 
     mapping = native_reference_benchmark_policy_mapping(time_limit_seconds=30.0)
     mapping.pop("profile_id")
+    mapping["solver_name"] = solver_name
     return RobustFCRSolvePolicy(**mapping)
 
 
@@ -93,11 +95,12 @@ def _native_result(
     objective: float = 11.028,
     match_decisions: bool = True,
     fixture=None,
+    solver_name: str = "highs",
 ):
     fixture = fixture or load_robust_fcr_reference_fixture(FIXTURE_PATH)
     problem = build_robust_fcr_reference_problem(
         fixture,
-        solve_policy=_native_policy(),
+        solve_policy=_native_policy(solver_name=solver_name),
     )
     raw = RawRobustFCRSolveResult(
         solve_status="optimal",
@@ -106,10 +109,10 @@ def _native_result(
         objective_value_eur=0.0,
         best_upper_bound_eur=0.0,
         witness=_zero_witness(),
-        solver_name="controlled-highs",
-        solver_version="1.15.1",
+        solver_name=f"controlled-{solver_name}",
+        solver_version="13.0.2" if solver_name == "gurobi" else "1.15.1",
         pyomo_version="6.10.1",
-        highspy_version="1.15.1",
+        highspy_version=None if solver_name == "gurobi" else "1.15.1",
         configured_options={"threads": 1},
         model_cardinality={"variables": 10_301, "active_constraints": 33_643},
     )
@@ -601,6 +604,90 @@ def test_joint_certificate_rejects_false_feasibility_evidence() -> None:
     assert infeasible.joint_feasible is False
     assert infeasible.objective_equivalent is False
     assert infeasible.maximum_slack is None
+
+
+def test_joint_certificate_reuses_audited_native_witness_inside_source_box() -> None:
+    from open_energy_lab.control.robust_fcr_reference import (
+        _certify_reference_decision_box,
+    )
+
+    fixture = load_robust_fcr_reference_fixture(FIXTURE_PATH)
+    native = _native_result(objective=11.028269482283491, solver_name="gurobi")
+    clean_audit = replace(
+        native.feasibility_audit,
+        constraint_families=tuple(
+            replace(
+                family,
+                maximum_positive_violation=0.0,
+                witness_indices=(),
+            )
+            for family in native.feasibility_audit.constraint_families
+        ),
+        modeled_slacks={
+            name: 0.0 for name in native.feasibility_audit.modeled_slacks
+        },
+        passes_deployability_audit=True,
+    )
+    native = replace(native, feasibility_audit=clean_audit)
+    request = build_reference_certification_request(fixture, native)
+    certificate = _certify_reference_decision_box(fixture, native, request)
+
+    assert certificate.solve_status == "optimal"
+    assert certificate.joint_feasible is True
+    assert certificate.objective_equivalent is True
+    assert certificate.certified_objective_value_eur == pytest.approx(
+        11.028269482283491
+    )
+    assert certificate.maximum_slack == 0.0
+    assert certificate.maximum_residual == 0.0
+    assert certificate.witness_fingerprint == (
+        native.feasibility_audit.canonical_witness_fingerprint
+    )
+
+
+def test_joint_certificate_keeps_independent_highs_backend_for_gurobi_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from open_energy_lab.control import _robust_fcr_formulation, _robust_fcr_solver
+    from open_energy_lab.control.robust_fcr_reference import (
+        _certify_reference_decision_box,
+    )
+
+    fixture = load_robust_fcr_reference_fixture(FIXTURE_PATH)
+    native = _native_result(
+        objective=11.028269,
+        match_decisions=False,
+        solver_name="gurobi",
+    )
+    request = build_reference_certification_request(fixture, native)
+    assembled_sentinel = object()
+    backend = SimpleNamespace(pyomo_environ=object())
+
+    monkeypatch.setattr(
+        _robust_fcr_solver,
+        "require_highs_backend",
+        lambda: backend,
+    )
+    monkeypatch.setattr(
+        _robust_fcr_formulation,
+        "assemble_robust_fcr_reference_certificate",
+        lambda problem, request, pyomo_environ: assembled_sentinel,
+    )
+
+    def observe_dispatch(assembled, policy, *, backend):
+        assert assembled is assembled_sentinel
+        assert policy.solver_name == "highs"
+        raise RuntimeError("certificate HiGHS dispatch observed")
+
+    monkeypatch.setattr(
+        _robust_fcr_solver,
+        "solve_assembled_model",
+        observe_dispatch,
+    )
+    certificate = _certify_reference_decision_box(fixture, native, request)
+
+    assert certificate.solve_status == "unavailable"
+    assert "certificate HiGHS dispatch observed" in certificate.unavailable_reason
 
 
 def test_public_comparison_reports_precision_alternative_and_source_bound_limits(
