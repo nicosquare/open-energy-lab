@@ -789,15 +789,10 @@ def _evaluate_midnight_day(
     solved: _SolvedRollingDay,
     activation_trace: object,
 ) -> _MidnightReplayEvidence:
-    period = solved.plan.energy_schedule.covered_period
-    report = _evaluate_exact_plan_period(
+    report = _evaluate_full_day(
         manifest,
         solved,
-        period=period,
         activation_trace=activation_trace,
-        initial_stored_energy_kwh=(
-            solved.day_input.battery.initial_stored_energy_kwh
-        ),
         evaluation_suffix="midnight-full-day-v1",
     )
     carry = derive_rolling_fcr_state_carry(
@@ -817,6 +812,31 @@ def _evaluate_midnight_day(
         report=report,
         activation_fingerprint=activation_trace.artifact_fingerprint,
         state_carry_evidence=carry,
+    )
+
+
+def _evaluate_full_day(
+    manifest: RollingFCRStudyManifest,
+    solved: _SolvedRollingDay,
+    *,
+    activation_trace: object,
+    evaluation_suffix: str,
+) -> object:
+    """Evaluate one accepted ordinary-day plan only through Feature 012."""
+
+    if solved.plan is None:
+        raise RollingFCRValidationError(
+            "full-day replay requires an accepted fixed plan"
+        )
+    return _evaluate_exact_plan_period(
+        manifest,
+        solved,
+        period=solved.plan.energy_schedule.covered_period,
+        activation_trace=activation_trace,
+        initial_stored_energy_kwh=(
+            solved.day_input.battery.initial_stored_energy_kwh
+        ),
+        evaluation_suffix=evaluation_suffix,
     )
 
 
@@ -1011,6 +1031,50 @@ def _finalized_midnight_revision(
         diagnostics=(
             f"state_carry_policy:{carry.state_carry_policy}",
             "successor_state_uses_realized_not_modeled_terminal",
+        ),
+        **fields,
+    )
+
+
+def _finalized_independent_revision(
+    solved: _SolvedRollingDay,
+    report: object,
+    *,
+    activation_fingerprint: str,
+) -> RollingFCRDayRevision:
+    """Finalize an independent accepted plan without creating carry evidence."""
+
+    fields = _result_fields(solved.result)
+    return RollingFCRDayRevision(
+        revision_number=1,
+        revision_kind="finalized",
+        lifecycle_status="finalized",
+        creation_cause="same_day_feature_012_replay_completed",
+        input_fingerprint=solved.day_input.day_input_fingerprint,
+        problem_fingerprint=getattr(
+            solved.problem,
+            "problem_fingerprint",
+            getattr(solved.problem, "rolling_problem_fingerprint", None),
+        ),
+        plan_fingerprint=solved.plan.plan_fingerprint,
+        plan_classification=solved.plan_classification,
+        activation_fingerprint=activation_fingerprint,
+        replay_fingerprint=report.semantic_fingerprint,
+        settlement_fingerprint=_fingerprint(
+            dict(report.settlement_components_eur)
+        ),
+        predecessor_revision_fingerprint=(
+            solved.original_revision.revision_fingerprint
+        ),
+        initial_stored_energy_kwh=report.initial_stored_energy_kwh,
+        realized_terminal_stored_energy_kwh=(
+            report.terminal_stored_energy_kwh
+        ),
+        realized_metrics=_flatten_realized_metrics(report),
+        diagnostics=(
+            "accepted_plan_evaluated_by_feature_012",
+            "independent_day_resets_after_delivery",
+            f"plan_classification_preserved:{solved.plan_classification}",
         ),
         **fields,
     )
@@ -1875,6 +1939,187 @@ def _run_midnight_carry_study(
     )
 
 
+def _run_independent_study(
+    manifest: RollingFCRStudyManifest,
+    day_inputs: tuple[RollingFCRDayInput, ...],
+    *,
+    activation_traces: Mapping[date, object] | None,
+) -> RollingFCRStudyResult:
+    """Solve reset days independently and optionally replay accepted plans."""
+
+    if not manifest.profile.is_independent:
+        raise RollingFCRValidationError(
+            "independent study orchestration requires an independent profile"
+        )
+    by_date = {item.date_classification.delivery_date: item for item in day_inputs}
+    if len(by_date) != len(day_inputs):
+        raise RollingFCRValidationError("day_inputs must identify unique dates")
+    manifest_dates = {item.delivery_date for item in manifest.dates}
+    if any(delivery_date not in manifest_dates for delivery_date in by_date):
+        raise RollingFCRValidationError("day input date is outside the manifest")
+    traces = {} if activation_traces is None else activation_traces
+    if not isinstance(traces, Mapping):
+        raise RollingFCRValidationError("activation_traces must be a date mapping")
+    supplied_activation_fingerprints = _supplied_activation_fingerprints(traces)
+
+    records: list[DeliveryDateRecordEnvelope] = []
+    for index, classification in enumerate(manifest.dates):
+        delivery_date = classification.delivery_date
+        if classification.execution_role == "excluded":
+            records.append(
+                _failure_envelope(
+                    manifest,
+                    classification,
+                    predecessor_date=None,
+                    lifecycle_status="excluded",
+                    reason="date_excluded_by_manifest",
+                )
+            )
+            continue
+        day_input = by_date.get(delivery_date)
+        if day_input is None:
+            records.append(
+                _failure_envelope(
+                    manifest,
+                    classification,
+                    predecessor_date=None,
+                    lifecycle_status="failed",
+                    reason="required_day_input_unavailable",
+                )
+            )
+            continue
+        try:
+            problem, result, plan, plan_classification = _solve_day(
+                manifest,
+                day_input,
+                first_executed=index == 0,
+            )
+            solved = _solved_day_from_result(
+                day_input,
+                problem,
+                result,
+                plan,
+                plan_classification,
+            )
+            if plan is None or result.solver.solve_status not in {
+                "optimal",
+                "feasible",
+            }:
+                failed = replace(
+                    solved.original_revision,
+                    lifecycle_status="failed",
+                    creation_cause="optimization_produced_no_replayable_plan",
+                    diagnostics=(
+                        *solved.original_revision.diagnostics,
+                        "accepted_plan_unavailable",
+                    ),
+                )
+                solved = replace(solved, original_revision=failed)
+                records.append(
+                    _envelope_for_solved_day(
+                        manifest,
+                        solved,
+                        predecessor_date=None,
+                    )
+                )
+                continue
+
+            envelope = _envelope_for_solved_day(
+                manifest,
+                solved,
+                predecessor_date=None,
+            )
+            trace = traces.get(delivery_date)
+            if trace is None:
+                records.append(envelope)
+                continue
+            try:
+                report = _evaluate_full_day(
+                    manifest,
+                    solved,
+                    activation_trace=trace,
+                    evaluation_suffix="independent-full-day-v1",
+                )
+            except Exception as exc:
+                failed = replace(
+                    solved.original_revision,
+                    lifecycle_status="failed",
+                    creation_cause="same_day_feature_012_replay_failed",
+                    diagnostics=(
+                        *solved.original_revision.diagnostics,
+                        _normalized_date_failure("feature_012_replay", exc),
+                    ),
+                )
+                solved = replace(solved, original_revision=failed)
+                records.append(
+                    _envelope_for_solved_day(
+                        manifest,
+                        solved,
+                        predecessor_date=None,
+                    )
+                )
+                continue
+            records.append(
+                _append_revision(
+                    envelope,
+                    _finalized_independent_revision(
+                        solved,
+                        report,
+                        activation_fingerprint=trace.artifact_fingerprint,
+                    ),
+                )
+            )
+        except Exception as exc:
+            records.append(
+                _failure_envelope(
+                    manifest,
+                    classification,
+                    predecessor_date=None,
+                    lifecycle_status="failed",
+                    reason=_normalized_date_failure("optimization", exc),
+                )
+            )
+
+    dates = tuple(item.delivery_date for item in manifest.dates)
+    segment = ContinuitySegment(
+        segment_id=f"{manifest.study_id}-segment-0",
+        start_date=dates[0],
+        end_date=dates[-1],
+        start_reason="manifest_start",
+    )
+    statuses = tuple(item.latest_revision.lifecycle_status for item in records)
+    completeness = (
+        "failed"
+        if any(item == "failed" for item in statuses)
+        else "partial"
+        if any(item == "optimization_only" for item in statuses)
+        else "complete"
+    )
+    ordered_records = tuple(records)
+    return RollingFCRStudyResult(
+        study_id=manifest.study_id,
+        manifest_fingerprint=manifest.manifest_fingerprint,
+        profile_id=manifest.profile.profile_id,
+        profile_fingerprint=manifest.profile.profile_fingerprint,
+        records=ordered_records,
+        continuity_segments=(segment,),
+        state_links=(),
+        aggregate_metrics=aggregate_rolling_fcr_records(
+            manifest, ordered_records
+        ),
+        completeness_status=completeness,
+        requested_day_input_fingerprints=_requested_day_input_fingerprints(
+            day_inputs
+        ),
+        supplied_activation_fingerprints=supplied_activation_fingerprints,
+        runtime_metadata={
+            "phase": "independent-feature-012-replay-v1",
+            "bidder_received_activation": False,
+            "state_semantics": "reset_after_each_delivery_day",
+        },
+    )
+
+
 def run_initial_rolling_fcr_study(
     manifest: RollingFCRStudyManifest,
     day_inputs: tuple[RollingFCRDayInput, ...],
@@ -1902,10 +2147,8 @@ def run_initial_rolling_fcr_study(
             raise RollingFCRValidationError(
                 "resume day input fingerprints changed"
             )
-        current_activation_fingerprints = (
-            {}
-            if manifest.profile.is_independent
-            else _supplied_activation_fingerprints(activation_traces)
+        current_activation_fingerprints = _supplied_activation_fingerprints(
+            activation_traces
         )
         expected_activation_fingerprints = dict(
             resume_from.supplied_activation_fingerprints
@@ -1970,157 +2213,10 @@ def run_initial_rolling_fcr_study(
             day_inputs,
             activation_traces=activation_traces,
         )
-    # Activation is deliberately not inspected by this optimization-only phase.
-    del activation_traces
-    by_date = {item.date_classification.delivery_date: item for item in day_inputs}
-    if len(by_date) != len(day_inputs):
-        raise RollingFCRValidationError("day_inputs must identify unique dates")
-    manifest_dates = {item.delivery_date for item in manifest.dates}
-    if any(delivery_date not in manifest_dates for delivery_date in by_date):
-        raise RollingFCRValidationError("day input date is outside the manifest")
-    records: list[DeliveryDateRecordEnvelope] = []
-    first_executed = True
-    predecessor_date: date | None = None
-    coupled_blocked = False
-    for classification in manifest.dates:
-        delivery_date = classification.delivery_date
-        predecessor = predecessor_date if not manifest.profile.is_independent else None
-        if classification.execution_role == "excluded":
-            records.append(
-                _failure_envelope(
-                    manifest,
-                    classification,
-                    predecessor_date=predecessor,
-                    lifecycle_status="excluded",
-                    reason="date_excluded_by_manifest",
-                )
-            )
-            continue
-        day_input = by_date.get(delivery_date)
-        if coupled_blocked or day_input is None:
-            lifecycle = (
-                "blocked_by_predecessor"
-                if not manifest.profile.is_independent
-                else "failed"
-            )
-            reason = (
-                "valid_predecessor_state_or_coupling_input_unavailable"
-                if lifecycle == "blocked_by_predecessor"
-                else "required_day_input_unavailable"
-            )
-            records.append(
-                _failure_envelope(
-                    manifest,
-                    classification,
-                    predecessor_date=predecessor,
-                    lifecycle_status=lifecycle,
-                    reason=reason,
-                )
-            )
-            if not manifest.profile.is_independent:
-                coupled_blocked = True
-            predecessor_date = delivery_date
-            first_executed = False
-            continue
-        try:
-            problem, result, plan, plan_classification = _solve_day(
-                manifest,
-                day_input,
-                first_executed=first_executed,
-            )
-            fields = _result_fields(result)
-            lifecycle = (
-                "unfinalized"
-                if manifest.profile.state_mode == "rolling_0800"
-                and classification.execution_role == "close-out"
-                else "optimization_only"
-            )
-            revision = RollingFCRDayRevision(
-                revision_number=0,
-                revision_kind="optimization_only",
-                lifecycle_status=lifecycle,
-                creation_cause="profile_optimization_completed",
-                input_fingerprint=day_input.day_input_fingerprint,
-                problem_fingerprint=getattr(
-                    problem,
-                    "problem_fingerprint",
-                    getattr(problem, "rolling_problem_fingerprint", None),
-                ),
-                plan_fingerprint=(None if plan is None else plan.plan_fingerprint),
-                plan_classification=plan_classification,
-                diagnostics=tuple(
-                    str(value.code)
-                    for value in getattr(result, "diagnostics", ())
-                    if hasattr(value, "code")
-                )
-                or tuple(str(value) for value in getattr(result, "diagnostics", ())),
-                **fields,
-            )
-            records.append(
-                DeliveryDateRecordEnvelope(
-                    manifest_fingerprint=manifest.manifest_fingerprint,
-                    profile_fingerprint=manifest.profile.profile_fingerprint,
-                    profile_id=manifest.profile.profile_id,
-                    classification=classification,
-                    predecessor_date=predecessor,
-                    continuity_segment_id=f"{manifest.study_id}-segment-0",
-                    revisions=(revision,),
-                    decision_cutoff_utc=day_input.decision_cutoff_utc,
-                    information_cutoff_utc=day_input.information_cutoff_utc,
-                )
-            )
-            if result.solver.solve_status not in {"optimal", "feasible"}:
-                coupled_blocked = not manifest.profile.is_independent
-        except Exception as exc:
-            records.append(
-                _failure_envelope(
-                    manifest,
-                    classification,
-                    predecessor_date=predecessor,
-                    lifecycle_status="failed",
-                    reason=_normalized_date_failure("optimization", exc),
-                )
-            )
-            coupled_blocked = not manifest.profile.is_independent
-        predecessor_date = delivery_date
-        first_executed = False
-    dates = tuple(item.delivery_date for item in manifest.dates)
-    segment = ContinuitySegment(
-        segment_id=f"{manifest.study_id}-segment-0",
-        start_date=dates[0],
-        end_date=dates[-1],
-        start_reason="manifest_start",
-    )
-    latest_statuses = tuple(item.latest_revision.lifecycle_status for item in records)
-    if any(status == "failed" for status in latest_statuses):
-        completeness = "failed"
-    elif any(
-        status in {"blocked_by_predecessor", "unfinalized"}
-        for status in latest_statuses
-    ):
-        completeness = "partial"
-    else:
-        completeness = "complete"
-    return RollingFCRStudyResult(
-        study_id=manifest.study_id,
-        manifest_fingerprint=manifest.manifest_fingerprint,
-        profile_id=manifest.profile.profile_id,
-        profile_fingerprint=manifest.profile.profile_fingerprint,
-        records=tuple(records),
-        continuity_segments=(segment,),
-        state_links=(),
-        aggregate_metrics=aggregate_rolling_fcr_records(
-            manifest, tuple(records)
-        ),
-        completeness_status=completeness,
-        requested_day_input_fingerprints=_requested_day_input_fingerprints(
-            day_inputs
-        ),
-        supplied_activation_fingerprints={},
-        runtime_metadata={
-            "phase": "initial-profile-optimization-v1",
-            "activation_inspected": False,
-        },
+    return _run_independent_study(
+        manifest,
+        day_inputs,
+        activation_traces=activation_traces,
     )
 
 

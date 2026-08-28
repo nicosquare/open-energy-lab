@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import timedelta
+import math
 from types import SimpleNamespace
 
 import pytest
@@ -66,6 +67,70 @@ def _manual_solved(manifest, *, fcr_capacity_kw=(0.0,) * 6):
         plan_classification="robust_candidate",
         original_revision=None,
     )
+
+
+def _install_fake_independent_solver(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Keep the test focused on common replay rather than optimizer runtime."""
+
+    import open_energy_lab.control._fcr_rolling_orchestrator as orchestrator
+
+    def fake_solve(manifest, day_input, *, first_executed):
+        del first_executed
+        delivery_date = day_input.date_classification.delivery_date
+        day_index = (delivery_date - AUTHORED_DELIVERY_DATES[0]).days
+        fcr_capacity = (
+            (1.0,) * 6
+            if manifest.profile.formulation_kind != "arbitrage_only"
+            else (0.0,) * 6
+        )
+        plan = build_authored_fixed_plan(
+            delivery_date,
+            fcr_capacity_kw=fcr_capacity,
+        )
+        objective = 100.0 + day_index
+        bound = objective + 0.5
+        fake_problem = SimpleNamespace(
+            problem_fingerprint=f"{day_index + 1:x}" * 64,
+        )
+        fake_solver = SimpleNamespace(
+            solve_status="optimal",
+            termination_status="optimal",
+            objective_value_eur=objective,
+            best_upper_bound_eur=bound,
+            absolute_gap_eur=bound - objective,
+            relative_gap=(bound - objective) / bound,
+        )
+        fake_decisions = SimpleNamespace(
+            energy_baseline_charge_positive_kw=(0.0,) * 24,
+            fcr_capacity_kw=fcr_capacity,
+        )
+        fake_audit = SimpleNamespace(
+            audit_fingerprint=f"{day_index + 5:x}" * 64,
+            modeled_slacks={"maximum": 0.0},
+            constraint_families=(),
+        )
+        fake_result = SimpleNamespace(
+            solver=fake_solver,
+            decisions=fake_decisions,
+            semantic_result_fingerprint=f"{day_index + 9:x}" * 64,
+            feasibility_audit=fake_audit,
+            runtime_metadata={"solver_name": "authored-replay-stub"},
+            diagnostics=(),
+        )
+        return (
+            fake_problem,
+            fake_result,
+            plan,
+            manifest.profile.plan_classification,
+        )
+
+    monkeypatch.setattr(orchestrator, "_solve_day", fake_solve)
+
+
+def _aggregate_by_id(result):
+    return {item.metric_id: item for item in result.aggregate_metrics}
 
 
 def test_two_traces_equal_through_0800_produce_identical_successor_bids(
@@ -267,6 +332,190 @@ def test_missing_prefix_retains_optimization_and_blocks_successor(
         "blocked_by_predecessor"
     )
     assert result.state_links == ()
+    assert result.records[0].latest_revision.activation_fingerprint is None
+    assert result.records[0].latest_revision.replay_fingerprint is None
+    assert result.records[0].latest_revision.settlement_fingerprint is None
+    assert result.records[0].latest_revision.realized_metrics == {}
+
+
+@pytest.mark.parametrize(
+    ("profile_id", "expected_classification"),
+    (
+        (
+            "script-12-restriction-reset-midnight-v1",
+            "robust_candidate",
+        ),
+        (
+            "script-11-relaxation-reset-midnight-v1",
+            "diagnostic_non_robust",
+        ),
+    ),
+)
+def test_independent_days_replay_and_settle_without_changing_plan_classification(
+    monkeypatch: pytest.MonkeyPatch,
+    profile_id: str,
+    expected_classification: str,
+) -> None:
+    _install_fake_independent_solver(monkeypatch)
+    source = build_authored_manifest(profile_id)
+    manifest = replace(source, dates=source.dates[:2])
+    inputs = tuple(
+        _zero_input(manifest, item.delivery_date) for item in manifest.dates
+    )
+    traces = {
+        item.delivery_date: build_authored_activation_trace(item.delivery_date)
+        for item in manifest.dates
+    }
+
+    result = run_rolling_fcr_study(
+        manifest,
+        inputs,
+        activation_traces=traces,
+    )
+
+    assert result.completeness_status == "complete"
+    assert result.state_links == ()
+    assert result.supplied_activation_fingerprints == {
+        item.delivery_date.isoformat(): traces[
+            item.delivery_date
+        ].artifact_fingerprint
+        for item in manifest.dates
+    }
+    for envelope in result.records:
+        assert tuple(item.revision_kind for item in envelope.revisions) == (
+            "original",
+            "finalized",
+        )
+        original, finalized = envelope.revisions
+        assert finalized.lifecycle_status == "finalized"
+        assert original.plan_fingerprint == finalized.plan_fingerprint
+        assert finalized.plan_classification == expected_classification
+        assert finalized.activation_fingerprint is not None
+        assert finalized.replay_fingerprint is not None
+        assert finalized.settlement_fingerprint is not None
+        assert finalized.initial_stored_energy_kwh == pytest.approx(10.0)
+        assert finalized.realized_terminal_stored_energy_kwh is not None
+        assert finalized.carried_stored_energy_kwh is None
+        assert finalized.state_link_fingerprint is None
+        assert finalized.realized_metrics["throughput_kwh"] >= 0.0
+        assert (
+            finalized.realized_metrics[
+                "delivered_fcr_energy_kwh.upward_discharge"
+            ]
+            >= 0.0
+        )
+        assert (
+            finalized.realized_metrics[
+                "delivered_fcr_energy_kwh.downward_charge"
+            ]
+            >= 0.0
+        )
+        assert finalized.realized_metrics["settlement.total_profit_eur"] == (
+            finalized.realized_metrics["total_profit_eur"]
+        )
+
+    aggregates = _aggregate_by_id(result)
+    expected_fields = {
+        "optimization_objective_eur": "objective_value_eur",
+        "best_upper_bound_eur": "best_upper_bound_eur",
+        "realized_settlement_eur": "settlement.total_profit_eur",
+        "realized_profit_eur": "total_profit_eur",
+        "settlement_activation_energy_revenue_eur": (
+            "settlement.activation_energy_revenue"
+        ),
+        "settlement_combined_fcr_revenue_eur": (
+            "settlement.combined_fcr_revenue"
+        ),
+        "settlement_day_ahead_revenue_eur": "settlement.day_ahead_revenue",
+        "settlement_fcr_capacity_revenue_eur": (
+            "settlement.fcr_capacity_revenue"
+        ),
+        "settlement_penalty_eur": "settlement.penalty",
+        "delivered_fcr_up_energy_kwh": (
+            "delivered_fcr_energy_kwh.upward_discharge"
+        ),
+        "delivered_fcr_down_energy_kwh": (
+            "delivered_fcr_energy_kwh.downward_charge"
+        ),
+        "throughput_kwh": "throughput_kwh",
+    }
+    for metric_id, field_name in expected_fields.items():
+        aggregate = aggregates[metric_id]
+        daily_values = [
+            (
+                getattr(item.latest_revision, field_name)
+                if field_name in {"objective_value_eur", "best_upper_bound_eur"}
+                else item.latest_revision.realized_metrics[field_name]
+            )
+            for item in result.records
+        ]
+        assert aggregate.coverage_status == "complete"
+        assert aggregate.contributing_dates == tuple(
+            item.delivery_date for item in manifest.dates
+        )
+        assert aggregate.value == pytest.approx(math.fsum(daily_values))
+
+    assert aggregates["optimization_objective_eur"].value != (
+        aggregates["realized_profit_eur"].value
+    )
+    if expected_classification == "diagnostic_non_robust":
+        assert all(
+            item.latest_revision.plan_classification
+            != "robust_candidate"
+            for item in result.records
+        )
+
+
+def test_independent_days_without_activation_retain_explicit_optimization_only_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install_fake_independent_solver(monkeypatch)
+    source = build_authored_manifest(
+        "script-12-restriction-reset-midnight-v1"
+    )
+    manifest = replace(source, dates=source.dates[:2])
+    inputs = tuple(
+        _zero_input(manifest, item.delivery_date) for item in manifest.dates
+    )
+
+    result = run_rolling_fcr_study(manifest, inputs, activation_traces={})
+
+    assert result.completeness_status == "partial"
+    assert result.supplied_activation_fingerprints == {}
+    assert tuple(
+        item.latest_revision.lifecycle_status for item in result.records
+    ) == ("optimization_only", "optimization_only")
+    assert all(len(item.revisions) == 1 for item in result.records)
+    for envelope in result.records:
+        revision = envelope.latest_revision
+        assert revision.activation_fingerprint is None
+        assert revision.replay_fingerprint is None
+        assert revision.settlement_fingerprint is None
+        assert revision.realized_terminal_stored_energy_kwh is None
+        assert revision.realized_metrics == {}
+        assert revision.objective_value_eur is not None
+        assert revision.best_upper_bound_eur is not None
+
+    aggregates = _aggregate_by_id(result)
+    assert aggregates["optimization_objective_eur"].coverage_status == "complete"
+    assert aggregates["best_upper_bound_eur"].coverage_status == "complete"
+    for metric_id in (
+        "realized_settlement_eur",
+        "realized_profit_eur",
+        "delivered_fcr_up_energy_kwh",
+        "delivered_fcr_down_energy_kwh",
+        "settlement_activation_energy_revenue_eur",
+        "settlement_combined_fcr_revenue_eur",
+        "settlement_day_ahead_revenue_eur",
+        "settlement_fcr_capacity_revenue_eur",
+        "settlement_penalty_eur",
+        "throughput_kwh",
+    ):
+        assert aggregates[metric_id].coverage_status == "unavailable"
+        assert aggregates[metric_id].value is None
+        assert set(aggregates[metric_id].omitted_dates_with_reasons) == {
+            item.delivery_date.isoformat() for item in manifest.dates
+        }
 
 
 def test_four_date_chain_retains_original_provisional_finalized_and_edges() -> None:
@@ -395,3 +644,29 @@ def test_three_day_midnight_chains_separate_source_rounding_and_native_precision
         tuple(item.state_link_fingerprint for item in native.state_links)
     )
     assert source.semantic_fingerprint != native.semantic_fingerprint
+
+    # Script 13 is replayed as an accepted arbitrage-only plan through the same
+    # Feature 012 path, with FCR constrained to zero and no robust relabelling.
+    assert all(
+        item.latest_revision.plan_classification == "arbitrage_only"
+        and item.latest_revision.fcr_capacity_kw == (0.0,) * 6
+        and item.latest_revision.activation_fingerprint is not None
+        and item.latest_revision.replay_fingerprint is not None
+        and item.latest_revision.settlement_fingerprint is not None
+        for item in source.records
+    )
+    source_aggregates = _aggregate_by_id(source)
+    for metric_id, field_name in (
+        ("realized_settlement_eur", "settlement.total_profit_eur"),
+        ("realized_profit_eur", "total_profit_eur"),
+        ("throughput_kwh", "throughput_kwh"),
+    ):
+        assert source_aggregates[metric_id].coverage_status == "complete"
+        assert source_aggregates[metric_id].value == pytest.approx(
+            math.fsum(
+                item.latest_revision.realized_metrics[field_name]
+                for item in source.records
+            )
+        )
+    assert source_aggregates["delivered_fcr_up_energy_kwh"].value == 0.0
+    assert source_aggregates["delivered_fcr_down_energy_kwh"].value == 0.0

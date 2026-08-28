@@ -246,19 +246,19 @@ missing or explicitly supplied external activation without hidden lookup.
 
 ### Tests first
 
-- [ ] T080 [P] [US6] Add full multi-day restriction and arbitrage-only replay tests for physical/report/settlement fingerprints, state reconciliation, daily totals, and aggregate totals in `tests/integration/simulator/test_fcr_rolling_feature_012_replay.py`
-- [ ] T081 [P] [US6] Add diagnostic relaxation replay tests proving successful realized tracking never changes the non-robust classification in `tests/integration/simulator/test_fcr_rolling_feature_012_replay.py`
-- [ ] T082 [P] [US6] Add missing-activation tests for independent optimization-only evidence, explicit unavailable replay/settlement/profit fields, and blocked activation-derived successors in `tests/integration/simulator/test_fcr_rolling_feature_012_replay.py`
-- [ ] T083 [P] [US6] Add the explicitly selected `external_reference_data` test with exact path/digest/coverage validation, actionable absence skip, bounded date slicing with exactly 8,640 ten-second samples per ordinary day, and Feature 012-only source/native replay in `tests/integration/simulator/test_fcr_rolling_external_reference_replay.py`
+- [x] T080 [P] [US6] Add full multi-day restriction and arbitrage-only replay tests for physical/report/settlement fingerprints, state reconciliation, daily totals, and aggregate totals in `tests/integration/simulator/test_fcr_rolling_feature_012_replay.py`
+- [x] T081 [P] [US6] Add diagnostic relaxation replay tests proving successful realized tracking never changes the non-robust classification in `tests/integration/simulator/test_fcr_rolling_feature_012_replay.py`
+- [x] T082 [P] [US6] Add missing-activation tests for independent optimization-only evidence, explicit unavailable replay/settlement/profit fields, and blocked activation-derived successors in `tests/integration/simulator/test_fcr_rolling_feature_012_replay.py`
+- [x] T083 [P] [US6] Add the explicitly selected `external_reference_data` test with exact path/digest/coverage validation, actionable absence skip, bounded date slicing with exactly 8,640 ten-second samples per ordinary day, and Feature 012-only source/native replay in `tests/integration/simulator/test_fcr_rolling_external_reference_replay.py`
 
 ### Implementation
 
-- [ ] T084 [US6] Integrate accepted-plan market contexts and full-day/segmented Feature 012 evaluation into date revisions without importing simulator equations into control in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
-- [ ] T085 [US6] Implement distinct optimization-objective, best-bound, settlement-component, realized-profit, directional-FCR-energy, and throughput evidence/aggregates in `src/open_energy_lab/control/fcr_rolling_backtest.py`
-- [ ] T086 [US6] Enforce diagnostic-non-robust and arbitrage-only evaluation eligibility without relabelling either result as a robust deployable plan in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
-- [ ] T087 [US6] Implement explicit unavailable activation/replay/settlement evidence and activation-dependent blocking without filesystem search or substitution in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
-- [ ] T088 [US6] Reuse the existing Feature 012 external activation importer/request builders from the optional test path and keep all CSV location handling out of production code in `tests/integration/simulator/test_fcr_rolling_external_reference_replay.py`
-- [ ] T089 [US6] Run Feature 012 public compatibility, product separation, settlement, and Feature 015 replay suites and record reconciliation evidence in `docs/migration/fcr-rolling-backtest-parity.md`
+- [x] T084 [US6] Integrate accepted-plan market contexts and full-day/segmented Feature 012 evaluation into date revisions without importing simulator equations into control in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
+- [x] T085 [US6] Implement distinct optimization-objective, best-bound, settlement-component, realized-profit, directional-FCR-energy, and throughput evidence/aggregates in `src/open_energy_lab/control/fcr_rolling_backtest.py`
+- [x] T086 [US6] Enforce diagnostic-non-robust and arbitrage-only evaluation eligibility without relabelling either result as a robust deployable plan in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
+- [x] T087 [US6] Implement explicit unavailable activation/replay/settlement evidence and activation-dependent blocking without filesystem search or substitution in `src/open_energy_lab/control/_fcr_rolling_orchestrator.py`
+- [x] T088 [US6] Reuse the existing Feature 012 external activation importer/request builders from the optional test path and keep all CSV location handling out of production code in `tests/integration/simulator/test_fcr_rolling_external_reference_replay.py`
+- [x] T089 [US6] Run Feature 012 public compatibility, product separation, settlement, and Feature 015 replay suites and record reconciliation evidence in `docs/migration/fcr-rolling-backtest-parity.md`
 
 **Checkpoint**: Every realized field has Feature 012 lineage, and absent
 activation cannot affect ex-ante evidence or be silently replaced.

@@ -2966,6 +2966,19 @@ def _aggregate_value_for_revision(
     realized_fields = {
         "realized_settlement_eur": "settlement.total_profit_eur",
         "realized_profit_eur": "total_profit_eur",
+        "settlement_activation_energy_revenue_eur": (
+            "settlement.activation_energy_revenue"
+        ),
+        "settlement_combined_fcr_revenue_eur": (
+            "settlement.combined_fcr_revenue"
+        ),
+        "settlement_day_ahead_revenue_eur": (
+            "settlement.day_ahead_revenue"
+        ),
+        "settlement_fcr_capacity_revenue_eur": (
+            "settlement.fcr_capacity_revenue"
+        ),
+        "settlement_penalty_eur": "settlement.penalty",
         "delivered_fcr_up_energy_kwh": (
             "delivered_fcr_energy_kwh.upward_discharge"
         ),
@@ -3016,6 +3029,11 @@ def aggregate_rolling_fcr_records(
         ("optimization_objective_eur", "EUR"),
         ("realized_profit_eur", "EUR"),
         ("realized_settlement_eur", "EUR"),
+        ("settlement_activation_energy_revenue_eur", "EUR"),
+        ("settlement_combined_fcr_revenue_eur", "EUR"),
+        ("settlement_day_ahead_revenue_eur", "EUR"),
+        ("settlement_fcr_capacity_revenue_eur", "EUR"),
+        ("settlement_penalty_eur", "EUR"),
         ("throughput_kwh", "kWh"),
     )
     aggregates: list[AggregateMetricEvidence] = []

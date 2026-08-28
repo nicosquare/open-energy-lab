@@ -299,3 +299,71 @@ state begins a new continuity segment; independent reset profiles continue.
 The focused Phase 6 result, orchestration, import-boundary, and resume
 selection passed with `75 passed in 3.67s`. The protected Feature 013 problem,
 solver, and bounded HiGHS regressions passed with `80 passed in 94.05s`.
+
+### Phase 8 — common Feature 012 replay and settlement
+
+Independent reset profiles now retain their original optimization revision and
+append a finalized revision only when an explicitly supplied activation trace
+settles through Feature 012. Missing activation leaves the day visibly
+`optimization_only`, with activation, replay, settlement, terminal-state, and
+realized-profit evidence unavailable. The study is partial rather than
+complete, but later reset days remain independently eligible. Coupled midnight
+and 08:00 profiles continue to block successors when an activation-derived
+handoff is unavailable.
+
+Every accepted robust restriction, diagnostic relaxation, and arbitrage-only
+plan uses the same accepted-plan market context and full-day or segmented
+Feature 012 evaluator. Successful replay does not change its classification:
+relaxation remains `diagnostic_non_robust`, arbitrage remains
+`arbitrage_only` with all six FCR capacities exactly zero, and neither is
+reported as a robust deployable plan. Feature 015 imports no battery-transition,
+tracking, settlement, or profit equation into control.
+
+Daily evidence retains separate plan, activation, Feature 012 replay, and
+settlement fingerprints plus realized terminal state. Twelve coverage-labelled
+aggregate families now remain distinct: optimization objective, best upper
+bound, total realized settlement, realized profit, five settlement components
+(day-ahead, FCR capacity, activation energy, combined FCR, and penalty), both
+directional delivered-FCR energies, and throughput. Each aggregate is an
+ordered `math.fsum` over its declared revisions with exact contributor,
+omission, and revision-fingerprint lineage; absent values are never zero-filled.
+
+The authored multi-day replay suite passed with `9 passed in 106.64s`. It
+checks exact daily-to-study reconciliation, immutable original-to-finalized
+history, physical terminal-state evidence, settlement/report fingerprints,
+independent reset semantics, diagnostic non-robust retention, exact-zero-FCR
+arbitrage replay, and explicit missing-activation behavior:
+
+```bash
+uv run pytest -q \
+  tests/integration/simulator/test_fcr_rolling_feature_012_replay.py
+```
+
+The protected Feature 012 public compatibility, product-separation, and
+settlement selection passed with `52 passed in 1.34s`:
+
+```bash
+uv run pytest -q \
+  tests/integration/simulator/test_fcr_bid_evaluation_public_compatibility.py \
+  tests/integration/simulator/test_fcr_bid_evaluation_compatibility.py \
+  tests/unit/simulator/test_fcr_settlement.py \
+  tests/integration/simulator/test_restoration_product_separation.py \
+  tests/integration/simulator/test_fcr_bid_evaluation_manual.py
+```
+
+The explicitly selected external-data test also passed with `1 passed in
+283.46s`. Before opening any evaluation-only samples, it built all four source
+plans and native restriction problems for 2023-06-17 through 2023-06-20. It
+then accepted only the exact path
+`artifacts/reference/robust_storage_bidding/regulation_signal.csv`, verified
+the 528,805,941-byte file and SHA-256
+`0c2bf5203410f193c555460ec5593b546af42556f29afac821584e403c407d13`
+once, scanned it once, and delegated four date imports to the existing Feature
+012 activation contract. Each date had exactly 8,640 PT10S samples, and all
+eight source/native requests settled through Feature 012 with exact
+24/6/96/8,640 energy/FCR/checkpoint/activation counts and non-null trace,
+settlement, and result fingerprints. Native solves used an explicit
+60-second-per-date HiGHS policy and required an independently audited accepted
+plan; this replay is performance evidence, not a new optimality or schedule-
+parity claim. The test remains excluded from routine CI and skips actionably at
+the exact expected path when the caller has not installed the governed CSV.

@@ -255,6 +255,11 @@ def test_aggregate_records_never_zero_fill_and_keep_separate_quantities() -> Non
     manifest = replace(base, dates=base.dates[:3])
     realized = {
         "settlement.total_profit_eur": 4.0,
+        "settlement.day_ahead_revenue": 1.0,
+        "settlement.fcr_capacity_revenue": 2.0,
+        "settlement.activation_energy_revenue": 0.5,
+        "settlement.combined_fcr_revenue": 2.5,
+        "settlement.penalty": 0.5,
         "total_profit_eur": 4.0,
         "delivered_fcr_energy_kwh.upward_discharge": 1.25,
         "delivered_fcr_energy_kwh.downward_charge": 0.75,
@@ -273,6 +278,11 @@ def test_aggregate_records_never_zero_fill_and_keep_separate_quantities() -> Non
     assert metrics["best_upper_bound_eur"].value == 33.0
     assert metrics["realized_settlement_eur"].value == 4.0
     assert metrics["realized_profit_eur"].value == 4.0
+    assert metrics["settlement_day_ahead_revenue_eur"].value == 1.0
+    assert metrics["settlement_fcr_capacity_revenue_eur"].value == 2.0
+    assert metrics["settlement_activation_energy_revenue_eur"].value == 0.5
+    assert metrics["settlement_combined_fcr_revenue_eur"].value == 2.5
+    assert metrics["settlement_penalty_eur"].value == 0.5
     assert metrics["delivered_fcr_up_energy_kwh"].value == 1.25
     assert metrics["delivered_fcr_down_energy_kwh"].value == 0.75
     assert metrics["throughput_kwh"].value == 3.0

@@ -63,7 +63,9 @@ def test_bounded_profile_solves_return_ordered_classified_evidence(
     result = run_rolling_fcr_study(manifest, (day_input,))
     revision = result.records[0].latest_revision
 
-    if manifest.profile.state_mode == "midnight_carry":
+    if manifest.profile.state_mode == "midnight_carry" or (
+        manifest.profile.is_independent
+    ):
         assert result.completeness_status == "partial"
         assert revision.lifecycle_status == "optimization_only"
     else:
