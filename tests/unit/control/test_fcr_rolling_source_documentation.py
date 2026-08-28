@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from open_energy_lab.control import build_rolling_fcr_experiment_profile
@@ -110,3 +112,45 @@ def test_crosswalk_records_metric_discrepancy_and_never_claims_table_a1_parity()
         assert payload["crosswalk"]["table_a1_parity_claim"] is False
         assert any("result_overview.xlsx" in ref for ref in profile.source_refs)
         assert any(profile.source_script in ref for ref in profile.source_refs)
+
+
+def test_migration_ledger_cites_every_authoritative_source_line_range() -> None:
+    ledger = Path("docs/migration/fcr-rolling-backtest-parity.md").read_text(
+        encoding="utf-8"
+    )
+    required = (
+        "code/01_datastruct.jl:3-48",
+        "code/02_model.jl:15-32",
+        "code/02_model.jl:34-75",
+        "code/02_model.jl:86-99,137-143",
+        "code/02_model.jl:175-188,252-263,289-291",
+        "code/03_backtest_save.jl:5-83",
+        "code/03_backtest_save.jl:86-158",
+        "code/03_backtest_save.jl:161-204",
+        "code/04_parse_results.jl:4-39,43-100",
+        "code/05_dates.txt:1-1453",
+        "code/11.jl:23-95",
+        "code/12.jl:23-95",
+        "code/13.jl:23-103",
+        "code/14.jl:23-104",
+        "code/15.jl:23-104",
+    )
+    assert all(reference in ledger for reference in required)
+
+
+def test_documentation_retains_script_workbook_and_paper_discrepancies() -> None:
+    ledger = Path("docs/migration/fcr-rolling-backtest-parity.md").read_text(
+        encoding="utf-8"
+    ).casefold()
+
+    assert "scripts 11/12/13/14/15" in ledger
+    assert "experiments 1/2/4/5/3" in ledger
+    assert "columns 11/12/14/15/13" in ledger
+    assert "script 13" in ledger and "3,600" in ledger
+    assert "900" in ledger
+    assert "charging input" in ledger
+    assert "charging efficiency" in ledger
+    assert "discharge-energy output" in ledger
+    assert "no table a1 parity claim" in ledger
+    assert "bounded four-day rerun" in ledger
+    assert "bilinear_violations=0" in ledger
