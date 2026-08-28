@@ -88,10 +88,13 @@ def test_conditional_exports_resolve_without_loading_heavy_backends() -> None:
 
     package = importlib.import_module(TPM_PACKAGE)
     exports = (
+        package.TPMConditionalAttachment,
         package.TPMConditionalCompilationRequest,
+        package.TPMContinuousDecisionMapping,
         package.TPMConditionalPair,
         package.publish_conditional_pair,
         package.compile_conditional_mio_pair,
+        package.attach_conditional_mio_pair,
         package.evaluate_conditional_mio_pair,
         package.evaluate_native_conditional_pair,
     )

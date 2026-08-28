@@ -2568,6 +2568,272 @@ def _decode_decision_value(
     raise ValueError(f"unsupported decision payload kind {kind!r}")
 
 
+def encode_conditioned_spflow_circuit(
+    backend: Any,
+    block: object,
+    *,
+    circuit: Mapping[str, object],
+    decision_variables: Mapping[str, Mapping[str, object]],
+    encoding: Mapping[str, object],
+) -> Mapping[str, object]:
+    """Encode one conditioned circuit against shared caller-supplied coordinates."""
+
+    nodes = _sequence_of_mappings(
+        circuit.get("nodes"), field_name="conditioned circuit nodes"
+    )
+    root_id = int(circuit["root_id"])
+    node_ids = tuple(int(node["id"]) for node in nodes)
+    if len(set(node_ids)) != len(node_ids) or root_id not in set(node_ids):
+        raise ValueError("conditioned circuit node ids must be unique and contain root_id")
+    encoding_mode = str(encoding.get("mode", ""))
+    if encoding_mode not in {"max", "piecewise"}:
+        raise ValueError("conditioned circuit encoding mode must be max or piecewise")
+    leaf_configuration = _mapping(
+        encoding.get("leaf_configuration"),
+        field_name="conditional leaf_configuration",
+    )
+    sum_configuration = _mapping(
+        encoding.get("sum_configuration"),
+        field_name="conditional sum_configuration",
+    )
+    probability_floor = float(leaf_configuration["discrete_probability_floor"])
+    if not math.isfinite(probability_floor) or probability_floor <= 0.0:
+        raise ValueError("conditional discrete probability floor must be positive and finite")
+
+    block.NODE_IDS = backend.Set(initialize=node_ids, ordered=True)
+    block.node_out = backend.Var(block.NODE_IDS, within=backend.Reals)
+    node_by_id = {int(node["id"]): node for node in nodes}
+    for node_id in node_ids:
+        node = node_by_id[node_id]
+        node_type = str(node["type"])
+        if node_type == "log_one":
+            block.add_component(
+                f"log_one_{node_id}",
+                backend.Constraint(expr=block.node_out[node_id] == 0.0),
+            )
+            continue
+        if node_type == "leaf_piecewise":
+            _encode_conditioned_piecewise_leaf(
+                backend,
+                block,
+                node_id=node_id,
+                node=node,
+                decision_variables=decision_variables,
+            )
+            continue
+        if node_type in {"leaf_binary", "leaf_categorical"}:
+            if "fixed_value" not in node:
+                raise ValueError(
+                    f"conditioned discrete leaf {node_id} requires a symbolic "
+                    "mapping capability not supplied by this attachment"
+                )
+            densities = _float_sequence(node["densities"])
+            index = int(node["fixed_value"])
+            if not 0 <= index < len(densities):
+                raise ValueError(
+                    f"conditioned discrete leaf {node_id} fixed index is invalid"
+                )
+            log_density = math.log(max(densities[index], probability_floor))
+            block.add_component(
+                f"discrete_leaf_fixed_{node_id}",
+                backend.Constraint(expr=block.node_out[node_id] == log_density),
+            )
+            continue
+        if node_type == "product":
+            child_ids = tuple(int(value) for value in node.get("children", ()))
+            block.add_component(
+                f"product_{node_id}",
+                backend.Constraint(
+                    expr=block.node_out[node_id]
+                    == sum(block.node_out[child_id] for child_id in child_ids)
+                ),
+            )
+            continue
+        if node_type == "sum":
+            _encode_conditioned_sum_node(
+                backend,
+                block,
+                node_id=node_id,
+                node=node,
+                mode=encoding_mode,
+                sum_configuration=sum_configuration,
+            )
+            continue
+        raise ValueError(f"unsupported conditioned circuit node type {node_type!r}")
+
+    constraint_names = tuple(
+        component.getname(fully_qualified=False)
+        for component in block.component_objects(
+            backend.Constraint, active=True, descend_into=True
+        )
+    )
+    return {
+        "root": block.node_out[root_id],
+        "node_output": block.node_out,
+        "constraint_component_names": constraint_names,
+    }
+
+
+def _encode_conditioned_piecewise_leaf(
+    backend: Any,
+    block: object,
+    *,
+    node_id: int,
+    node: Mapping[str, object],
+    decision_variables: Mapping[str, Mapping[str, object]],
+) -> None:
+    feature_name = str(node["feature_name"])
+    breakpoints = _float_sequence(node["breakpoints"])
+    log_values = _float_sequence(node["log_values"])
+    if len(breakpoints) < 2 or len(breakpoints) != len(log_values):
+        raise ValueError(
+            f"conditioned piecewise leaf {node_id} points must align"
+        )
+    if feature_name in decision_variables:
+        payload = decision_variables[feature_name]
+        if str(payload.get("kind")) != "continuous":
+            raise ValueError(
+                f"conditioned piecewise leaf {node_id} requires a continuous mapping"
+            )
+        block.add_component(
+            f"piecewise_leaf_{node_id}",
+            backend.Piecewise(
+                block.node_out[node_id],
+                payload["normalized_var"],
+                pw_pts=list(breakpoints),
+                pw_constr_type="EQ",
+                pw_repn="DCC",
+                f_rule=list(log_values),
+            ),
+        )
+        return
+    if "fixed_value" not in node:
+        raise ValueError(
+            f"conditioned piecewise leaf {node_id} has no decision mapping"
+        )
+    fixed_log_value = _linear_interpolate(
+        float(node["fixed_value"]),
+        x_values=breakpoints,
+        y_values=log_values,
+    )
+    block.add_component(
+        f"piecewise_leaf_fixed_{node_id}",
+        backend.Constraint(expr=block.node_out[node_id] == fixed_log_value),
+    )
+
+
+def _encode_conditioned_sum_node(
+    backend: Any,
+    block: object,
+    *,
+    node_id: int,
+    node: Mapping[str, object],
+    mode: str,
+    sum_configuration: Mapping[str, object],
+) -> None:
+    child_ids = tuple(int(value) for value in node["children"])
+    weights = _float_sequence(node["weights"])
+    if not child_ids or len(child_ids) != len(weights):
+        raise ValueError(f"conditioned Sum {node_id} children and weights must align")
+    if any(not math.isfinite(weight) or weight <= 0.0 for weight in weights):
+        raise ValueError(f"conditioned Sum {node_id} weights must be positive and finite")
+    weighted_terms = tuple(
+        block.node_out[child_id] + math.log(weight)
+        for child_id, weight in zip(child_ids, weights, strict=True)
+    )
+    sum_big_m = float(sum_configuration["sum_big_m"])
+    if not math.isfinite(sum_big_m) or sum_big_m <= 0.0:
+        raise ValueError("conditional sum_big_m must be positive and finite")
+    indices = tuple(range(len(child_ids)))
+    choice_index = backend.Set(initialize=indices, ordered=True)
+    block.add_component(f"sum_choice_index_{node_id}", choice_index)
+    active = backend.Var(choice_index, domain=backend.Binary)
+    block.add_component(f"sum_choice_var_{node_id}", active)
+    block.add_component(
+        f"sum_choice_one_hot_{node_id}",
+        backend.Constraint(expr=sum(active[index] for index in indices) == 1),
+    )
+    maximum = backend.Var(within=backend.Reals)
+    block.add_component(f"sum_max_var_{node_id}", maximum)
+    block.add_component(
+        f"sum_max_lb_{node_id}",
+        backend.Constraint(
+            choice_index,
+            rule=lambda _block, index: maximum >= weighted_terms[index],
+        ),
+    )
+    block.add_component(
+        f"sum_max_ub_{node_id}",
+        backend.Constraint(
+            choice_index,
+            rule=lambda _block, index: maximum
+            <= weighted_terms[index] + sum_big_m * (1 - active[index]),
+        ),
+    )
+    if mode == "max":
+        block.add_component(
+            f"sum_max_output_{node_id}",
+            backend.Constraint(expr=block.node_out[node_id] == maximum),
+        )
+        return
+
+    exp_x = _float_sequence(sum_configuration["exp_x_points"])
+    exp_y = _float_sequence(sum_configuration["exp_y_points"])
+    log_x = _float_sequence(sum_configuration["log_x_points"])
+    log_y = _float_sequence(sum_configuration["log_y_points"])
+    relative = backend.Var(choice_index, bounds=(exp_x[0], exp_x[-1]))
+    block.add_component(f"sum_relative_var_{node_id}", relative)
+    exponentials = backend.Var(
+        choice_index, bounds=(min(exp_y), max(exp_y))
+    )
+    block.add_component(f"sum_exp_var_{node_id}", exponentials)
+    block.add_component(
+        f"sum_relative_constraint_{node_id}",
+        backend.Constraint(
+            choice_index,
+            rule=lambda _block, index: relative[index]
+            == weighted_terms[index] - maximum,
+        ),
+    )
+    for index in indices:
+        block.add_component(
+            f"sum_exp_piecewise_{node_id}_{index}",
+            backend.Piecewise(
+                exponentials[index],
+                relative[index],
+                pw_pts=list(exp_x),
+                pw_constr_type="EQ",
+                pw_repn="DCC",
+                f_rule=list(exp_y),
+            ),
+        )
+    total = backend.Var(bounds=(log_x[0], log_x[-1]))
+    block.add_component(f"sum_exp_total_{node_id}", total)
+    block.add_component(
+        f"sum_exp_total_constraint_{node_id}",
+        backend.Constraint(
+            expr=total == sum(exponentials[index] for index in indices)
+        ),
+    )
+    logarithm = backend.Var(bounds=(min(log_y), max(log_y)))
+    block.add_component(f"sum_log_var_{node_id}", logarithm)
+    block.add_component(
+        f"sum_log_piecewise_{node_id}",
+        backend.Piecewise(
+            logarithm,
+            total,
+            pw_pts=list(log_x),
+            pw_constr_type="EQ",
+            pw_repn="DCC",
+            f_rule=list(log_y),
+        ),
+    )
+    block.add_component(
+        f"sum_output_{node_id}",
+        backend.Constraint(expr=block.node_out[node_id] == maximum + logarithm),
+    )
+
+
 def _encode_serialized_spn(
     backend: Any,
     block: object,
@@ -3038,6 +3304,7 @@ __all__ = [
     "build_spn_chance_model",
     "compile_spflow_model_to_mio",
     "evaluate_compiled_spflow_probability",
+    "encode_conditioned_spflow_circuit",
     "extract_spn_solution",
     "infer_max_sum_terms",
     "require_pyomo_backend",

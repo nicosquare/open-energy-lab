@@ -910,6 +910,145 @@ class TPMConditionalPair:
 
 
 @dataclass(frozen=True, slots=True)
+class TPMContinuousDecisionMapping:
+    """Import-light association from one feature to a physical Pyomo expression."""
+
+    feature_name: str
+    physical_expression: object
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "feature_name",
+            _non_empty_string(self.feature_name, "feature_name"),
+        )
+        if self.physical_expression is None:
+            raise ValueError("physical_expression must not be None")
+
+
+@dataclass(frozen=True, slots=True)
+class TPMConditionalDecisionLink:
+    """Runtime metadata for one caller-owned continuous coordinate link."""
+
+    feature_name: str
+    physical_expression: object
+    caller_variables: tuple[object, ...]
+    model_coordinate: object
+    coordinate_link: object
+    physical_lower: object
+    physical_upper: object
+    model_lower: object
+    model_upper: object
+    normalization: Mapping[str, object]
+    approximation_domain: Mapping[str, object]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "feature_name",
+            _non_empty_string(self.feature_name, "feature_name"),
+        )
+        caller_variables = tuple(self.caller_variables)
+        if not caller_variables or len({id(value) for value in caller_variables}) != len(
+            caller_variables
+        ):
+            raise ValueError("caller_variables must be nonempty and distinct")
+        object.__setattr__(self, "caller_variables", caller_variables)
+        for field_name in (
+            "physical_expression",
+            "model_coordinate",
+            "coordinate_link",
+            "physical_lower",
+            "physical_upper",
+            "model_lower",
+            "model_upper",
+        ):
+            if getattr(self, field_name) is None:
+                raise ValueError(f"{field_name} must not be None")
+        normalization = _freeze_json(
+            self.normalization, field_name="decision-link normalization"
+        )
+        approximation_domain = _freeze_json(
+            self.approximation_domain,
+            field_name="decision-link approximation_domain",
+        )
+        if not isinstance(normalization, Mapping) or not isinstance(
+            approximation_domain, Mapping
+        ):
+            raise TypeError("decision-link semantics must be mappings")
+        object.__setattr__(self, "normalization", normalization)
+        object.__setattr__(self, "approximation_domain", approximation_domain)
+
+
+@dataclass(frozen=True, slots=True)
+class TPMConditionalAttachment:
+    """Frozen runtime result for one namespaced caller-model attachment."""
+
+    pair_id: str
+    namespace: str
+    retained_decisions: tuple[str, ...]
+    block: object
+    numerator_root: object
+    denominator_root: object
+    conditional_log_risk: object
+    decision_links: Mapping[str, TPMConditionalDecisionLink]
+    pair_metadata: Mapping[str, object]
+    diagnostic_components: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "pair_id",
+            _sha256_digest(self.pair_id, field_name="pair_id"),
+        )
+        object.__setattr__(
+            self,
+            "namespace",
+            _non_empty_string(self.namespace, "namespace"),
+        )
+        retained = tuple(
+            _non_empty_string(value, "retained decision")
+            for value in self.retained_decisions
+        )
+        if not retained or len(set(retained)) != len(retained):
+            raise ValueError("retained_decisions must be nonempty and unique")
+        links = dict(self.decision_links)
+        if tuple(links) != retained:
+            raise ValueError(
+                "decision_links must follow and exactly cover retained_decisions"
+            )
+        if any(
+            not isinstance(value, TPMConditionalDecisionLink)
+            or value.feature_name != name
+            for name, value in links.items()
+        ):
+            raise TypeError("decision_links must contain matching typed links")
+        for field_name in (
+            "block",
+            "numerator_root",
+            "denominator_root",
+            "conditional_log_risk",
+        ):
+            if getattr(self, field_name) is None:
+                raise ValueError(f"{field_name} must not be None")
+        pair_metadata = _freeze_json(
+            self.pair_metadata, field_name="attachment pair_metadata"
+        )
+        if not isinstance(pair_metadata, Mapping):
+            raise TypeError("pair_metadata must be a mapping")
+        diagnostics = tuple(
+            _non_empty_string(value, "diagnostic component")
+            for value in self.diagnostic_components
+        )
+        if len(set(diagnostics)) != len(diagnostics):
+            raise ValueError("diagnostic_components must be unique")
+        object.__setattr__(self, "retained_decisions", retained)
+        object.__setattr__(self, "decision_links", MappingProxyType(links))
+        object.__setattr__(self, "pair_metadata", pair_metadata)
+        object.__setattr__(self, "diagnostic_components", diagnostics)
+
+
+@dataclass(frozen=True, slots=True)
 class TPMConditionalEvaluation:
     """Raw direct evaluation of one immutable conditional pair."""
 
@@ -1272,6 +1411,8 @@ __all__ = [
     "TPMConditionalCircuit",
     "TPMConditionalCircuitNode",
     "TPMConditionalCompilationRequest",
+    "TPMConditionalAttachment",
+    "TPMConditionalDecisionLink",
     "TPMConditionalEncodingPolicy",
     "TPMConditionalEvaluation",
     "TPMConditionalEvent",
@@ -1281,6 +1422,7 @@ __all__ = [
     "TPMConditionalPair",
     "TPMConditionalPublication",
     "TPMConditionalSourceReference",
+    "TPMContinuousDecisionMapping",
     "canonical_conditional_json_bytes",
     "load_conditional_pair",
     "publish_conditional_pair",

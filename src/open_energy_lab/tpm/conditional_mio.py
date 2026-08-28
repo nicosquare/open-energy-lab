@@ -3,20 +3,24 @@
 from __future__ import annotations
 
 import math
+import keyword
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from .artifact import TPMArtifact, load_tpm_artifact
 from .conditional import (
+    TPMConditionalAttachment,
     TPMConditionalCircuit,
     TPMConditionalCircuitNode,
     TPMConditionalCompilationRequest,
     TPMConditionalEncodingPolicy,
     TPMConditionalEvaluation,
     TPMConditionalEvent,
+    TPMConditionalDecisionLink,
     TPMConditionalFeatureValidity,
     TPMConditionalPair,
     TPMConditionalSourceReference,
+    TPMContinuousDecisionMapping,
 )
 from .domains import (
     TPMApproximationDomain,
@@ -24,7 +28,12 @@ from .domains import (
     TPMFeatureDomain,
     TPMNormalizationSpec,
 )
-from .mio import compile_spflow_model_to_mio, condition_compiled_spflow_mio
+from .mio import (
+    compile_spflow_model_to_mio,
+    condition_compiled_spflow_mio,
+    encode_conditioned_spflow_circuit,
+    require_pyomo_backend,
+)
 from .optional_spflow import (
     CURRENT_SPFLOW_BACKEND_GENERATION,
     REQUIRED_SPFLOW_VERSION,
@@ -43,6 +52,318 @@ class TPMConditionalEvaluationError(ValueError):
     def __init__(self, message: str, *, evaluation: TPMConditionalEvaluation) -> None:
         self.evaluation = evaluation
         super().__init__(message)
+
+
+def attach_conditional_mio_pair(
+    pair: TPMConditionalPair,
+    model: object,
+    *,
+    mappings: Sequence[TPMContinuousDecisionMapping],
+    namespace: str,
+) -> TPMConditionalAttachment:
+    """Attach one unchanged pair to caller-owned continuous Pyomo decisions."""
+
+    if not isinstance(pair, TPMConditionalPair):
+        raise TypeError("pair must be a TPMConditionalPair")
+    backend = require_pyomo_backend()
+    normalized_namespace = _validate_attachment_namespace(
+        model, namespace=namespace
+    )
+    if isinstance(mappings, Mapping) or isinstance(mappings, (str, bytes)):
+        raise TypeError("mappings must be an ordered sequence of typed mappings")
+    try:
+        ordered_mappings = tuple(mappings)
+    except TypeError as exc:
+        raise TypeError(
+            "mappings must be an ordered sequence of typed mappings"
+        ) from exc
+    feature_names: list[str] = []
+    mapping_by_name: dict[str, TPMContinuousDecisionMapping] = {}
+    for mapping in ordered_mappings:
+        if not isinstance(mapping, TPMContinuousDecisionMapping):
+            raise TypeError(
+                "continuous attachment requires TPMContinuousDecisionMapping records"
+            )
+        feature_name = mapping.feature_name
+        if feature_name in mapping_by_name:
+            raise ValueError(f"duplicate decision mapping for {feature_name!r}")
+        feature_names.append(feature_name)
+        mapping_by_name[feature_name] = mapping
+    expected = tuple(pair.retained_decisions)
+    missing = [name for name in expected if name not in mapping_by_name]
+    extra = [name for name in feature_names if name not in set(expected)]
+    if missing or extra:
+        raise ValueError(
+            "decision mappings must exactly cover retained decisions; "
+            f"missing={missing!r}, unknown extra={extra!r}"
+        )
+    validity_by_name = {value.feature_name: value for value in pair.validity}
+    preflight: dict[str, tuple[object, ...]] = {}
+    for feature_name in expected:
+        validity = validity_by_name[feature_name]
+        if validity.feature_type != "continuous":
+            raise TypeError(
+                f"retained feature {feature_name!r} requires a non-continuous "
+                "mapping capability"
+            )
+        if validity.approximation_domain is None:
+            raise ValueError(
+                f"continuous feature {feature_name!r} lacks approximation validity"
+            )
+        preflight[feature_name] = _inspect_structural_affine_expression(
+            backend,
+            model,
+            mapping_by_name[feature_name].physical_expression,
+            feature_name=feature_name,
+        )
+
+    block = backend.Block(concrete=True)
+    block.continuous_features = backend.Set(initialize=expected, ordered=True)
+    approximation_by_name = {
+        name: validity_by_name[name].approximation_domain for name in expected
+    }
+    block.model_coordinate = backend.Var(
+        block.continuous_features,
+        domain=backend.Reals,
+        bounds=lambda _block, name: tuple(
+            approximation_by_name[name]["model_interval"]
+        ),
+    )
+    physical_expression_by_name = {
+        name: mapping_by_name[name].physical_expression for name in expected
+    }
+    block.physical_validity_lower = backend.Constraint(
+        block.continuous_features,
+        rule=lambda _block, name: physical_expression_by_name[name]
+        >= float(approximation_by_name[name]["physical_interval"][0]),
+    )
+    block.physical_validity_upper = backend.Constraint(
+        block.continuous_features,
+        rule=lambda _block, name: physical_expression_by_name[name]
+        <= float(approximation_by_name[name]["physical_interval"][1]),
+    )
+    block.model_validity_lower = backend.Constraint(
+        block.continuous_features,
+        rule=lambda _block, name: block.model_coordinate[name]
+        >= float(approximation_by_name[name]["model_interval"][0]),
+    )
+    block.model_validity_upper = backend.Constraint(
+        block.continuous_features,
+        rule=lambda _block, name: block.model_coordinate[name]
+        <= float(approximation_by_name[name]["model_interval"][1]),
+    )
+
+    def coordinate_link_rule(_block, name):
+        normalization = TPMNormalizationSpec.from_dict(
+            validity_by_name[name].normalization
+        )
+        physical = physical_expression_by_name[name]
+        if normalization.kind == "min-max":
+            coordinate = (physical - normalization.lower) / (
+                normalization.upper - normalization.lower
+            )
+        elif normalization.kind == "identity":
+            coordinate = physical
+        else:
+            raise ValueError(
+                f"continuous feature {name!r} uses unsupported normalization "
+                f"{normalization.kind!r}"
+            )
+        return block.model_coordinate[name] == coordinate
+
+    block.coordinate_link = backend.Constraint(
+        block.continuous_features, rule=coordinate_link_rule
+    )
+    decision_variables = {
+        name: {
+            "kind": "continuous",
+            "normalized_var": block.model_coordinate[name],
+        }
+        for name in expected
+    }
+    block.numerator = backend.Block(concrete=True)
+    numerator_encoding = encode_conditioned_spflow_circuit(
+        backend,
+        block.numerator,
+        circuit=pair.numerator.to_dict(),
+        decision_variables=decision_variables,
+        encoding=pair.encoding.to_dict(),
+    )
+    block.denominator = backend.Block(concrete=True)
+    denominator_encoding = encode_conditioned_spflow_circuit(
+        backend,
+        block.denominator,
+        circuit=pair.denominator.to_dict(),
+        decision_variables=decision_variables,
+        encoding=pair.encoding.to_dict(),
+    )
+    numerator_root = numerator_encoding["root"]
+    denominator_root = denominator_encoding["root"]
+    block.conditional_log_risk = backend.Expression(
+        expr=numerator_root - denominator_root
+    )
+    links = {
+        name: TPMConditionalDecisionLink(
+            feature_name=name,
+            physical_expression=physical_expression_by_name[name],
+            caller_variables=preflight[name],
+            model_coordinate=block.model_coordinate[name],
+            coordinate_link=block.coordinate_link[name],
+            physical_lower=block.physical_validity_lower[name],
+            physical_upper=block.physical_validity_upper[name],
+            model_lower=block.model_validity_lower[name],
+            model_upper=block.model_validity_upper[name],
+            normalization=validity_by_name[name].normalization,
+            approximation_domain=approximation_by_name[name],
+        )
+        for name in expected
+    }
+    diagnostic_components = tuple(
+        component.getname(fully_qualified=True)
+        for component in block.component_objects(active=True, descend_into=True)
+    )
+    result = TPMConditionalAttachment(
+        pair_id=pair.pair_id,
+        namespace=normalized_namespace,
+        retained_decisions=expected,
+        block=block,
+        numerator_root=numerator_root,
+        denominator_root=denominator_root,
+        conditional_log_risk=block.conditional_log_risk,
+        decision_links=links,
+        pair_metadata={
+            "event": pair.event.to_dict(),
+            "retained_decisions": list(expected),
+            "validity": [value.to_dict() for value in pair.validity],
+            "encoding": pair.encoding.to_dict(),
+            "numerical_policy": pair.numerical_policy.to_dict(),
+        },
+        diagnostic_components=diagnostic_components,
+    )
+    try:
+        model.add_component(normalized_namespace, block)
+    except Exception:
+        if model.component(normalized_namespace) is block:
+            model.del_component(block)
+        raise
+    return result
+
+
+def _validate_attachment_namespace(model: object, *, namespace: str) -> str:
+    normalized = str(namespace)
+    if (
+        not normalized
+        or not normalized.isidentifier()
+        or keyword.iskeyword(normalized)
+    ):
+        raise ValueError(
+            "attachment namespace must be a nonempty Python/Pyomo identifier"
+        )
+    component = getattr(model, "component", None)
+    add_component = getattr(model, "add_component", None)
+    if not callable(component) or not callable(add_component):
+        raise TypeError("attachment target must be an existing Pyomo model")
+    if component(normalized) is not None:
+        raise ValueError(f"attachment namespace {normalized!r} is already occupied")
+    return normalized
+
+
+def _inspect_structural_affine_expression(
+    backend: object,
+    model: object,
+    expression: object,
+    *,
+    feature_name: str,
+) -> tuple[object, ...]:
+    """Validate affinity with fixed caller variables kept structurally symbolic."""
+
+    from pyomo.core.expr.numvalue import NumericValue
+    from pyomo.core.expr.visitor import (
+        clone_expression,
+        identify_mutable_parameters,
+        identify_variables,
+    )
+    from pyomo.repn import generate_standard_repn
+
+    is_indexed = getattr(expression, "is_indexed", None)
+    if callable(is_indexed) and is_indexed():
+        raise TypeError(
+            f"continuous mapping for {feature_name!r} must be a scalar expression"
+        )
+    if not isinstance(expression, (NumericValue, int, float)) or isinstance(
+        expression, bool
+    ):
+        raise TypeError(
+            f"continuous mapping for {feature_name!r} must be a scalar numeric expression"
+        )
+    variables = tuple(identify_variables(expression, include_fixed=True))
+    if not variables:
+        raise ValueError(
+            f"continuous mapping for {feature_name!r} must reference at least one "
+            "caller-owned variable; constant-only mappings are invalid"
+        )
+    for variable in variables:
+        if variable.model() is not model:
+            raise ValueError(
+                f"continuous mapping for {feature_name!r} references a foreign "
+                "variable outside the caller model"
+            )
+        if not variable.is_continuous():
+            raise ValueError(
+                f"continuous mapping for {feature_name!r} contains an integer or "
+                "binary variable"
+            )
+    for parameter in identify_mutable_parameters(expression):
+        try:
+            value = float(backend.value(parameter))
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"continuous mapping for {feature_name!r} contains an "
+                "uninitialized or unfixed parameter"
+            ) from exc
+        if not math.isfinite(value):
+            raise ValueError(
+                f"continuous mapping for {feature_name!r} contains a nonfinite parameter"
+            )
+
+    dummy = backend.ConcreteModel()
+    dummy.VARIABLE_INDEX = backend.Set(
+        initialize=tuple(range(len(variables))), ordered=True
+    )
+    dummy.variable = backend.Var(dummy.VARIABLE_INDEX, domain=backend.Reals)
+    symbolic = clone_expression(
+        expression,
+        substitute={
+            id(variable): dummy.variable[index]
+            for index, variable in enumerate(variables)
+        },
+    )
+    try:
+        representation = generate_standard_repn(
+            symbolic, compute_values=True, quadratic=True
+        )
+    except (ArithmeticError, TypeError, ValueError) as exc:
+        raise ValueError(
+            f"continuous mapping for {feature_name!r} must have finite affine coefficients"
+        ) from exc
+    if representation.nonlinear_expr is not None or representation.quadratic_vars:
+        raise ValueError(
+            f"continuous mapping for {feature_name!r} must be structurally affine; "
+            "nonlinear products remain invalid when variables are fixed"
+        )
+    numeric_values = (representation.constant, *representation.linear_coefs)
+    for value in numeric_values:
+        try:
+            normalized = float(backend.value(value))
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"continuous mapping for {feature_name!r} has a nonfinite coefficient"
+            ) from exc
+        if not math.isfinite(normalized):
+            raise ValueError(
+                f"continuous mapping for {feature_name!r} has a nonfinite coefficient"
+            )
+    return variables
 
 
 def compile_conditional_mio_pair(
@@ -723,6 +1044,7 @@ def _finite_float(value: object, *, field_name: str) -> float:
 
 __all__ = [
     "TPMConditionalEvaluationError",
+    "attach_conditional_mio_pair",
     "compile_conditional_mio_pair",
     "evaluate_conditional_mio_pair",
 ]

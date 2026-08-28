@@ -14,9 +14,11 @@ if TYPE_CHECKING:
         CONDITIONAL_PAIR_COMPILER_VERSION,
         CONDITIONAL_PAIR_RECORD_KIND,
         CONDITIONAL_PAIR_SCHEMA_VERSION,
+        TPMConditionalAttachment,
         TPMConditionalCircuit,
         TPMConditionalCircuitNode,
         TPMConditionalCompilationRequest,
+        TPMConditionalDecisionLink,
         TPMConditionalEncodingPolicy,
         TPMConditionalEvaluation,
         TPMConditionalEvent,
@@ -25,6 +27,7 @@ if TYPE_CHECKING:
         TPMConditionalPair,
         TPMConditionalPublication,
         TPMConditionalSourceReference,
+        TPMContinuousDecisionMapping,
         TPMNativeConditionalEvaluation,
         canonical_conditional_json_bytes,
         load_conditional_pair,
@@ -32,6 +35,7 @@ if TYPE_CHECKING:
     )
     from .conditional_mio import (
         TPMConditionalEvaluationError,
+        attach_conditional_mio_pair,
         compile_conditional_mio_pair,
         evaluate_conditional_mio_pair,
     )
@@ -137,6 +141,10 @@ _EXPORT_MAP = {
     ),
     "TPMArtifact": (".artifact", "TPMArtifact"),
     "TPMArtifactIntegrityError": (".artifact", "TPMArtifactIntegrityError"),
+    "TPMConditionalAttachment": (
+        ".conditional",
+        "TPMConditionalAttachment",
+    ),
     "TPMConditionalCircuit": (".conditional", "TPMConditionalCircuit"),
     "TPMConditionalCircuitNode": (
         ".conditional",
@@ -145,6 +153,10 @@ _EXPORT_MAP = {
     "TPMConditionalCompilationRequest": (
         ".conditional",
         "TPMConditionalCompilationRequest",
+    ),
+    "TPMConditionalDecisionLink": (
+        ".conditional",
+        "TPMConditionalDecisionLink",
     ),
     "TPMConditionalEncodingPolicy": (
         ".conditional",
@@ -175,6 +187,10 @@ _EXPORT_MAP = {
     "TPMConditionalSourceReference": (
         ".conditional",
         "TPMConditionalSourceReference",
+    ),
+    "TPMContinuousDecisionMapping": (
+        ".conditional",
+        "TPMContinuousDecisionMapping",
     ),
     "TPMNativeConditionalEvaluation": (
         ".conditional",
@@ -238,6 +254,10 @@ _EXPORT_MAP = {
     "compile_conditional_mio_pair": (
         ".conditional_mio",
         "compile_conditional_mio_pair",
+    ),
+    "attach_conditional_mio_pair": (
+        ".conditional_mio",
+        "attach_conditional_mio_pair",
     ),
     "evaluate_conditional_mio_pair": (
         ".conditional_mio",
@@ -316,9 +336,11 @@ __all__ = [
     "SUPPORTED_TPM_EXECUTION_MODES",
     "TPMArtifact",
     "TPMArtifactIntegrityError",
+    "TPMConditionalAttachment",
     "TPMConditionalCircuit",
     "TPMConditionalCircuitNode",
     "TPMConditionalCompilationRequest",
+    "TPMConditionalDecisionLink",
     "TPMConditionalEncodingPolicy",
     "TPMConditionalEvaluation",
     "TPMConditionalEvaluationError",
@@ -328,6 +350,7 @@ __all__ = [
     "TPMConditionalPair",
     "TPMConditionalPublication",
     "TPMConditionalSourceReference",
+    "TPMContinuousDecisionMapping",
     "TPMNativeConditionalEvaluation",
     "UnsupportedTPMArtifactVersionError",
     "load_tpm_artifact",
@@ -364,6 +387,7 @@ __all__ = [
     "build_spn_modeling_terms",
     "compile_spflow_model_to_mio",
     "compile_conditional_mio_pair",
+    "attach_conditional_mio_pair",
     "evaluate_conditional_mio_pair",
     "evaluate_compiled_spflow_probability",
     "extract_spn_solution",
