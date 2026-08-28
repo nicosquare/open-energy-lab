@@ -117,6 +117,19 @@ variable, and the affine or identity equality between them. Declared binary labe
 states zero and one by caller order and decode to the original labels. Integer decision linking is
 not part of this feature.
 
+## Notebook walkthrough
+
+`examples/tpm_planning/declared_feature_domains_walkthrough.ipynb` is an optional, thin
+demonstration of these semantics. It reuses the committed schema-v3 fitted artifact and real SPFlow
+sidecar rather than refitting or reimplementing the domain rules. It compares two observed supports
+under one declared domain, exercises unbounded and unobserved-discrete cases, runs accepted and
+rejected native queries, compiles an explicit approximation subset, checks both compiled evidence
+paths, visualizes the nested intervals, and solves the physical-coordinate link with CPU HiGHS.
+
+Install the isolated notebook dependencies with `uv sync --group notebook`. The notebook is
+offline, writes no evidence, and is explanatory rather than part of the canonical fixture
+generation path.
+
 ## Validation
 
 Run the feature's complete offline workflow from the OEL repository root:
