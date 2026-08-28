@@ -161,6 +161,23 @@ jobs:
               --strict-markers \
               -ra
 
+      - name: Run bounded rolling FCR suite (120-second limit)
+        run: |
+          timeout --signal=TERM --kill-after=10s 120s \
+            uv run --locked --no-sync pytest \
+              tests/unit/control/test_fcr_rolling_import_boundary.py \
+              tests/unit/control/test_fcr_rolling_manifest.py \
+              tests/unit/control/test_fcr_rolling_orchestration.py \
+              tests/unit/control/test_fcr_rolling_reference.py \
+              tests/unit/control/test_fcr_rolling_results.py \
+              tests/unit/control/test_fcr_rolling_source_documentation.py \
+              tests/integration/control/test_fcr_rolling_highs.py \
+              tests/integration/control/test_fcr_rolling_reference_normalization.py \
+              tests/integration/control/test_fcr_rolling_resume.py \
+              -m "not reference_benchmark and not external_reference_data" \
+              --strict-markers \
+              -ra
+
   offline-feature-regressions:
     name: Offline control, simulator, weather, and demand regressions
     runs-on: ubuntu-latest
@@ -202,6 +219,16 @@ jobs:
               tests/unit/test_import_contract.py \
               tests/unit/test_no_legacy_imports.py \
               --ignore=tests/integration/control/test_robust_fcr_optional_gurobi.py \
+              --ignore=tests/integration/simulator/test_fcr_rolling_feature_012_replay.py \
+              -m "not reference_benchmark and not external_reference_data" \
+              --strict-markers \
+              -ra
+
+      - name: Run rolling FCR common replay suite (120-second limit)
+        run: |
+          timeout --signal=TERM --kill-after=10s 120s \
+            uv run --locked --no-sync pytest \
+              tests/integration/simulator/test_fcr_rolling_feature_012_replay.py \
               -m "not reference_benchmark and not external_reference_data" \
               --strict-markers \
               -ra

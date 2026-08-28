@@ -277,9 +277,9 @@ external-CSV access; collect heavy checks only through their explicit markers.
 
 ### Tests first
 
-- [ ] T090 [P] [US7] Add network, credential, subprocess/Julia, baseline/raw-artifact, external-path, eager-Pyomo/HiGHS/Gurobi, and future-activation sentinel tests in `tests/unit/control/test_fcr_rolling_import_boundary.py`
-- [ ] T091 [P] [US7] Add required-backend unavailable/incompatible failures, no solver fallback, deterministic two-run equality, operation counts, and model-cardinality growth tests in `tests/integration/control/test_fcr_rolling_highs.py`
-- [ ] T092 [P] [US7] Add CI contract tests ensuring bounded rolling tests run in required-backend/offline jobs while `reference_benchmark`, `external_reference_data`, and optional Gurobi remain excluded in `tests/unit/test_ci_workflow.py`
+- [x] T090 [P] [US7] Add network, credential, subprocess/Julia, baseline/raw-artifact, external-path, eager-Pyomo/HiGHS/Gurobi, and future-activation sentinel tests in `tests/unit/control/test_fcr_rolling_import_boundary.py`
+- [x] T091 [P] [US7] Add required-backend unavailable/incompatible failures, no solver fallback, deterministic two-run equality, operation counts, and model-cardinality growth tests in `tests/integration/control/test_fcr_rolling_highs.py`
+- [x] T092 [P] [US7] Add CI contract tests ensuring bounded rolling tests run in required-backend/offline jobs while `reference_benchmark`, `external_reference_data`, and optional Gurobi remain excluded in `tests/unit/test_ci_workflow.py`
 - [ ] T093 [P] [US7] Add the complete five-profile/four-date native comparison test under the explicit `reference_benchmark` marker with partial/time-limit evidence retention in `tests/parity/test_fcr_rolling_reference_benchmark.py`
 
 ### Workflows and CI
@@ -289,7 +289,7 @@ external-CSV access; collect heavy checks only through their explicit markers.
 - [ ] T096 [US7] Add explicit optional Gurobi selection, license/version unavailability reporting, and no fallback to the benchmark command in `examples/fcr_rolling_backtest/run_reference_benchmark.py`
 - [ ] T097 [US7] Add an explicit full-history manifest, immutable date ordering, resumable output, partial failure retention, and research-only non-release-gating execution while retaining the mandatory accepted-bid policy in `examples/fcr_rolling_backtest/run_reference_benchmark.py`
 - [ ] T098 [P] [US7] Complete authored, normalization, benchmark, Gurobi, external activation, resume, and full-history usage/evidence limits in `examples/fcr_rolling_backtest/README.md`
-- [ ] T099 [US7] Add bounded Feature 015 selections to required-backend and offline CI jobs while preserving the existing 120-second focused-test command limits and 15-minute job limits and excluding heavy/optional markers in `.github/workflows/ci.yml`
+- [x] T099 [US7] Add bounded Feature 015 selections to required-backend and offline CI jobs while preserving the existing 120-second focused-test command limits and 15-minute job limits and excluding heavy/optional markers in `.github/workflows/ci.yml`
 - [ ] T100 [US7] Run the exact routine Feature 015 quickstart gate twice offline and record pass counts plus stable semantic fingerprints in `docs/migration/fcr-rolling-backtest-parity.md`
 - [ ] T101 [US7] Verify marker collection for the full reference benchmark, external replay, and optional Gurobi paths and document unavailable evidence without executing it as routine acceptance in `docs/migration/fcr-rolling-backtest-parity.md`
 
