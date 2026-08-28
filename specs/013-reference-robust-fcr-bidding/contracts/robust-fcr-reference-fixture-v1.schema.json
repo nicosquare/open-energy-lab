@@ -1,0 +1,564 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-energy-lab.invalid/contracts/robust-fcr-reference-fixture-v1.schema.json",
+  "title": "Open Energy Lab robust FCR restriction reference fixture v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "fixture_id",
+    "reference_provenance",
+    "evaluation_fixture_reference",
+    "problem",
+    "reference_formulation",
+    "recorded_result",
+    "precision_policy",
+    "unavailable_fields",
+    "redistribution_status",
+    "fixture_fingerprint"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "oel.robust-fcr-reference-restriction.v1"
+    },
+    "fixture_id": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "reference_provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference_revision",
+        "source_paths",
+        "generation_working_directory",
+        "generation_command",
+        "original_result_path",
+        "original_result_byte_count",
+        "original_result_sha256",
+        "normalization_command",
+        "generated_result_revision_status"
+      ],
+      "properties": {
+        "reference_revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "source_paths": {
+          "type": "array",
+          "minItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^baselines/robust_storage_bidding/(code/(01_datastruct|02_model|12)\\.jl|results/02/2023-06-18\\.json)$"
+          }
+        },
+        "generation_working_directory": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "generation_command": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "original_result_path": {
+          "const": "baselines/robust_storage_bidding/results/02/2023-06-18.json"
+        },
+        "original_result_byte_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "original_result_sha256": {
+          "const": "8c13f8318d533c35755e90e4e45bcef336cb7b31c09afccbe616844acbddc1e6"
+        },
+        "normalization_command": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "generated_result_revision_status": {
+          "const": "digest_pinned_generated_file_not_tracked_at_reference_revision"
+        }
+      }
+    },
+    "evaluation_fixture_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fixture_id", "relative_path", "fixture_fingerprint"],
+      "properties": {
+        "fixture_id": {
+          "const": "robust-storage-bidding-experiment-2-2023-06-18-v1"
+        },
+        "relative_path": {
+          "const": "tests/fixtures/fcr_bid_evaluation/robust_storage_bidding_2023-06-18_aggregate_v1.json"
+        },
+        "fixture_fingerprint": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "problem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semantics_version",
+        "information_cutoff_utc",
+        "time_contract",
+        "battery",
+        "uncertainty",
+        "terminal_rule",
+        "prices",
+        "solve_profile",
+        "problem_fingerprint"
+      ],
+      "properties": {
+        "semantics_version": {
+          "const": "oel.robust-fcr-bidding-problem.v1"
+        },
+        "information_cutoff_utc": {
+          "$ref": "#/$defs/utcTimestamp"
+        },
+        "time_contract": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "delivery_date",
+            "market_timezone",
+            "start_utc",
+            "end_utc",
+            "planning_interval_count",
+            "planning_resolution_hours",
+            "energy_interval_count",
+            "energy_resolution_hours",
+            "fcr_interval_count",
+            "fcr_block_hours",
+            "planning_intervals_per_energy_interval",
+            "planning_intervals_per_fcr_block"
+          ],
+          "properties": {
+            "delivery_date": {
+              "const": "2023-06-18"
+            },
+            "market_timezone": {
+              "const": "Europe/Paris"
+            },
+            "start_utc": {
+              "const": "2023-06-17T22:00:00Z"
+            },
+            "end_utc": {
+              "const": "2023-06-18T22:00:00Z"
+            },
+            "planning_interval_count": {
+              "const": 96
+            },
+            "planning_resolution_hours": {
+              "const": 0.25
+            },
+            "energy_interval_count": {
+              "const": 24
+            },
+            "energy_resolution_hours": {
+              "const": 1.0
+            },
+            "fcr_interval_count": {
+              "const": 6
+            },
+            "fcr_block_hours": {
+              "const": 4.0
+            },
+            "planning_intervals_per_energy_interval": {
+              "const": 4
+            },
+            "planning_intervals_per_fcr_block": {
+              "const": 16
+            }
+          }
+        },
+        "battery": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source_power_sign",
+            "maximum_charge_power_kw",
+            "maximum_discharge_power_kw",
+            "minimum_stored_energy_kwh",
+            "maximum_stored_energy_kwh",
+            "initial_stored_energy_kwh",
+            "charge_efficiency",
+            "discharge_efficiency"
+          ],
+          "properties": {
+            "source_power_sign": {
+              "const": "positive_is_discharge"
+            },
+            "maximum_charge_power_kw": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "maximum_discharge_power_kw": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "minimum_stored_energy_kwh": {
+              "type": "number",
+              "minimum": 0
+            },
+            "maximum_stored_energy_kwh": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "initial_stored_energy_kwh": {
+              "type": "number"
+            },
+            "charge_efficiency": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "discharge_efficiency": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "uncertainty": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "recovery_activation_budget_hours",
+            "recovery_window_hours",
+            "horizon_activation_budget_hours",
+            "horizon_hours",
+            "pointwise_activation_bounds",
+            "derivation_rule"
+          ],
+          "properties": {
+            "recovery_activation_budget_hours": {
+              "const": 0.25
+            },
+            "recovery_window_hours": {
+              "const": 2.25
+            },
+            "horizon_activation_budget_hours": {
+              "const": 2.75
+            },
+            "horizon_hours": {
+              "const": 24.0
+            },
+            "pointwise_activation_bounds": {
+              "type": "array",
+              "prefixItems": [
+                {"const": -1.0},
+                {"const": 1.0}
+              ],
+              "items": false,
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "derivation_rule": {
+              "const": "covering-window-budget-v1"
+            }
+          }
+        },
+        "terminal_rule": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "minimum_terminal_stored_energy_kwh",
+            "allow_penalized_shortfall",
+            "shortfall_penalty_eur_per_kwh",
+            "source_formula"
+          ],
+          "properties": {
+            "minimum_terminal_stored_energy_kwh": {
+              "const": 53.327556325823224
+            },
+            "allow_penalized_shortfall": {
+              "const": true
+            },
+            "shortfall_penalty_eur_per_kwh": {
+              "const": 100.0
+            },
+            "source_formula": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        "prices": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "day_ahead_unit",
+            "day_ahead_energy_prices",
+            "fcr_capacity_unit",
+            "fcr_capacity_prices"
+          ],
+          "properties": {
+            "day_ahead_unit": {
+              "const": "EUR/kWh"
+            },
+            "day_ahead_energy_prices": {
+              "$ref": "#/$defs/energyPrices"
+            },
+            "fcr_capacity_unit": {
+              "const": "EUR/kW/4h-block"
+            },
+            "fcr_capacity_prices": {
+              "$ref": "#/$defs/fcrPrices"
+            }
+          }
+        },
+        "solve_profile": {
+          "description": "Recorded Julia solve-profile evidence only. A native RobustFCRSolvePolicy is supplied and fingerprinted separately and must not be inferred from this object.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reference_solver",
+            "time_limit_seconds",
+            "explicit_tolerances_status",
+            "intraday_trading",
+            "u_restrict"
+          ],
+          "properties": {
+            "reference_solver": {
+              "const": "Gurobi"
+            },
+            "time_limit_seconds": {
+              "const": 3600.0
+            },
+            "explicit_tolerances_status": {
+              "const": "not_recorded_source_defaults"
+            },
+            "intraday_trading": {
+              "const": false
+            },
+            "u_restrict": {
+              "const": 0.0
+            }
+          }
+        },
+        "problem_fingerprint": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "reference_formulation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "equation_version",
+        "objective_sense",
+        "deployability_role",
+        "source_refs",
+        "formulation_fingerprint"
+      ],
+      "properties": {
+        "kind": {
+          "const": "restriction"
+        },
+        "equation_version": {
+          "const": "robust-storage-bidding-non-intraday-milp-v1"
+        },
+        "objective_sense": {
+          "const": "maximize"
+        },
+        "deployability_role": {
+          "const": "candidate_plan"
+        },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "formulation_fingerprint": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "recorded_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "objective_value_eur",
+        "objective_bound_eur",
+        "source_x0_sign",
+        "rounded_x0_kw",
+        "rounded_xr_kw",
+        "saved_decimal_places",
+        "solve_time_seconds",
+        "recorded_slacks",
+        "decision_content_fingerprint"
+      ],
+      "properties": {
+        "objective_value_eur": {
+          "const": 11.028
+        },
+        "objective_bound_eur": {
+          "const": 11.028
+        },
+        "source_x0_sign": {
+          "const": "positive_is_discharge"
+        },
+        "rounded_x0_kw": {
+          "$ref": "#/$defs/energyDecisions"
+        },
+        "rounded_xr_kw": {
+          "$ref": "#/$defs/fcrDecisions"
+        },
+        "saved_decimal_places": {
+          "const": 3
+        },
+        "solve_time_seconds": {
+          "const": 1070.788
+        },
+        "recorded_slacks": {
+          "type": "object"
+        },
+        "decision_content_fingerprint": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "precision_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy_id",
+        "interval_closure",
+        "decision_decimal_places",
+        "decision_half_unit_kw",
+        "objective_decimal_places",
+        "objective_half_unit_eur",
+        "deployability_threshold",
+        "certification_method",
+        "policy_fingerprint"
+      ],
+      "properties": {
+        "policy_id": {
+          "const": "joint-rounded-restriction-certificate-v1"
+        },
+        "interval_closure": {
+          "const": "closed_outer"
+        },
+        "decision_decimal_places": {
+          "const": 3
+        },
+        "decision_half_unit_kw": {
+          "const": 0.0005
+        },
+        "objective_decimal_places": {
+          "const": 3
+        },
+        "objective_half_unit_eur": {
+          "const": 0.0005
+        },
+        "deployability_threshold": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "rule"],
+          "properties": {
+            "value": {
+              "const": 0.000001
+            },
+            "rule": {
+              "const": "absolute_in_each_canonical_unit"
+            }
+          }
+        },
+        "certification_method": {
+          "const": "one_joint_restriction_feasibility_and_objective_interval"
+        },
+        "policy_fingerprint": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "unavailable_fields": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["field_id", "reason"],
+        "properties": {
+          "field_id": {
+            "$ref": "#/$defs/nonEmptyString"
+          },
+          "reason": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        }
+      }
+    },
+    "redistribution_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "normalized_problem_and_result",
+        "original_result",
+        "activation_data"
+      ],
+      "properties": {
+        "normalized_problem_and_result": {
+          "const": "committed_derived_evidence"
+        },
+        "original_result": {
+          "const": "digest_only"
+        },
+        "activation_data": {
+          "const": "absent_external_evaluation_only"
+        }
+      }
+    },
+    "fixture_fingerprint": {
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "utcTimestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$"
+    },
+    "energyPrices": {
+      "type": "array",
+      "minItems": 24,
+      "maxItems": 24,
+      "items": {
+        "type": "number"
+      }
+    },
+    "fcrPrices": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "number"
+      }
+    },
+    "energyDecisions": {
+      "type": "array",
+      "minItems": 24,
+      "maxItems": 24,
+      "items": {
+        "type": "number"
+      }
+    },
+    "fcrDecisions": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "number",
+        "minimum": 0
+      }
+    }
+  }
+}

@@ -133,6 +133,46 @@ and exact header `DateTime,Frequency (Hz),xi,xi_EU`. The pinned README release
 URL is authoritative; the older MV locator is superseded. The file is excluded
 from Git, wheels, sdists, releases, mirrors, and public CI artifacts.
 
+## Feature 013 Robust-Bidding Optimization Fixture
+
+Feature `013-reference-robust-fcr-bidding` owns the distinct small normalized
+optimization fixture:
+
+- path:
+  `tests/fixtures/fcr_bidding/robust_storage_bidding_2023-06-18_restriction_v1.json`;
+- schema: `oel.robust-fcr-reference-restriction.v1`;
+- fixture fingerprint:
+  `d2d7d7430153d91c5c589fe8118005d01e02d70012bf5e8bbf4f419c13154ba4`;
+- pinned reference revision:
+  `7e44738bb30e5c8204efe40103b9be4c2203685c`;
+- generated source result path:
+  `baselines/robust_storage_bidding/results/02/2023-06-18.json`, which is not
+  tracked at that revision;
+- generated source result digest and size:
+  `8c13f8318d533c35755e90e4e45bcef336cb7b31c09afccbe616844acbddc1e6`
+  and 6,653 bytes;
+- content: exact battery, price, 24/96/6 mapping, terminal, uncertainty, and
+  restriction-profile inputs plus the rounded objective, bound, 24 `x0`, six
+  `xr`, unavailable-field ledger, source-precision policy, and a fingerprinted
+  cross-reference to the Feature 012 fixture; and
+- exclusions: no original source JSON bytes, baseline code, Julia environment,
+  activation sample, external CSV locator, credential, or native solve policy.
+
+The normalizer is
+`examples/robust_fcr_bidding/normalize_reference_fixture.py`. It accepts only
+an explicit digest-matched source path, writes canonical JSON only beneath the
+ignored `artifacts/reference/robust_fcr_bidding/` staging area, runs no Julia or
+solver, reports an ordered semantic diff, and refuses to overwrite the
+committed destination. Promotion into `tests/fixtures/` is a deliberate review
+action after byte and semantic inspection.
+
+Redistribution is intentionally split: the normalized problem/result evidence
+is committed derived evidence; the generated original result is represented by
+digest only; and activation data is absent and remains external evaluation-only
+evidence. Fixture loading never supplies a native execution policy. A selected
+native benchmark must separately declare and fingerprint every HiGHS tolerance,
+limit, thread, seed, incumbent, canonicalization, and comparison option.
+
 ### Feature 010 Single-Owner Matrix
 
 | Responsibility ID | Responsibility | Single owner |

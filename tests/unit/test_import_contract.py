@@ -17,18 +17,23 @@ OPTIONAL_RESEARCH_MODULES = {
     "wandb",
 }
 
-EXPECTED_CONTROL_EXPORTS = [
+EXPECTED_CONTROL_EXPORTS = sorted([
     "AFRRBaselineConfig",
     "AFRRBaselineMode",
     "ArbitrageOnlyBaselineConfig",
     "BaselineScheduleBundle",
     "BidPlanProducer",
+    "ConstraintFamilyResidual",
     "DirectionalCapacityCommitmentInterval",
     "DirectionalCapacitySchedule",
     "FCRBidPlanValidationError",
+    "FeasibilityAudit",
     "FixedFCRBidPlan",
+    "HorizonWideActivationBudget",
+    "JointReferenceCertificate",
     "MFRRBaselineConfig",
     "MFRRBaselineMode",
+    "ObjectiveBreakdown",
     "OptimizationMetric",
     "PVSelfConsumptionConfig",
     "PVSelfConsumptionController",
@@ -36,16 +41,33 @@ EXPECTED_CONTROL_EXPORTS = [
     "PriceThresholdConfig",
     "PriceThresholdController",
     "RegulationOnlyBaselineConfig",
+    "RecoveryWindowActivationBudget",
     "RestorationBaselineBundle",
     "RestorationCapability",
     "RestorationControlValidationError",
     "RestorationEnergyBaselineInterval",
     "RestorationEnergyBaselineSchedule",
+    "RobustFCRBatteryParameters",
+    "RobustFCRBiddingProblem",
+    "RobustFCRBoundComparison",
+    "RobustFCRDecisions",
+    "RobustFCRFormulationProfile",
+    "RobustFCRPriceInputs",
+    "RobustFCRReferenceComparison",
+    "RobustFCRReferenceFixture",
+    "RobustFCRSolvePolicy",
+    "RobustFCRSolveResult",
+    "RobustFCRSolverDependencyUnavailableError",
+    "RobustFCRSolverUnavailableError",
+    "RobustFCRTimeContract",
+    "RobustFCRUncertaintyProfile",
+    "RobustFCRValidationError",
     "SerializedScheduleReference",
     "SocGuardrailConfig",
     "SocGuardrailController",
     "StackedBaselineValidationError",
     "StackedHeuristicConfig",
+    "TerminalStoredEnergyRule",
     "build_afrr_baseline",
     "build_afrr_baseline_config",
     "build_afrr_directional_capacity_schedule",
@@ -56,8 +78,16 @@ EXPECTED_CONTROL_EXPORTS = [
     "build_mfrr_directional_capacity_schedule",
     "build_regulation_only_baseline",
     "build_restoration_capability",
+    "build_robust_fcr_bidding_problem",
+    "build_robust_fcr_reference_problem",
+    "build_robust_fcr_time_contract",
     "build_stacked_heuristic_baseline",
-]
+    "compare_robust_fcr_bounds",
+    "compare_robust_fcr_reference",
+    "derive_non_intraday_horizon_budget",
+    "load_robust_fcr_reference_fixture",
+    "solve_robust_fcr_bid",
+])
 EXPECTED_VISUALIZATION_EXPORTS = [
     "build_inspection_view",
     "load_persisted_run_output",
@@ -313,6 +343,59 @@ def test_feature_012_public_plan_and_evaluator_imports_have_exact_owners():
     market = importlib.import_module("open_energy_lab.market")
     assert "load_golden_reference_fixture" not in market.__all__
     assert "load_reference_activation_trace" not in market.__all__
+
+
+def test_feature_013_public_imports_have_exact_owners_and_stay_solver_lazy():
+    before_import = set(sys.modules)
+    control = importlib.import_module("open_energy_lab.control")
+    bidding_owner = "open_energy_lab.control.robust_fcr_bidding"
+    reference_owner = "open_energy_lab.control.robust_fcr_reference"
+    expected = {
+        control.ConstraintFamilyResidual: bidding_owner,
+        control.FeasibilityAudit: bidding_owner,
+        control.HorizonWideActivationBudget: bidding_owner,
+        control.JointReferenceCertificate: reference_owner,
+        control.ObjectiveBreakdown: bidding_owner,
+        control.RecoveryWindowActivationBudget: bidding_owner,
+        control.RobustFCRBatteryParameters: bidding_owner,
+        control.RobustFCRBiddingProblem: bidding_owner,
+        control.RobustFCRBoundComparison: bidding_owner,
+        control.RobustFCRDecisions: bidding_owner,
+        control.RobustFCRFormulationProfile: bidding_owner,
+        control.RobustFCRPriceInputs: bidding_owner,
+        control.RobustFCRReferenceComparison: reference_owner,
+        control.RobustFCRReferenceFixture: reference_owner,
+        control.RobustFCRSolvePolicy: bidding_owner,
+        control.RobustFCRSolveResult: bidding_owner,
+        control.RobustFCRSolverDependencyUnavailableError: bidding_owner,
+        control.RobustFCRSolverUnavailableError: bidding_owner,
+        control.RobustFCRTimeContract: bidding_owner,
+        control.RobustFCRUncertaintyProfile: bidding_owner,
+        control.RobustFCRValidationError: bidding_owner,
+        control.TerminalStoredEnergyRule: bidding_owner,
+        control.build_robust_fcr_bidding_problem: bidding_owner,
+        control.build_robust_fcr_reference_problem: reference_owner,
+        control.build_robust_fcr_time_contract: bidding_owner,
+        control.compare_robust_fcr_bounds: bidding_owner,
+        control.compare_robust_fcr_reference: reference_owner,
+        control.derive_non_intraday_horizon_budget: bidding_owner,
+        control.load_robust_fcr_reference_fixture: reference_owner,
+        control.solve_robust_fcr_bid: bidding_owner,
+    }
+
+    assert {value: value.__module__ for value in expected} == expected
+    newly_loaded = set(sys.modules) - before_import
+    forbidden = {
+        "gurobipy",
+        "highspy",
+        "julia",
+        "juliacall",
+        "pandas",
+        "pyomo",
+    }
+    assert forbidden.isdisjoint(
+        {name.split(".", 1)[0] for name in newly_loaded}
+    )
 
 
 def test_feature_011_restoration_public_imports_resolve_from_exact_owned_modules():

@@ -278,6 +278,56 @@ Rationale: the controller boundary is validated on CPU with deterministic fixtur
 Alternatives considered: coupling Phase 6 validation to these stacks was rejected as out of scope and brittle
 ```
 
+## Reference Robust FCR Bidding Classification
+
+Feature `013-reference-robust-fcr-bidding` reuses the locked open-source
+optimization stack introduced by Feature 009 and adds Gurobi only through a
+separately selected optional extra. Both enforce distinct lazy boundaries.
+
+```text
+Dependency: Pyomo 6.10.1 and highspy 1.15.1
+Requested by: 013-reference-robust-fcr-bidding restriction, relaxation, and joint source-rounding certificate
+Target module: explicit solve/certificate functions below src/open_energy_lab/control; never the package root or pure contract import path
+Classification: required
+Import boundary: importlib-loaded only after solve or certification is explicitly requested
+Install mechanism: existing required environment via `uv sync --dev`; the optional Gurobi extra is not selected
+Fallback or skip behavior: missing, incompatible, or unavailable required Pyomo/HiGHS is a failed required-backend check, not a successful skip
+External service, license, hardware, or scheduler assumptions: offline CPU only; no service, credential, license, GPU, or scheduler
+Rationale: HiGHS is the routine license-free backend while pure bidding contracts stay import-light
+Alternatives considered: eager backend imports and solver-dependent public contracts were rejected because they widen ordinary package imports and obscure dependency failures
+```
+
+```text
+Dependency: Gurobi/gurobipy 13.0.2
+Requested by: optional Feature 013 cross-backend restriction/relaxation and exact-bilinear evidence
+Target module: explicitly selected Gurobi adapter in src/open_energy_lab/control/_robust_fcr_solver.py
+Classification: optional and license-backed
+Import boundary: probed only when solver_name="gurobi" is explicitly selected; required HiGHS paths never import or inspect it
+Install mechanism: pinned project extra via `uv sync --dev --extra gurobi`, plus a caller-managed valid license
+Fallback or skip behavior: report structured unavailable evidence or an actionable optional-test skip; never silently fall through to HiGHS and never weaken routine restriction <= relaxation
+External service, license, hardware, or scheduler assumptions: compatible local Gurobi binary and license
+Rationale: matching the reference solver family can reduce backend-performance uncertainty, while exact evidence remains useful and neither is required for the deployable routine restriction
+Alternatives considered: making Gurobi routine, leaving installation unpinned, or silently substituting another backend were rejected
+```
+
+```text
+Dependency: Julia/JuMP reference checkout, network, credentials, and external regulation_signal.csv
+Requested by: none for Feature 013 production or routine validation; the CSV is optional Feature 012 post-acceptance replay evidence
+Target module: no production module; explicit fixture-maintenance and selected external-data test paths only
+Classification: legacy-only or external-data-backed
+Import boundary: blocked from routine problem construction, fixture loading, comparison, and bid selection
+Install mechanism: no Julia or service install; the caller may separately install the digest-governed CSV below ignored artifacts
+Fallback or skip behavior: routine validation remains complete; selected external replay skips actionably only when its governed bytes are absent, while the historical optimization benchmark has its own resource outcome
+External service, license, hardware, or scheduler assumptions: none for routine validation
+Rationale: a small normalized fixture preserves bounded source evidence without runtime reference coupling or redistribution of external bytes
+Alternatives considered: reading baselines at runtime, downloading data, inferring solver policy from the rounded source record, and committing external bytes were rejected
+```
+
+The committed fixture records source formulation evidence but deliberately owns
+no native tolerance, time-limit, seed, incumbent-acceptance, or comparison
+policy. The full selected benchmark supplies the complete
+`native-reference-benchmark-highs-v1` policy and its fingerprint independently.
+
 ## Native Controller Pack Classification
 
 The `005-controller-pack` feature extends the stable control surface without

@@ -73,8 +73,12 @@ service capabilities remain outside the routine environment and import path.
 - [FCR bid-evaluation migration and evidence boundary](docs/migration/fcr-bid-evaluation-parity.md)
 - [Runnable fixed-plan and bounded-reference examples](examples/fcr_bid_evaluation/README.md)
 - [Source-only FCR evaluation notebook](examples/fcr_bid_evaluation/fcr_bid_evaluation_walkthrough.ipynb)
+- [Feature 013 robust FCR bidding design](specs/013-reference-robust-fcr-bidding/plan.md)
+- [Feature 013 review and benchmark quickstart](specs/013-reference-robust-fcr-bidding/quickstart.md)
+- [Reference robust-FCR bidding migration and evidence ledger](docs/migration/reference-robust-fcr-bidding.md)
+- [Robust-FCR bidding examples](examples/robust_fcr_bidding/README.md)
 - [Fixture provenance rules](tests/fixtures/README.md)
-- [Active Spec Kit plan](specs/001-library-foundation/plan.md)
+- [Active Spec Kit plan](specs/013-reference-robust-fcr-bidding/plan.md)
 
 ## French Restoration-Services Research Slice
 
@@ -110,6 +114,25 @@ routine offline checks and the explicit external-data workflow, or open the
 [source-only evaluation walkthrough](examples/fcr_bid_evaluation/fcr_bid_evaluation_walkthrough.ipynb)
 for an offline physical, settlement, diagnostic, producer-neutrality, and
 bounded-evidence audit.
+
+## Reference Robust FCR Bidding
+
+Feature 013 selects one day's 24 hourly day-ahead decisions and six four-hour
+symmetric FCR capacity bids with the pinned non-intraday mixed-binary robust
+restriction. Native Pyomo/HiGHS bidding lives under
+[`open_energy_lab.control`](src/open_energy_lab/control); the relaxation is
+upper-bound evidence only, and optional exact Gurobi evidence is never a plan.
+Realized activation is absent from bid selection.
+
+An eligible restriction emits Feature 012's existing `FixedFCRBidPlan`
+unchanged. After market acceptance, callers use Feature 012—not a bidder-owned
+replay—for physical delivery and realized settlement. Start with the
+[Feature 013 plan](specs/013-reference-robust-fcr-bidding/plan.md),
+[example guide](examples/robust_fcr_bidding/README.md), and
+[review quickstart](specs/013-reference-robust-fcr-bidding/quickstart.md).
+The historical Julia comparison is deliberately bounded by rounded source
+precision and unavailable source metadata; it does not claim identical
+unrounded decisions, solver proof, or complete Julia trace parity.
 
 ## Local Checks
 

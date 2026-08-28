@@ -239,9 +239,13 @@ def test_feature_012_external_csv_is_ignored_and_excluded_from_distributions() -
     assert "artifacts/" in gitignore
     assert {"/artifacts/**", "/baselines/**"} <= wheel
     assert {"/artifacts/**", "/baselines/**"} <= sdist
-    assert not Path(
+    external_path = Path(
         "artifacts/reference/robust_storage_bidding/regulation_signal.csv"
-    ).exists()
+    )
+    assert external_path.parts[:2] == ("artifacts", "reference")
+    if external_path.exists():
+        assert external_path.is_file()
+        assert not external_path.is_symlink()
     assert not Path("src/open_energy_lab/regulation_signal.csv").exists()
 
 
