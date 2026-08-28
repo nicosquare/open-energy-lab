@@ -2622,23 +2622,63 @@ def encode_conditioned_spflow_circuit(
             )
             continue
         if node_type in {"leaf_binary", "leaf_categorical"}:
-            if "fixed_value" not in node:
-                raise ValueError(
-                    f"conditioned discrete leaf {node_id} requires a symbolic "
-                    "mapping capability not supplied by this attachment"
-                )
             densities = _float_sequence(node["densities"])
-            index = int(node["fixed_value"])
-            if not 0 <= index < len(densities):
-                raise ValueError(
-                    f"conditioned discrete leaf {node_id} fixed index is invalid"
-                )
-            log_density = math.log(max(densities[index], probability_floor))
-            block.add_component(
-                f"discrete_leaf_fixed_{node_id}",
-                backend.Constraint(expr=block.node_out[node_id] == log_density),
+            log_densities = tuple(
+                math.log(max(value, probability_floor)) for value in densities
             )
-            continue
+            if "fixed_value" in node:
+                index = int(node["fixed_value"])
+                if not 0 <= index < len(densities):
+                    raise ValueError(
+                        f"conditioned discrete leaf {node_id} fixed index is invalid"
+                    )
+                block.add_component(
+                    f"discrete_leaf_fixed_{node_id}",
+                    backend.Constraint(
+                        expr=block.node_out[node_id] == log_densities[index]
+                    ),
+                )
+                continue
+            feature_name = str(node["feature_name"])
+            if feature_name not in decision_variables:
+                raise ValueError(
+                    f"conditioned discrete leaf {node_id} has no decision mapping"
+                )
+            payload = decision_variables[feature_name]
+            kind = str(payload.get("kind"))
+            if node_type == "leaf_binary" and kind == "binary":
+                variable = payload["normalized_var"]
+                block.add_component(
+                    f"binary_leaf_{node_id}",
+                    backend.Constraint(
+                        expr=block.node_out[node_id]
+                        == (1.0 - variable) * log_densities[0]
+                        + variable * log_densities[1]
+                    ),
+                )
+                continue
+            if node_type == "leaf_categorical" and kind == "categorical":
+                indicators = tuple(payload["normalized_var"])
+                if len(indicators) != len(log_densities):
+                    raise ValueError(
+                        f"categorical leaf {node_id} indicator count differs from densities"
+                    )
+                block.add_component(
+                    f"categorical_leaf_{node_id}",
+                    backend.Constraint(
+                        expr=block.node_out[node_id]
+                        == sum(
+                            indicator * log_density
+                            for indicator, log_density in zip(
+                                indicators, log_densities, strict=True
+                            )
+                        )
+                    ),
+                )
+                continue
+            raise ValueError(
+                f"conditioned discrete leaf {node_id} mapping kind {kind!r} is invalid"
+            )
         if node_type == "product":
             child_ids = tuple(int(value) for value in node.get("children", ()))
             block.add_component(

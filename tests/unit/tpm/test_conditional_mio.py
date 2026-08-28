@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import json
 import math
 from pathlib import Path
 
@@ -1042,3 +1043,102 @@ def test_native_evaluator_reports_missing_spflow_before_loading_a_sidecar(
                 "service_tier": "standard",
             },
         )
+
+
+def test_direct_evaluator_accepts_declared_and_coordinate_mixed_decisions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    artifact = load_tpm_artifact(
+        TPM_FIXTURE_DIRECTORY / "tpm_artifact_domains_v3.json"
+    )
+    _install_compiler_stubs(monkeypatch, artifact)
+    pair = compile_conditional_mio_pair(_compilation_request())
+
+    declared = evaluate_conditional_mio_pair(
+        pair,
+        declared_domain_assignments={
+            "x": 100.0,
+            "activation": "on",
+            "service_tier": "priority",
+        },
+    )
+    coordinate = evaluate_conditional_mio_pair(
+        pair,
+        model_coordinate_assignments={
+            "x": 0.5,
+            "activation": 1.0,
+            "service_tier": 2.0,
+        },
+    )
+
+    assert declared.numerator_log == pytest.approx(coordinate.numerator_log)
+    assert declared.denominator_log == pytest.approx(coordinate.denominator_log)
+    assert pair.validity[1].declared_domain["ordering"] == ("off", "on")
+    assert pair.validity[2].declared_domain["ordering"] == (
+        "economy",
+        "standard",
+        "priority",
+    )
+
+
+@pytest.mark.parametrize(
+    "assignments",
+    [
+        {"x": 100.0, "activation": "invalid", "service_tier": "economy"},
+        {"x": 100.0, "activation": "off", "service_tier": "invalid"},
+    ],
+)
+def test_direct_evaluator_rejects_invalid_declared_discrete_values(
+    monkeypatch: pytest.MonkeyPatch,
+    assignments: dict[str, object],
+) -> None:
+    artifact = load_tpm_artifact(
+        TPM_FIXTURE_DIRECTORY / "tpm_artifact_domains_v3.json"
+    )
+    _install_compiler_stubs(monkeypatch, artifact)
+    pair = compile_conditional_mio_pair(_compilation_request())
+
+    with pytest.raises(ValueError, match="domain|declared|value"):
+        evaluate_conditional_mio_pair(
+            pair, declared_domain_assignments=assignments
+        )
+
+
+@pytest.mark.parametrize(
+    "assignments",
+    [
+        {"x": 0.5, "activation": 0.5, "service_tier": 0.0},
+        {"x": 0.5, "activation": 0.0, "service_tier": 3.0},
+    ],
+)
+def test_direct_evaluator_rejects_invalid_discrete_model_indices(
+    monkeypatch: pytest.MonkeyPatch,
+    assignments: dict[str, object],
+) -> None:
+    artifact = load_tpm_artifact(
+        TPM_FIXTURE_DIRECTORY / "tpm_artifact_domains_v3.json"
+    )
+    _install_compiler_stubs(monkeypatch, artifact)
+    pair = compile_conditional_mio_pair(_compilation_request())
+
+    with pytest.raises(ValueError, match="ordered-index|ordering|domain|invalid"):
+        evaluate_conditional_mio_pair(
+            pair, model_coordinate_assignments=assignments
+        )
+
+
+def test_mixed_conditional_pair_contains_symbolic_graph_not_cartesian_lookup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    artifact = load_tpm_artifact(
+        TPM_FIXTURE_DIRECTORY / "tpm_artifact_domains_v3.json"
+    )
+    _install_compiler_stubs(monkeypatch, artifact)
+    pair = compile_conditional_mio_pair(_compilation_request())
+    serialized = json.dumps(pair.to_dict(), sort_keys=True)
+
+    assert "leaf_binary" in serialized
+    assert "leaf_categorical" in serialized
+    assert "cartesian" not in serialized.casefold()
+    assert "combination" not in serialized.casefold()
+    assert "lookup" not in serialized.casefold()

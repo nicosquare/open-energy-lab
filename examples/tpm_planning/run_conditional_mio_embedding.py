@@ -16,13 +16,25 @@ from open_energy_lab.tpm import (
     TPMArtifactBuildRequest,
     TPMFeatureDomain,
     TPMFitConfig,
+    TPMConditionalCompilationRequest,
+    TPMConditionalEncodingPolicy,
+    TPMConditionalNumericalPolicy,
+    canonical_conditional_json_bytes,
+    compile_conditional_mio_pair,
+    evaluate_conditional_mio_pair,
     detect_spflow_backend_capabilities,
     fit_tpm_artifact_from_rows,
     load_tpm_artifact,
+    load_conditional_pair,
+    publish_conditional_pair,
 )
 from open_energy_lab.tpm.artifact import write_tpm_sidecar
 from open_energy_lab.tpm.optional_spflow import load_spflow_payload
 from open_energy_lab.tpm.query import reduce_spflow_log_likelihood
+from open_energy_lab.tpm.piecewise import (
+    PiecewiseBreakpointPolicy,
+    build_logsumexp_piecewise_spec,
+)
 
 
 EXAMPLE_DIRECTORY = Path(__file__).resolve().parent
@@ -35,11 +47,18 @@ SIDECAR_PATH = (
     / "sidecars"
     / "tpm_artifact_conditional_mio_v3.spn_payload.pkl"
 )
+MAX_PAIR_PATH = FIXTURE_DIRECTORY / "conditional_pair_max_v1.json"
+PWL_PAIR_PATH = FIXTURE_DIRECTORY / "conditional_pair_pwl_v1.json"
 FIXED_FIXTURE_TIMESTAMP = "2026-08-28T00:00:00Z"
 STAGING_COMMAND = (
     "uv run --offline --locked --no-sync python "
     "examples/tpm_planning/run_conditional_mio_embedding.py "
     "--stage-fixtures <fresh-directory>"
+)
+PAIR_STAGING_COMMAND = (
+    "uv run --offline --locked --no-sync python "
+    "examples/tpm_planning/run_conditional_mio_embedding.py "
+    "--stage-pairs <fresh-directory>"
 )
 VERIFICATION_COMMAND = (
     "uv run --offline --locked --no-sync python "
@@ -163,10 +182,105 @@ def _fixture_payload(artifact) -> dict[str, object]:
         "spec_feature": "016-conditional-mio-embedding",
         "notes": [
             "The source rows are deliberately nonuniform in the retained decision x.",
-            "This artifact is fitted evidence; final max/PWL pair fixtures are published only after mixed symbolic attachment support exists.",
+            "This artifact is fitted evidence for the committed max and PWL conditional pair fixtures.",
             "Verification refits and compares semantic values; it does not require pickle-byte identity.",
         ],
         **payload,
+    }
+
+
+def _conditional_encoding(
+    source: Mapping[str, object],
+    *,
+    policy_name: str,
+) -> TPMConditionalEncodingPolicy:
+    compilation = _mapping(
+        source.get("conditional_compilation"),
+        field_name="conditional_compilation",
+    )
+    leaf = _mapping(compilation.get("leaf_policy"), field_name="leaf_policy")
+    policies = _mapping(compilation.get("sum_policies"), field_name="sum_policies")
+    selected = _mapping(
+        policies.get(policy_name), field_name=f"sum_policies.{policy_name}"
+    )
+    sum_configuration = {
+        key: value
+        for key, value in selected.items()
+        if key not in {"mode", "approximation_label", "certification_label"}
+    }
+    mode = str(selected["mode"])
+    if mode == "piecewise":
+        breakpoint_policy = PiecewiseBreakpointPolicy.from_dict(
+            _mapping(
+                selected.get("breakpoint_policy"),
+                field_name="breakpoint_policy",
+            )
+        )
+        curves = build_logsumexp_piecewise_spec(
+            max_terms=len(_rows(source)),
+            breakpoint_policy=breakpoint_policy,
+        )
+        exp_floor = float(selected["exp_domain_floor"])
+        exp_x = tuple(float(value) for value in curves["exp_x_points"])
+        exp_y = tuple(float(value) for value in curves["exp_y_points"])
+        sum_configuration.update(curves)
+        if exp_floor < exp_x[0]:
+            sum_configuration["exp_x_points"] = (exp_floor, *exp_x)
+            sum_configuration["exp_y_points"] = (0.0, *exp_y)
+        sum_configuration.pop("breakpoint_policy", None)
+    return TPMConditionalEncodingPolicy(
+        mode=mode,
+        approximation_label=str(selected["approximation_label"]),
+        certification_label=str(selected["certification_label"]),
+        leaf_configuration=leaf,
+        sum_configuration=sum_configuration,
+    )
+
+
+def _conditional_request(
+    artifact_path: Path,
+    source: Mapping[str, object],
+    *,
+    policy_name: str,
+) -> TPMConditionalCompilationRequest:
+    compilation = _mapping(
+        source.get("conditional_compilation"),
+        field_name="conditional_compilation",
+    )
+    return TPMConditionalCompilationRequest(
+        source_artifact=str(artifact_path),
+        event_target=str(compilation["event_target"]),
+        event_value=compilation["event_value"],
+        retained_decisions=tuple(
+            str(name) for name in compilation["retained_decisions"]
+        ),
+        approximation_domains=tuple(
+            _mapping(value, field_name="approximation_domain")
+            for value in compilation["approximation_domains"]
+        ),
+        encoding=_conditional_encoding(source, policy_name=policy_name),
+        numerical_policy=TPMConditionalNumericalPolicy(
+            tolerances=_mapping(
+                compilation.get("numerical_policy"),
+                field_name="numerical_policy",
+            )
+        ),
+    )
+
+
+def _compile_pairs(
+    artifact_path: Path,
+    source: Mapping[str, object],
+) -> dict[str, object]:
+    return {
+        policy_name: compile_conditional_mio_pair(
+            _conditional_request(
+                artifact_path,
+                source,
+                policy_name=policy_name,
+            )
+        )
+        for policy_name in ("max", "pwl")
     }
 
 
@@ -179,7 +293,7 @@ def _write_json_new(path: Path, payload: Mapping[str, object]) -> None:
 
 
 def stage_fixtures(staging_directory: Path) -> dict[str, object]:
-    """Create the reviewed source artifact and sidecar in one fresh directory."""
+    """Create reviewed source and final mixed pairs in one fresh directory."""
 
     destination = Path(staging_directory).resolve()
     destination.mkdir(parents=True, exist_ok=False)
@@ -192,6 +306,28 @@ def stage_fixtures(staging_directory: Path) -> dict[str, object]:
             raise AssertionError("staged sidecar digest differs from the fitted artifact")
         _write_json_new(staged_manifest, _fixture_payload(artifact))
     loaded = load_tpm_artifact(staged_manifest)
+    source = _load_source()
+    pairs = _compile_pairs(staged_manifest, source)
+    pair_paths = {
+        "max": destination / MAX_PAIR_PATH.name,
+        "pwl": destination / PWL_PAIR_PATH.name,
+    }
+    pair_results = []
+    for policy_name in ("max", "pwl"):
+        publication = publish_conditional_pair(
+            pairs[policy_name], pair_paths[policy_name]
+        )
+        if not publication.created or publication.reused:
+            raise AssertionError("fresh staging must create each conditional pair")
+        pair_paths[policy_name].chmod(0o644)
+        pair_results.append(
+            {
+                "policy": policy_name,
+                "path": str(pair_paths[policy_name]),
+                "pair_id": pairs[policy_name].pair_id,
+                "sha256": _sha256(pair_paths[policy_name]),
+            }
+        )
     return {
         "mode": "stage_fixtures",
         "staging_directory": str(destination),
@@ -202,7 +338,47 @@ def stage_fixtures(staging_directory: Path) -> dict[str, object]:
         "artifact_id": loaded.artifact_id,
         "schema_version": loaded.schema_version,
         "backend_api_version": loaded.backend_api_version,
-        "published_pairs": [],
+        "published_pairs": pair_results,
+    }
+
+
+def stage_pairs(staging_directory: Path) -> dict[str, object]:
+    """Create final pairs from the already-reviewed committed source artifact."""
+
+    destination = Path(staging_directory).resolve()
+    destination.mkdir(parents=True, exist_ok=False)
+    artifact = load_tpm_artifact(ARTIFACT_PATH)
+    source = _load_source()
+    pairs = _compile_pairs(ARTIFACT_PATH, source)
+    pair_paths = {
+        "max": destination / MAX_PAIR_PATH.name,
+        "pwl": destination / PWL_PAIR_PATH.name,
+    }
+    pair_results = []
+    for policy_name in ("max", "pwl"):
+        publication = publish_conditional_pair(
+            pairs[policy_name], pair_paths[policy_name]
+        )
+        if not publication.created or publication.reused:
+            raise AssertionError("fresh staging must create each conditional pair")
+        pair_paths[policy_name].chmod(0o644)
+        pair_results.append(
+            {
+                "policy": policy_name,
+                "path": str(pair_paths[policy_name]),
+                "pair_id": pairs[policy_name].pair_id,
+                "sha256": _sha256(pair_paths[policy_name]),
+            }
+        )
+    return {
+        "mode": "stage_pairs",
+        "staging_command": PAIR_STAGING_COMMAND,
+        "staging_directory": str(destination),
+        "source_artifact": str(ARTIFACT_PATH),
+        "artifact_id": artifact.artifact_id,
+        "manifest_sha256": _sha256(ARTIFACT_PATH),
+        "sidecar_sha256": _sha256(SIDECAR_PATH),
+        "published_pairs": pair_results,
     }
 
 
@@ -278,10 +454,42 @@ def verify_fixtures() -> dict[str, object]:
     source_before = SOURCE_PATH.read_bytes()
     manifest_before = ARTIFACT_PATH.read_bytes()
     sidecar_before = SIDECAR_PATH.read_bytes()
+    pair_before = {
+        "max": MAX_PAIR_PATH.read_bytes(),
+        "pwl": PWL_PAIR_PATH.read_bytes(),
+    }
     committed = load_tpm_artifact(ARTIFACT_PATH)
     if committed.provenance.get("source_fixture_sha256") != _sha256(SOURCE_PATH):
         raise AssertionError("committed artifact source digest is stale")
     committed_semantics = _semantic_projection(committed)
+    committed_pairs = {
+        "max": load_conditional_pair(MAX_PAIR_PATH),
+        "pwl": load_conditional_pair(PWL_PAIR_PATH),
+    }
+    recomputed_pairs = _compile_pairs(ARTIFACT_PATH, _load_source())
+    for policy_name, expected_mode in (("max", "max"), ("pwl", "piecewise")):
+        pair = committed_pairs[policy_name]
+        if pair.encoding.mode != expected_mode:
+            raise AssertionError(f"{policy_name} pair has the wrong selected encoding")
+        if pair.retained_decisions != ("x", "activation", "service_tier"):
+            raise AssertionError(f"{policy_name} pair lost mixed retained decisions")
+        if canonical_conditional_json_bytes(pair) != canonical_conditional_json_bytes(
+            recomputed_pairs[policy_name]
+        ):
+            raise AssertionError(f"{policy_name} pair differs from deterministic compilation")
+        serialized = canonical_conditional_json_bytes(pair).lower()
+        if any(term in serialized for term in (b"cartesian", b"combination", b"lookup")):
+            raise AssertionError(f"{policy_name} pair contains an enumerated decision table")
+        for raw_case in _load_source()["representative_assignments"]:
+            case = _mapping(raw_case, field_name="representative_assignment")
+            evaluation = evaluate_conditional_mio_pair(
+                pair,
+                declared_domain_assignments=_mapping(
+                    case["values"], field_name="values"
+                ),
+            )
+            if not math.isfinite(evaluation.conditional_log_risk):
+                raise AssertionError(f"{policy_name} pair evaluation is nonfinite")
     with TemporaryDirectory(prefix="oel-conditional-mio-verify-", dir="/tmp") as raw:
         fresh = _fit_to_path(Path(raw) / ARTIFACT_PATH.name)
         fresh_semantics = _semantic_projection(fresh)
@@ -297,6 +505,10 @@ def verify_fixtures() -> dict[str, object]:
         raise AssertionError("artifact manifest changed during verification")
     if SIDECAR_PATH.read_bytes() != sidecar_before:
         raise AssertionError("artifact sidecar changed during verification")
+    if MAX_PAIR_PATH.read_bytes() != pair_before["max"]:
+        raise AssertionError("max pair changed during verification")
+    if PWL_PAIR_PATH.read_bytes() != pair_before["pwl"]:
+        raise AssertionError("PWL pair changed during verification")
     capabilities = detect_spflow_backend_capabilities()
     return {
         "mode": "verify_fixtures",
@@ -304,6 +516,10 @@ def verify_fixtures() -> dict[str, object]:
         "manifest_sha256": _sha256(ARTIFACT_PATH),
         "sidecar_sha256": _sha256(SIDECAR_PATH),
         "source_sha256": _sha256(SOURCE_PATH),
+        "max_pair_sha256": _sha256(MAX_PAIR_PATH),
+        "max_pair_id": committed_pairs["max"].pair_id,
+        "pwl_pair_sha256": _sha256(PWL_PAIR_PATH),
+        "pwl_pair_id": committed_pairs["pwl"].pair_id,
         "backend_generation": committed.backend_generation,
         "backend_api_version": committed.backend_api_version,
         "adapter_name": capabilities["backend_adapter_name"],
@@ -373,7 +589,13 @@ def _parse_args() -> argparse.Namespace:
         "--stage-fixtures",
         type=Path,
         metavar="FRESH_DIRECTORY",
-        help="create only the source artifact and sidecar in a new directory",
+        help="create the source artifact, sidecar, and final max/PWL pairs in a new directory",
+    )
+    mode.add_argument(
+        "--stage-pairs",
+        type=Path,
+        metavar="FRESH_DIRECTORY",
+        help="create final max/PWL pairs from the committed source artifact",
     )
     mode.add_argument(
         "--verify-fixtures",
@@ -385,11 +607,12 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = _parse_args()
-    result = (
-        stage_fixtures(args.stage_fixtures)
-        if args.stage_fixtures is not None
-        else verify_fixtures()
-    )
+    if args.stage_fixtures is not None:
+        result = stage_fixtures(args.stage_fixtures)
+    elif args.stage_pairs is not None:
+        result = stage_pairs(args.stage_pairs)
+    else:
+        result = verify_fixtures()
     print(json.dumps(result, indent=2, sort_keys=True))
 
 

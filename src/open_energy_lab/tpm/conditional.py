@@ -927,6 +927,62 @@ class TPMContinuousDecisionMapping:
 
 
 @dataclass(frozen=True, slots=True)
+class TPMBinaryDecisionMapping:
+    """Import-light association from one binary feature to a caller variable."""
+
+    feature_name: str
+    caller_variable: object
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "feature_name",
+            _non_empty_string(self.feature_name, "feature_name"),
+        )
+        if self.caller_variable is None:
+            raise ValueError("caller_variable must not be None")
+
+
+@dataclass(frozen=True, slots=True)
+class TPMCategoricalDecisionMapping:
+    """Ordered labelled one-hot mapping for one categorical feature."""
+
+    feature_name: str
+    ordered_indicators: tuple[tuple[object, object], ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "feature_name",
+            _non_empty_string(self.feature_name, "feature_name"),
+        )
+        entries: list[tuple[object, object]] = []
+        for index, entry in enumerate(self.ordered_indicators):
+            if not _is_sequence(entry) or len(entry) != 2:
+                raise TypeError(
+                    f"ordered_indicators[{index}] must be a (category, indicator) pair"
+                )
+            label = _freeze_json(
+                entry[0], field_name=f"ordered_indicators[{index}] category"
+            )
+            indicator = entry[1]
+            if indicator is None:
+                raise ValueError(
+                    f"ordered_indicators[{index}] indicator must not be None"
+                )
+            entries.append((label, indicator))
+        if not entries:
+            raise ValueError("ordered_indicators must be nonempty")
+        labels = tuple(label for label, _ in entries)
+        if len(set(labels)) != len(labels):
+            raise ValueError("ordered categorical labels must be distinct")
+        indicators = tuple(indicator for _, indicator in entries)
+        if len({id(value) for value in indicators}) != len(indicators):
+            raise ValueError("ordered categorical indicators must be distinct")
+        object.__setattr__(self, "ordered_indicators", tuple(entries))
+
+
+@dataclass(frozen=True, slots=True)
 class TPMConditionalDecisionLink:
     """Runtime metadata for one caller-owned continuous coordinate link."""
 
@@ -981,6 +1037,63 @@ class TPMConditionalDecisionLink:
 
 
 @dataclass(frozen=True, slots=True)
+class TPMBinaryDecisionLink:
+    """Runtime metadata for one caller-owned binary variable."""
+
+    feature_name: str
+    caller_variable: object
+    declared_ordering: tuple[object, object]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "feature_name",
+            _non_empty_string(self.feature_name, "feature_name"),
+        )
+        if self.caller_variable is None:
+            raise ValueError("caller_variable must not be None")
+        ordering = tuple(
+            _freeze_json(value, field_name="binary declared ordering")
+            for value in self.declared_ordering
+        )
+        if len(ordering) != 2 or ordering[0] == ordering[1]:
+            raise ValueError("binary declared_ordering must contain two values")
+        object.__setattr__(self, "declared_ordering", ordering)
+
+
+@dataclass(frozen=True, slots=True)
+class TPMCategoricalDecisionLink:
+    """Runtime metadata for ordered caller one-hot indicators."""
+
+    feature_name: str
+    ordered_indicators: tuple[tuple[object, object], ...]
+    declared_ordering: tuple[object, ...]
+    exactly_one: object
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "feature_name",
+            _non_empty_string(self.feature_name, "feature_name"),
+        )
+        entries = tuple(self.ordered_indicators)
+        ordering = tuple(
+            _freeze_json(value, field_name="categorical declared ordering")
+            for value in self.declared_ordering
+        )
+        if not entries or tuple(value for value, _ in entries) != ordering:
+            raise ValueError(
+                "ordered_indicators must exactly follow declared_ordering"
+            )
+        if len({id(indicator) for _, indicator in entries}) != len(entries):
+            raise ValueError("categorical indicators must be distinct")
+        if self.exactly_one is None:
+            raise ValueError("exactly_one must not be None")
+        object.__setattr__(self, "ordered_indicators", entries)
+        object.__setattr__(self, "declared_ordering", ordering)
+
+
+@dataclass(frozen=True, slots=True)
 class TPMConditionalAttachment:
     """Frozen runtime result for one namespaced caller-model attachment."""
 
@@ -991,7 +1104,12 @@ class TPMConditionalAttachment:
     numerator_root: object
     denominator_root: object
     conditional_log_risk: object
-    decision_links: Mapping[str, TPMConditionalDecisionLink]
+    decision_links: Mapping[
+        str,
+        TPMConditionalDecisionLink
+        | TPMBinaryDecisionLink
+        | TPMCategoricalDecisionLink,
+    ]
     pair_metadata: Mapping[str, object]
     diagnostic_components: tuple[str, ...]
 
@@ -1017,9 +1135,13 @@ class TPMConditionalAttachment:
             raise ValueError(
                 "decision_links must follow and exactly cover retained_decisions"
             )
+        supported_links = (
+            TPMConditionalDecisionLink,
+            TPMBinaryDecisionLink,
+            TPMCategoricalDecisionLink,
+        )
         if any(
-            not isinstance(value, TPMConditionalDecisionLink)
-            or value.feature_name != name
+            not isinstance(value, supported_links) or value.feature_name != name
             for name, value in links.items()
         ):
             raise TypeError("decision_links must contain matching typed links")
@@ -1412,6 +1534,10 @@ __all__ = [
     "TPMConditionalCircuitNode",
     "TPMConditionalCompilationRequest",
     "TPMConditionalAttachment",
+    "TPMBinaryDecisionLink",
+    "TPMBinaryDecisionMapping",
+    "TPMCategoricalDecisionLink",
+    "TPMCategoricalDecisionMapping",
     "TPMConditionalDecisionLink",
     "TPMConditionalEncodingPolicy",
     "TPMConditionalEvaluation",

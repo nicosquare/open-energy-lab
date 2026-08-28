@@ -8,10 +8,32 @@ import math
 import pytest
 
 import open_energy_lab.tpm.conditional_mio as conditional_mio_module
-from open_energy_lab.tpm.conditional import TPMContinuousDecisionMapping
-from open_energy_lab.tpm.conditional_mio import attach_conditional_mio_pair
+from open_energy_lab.tpm.artifact import load_tpm_artifact
+from open_energy_lab.tpm.conditional import (
+    TPMBinaryDecisionMapping,
+    TPMCategoricalDecisionMapping,
+    TPMContinuousDecisionMapping,
+)
+from open_energy_lab.tpm.conditional_mio import (
+    attach_conditional_mio_pair,
+    compile_conditional_mio_pair,
+)
 from open_energy_lab.tpm.mio import SPNSolverDependencyUnavailableError
 from tests.unit.tpm.test_conditional_pair import _pair
+
+
+def _mixed_pair(monkeypatch: pytest.MonkeyPatch):
+    from tests.unit.tpm.test_conditional_mio import (
+        TPM_FIXTURE_DIRECTORY,
+        _compilation_request,
+        _install_compiler_stubs,
+    )
+
+    artifact = load_tpm_artifact(
+        TPM_FIXTURE_DIRECTORY / "tpm_artifact_domains_v3.json"
+    )
+    _install_compiler_stubs(monkeypatch, artifact)
+    return compile_conditional_mio_pair(_compilation_request())
 
 
 def _component_names(model) -> tuple[str, ...]:
@@ -319,3 +341,174 @@ def test_attachment_reports_missing_pyomo_without_fallback(
             mappings=(TPMContinuousDecisionMapping("x", object()),),
             namespace="risk",
         )
+
+
+def test_mixed_binary_and_ordered_categorical_mappings_remain_caller_owned(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import pyomo.environ as pyo
+
+    pair = _mixed_pair(monkeypatch)
+    model = pyo.ConcreteModel()
+    model.x = pyo.Var(bounds=(40.0, 160.0))
+    model.activation = pyo.Var(domain=pyo.Binary)
+    model.categories = pyo.Set(initialize=("economy", "standard", "priority"))
+    model.service = pyo.Var(model.categories, domain=pyo.Binary)
+    model.caller_coupling = pyo.Constraint(
+        expr=model.activation + model.service["priority"] <= 1
+    )
+
+    attachment = attach_conditional_mio_pair(
+        pair,
+        model,
+        mappings=(
+            TPMContinuousDecisionMapping("x", model.x),
+            TPMBinaryDecisionMapping("activation", model.activation),
+            TPMCategoricalDecisionMapping(
+                "service_tier",
+                (
+                    ("economy", model.service["economy"]),
+                    ("standard", model.service["standard"]),
+                    ("priority", model.service["priority"]),
+                ),
+            ),
+        ),
+        namespace="mixed_risk",
+    )
+
+    binary_link = attachment.decision_links["activation"]
+    category_link = attachment.decision_links["service_tier"]
+    assert binary_link.caller_variable is model.activation
+    assert binary_link.declared_ordering == ("off", "on")
+    assert category_link.declared_ordering == (
+        "economy",
+        "standard",
+        "priority",
+    )
+    assert tuple(value for _, value in category_link.ordered_indicators) == tuple(
+        model.service[label]
+        for label in ("economy", "standard", "priority")
+    )
+    assert category_link.exactly_one.parent_block() is attachment.block
+    assert model.caller_coupling.parent_block() is model
+    assert model.activation.parent_block() is model
+    assert all(
+        value.parent_component() is model.service for value in model.service.values()
+    )
+    names = tuple(
+        component.name
+        for component in attachment.block.component_objects(descend_into=True)
+    )
+    assert not any("combination" in name or "lookup" in name for name in names)
+
+
+@pytest.mark.parametrize(
+    ("category_entries", "match"),
+    [
+        (("economy", "standard"), "category|coverage|ordering"),
+        (("standard", "economy", "priority"), "ordering"),
+        (("economy", "standard", "priority", "extra"), "categor|coverage"),
+    ],
+)
+def test_categorical_mapping_rejects_missing_reordered_or_extra_labels(
+    monkeypatch: pytest.MonkeyPatch,
+    category_entries: tuple[str, ...],
+    match: str,
+) -> None:
+    import pyomo.environ as pyo
+
+    pair = _mixed_pair(monkeypatch)
+    model = pyo.ConcreteModel()
+    model.x = pyo.Var()
+    model.activation = pyo.Var(domain=pyo.Binary)
+    model.indicator_index = pyo.Set(
+        initialize=("economy", "standard", "priority", "extra")
+    )
+    model.indicator = pyo.Var(model.indicator_index, domain=pyo.Binary)
+    before = _component_names(model)
+    mapping = TPMCategoricalDecisionMapping(
+        "service_tier",
+        tuple((label, model.indicator[label]) for label in category_entries),
+    )
+
+    with pytest.raises(ValueError, match=match):
+        attach_conditional_mio_pair(
+            pair,
+            model,
+            mappings=(
+                TPMContinuousDecisionMapping("x", model.x),
+                TPMBinaryDecisionMapping("activation", model.activation),
+                mapping,
+            ),
+            namespace="invalid_category_risk",
+        )
+
+    assert _component_names(model) == before
+
+
+def test_discrete_mapping_rejects_duplicate_nonbinary_and_foreign_indicators(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import pyomo.environ as pyo
+
+    pair = _mixed_pair(monkeypatch)
+    model = pyo.ConcreteModel()
+    model.x = pyo.Var()
+    model.activation = pyo.Var(domain=pyo.Binary)
+    model.first = pyo.Var(domain=pyo.Binary)
+    model.second = pyo.Var(domain=pyo.Binary)
+    model.continuous = pyo.Var(domain=pyo.UnitInterval)
+    foreign = pyo.ConcreteModel()
+    foreign.indicator = pyo.Var(domain=pyo.Binary)
+    before = _component_names(model)
+
+    invalid_categories = (
+        (
+            ("economy", model.first),
+            ("standard", model.first),
+            ("priority", model.second),
+        ),
+        (
+            ("economy", model.first),
+            ("standard", model.continuous),
+            ("priority", model.second),
+        ),
+        (
+            ("economy", model.first),
+            ("standard", foreign.indicator),
+            ("priority", model.second),
+        ),
+    )
+    for index, entries in enumerate(invalid_categories):
+        with pytest.raises((TypeError, ValueError), match="distinct|binary|foreign|model"):
+            attach_conditional_mio_pair(
+                pair,
+                model,
+                mappings=(
+                    TPMContinuousDecisionMapping("x", model.x),
+                    TPMBinaryDecisionMapping("activation", model.activation),
+                    TPMCategoricalDecisionMapping("service_tier", entries),
+                ),
+                namespace=f"invalid_discrete_risk_{index}",
+            )
+
+    with pytest.raises(ValueError, match="binary"):
+        attach_conditional_mio_pair(
+            pair,
+            model,
+            mappings=(
+                TPMContinuousDecisionMapping("x", model.x),
+                TPMBinaryDecisionMapping("activation", model.continuous),
+                TPMCategoricalDecisionMapping(
+                    "service_tier",
+                    (
+                        ("economy", model.first),
+                        ("standard", model.second),
+                        ("priority", model.activation),
+                    ),
+                ),
+            ),
+            namespace="invalid_binary_risk",
+        )
+
+    assert _component_names(model) == before

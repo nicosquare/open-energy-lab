@@ -9,6 +9,10 @@ from pathlib import Path
 
 from .artifact import TPMArtifact, load_tpm_artifact
 from .conditional import (
+    TPMBinaryDecisionLink,
+    TPMBinaryDecisionMapping,
+    TPMCategoricalDecisionLink,
+    TPMCategoricalDecisionMapping,
     TPMConditionalAttachment,
     TPMConditionalCircuit,
     TPMConditionalCircuitNode,
@@ -58,10 +62,14 @@ def attach_conditional_mio_pair(
     pair: TPMConditionalPair,
     model: object,
     *,
-    mappings: Sequence[TPMContinuousDecisionMapping],
+    mappings: Sequence[
+        TPMContinuousDecisionMapping
+        | TPMBinaryDecisionMapping
+        | TPMCategoricalDecisionMapping
+    ],
     namespace: str,
 ) -> TPMConditionalAttachment:
-    """Attach one unchanged pair to caller-owned continuous Pyomo decisions."""
+    """Attach one unchanged pair to supported caller-owned Pyomo decisions."""
 
     if not isinstance(pair, TPMConditionalPair):
         raise TypeError("pair must be a TPMConditionalPair")
@@ -78,12 +86,20 @@ def attach_conditional_mio_pair(
             "mappings must be an ordered sequence of typed mappings"
         ) from exc
     feature_names: list[str] = []
-    mapping_by_name: dict[str, TPMContinuousDecisionMapping] = {}
+    mapping_types = (
+        TPMContinuousDecisionMapping,
+        TPMBinaryDecisionMapping,
+        TPMCategoricalDecisionMapping,
+    )
+    mapping_by_name: dict[
+        str,
+        TPMContinuousDecisionMapping
+        | TPMBinaryDecisionMapping
+        | TPMCategoricalDecisionMapping,
+    ] = {}
     for mapping in ordered_mappings:
-        if not isinstance(mapping, TPMContinuousDecisionMapping):
-            raise TypeError(
-                "continuous attachment requires TPMContinuousDecisionMapping records"
-            )
+        if not isinstance(mapping, mapping_types):
+            raise TypeError("attachment requires typed decision mapping records")
         feature_name = mapping.feature_name
         if feature_name in mapping_by_name:
             raise ValueError(f"duplicate decision mapping for {feature_name!r}")
@@ -98,29 +114,82 @@ def attach_conditional_mio_pair(
             f"missing={missing!r}, unknown extra={extra!r}"
         )
     validity_by_name = {value.feature_name: value for value in pair.validity}
-    preflight: dict[str, tuple[object, ...]] = {}
+    continuous_variables: dict[str, tuple[object, ...]] = {}
+    discrete_ordering: dict[str, tuple[object, ...]] = {}
     for feature_name in expected:
         validity = validity_by_name[feature_name]
-        if validity.feature_type != "continuous":
-            raise TypeError(
-                f"retained feature {feature_name!r} requires a non-continuous "
-                "mapping capability"
+        mapping = mapping_by_name[feature_name]
+        if validity.feature_type == "continuous":
+            if not isinstance(mapping, TPMContinuousDecisionMapping):
+                raise TypeError(
+                    f"retained continuous feature {feature_name!r} requires a "
+                    "TPMContinuousDecisionMapping"
+                )
+            if validity.approximation_domain is None:
+                raise ValueError(
+                    f"continuous feature {feature_name!r} lacks approximation validity"
+                )
+            continuous_variables[feature_name] = _inspect_structural_affine_expression(
+                backend,
+                model,
+                mapping.physical_expression,
+                feature_name=feature_name,
             )
-        if validity.approximation_domain is None:
-            raise ValueError(
-                f"continuous feature {feature_name!r} lacks approximation validity"
+            continue
+        domain = TPMFeatureDomain.from_dict(validity.declared_domain)
+        ordering = tuple(domain.ordering)
+        if validity.feature_type == "binary":
+            if not isinstance(mapping, TPMBinaryDecisionMapping):
+                raise TypeError(
+                    f"retained binary feature {feature_name!r} requires a "
+                    "TPMBinaryDecisionMapping"
+                )
+            if len(ordering) != 2:
+                raise ValueError(
+                    f"binary feature {feature_name!r} lacks exact declared ordering"
+                )
+            _validate_scalar_binary_variable(
+                model,
+                mapping.caller_variable,
+                feature_name=feature_name,
             )
-        preflight[feature_name] = _inspect_structural_affine_expression(
-            backend,
-            model,
-            mapping_by_name[feature_name].physical_expression,
-            feature_name=feature_name,
+            discrete_ordering[feature_name] = ordering
+            continue
+        if validity.feature_type == "categorical":
+            if not isinstance(mapping, TPMCategoricalDecisionMapping):
+                raise TypeError(
+                    f"retained categorical feature {feature_name!r} requires a "
+                    "TPMCategoricalDecisionMapping"
+                )
+            labels = tuple(value for value, _ in mapping.ordered_indicators)
+            if labels != ordering:
+                raise ValueError(
+                    f"categorical mapping for {feature_name!r} must exactly follow "
+                    f"declared ordering {ordering!r}"
+                )
+            for _, indicator in mapping.ordered_indicators:
+                _validate_scalar_binary_variable(
+                    model, indicator, feature_name=feature_name
+                )
+            discrete_ordering[feature_name] = ordering
+            continue
+        raise TypeError(
+            f"retained feature {feature_name!r} has unsupported type "
+            f"{validity.feature_type!r}"
         )
 
     block = backend.Block(concrete=True)
-    block.continuous_features = backend.Set(initialize=expected, ordered=True)
+    continuous_names = tuple(
+        name
+        for name in expected
+        if validity_by_name[name].feature_type == "continuous"
+    )
+    block.continuous_features = backend.Set(
+        initialize=continuous_names, ordered=True
+    )
     approximation_by_name = {
-        name: validity_by_name[name].approximation_domain for name in expected
+        name: validity_by_name[name].approximation_domain
+        for name in continuous_names
     }
     block.model_coordinate = backend.Var(
         block.continuous_features,
@@ -130,7 +199,8 @@ def attach_conditional_mio_pair(
         ),
     )
     physical_expression_by_name = {
-        name: mapping_by_name[name].physical_expression for name in expected
+        name: mapping_by_name[name].physical_expression
+        for name in continuous_names
     }
     block.physical_validity_lower = backend.Constraint(
         block.continuous_features,
@@ -179,8 +249,40 @@ def attach_conditional_mio_pair(
             "kind": "continuous",
             "normalized_var": block.model_coordinate[name],
         }
-        for name in expected
+        for name in continuous_names
     }
+    categorical_names = tuple(
+        name
+        for name in expected
+        if validity_by_name[name].feature_type == "categorical"
+    )
+    block.categorical_features = backend.Set(
+        initialize=categorical_names, ordered=True
+    )
+    categorical_indicators = {
+        name: tuple(
+            indicator
+            for _, indicator in mapping_by_name[name].ordered_indicators
+        )
+        for name in categorical_names
+    }
+    block.categorical_exactly_one = backend.Constraint(
+        block.categorical_features,
+        rule=lambda _block, name: sum(categorical_indicators[name]) == 1,
+    )
+    for name in expected:
+        feature_type = validity_by_name[name].feature_type
+        mapping = mapping_by_name[name]
+        if feature_type == "binary":
+            decision_variables[name] = {
+                "kind": "binary",
+                "normalized_var": mapping.caller_variable,
+            }
+        elif feature_type == "categorical":
+            decision_variables[name] = {
+                "kind": "categorical",
+                "normalized_var": categorical_indicators[name],
+            }
     block.numerator = backend.Block(concrete=True)
     numerator_encoding = encode_conditioned_spflow_circuit(
         backend,
@@ -202,11 +304,16 @@ def attach_conditional_mio_pair(
     block.conditional_log_risk = backend.Expression(
         expr=numerator_root - denominator_root
     )
-    links = {
+    links: dict[
+        str,
+        TPMConditionalDecisionLink
+        | TPMBinaryDecisionLink
+        | TPMCategoricalDecisionLink,
+    ] = {
         name: TPMConditionalDecisionLink(
             feature_name=name,
             physical_expression=physical_expression_by_name[name],
-            caller_variables=preflight[name],
+            caller_variables=continuous_variables[name],
             model_coordinate=block.model_coordinate[name],
             coordinate_link=block.coordinate_link[name],
             physical_lower=block.physical_validity_lower[name],
@@ -216,8 +323,25 @@ def attach_conditional_mio_pair(
             normalization=validity_by_name[name].normalization,
             approximation_domain=approximation_by_name[name],
         )
-        for name in expected
+        for name in continuous_names
     }
+    for name in expected:
+        mapping = mapping_by_name[name]
+        feature_type = validity_by_name[name].feature_type
+        if feature_type == "binary":
+            links[name] = TPMBinaryDecisionLink(
+                feature_name=name,
+                caller_variable=mapping.caller_variable,
+                declared_ordering=discrete_ordering[name],
+            )
+        elif feature_type == "categorical":
+            links[name] = TPMCategoricalDecisionLink(
+                feature_name=name,
+                ordered_indicators=mapping.ordered_indicators,
+                declared_ordering=discrete_ordering[name],
+                exactly_one=block.categorical_exactly_one[name],
+            )
+    links = {name: links[name] for name in expected}
     diagnostic_components = tuple(
         component.getname(fully_qualified=True)
         for component in block.component_objects(active=True, descend_into=True)
@@ -266,6 +390,32 @@ def _validate_attachment_namespace(model: object, *, namespace: str) -> str:
     if component(normalized) is not None:
         raise ValueError(f"attachment namespace {normalized!r} is already occupied")
     return normalized
+
+
+def _validate_scalar_binary_variable(
+    model: object,
+    variable: object,
+    *,
+    feature_name: str,
+) -> None:
+    is_indexed = getattr(variable, "is_indexed", None)
+    if callable(is_indexed) and is_indexed():
+        raise TypeError(
+            f"binary mapping for {feature_name!r} must use a scalar variable"
+        )
+    is_variable_type = getattr(variable, "is_variable_type", None)
+    if not callable(is_variable_type) or not is_variable_type():
+        raise TypeError(
+            f"binary mapping for {feature_name!r} must use a Pyomo variable"
+        )
+    if variable.model() is not model:
+        raise ValueError(
+            f"binary mapping for {feature_name!r} references a foreign model variable"
+        )
+    if not variable.is_binary():
+        raise ValueError(
+            f"binary mapping for {feature_name!r} requires a caller-owned Binary variable"
+        )
 
 
 def _inspect_structural_affine_expression(

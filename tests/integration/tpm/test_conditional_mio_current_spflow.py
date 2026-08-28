@@ -9,13 +9,17 @@ import pytest
 
 from open_energy_lab.tpm.artifact import load_tpm_artifact
 from open_energy_lab.tpm.conditional import (
+    TPMBinaryDecisionMapping,
+    TPMCategoricalDecisionMapping,
     TPMConditionalCompilationRequest,
     TPMConditionalEncodingPolicy,
     TPMConditionalNumericalPolicy,
+    TPMContinuousDecisionMapping,
     load_conditional_pair,
     publish_conditional_pair,
 )
 from open_energy_lab.tpm.conditional_mio import (
+    attach_conditional_mio_pair,
     compile_conditional_mio_pair,
     evaluate_conditional_mio_pair,
 )
@@ -258,3 +262,66 @@ def test_real_native_denominator_retains_nonuniform_learned_decision_density(
     )
 
     assert lower.denominator_log != pytest.approx(upper.denominator_log)
+
+
+def test_real_mixed_pair_attaches_representative_binary_and_categories_without_grid(
+    real_conditional_campaign,
+) -> None:
+    import pyomo.environ as pyo
+
+    _, source, pairs = real_conditional_campaign
+    pair = pairs["max"]
+    cases = source["representative_assignments"]
+    assert isinstance(cases, list)
+    seen_binary = set()
+    seen_categories = set()
+
+    for raw_case in cases:
+        case = _mapping(raw_case, field_name="representative_assignment")
+        values = _mapping(case["values"], field_name="values")
+        model = pyo.ConcreteModel()
+        model.x = pyo.Var(bounds=(40.0, 160.0))
+        model.activation = pyo.Var(domain=pyo.Binary)
+        model.category_index = pyo.Set(
+            initialize=("economy", "standard", "priority")
+        )
+        model.service = pyo.Var(model.category_index, domain=pyo.Binary)
+        attachment = attach_conditional_mio_pair(
+            pair,
+            model,
+            mappings=(
+                TPMContinuousDecisionMapping("x", model.x),
+                TPMBinaryDecisionMapping("activation", model.activation),
+                TPMCategoricalDecisionMapping(
+                    "service_tier",
+                    tuple(
+                        (label, model.service[label])
+                        for label in ("economy", "standard", "priority")
+                    ),
+                ),
+            ),
+            namespace="mixed_conditional_risk",
+        )
+        model.x.set_value(float(values["x"]))
+        activation_index = 1 if values["activation"] == "on" else 0
+        model.activation.set_value(activation_index)
+        for label in ("economy", "standard", "priority"):
+            model.service[label].set_value(int(label == values["service_tier"]))
+        seen_binary.add(values["activation"])
+        seen_categories.add(values["service_tier"])
+
+        assert attachment.numerator_root.parent_block() is attachment.block.numerator
+        assert attachment.denominator_root.parent_block() is attachment.block.denominator
+        assert pyo.value(
+            attachment.decision_links["service_tier"].exactly_one.body
+        ) == pytest.approx(1.0)
+        serialized_names = " ".join(
+            component.name
+            for component in attachment.block.component_objects(descend_into=True)
+        ).casefold()
+        assert "cartesian" not in serialized_names
+        assert "combination" not in serialized_names
+        assert "lookup" not in serialized_names
+
+    assert seen_binary == {"off", "on"}
+    assert seen_categories == {"economy", "standard", "priority"}

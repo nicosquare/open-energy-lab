@@ -88,6 +88,8 @@ def test_conditional_exports_resolve_without_loading_heavy_backends() -> None:
 
     package = importlib.import_module(TPM_PACKAGE)
     exports = (
+        package.TPMBinaryDecisionMapping,
+        package.TPMCategoricalDecisionMapping,
         package.TPMConditionalAttachment,
         package.TPMConditionalCompilationRequest,
         package.TPMContinuousDecisionMapping,

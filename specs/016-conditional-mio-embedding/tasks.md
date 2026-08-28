@@ -123,16 +123,16 @@ enumeration.
 
 ### Tests for User Story 3
 
-- [ ] T028 [P] [US3] Add binary and categorical mapping contracts for declared binary-value ordering, labelled persisted category ordering, distinct binary indicators, exactly-one ownership, complete mixed-type coverage, positive reuse of valid indicators that already participate in caller-owned constraints, and rejection of missing, duplicate, reordered, extra, nonbinary, or foreign-model indicators in `tests/unit/tpm/test_conditional_attachment.py`
-- [ ] T029 [P] [US3] Add direct-evaluation contracts for declared binary/category values, model-coordinate indices, invalid indices/labels, mixed supported feature types, and symbolic graphs with no Cartesian lookup payload in `tests/unit/tpm/test_conditional_mio.py`
-- [ ] T030 [P] [US3] Extend the real mixed current-SPFlow path to attach both binary states and representative categorical values in one conditional pair without evaluating the full Cartesian product in `tests/integration/tpm/test_conditional_mio_current_spflow.py`
+- [X] T028 [P] [US3] Add binary and categorical mapping contracts for declared binary-value ordering, labelled persisted category ordering, distinct binary indicators, exactly-one ownership, complete mixed-type coverage, positive reuse of valid indicators that already participate in caller-owned constraints, and rejection of missing, duplicate, reordered, extra, nonbinary, or foreign-model indicators in `tests/unit/tpm/test_conditional_attachment.py`
+- [X] T029 [P] [US3] Add direct-evaluation contracts for declared binary/category values, model-coordinate indices, invalid indices/labels, mixed supported feature types, and symbolic graphs with no Cartesian lookup payload in `tests/unit/tpm/test_conditional_mio.py`
+- [X] T030 [P] [US3] Extend the real mixed current-SPFlow path to attach both binary states and representative categorical values in one conditional pair without evaluating the full Cartesian product in `tests/integration/tpm/test_conditional_mio_current_spflow.py`
 
 ### Implementation for User Story 3
 
-- [ ] T031 [US3] Add import-light typed binary and ordered labelled categorical one-hot mapping records with exact declared-order and distinct-indicator invariants in `src/open_energy_lab/tpm/conditional.py`
-- [ ] T032 [US3] Implement binary/categorical model-ownership and domain preflight, declared-value/index translation, complete mixed-type mapping validation, and categorical exactly-one construction in `src/open_energy_lab/tpm/conditional_mio.py`
-- [ ] T033 [US3] Extend conditioned-circuit direct and Pyomo encoding to reference caller-owned binary/one-hot inputs symbolically, preserve one joint numerator/denominator pair, and bypass the existing categorical Cartesian lookup shortcut in `src/open_energy_lab/tpm/mio.py` and `src/open_energy_lab/tpm/conditional_mio.py`
-- [ ] T034 [US3] After T033, extend `examples/tpm_planning/run_conditional_mio_embedding.py` deterministic staging/verification to compile and publish the final mixed max/PWL pairs at `tests/fixtures/tpm/conditional_pair_max_v1.json` and `tests/fixtures/tpm/conditional_pair_pwl_v1.json`, then run the US3 slices from `specs/016-conditional-mio-embedding/quickstart.md` and verify both immutable pairs retain joint continuous/binary/categorical semantics with no enumerated decision table
+- [X] T031 [US3] Add import-light typed binary and ordered labelled categorical one-hot mapping records with exact declared-order and distinct-indicator invariants in `src/open_energy_lab/tpm/conditional.py`
+- [X] T032 [US3] Implement binary/categorical model-ownership and domain preflight, declared-value/index translation, complete mixed-type mapping validation, and categorical exactly-one construction in `src/open_energy_lab/tpm/conditional_mio.py`
+- [X] T033 [US3] Extend conditioned-circuit direct and Pyomo encoding to reference caller-owned binary/one-hot inputs symbolically, preserve one joint numerator/denominator pair, and bypass the existing categorical Cartesian lookup shortcut in `src/open_energy_lab/tpm/mio.py` and `src/open_energy_lab/tpm/conditional_mio.py`
+- [X] T034 [US3] After T033, extend `examples/tpm_planning/run_conditional_mio_embedding.py` deterministic staging/verification to compile and publish the final mixed max/PWL pairs at `tests/fixtures/tpm/conditional_pair_max_v1.json` and `tests/fixtures/tpm/conditional_pair_pwl_v1.json`, then run the US3 slices from `specs/016-conditional-mio-embedding/quickstart.md` and verify both immutable pairs retain joint continuous/binary/categorical semantics with no enumerated decision table
 
 **Checkpoint**: One conditional pair can jointly retain all three supported decision forms and
 attach them symbolically to caller-owned variables.

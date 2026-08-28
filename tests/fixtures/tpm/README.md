@@ -23,13 +23,13 @@ representative assignments cover both continuous boundaries, one interior point,
 and all categories without enumerating their Cartesian product.
 
 The JSON also declares the max and PWL compiler policies, the physical approximation interval, and
-purpose-labelled numerical tolerances. Those are source inputs, not claims about uncommitted
-derived evidence. The source artifact now exists; later files are introduced only by their
-corresponding implementation tasks:
+purpose-labelled numerical tolerances. Those are source inputs rather than hand-edited derived
+evidence. The active feature evidence is:
 
 - `tpm_artifact_conditional_mio_v3.json` and its sidecar are the reviewed real-fit source artifact;
-- `conditional_pair_max_v1.json` and `conditional_pair_pwl_v1.json` only after mixed symbolic
-  continuous/binary/categorical support is implemented; and
+- `conditional_pair_max_v1.json` and `conditional_pair_pwl_v1.json` are the immutable max and PWL
+  pairs compiled from that artifact after mixed symbolic continuous/binary/categorical support was
+  implemented; and
 - `conditional_mio_evidence_v1.json` only after direct/native/HiGHS evidence is separated and
   validated.
 
@@ -41,12 +41,16 @@ mismatch.
 The reviewed source artifact was fitted offline on CPU with CPython `3.14.6`, current SPFlow
 `1.1.0`, Torch `2.13.0+cu130`, fit seed `16028`, and the options in the source JSON. Its compiler
 contracts are base MIO compiler `spflow-v1-mio-v2` and conditional-pair compiler
-`conditional-mio-v1`; US1 validates both using temporary max/PWL pairs but intentionally does not
-publish those pair fixtures yet. Current exact byte digests are:
+`conditional-mio-v1`. Current exact byte digests and pair identities are:
 
 - source JSON: `394f4ab76de48457f36ea03e451fbb608b66b8660ca1374b92f6260396b110bd`;
 - artifact manifest: `58e56e7adf850d604e41933479260cce22e90da4f40ac5838fab7578d88dac44`;
-- current-SPFlow sidecar: `2157d35ec4d18c230e8c01a074dae271c0cb161af1520582325420361bb7bc6f`.
+- current-SPFlow sidecar: `2157d35ec4d18c230e8c01a074dae271c0cb161af1520582325420361bb7bc6f`;
+- max pair: SHA-256 `73a7cc0c4e6736e3f84c699ef9279fc88345b8349e92c3add630394e8811d8f7`,
+  pair ID `17e45b6b387b637a0444bf021c7ea3b2d3d2703635d8fd83b4250cdc6363dea9`;
+  and
+- PWL pair: SHA-256 `87eeaff775dfc3ec0f276cd5080d90e5d5dcce71e20e5ae1f82b5f03e19c1a3f`,
+  pair ID `f51291a32167baa744bbc7ba0232a50d2bc5f2be941c990c40a7c39b52774a83`.
 
 Maintainers create candidate evidence only in a fresh directory:
 
@@ -54,6 +58,14 @@ Maintainers create candidate evidence only in a fresh directory:
 uv run --offline --locked --no-sync python \
   examples/tpm_planning/run_conditional_mio_embedding.py \
   --stage-fixtures /tmp/oel-conditional-mio-review
+```
+
+Final pairs can be restaged from the already-reviewed committed artifact without refitting it:
+
+```bash
+uv run --offline --locked --no-sync python \
+  examples/tpm_planning/run_conditional_mio_embedding.py \
+  --stage-pairs /tmp/oel-conditional-mio-pairs-review
 ```
 
 Routine verification is read-only and includes a one-shot temporary semantic refit:
@@ -76,6 +88,10 @@ sidecar and record a SHA-256 digest.
   conditional compilation.
 - `sidecars/tpm_artifact_conditional_mio_v3.spn_payload.pkl`: real current-SPFlow model sidecar
   referenced by the feature-016 source artifact.
+- `conditional_pair_max_v1.json`: immutable mixed-decision conditional pair using the declared max
+  sum encoding.
+- `conditional_pair_pwl_v1.json`: immutable mixed-decision conditional pair using the declared PWL
+  sum encoding.
 - `declared_feature_domains_v1.json`: reviewable U-Bounds declarations,
   physical training rows, and exact domain/compiler probes without fitted
   model output.
@@ -217,6 +233,23 @@ by `open_energy_lab.tpm.load_tpm_artifact`. Query fixtures retain the
 - verification command: `uv run --offline --locked --no-sync python examples/tpm_planning/run_conditional_mio_embedding.py --verify-fixtures`
 - refresh policy: verify committed bytes in place; stage replacements only in a new directory for
   ordinary review
+
+`conditional_pair_max_v1.json` and `conditional_pair_pwl_v1.json`
+
+- status: active immutable conditional-pair fixtures
+- source artifact: `tpm_artifact_conditional_mio_v3.json`, manifest SHA-256
+  `58e56e7adf850d604e41933479260cce22e90da4f40ac5838fab7578d88dac44`
+- retained decisions: continuous `x`, binary `activation`, and ordered categorical `service_tier`
+- max pair ID: `17e45b6b387b637a0444bf021c7ea3b2d3d2703635d8fd83b4250cdc6363dea9`
+- max pair SHA-256: `73a7cc0c4e6736e3f84c699ef9279fc88345b8349e92c3add630394e8811d8f7`
+- PWL pair ID: `f51291a32167baa744bbc7ba0232a50d2bc5f2be941c990c40a7c39b52774a83`
+- PWL pair SHA-256: `87eeaff775dfc3ec0f276cd5080d90e5d5dcce71e20e5ae1f82b5f03e19c1a3f`
+- staging command: `uv run --offline --locked --no-sync python examples/tpm_planning/run_conditional_mio_embedding.py --stage-pairs <fresh-directory>`
+- validation target: deterministic pair identity, explicit learned denominator, symbolic discrete
+  leaves without Cartesian lookup, selected max/PWL semantics, direct representative evaluation,
+  and read-only serialization verification
+- refresh policy: changed semantic inputs create distinguishable pair identities; committed pair
+  files are never overwritten or repaired during normal verification
 
 `declared_feature_domains_v1.json`
 
