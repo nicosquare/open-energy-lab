@@ -123,7 +123,8 @@
     "leaf_policy": {
       "policy_name": "physical-interval-relative-v2",
       "relative_breakpoints": [0.0, 0.25, 0.5, 0.75, 1.0],
-      "mio_epsilon": 1e-6
+      "mio_epsilon": 1e-6,
+      "discrete_probability_floor": 1e-12
     },
     "sum_policies": {
       "max": {

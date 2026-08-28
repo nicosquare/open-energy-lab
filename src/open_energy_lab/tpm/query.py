@@ -14,6 +14,7 @@ from .artifact import (
     TPMArtifact,
     load_tpm_artifact,
 )
+from .conditional import TPMConditionalPair, TPMNativeConditionalEvaluation
 from .features import (
     TPMFeatureSpec,
     validate_spflow_feature_assignments,
@@ -161,9 +162,108 @@ def query_tpm_artifact(
     return response
 
 
+def evaluate_native_conditional_pair(
+    artifact: TPMArtifact | str | Path | Mapping[str, Any],
+    pair: TPMConditionalPair,
+    *,
+    declared_domain_assignments: Mapping[str, object],
+) -> TPMNativeConditionalEvaluation:
+    """Query raw native numerator and denominator logs for one explicit event."""
+
+    if not isinstance(pair, TPMConditionalPair):
+        raise TypeError("pair must be a TPMConditionalPair")
+    resolved_artifact = _load_artifact(artifact)
+    _validate_native_pair_source(resolved_artifact, pair=pair)
+    if not isinstance(declared_domain_assignments, Mapping):
+        raise TypeError("declared_domain_assignments must be a mapping")
+    supplied_names = {str(name) for name in declared_domain_assignments}
+    expected_names = set(pair.retained_decisions)
+    missing = sorted(expected_names - supplied_names)
+    extra = sorted(supplied_names - expected_names)
+    if missing or extra:
+        raise ValueError(
+            "native conditional assignments must exactly cover retained decisions; "
+            f"missing={missing!r}, extra={extra!r}"
+        )
+    feature_specs = resolved_artifact.feature_specs
+    feature_by_name = {spec.feature_name: spec for spec in feature_specs}
+    feature_indices = {
+        spec.feature_name: index for index, spec in enumerate(feature_specs)
+    }
+    for feature_name in pair.retained_decisions:
+        feature_by_name[feature_name].validate_value(
+            declared_domain_assignments[feature_name]
+        )
+    runtime_payload = load_spflow_payload(resolved_artifact)
+    if runtime_payload is None:
+        raise RuntimeError(
+            "native conditional evaluation requires a current-SPFlow model sidecar"
+        )
+    if (
+        runtime_payload.get("payload_kind") != "current-spflow-model-sidecar"
+        or runtime_payload.get("backend_generation") != "current-spflow"
+        or runtime_payload.get("backend_api_version")
+        != resolved_artifact.backend_api_version
+        or runtime_payload.get("query_strategy") != "spflow"
+    ):
+        raise RuntimeError(
+            "native conditional evaluation requires the matching current-SPFlow payload"
+        )
+    model = runtime_payload.get("model")
+    if model is None:
+        raise RuntimeError("current-SPFlow payload does not contain a fitted model")
+
+    import torch
+
+    evidence = torch.full(
+        (1, len(feature_specs)),
+        torch.nan,
+        dtype=torch.float64,
+        device="cpu",
+    )
+    ordered_assignments: dict[str, object] = {}
+    for feature_name in pair.retained_decisions:
+        value = declared_domain_assignments[feature_name]
+        ordered_assignments[feature_name] = value
+        evidence[0, feature_indices[feature_name]] = feature_by_name[
+            feature_name
+        ].normalize_value(value)
+
+    denominator_log = reduce_spflow_log_likelihood(model.log_likelihood(evidence))
+    numerator_evidence = evidence.clone()
+    event_spec = feature_by_name[pair.event.feature_name]
+    numerator_evidence[0, feature_indices[pair.event.feature_name]] = (
+        event_spec.normalize_value(pair.event.declared_value)
+    )
+    numerator_log = reduce_spflow_log_likelihood(
+        model.log_likelihood(numerator_evidence)
+    )
+    conditional_log_risk = numerator_log - denominator_log
+    if not math.isfinite(conditional_log_risk):
+        raise ValueError("native conditional log-risk must be finite")
+    try:
+        probability = math.exp(conditional_log_risk)
+    except OverflowError as exc:
+        raise ValueError("native conditional probability must be finite") from exc
+    if not math.isfinite(probability):
+        raise ValueError("native conditional probability must be finite")
+    return TPMNativeConditionalEvaluation(
+        pair_id=pair.pair_id,
+        artifact_id=resolved_artifact.artifact_id,
+        assignments=ordered_assignments,
+        numerator_log=numerator_log,
+        denominator_log=denominator_log,
+        conditional_log_risk=conditional_log_risk,
+        conditional_probability=probability,
+        backend_generation=resolved_artifact.backend_generation,
+        backend_api_version=resolved_artifact.backend_api_version,
+    )
+
+
 __all__ = [
     "DEFAULT_QUERY_NUMERIC_TOLERANCE",
     "TPMQueryRequest",
+    "evaluate_native_conditional_pair",
     "marginalize_spflow_model",
     "query_tpm_artifact",
     "reduce_spflow_log_likelihood",
@@ -174,6 +274,42 @@ def _load_artifact(artifact: TPMArtifact | str | Path | Mapping[str, Any]) -> TP
     if isinstance(artifact, TPMArtifact):
         return artifact
     return load_tpm_artifact(artifact)
+
+
+def _validate_native_pair_source(
+    artifact: TPMArtifact,
+    *,
+    pair: TPMConditionalPair,
+) -> None:
+    expected = {
+        "artifact_id": artifact.artifact_id,
+        "artifact_schema_version": artifact.schema_version,
+        "sidecar_sha256": artifact.payload_hash,
+        "backend_generation": artifact.backend_generation,
+        "backend_api_version": artifact.backend_api_version,
+    }
+    actual = {
+        "artifact_id": pair.source.artifact_id,
+        "artifact_schema_version": pair.source.artifact_schema_version,
+        "sidecar_sha256": pair.source.sidecar_sha256,
+        "backend_generation": pair.source.backend_generation,
+        "backend_api_version": pair.source.backend_api_version,
+    }
+    if actual != expected:
+        raise ValueError(
+            "conditional pair source provenance does not match the native artifact"
+        )
+    persisted_schema = tuple(
+        spec.to_dict(schema_version="v3") for spec in artifact.feature_specs
+    )
+    pair_schema = tuple(pair.to_dict()["feature_schema"])
+    if pair_schema != persisted_schema:
+        raise ValueError(
+            "conditional pair feature schema does not match the native artifact"
+        )
+    event_name = str(artifact.target_definition.get("event_target_name", ""))
+    if pair.event.feature_name != event_name:
+        raise ValueError("conditional pair event does not match the native artifact")
 
 
 def _build_query_context(

@@ -315,6 +315,51 @@ class TPMConditionalEncodingPolicy:
             raise ValueError("leaf_configuration must be a nonempty mapping")
         if not isinstance(sum_configuration, Mapping) or not sum_configuration:
             raise ValueError("sum_configuration must be a nonempty mapping")
+        if "mio_epsilon" not in leaf_configuration:
+            raise ValueError("leaf_configuration must resolve mio_epsilon")
+        _positive_finite_mapping_value(
+            leaf_configuration,
+            "mio_epsilon",
+            field_name="leaf_configuration.mio_epsilon",
+        )
+        _positive_finite_mapping_value(
+            leaf_configuration,
+            "discrete_probability_floor",
+            field_name="leaf_configuration.discrete_probability_floor",
+        )
+        if not any(
+            name in leaf_configuration
+            for name in ("relative_breakpoints", "breakpoints", "breakpoint_count")
+        ):
+            raise ValueError(
+                "leaf_configuration must resolve breakpoints or breakpoint_count"
+            )
+        _positive_finite_mapping_value(
+            sum_configuration,
+            "sum_big_m",
+            field_name="sum_configuration.sum_big_m",
+        )
+        if mode == "piecewise":
+            for x_name, y_name in (
+                ("exp_x_points", "exp_y_points"),
+                ("log_x_points", "log_y_points"),
+            ):
+                x_values = _finite_sequence(
+                    sum_configuration.get(x_name), field_name=x_name
+                )
+                y_values = _finite_sequence(
+                    sum_configuration.get(y_name), field_name=y_name
+                )
+                if len(x_values) < 2 or len(x_values) != len(y_values):
+                    raise ValueError(f"{x_name} and {y_name} must align")
+                if any(
+                    right <= left for left, right in zip(x_values, x_values[1:])
+                ):
+                    raise ValueError(f"{x_name} must be strictly increasing")
+            _finite_float(
+                sum_configuration.get("exp_domain_floor"),
+                field_name="sum_configuration.exp_domain_floor",
+            )
         object.__setattr__(self, "mode", mode)
         object.__setattr__(self, "approximation_label", approximation_label)
         object.__setattr__(self, "certification_label", certification_label)
@@ -619,6 +664,13 @@ class TPMConditionalCircuit:
             visited.add(node_id)
 
         visit(self.root_id)
+        for node in nodes:
+            if node.node_type == "sum":
+                weights = node.parameters.get("weights", ())
+                if len(weights) != len(node.children):
+                    raise ValueError(
+                        "conditional circuit sum weights must match its children"
+                    )
         metadata = _freeze_json(self.metadata, field_name="circuit metadata")
         if not isinstance(metadata, Mapping):
             raise TypeError("circuit metadata must be a mapping")
@@ -858,6 +910,131 @@ class TPMConditionalPair:
 
 
 @dataclass(frozen=True, slots=True)
+class TPMConditionalEvaluation:
+    """Raw direct evaluation of one immutable conditional pair."""
+
+    pair_id: str
+    assignment_mode: str
+    assignments: Mapping[str, object]
+    numerator_log: float
+    denominator_log: float
+    conditional_log_risk: float
+    conditional_probability: float
+    classification: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "pair_id",
+            _sha256_digest(self.pair_id, field_name="pair_id"),
+        )
+        if self.assignment_mode not in {"declared-domain", "model-coordinate"}:
+            raise ValueError(
+                "assignment_mode must be 'declared-domain' or 'model-coordinate'"
+            )
+        assignments = _freeze_json(self.assignments, field_name="assignments")
+        if not isinstance(assignments, Mapping):
+            raise TypeError("assignments must be a mapping")
+        object.__setattr__(self, "assignments", assignments)
+        for field_name in (
+            "numerator_log",
+            "denominator_log",
+            "conditional_log_risk",
+            "conditional_probability",
+        ):
+            object.__setattr__(
+                self,
+                field_name,
+                _finite_float(getattr(self, field_name), field_name=field_name),
+            )
+        if self.conditional_probability < 0.0:
+            raise ValueError("conditional_probability must be non-negative")
+        if self.classification not in {"valid", "positive-numerical-noise"}:
+            raise ValueError(
+                "classification must be 'valid' or 'positive-numerical-noise'"
+            )
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "pair_id": self.pair_id,
+            "assignment_mode": self.assignment_mode,
+            "assignments": _thaw_json(self.assignments),
+            "numerator_log": self.numerator_log,
+            "denominator_log": self.denominator_log,
+            "conditional_log_risk": self.conditional_log_risk,
+            "conditional_probability": self.conditional_probability,
+            "classification": self.classification,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class TPMNativeConditionalEvaluation:
+    """Raw current-SPFlow numerator/denominator evidence for compiler fidelity."""
+
+    pair_id: str
+    artifact_id: str
+    assignments: Mapping[str, object]
+    numerator_log: float
+    denominator_log: float
+    conditional_log_risk: float
+    conditional_probability: float
+    backend_generation: str
+    backend_api_version: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "pair_id",
+            _sha256_digest(self.pair_id, field_name="pair_id"),
+        )
+        object.__setattr__(
+            self,
+            "artifact_id",
+            _non_empty_string(self.artifact_id, "artifact_id"),
+        )
+        assignments = _freeze_json(self.assignments, field_name="assignments")
+        if not isinstance(assignments, Mapping):
+            raise TypeError("assignments must be a mapping")
+        object.__setattr__(self, "assignments", assignments)
+        for field_name in (
+            "numerator_log",
+            "denominator_log",
+            "conditional_log_risk",
+            "conditional_probability",
+        ):
+            object.__setattr__(
+                self,
+                field_name,
+                _finite_float(getattr(self, field_name), field_name=field_name),
+            )
+        if self.conditional_probability < 0.0:
+            raise ValueError("conditional_probability must be non-negative")
+        object.__setattr__(
+            self,
+            "backend_generation",
+            _non_empty_string(self.backend_generation, "backend_generation"),
+        )
+        object.__setattr__(
+            self,
+            "backend_api_version",
+            _non_empty_string(self.backend_api_version, "backend_api_version"),
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "pair_id": self.pair_id,
+            "artifact_id": self.artifact_id,
+            "assignments": _thaw_json(self.assignments),
+            "numerator_log": self.numerator_log,
+            "denominator_log": self.denominator_log,
+            "conditional_log_risk": self.conditional_log_risk,
+            "conditional_probability": self.conditional_probability,
+            "backend_generation": self.backend_generation,
+            "backend_api_version": self.backend_api_version,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class TPMConditionalPublication:
     """Outcome of one create-only or verified-identical publication."""
 
@@ -1058,6 +1235,20 @@ def _finite_float(value: object, *, field_name: str) -> float:
     return normalized
 
 
+def _positive_finite_mapping_value(
+    payload: Mapping[str, object],
+    name: str,
+    *,
+    field_name: str,
+) -> float:
+    if name not in payload:
+        raise ValueError(f"{field_name} is required")
+    value = _finite_float(payload[name], field_name=field_name)
+    if value <= 0.0:
+        raise ValueError(f"{field_name} must be positive")
+    return value
+
+
 def _non_empty_string(value: object, field_name: str) -> str:
     normalized = str(value)
     if not normalized:
@@ -1082,9 +1273,11 @@ __all__ = [
     "TPMConditionalCircuitNode",
     "TPMConditionalCompilationRequest",
     "TPMConditionalEncodingPolicy",
+    "TPMConditionalEvaluation",
     "TPMConditionalEvent",
     "TPMConditionalFeatureValidity",
     "TPMConditionalNumericalPolicy",
+    "TPMNativeConditionalEvaluation",
     "TPMConditionalPair",
     "TPMConditionalPublication",
     "TPMConditionalSourceReference",

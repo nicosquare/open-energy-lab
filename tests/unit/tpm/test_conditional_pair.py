@@ -89,7 +89,9 @@ def _encoding(mode: str = "max") -> TPMConditionalEncodingPolicy:
             certification_label="uncertified",
             leaf_configuration={
                 "policy_name": "physical-interval-relative-v2",
+                "relative_breakpoints": [0.0, 0.5, 1.0],
                 "mio_epsilon": 1e-6,
+                "discrete_probability_floor": 1e-12,
             },
             sum_configuration={"sum_big_m": 100.0},
         )
@@ -101,13 +103,15 @@ def _encoding(mode: str = "max") -> TPMConditionalEncodingPolicy:
         certification_label="not-applicable",
         leaf_configuration={
             "policy_name": "physical-interval-relative-v2",
+            "relative_breakpoints": [0.0, 0.5, 1.0],
             "mio_epsilon": 1e-6,
+            "discrete_probability_floor": 1e-12,
         },
         sum_configuration={
             "sum_big_m": 100.0,
             "exp_domain_floor": -500.0,
-            "exp_x_points": [-6.9, -2.0, -1.0, -0.3, 0.0],
-            "exp_y_points": [0.001, 0.14, 0.37, 0.74, 1.0],
+            "exp_x_points": [-500.0, -6.9, -2.0, -1.0, -0.3, 0.0],
+            "exp_y_points": [0.0, 0.001, 0.14, 0.37, 0.74, 1.0],
             "log_x_points": [1.0, 1.19, 1.41, 1.68, 2.0],
             "log_y_points": [0.0, 0.17, 0.35, 0.52, 0.69],
         },
@@ -404,3 +408,43 @@ def test_pair_publication_rejects_conflicts_and_cleans_temporary_files(tmp_path)
 
     assert not tuple(tmp_path.glob(".pair.json.*.tmp"))
 
+
+def test_pair_loading_rejects_corruption_without_repairing_source_bytes(tmp_path) -> None:
+    output = tmp_path / "pair.json"
+    output.write_bytes(b'{"record_kind":"conditional-pair-v1"')
+    before = output.read_bytes()
+
+    with pytest.raises(ValueError, match="corrupt"):
+        load_conditional_pair(output)
+
+    assert output.read_bytes() == before
+
+
+def test_pair_identity_changes_for_validity_encoding_and_tolerance_inputs() -> None:
+    baseline = _pair()
+
+    validity_payload = baseline.to_dict()
+    validity_payload["pair_id"] = ""
+    validity_payload["validity"][0]["approximation_domain"]["source"] = "changed"
+    changed_validity = TPMConditionalPair.from_dict(validity_payload)
+
+    tolerance_payload = baseline.to_dict()
+    tolerance_payload["pair_id"] = ""
+    tolerance_payload["numerical_policy"]["tolerances"][
+        "embedding_parity_absolute_tolerance"
+    ] = 5e-7
+    changed_tolerance = TPMConditionalPair.from_dict(tolerance_payload)
+
+    assert baseline.pair_id != changed_validity.pair_id
+    assert baseline.pair_id != changed_tolerance.pair_id
+    assert baseline.pair_id != _pair(encoding=_encoding("piecewise")).pair_id
+
+
+def test_pair_round_trip_preserves_explicit_approximation_labels() -> None:
+    for mode in ("max", "piecewise"):
+        pair = _pair(encoding=_encoding(mode))
+        loaded = TPMConditionalPair.from_dict(pair.to_dict())
+
+        assert loaded.encoding.mode == mode
+        assert loaded.encoding.approximation_label == pair.encoding.approximation_label
+        assert loaded.encoding.certification_label == pair.encoding.certification_label
