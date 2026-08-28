@@ -79,6 +79,10 @@ def _solve_and_inspect(model, attachment):
     import pyomo.environ as pyo
 
     solver = pyo.SolverFactory("highs")
+    # HiGHS owns a process-global scheduler; use the repository's established
+    # single-threaded CPU setting so later compatibility solves can request the
+    # same setting in this pytest process.
+    solver.options["threads"] = 1
     results = solver.solve(model)
     return inspect_conditional_mio_attachment(
         attachment,

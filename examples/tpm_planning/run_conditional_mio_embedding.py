@@ -22,6 +22,8 @@ from open_energy_lab.tpm import (
     TPMConditionalCompilationRequest,
     TPMConditionalEncodingPolicy,
     TPMConditionalNumericalPolicy,
+    TPMCompilerFidelityEvidence,
+    TPMEmbeddingParityEvidence,
     attach_conditional_mio_pair,
     build_compiler_fidelity_evidence,
     build_embedding_parity_evidence,
@@ -33,7 +35,9 @@ from open_energy_lab.tpm import (
     fit_tpm_artifact_from_rows,
     inspect_conditional_mio_attachment,
     load_tpm_artifact,
+    load_conditional_evidence,
     load_conditional_pair,
+    publish_conditional_evidence,
     publish_conditional_pair,
 )
 from open_energy_lab.tpm.artifact import write_tpm_sidecar
@@ -435,7 +439,9 @@ def _fixed_assignment_diagnostics(
         )
     if tuple(model.component_objects(pyo.Objective, descend_into=True)):
         raise AssertionError("fixed-assignment evidence must remain objective-free")
-    result = pyo.SolverFactory("highs").solve(model)
+    solver = pyo.SolverFactory("highs")
+    solver.options["threads"] = 1
+    result = solver.solve(model)
     return inspect_conditional_mio_attachment(
         attachment,
         solver_metadata={
@@ -661,6 +667,89 @@ def _semantic_projection(artifact) -> dict[str, object]:
     }
 
 
+def _verify_create_only_reuse(
+    committed_pairs: Mapping[str, object],
+    committed_evidence: Mapping[str, object],
+) -> None:
+    """Exercise reuse, mismatch, and corruption without touching committed paths."""
+
+    parity = TPMEmbeddingParityEvidence.from_dict(
+        committed_evidence["embedding_parity_records"][0]
+    )
+    fidelity = TPMCompilerFidelityEvidence.from_dict(
+        committed_evidence["compiler_fidelity_records"][0]
+    )
+    with TemporaryDirectory(
+        prefix="oel-conditional-mio-publication-verify-", dir="/tmp"
+    ) as raw:
+        directory = Path(raw)
+        pair_path = directory / "pair.json"
+        first = publish_conditional_pair(committed_pairs["max"], pair_path)
+        pair_bytes = pair_path.read_bytes()
+        second = publish_conditional_pair(committed_pairs["max"], pair_path)
+        third = publish_conditional_pair(committed_pairs["max"], pair_path)
+        if not first.created or not second.reused or not third.reused:
+            raise AssertionError("pair create-only publication did not verify reuse")
+        if load_conditional_pair(pair_path) != committed_pairs["max"]:
+            raise AssertionError("reused pair changed semantic meaning")
+        try:
+            publish_conditional_pair(committed_pairs["pwl"], pair_path)
+        except FileExistsError:
+            pass
+        else:  # pragma: no cover - immutable-publication invariant
+            raise AssertionError("mismatched pair publication unexpectedly succeeded")
+        if pair_path.read_bytes() != pair_bytes:
+            raise AssertionError("mismatched pair publication rewrote its target")
+
+        corrupt_pair_path = directory / "corrupt-pair.json"
+        corrupt_pair_path.write_bytes(b'{"record_kind":"conditional-pair-v1"')
+        corrupt_pair_bytes = corrupt_pair_path.read_bytes()
+        try:
+            publish_conditional_pair(committed_pairs["max"], corrupt_pair_path)
+        except FileExistsError:
+            pass
+        else:  # pragma: no cover - immutable-publication invariant
+            raise AssertionError("corrupt pair target was silently repaired")
+        if corrupt_pair_path.read_bytes() != corrupt_pair_bytes:
+            raise AssertionError("corrupt pair target was modified")
+
+        evidence_path = directory / "evidence.json"
+        first_evidence = publish_conditional_evidence(parity, evidence_path)
+        evidence_bytes = evidence_path.read_bytes()
+        second_evidence = publish_conditional_evidence(parity, evidence_path)
+        third_evidence = publish_conditional_evidence(parity, evidence_path)
+        if (
+            not first_evidence.created
+            or not second_evidence.reused
+            or not third_evidence.reused
+        ):
+            raise AssertionError("evidence publication did not verify repeated reuse")
+        if load_conditional_evidence(evidence_path) != parity:
+            raise AssertionError("reused evidence changed semantic meaning")
+        try:
+            publish_conditional_evidence(fidelity, evidence_path)
+        except FileExistsError:
+            pass
+        else:  # pragma: no cover - immutable-publication invariant
+            raise AssertionError("mismatched evidence publication unexpectedly succeeded")
+        if evidence_path.read_bytes() != evidence_bytes:
+            raise AssertionError("mismatched evidence publication rewrote its target")
+
+        corrupt_evidence_path = directory / "corrupt-evidence.json"
+        corrupt_evidence_path.write_bytes(
+            b'{"record_kind":"conditional-embedding-parity-v1"'
+        )
+        corrupt_evidence_bytes = corrupt_evidence_path.read_bytes()
+        try:
+            publish_conditional_evidence(parity, corrupt_evidence_path)
+        except FileExistsError:
+            pass
+        else:  # pragma: no cover - immutable-publication invariant
+            raise AssertionError("corrupt evidence target was silently repaired")
+        if corrupt_evidence_path.read_bytes() != corrupt_evidence_bytes:
+            raise AssertionError("corrupt evidence target was modified")
+
+
 def verify_fixtures() -> dict[str, object]:
     """Verify committed source evidence without rewriting or repairing it."""
 
@@ -708,6 +797,7 @@ def verify_fixtures() -> dict[str, object]:
         json.loads(EVIDENCE_PATH.read_text(encoding="utf-8")),
         field_name="conditional_mio_evidence_v1",
     )
+    _verify_create_only_reuse(committed_pairs, committed_evidence)
     recomputed_evidence = _build_evidence_bundle()
     _assert_nested_close(
         committed_evidence,
@@ -760,6 +850,8 @@ def verify_fixtures() -> dict[str, object]:
         "backend_api_version": committed.backend_api_version,
         "adapter_name": capabilities["backend_adapter_name"],
         "semantic_refit_verified": True,
+        "create_only_reuse_verified": True,
+        "corruption_and_mismatch_nonrepair_verified": True,
         "committed_bytes_unchanged": True,
         "cpu_only": True,
     }

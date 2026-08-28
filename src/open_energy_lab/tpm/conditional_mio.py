@@ -90,6 +90,13 @@ def attach_conditional_mio_pair(
 
     if not isinstance(pair, TPMConditionalPair):
         raise TypeError("pair must be a TPMConditionalPair")
+    (
+        pair,
+        validity_by_name,
+        domain_by_name,
+        normalization_by_name,
+        approximation_by_name,
+    ) = _validate_pair_for_attachment(pair)
     backend = require_pyomo_backend()
     normalized_namespace = _validate_attachment_namespace(
         model, namespace=namespace
@@ -130,7 +137,6 @@ def attach_conditional_mio_pair(
             "decision mappings must exactly cover retained decisions; "
             f"missing={missing!r}, unknown extra={extra!r}"
         )
-    validity_by_name = {value.feature_name: value for value in pair.validity}
     continuous_variables: dict[str, tuple[object, ...]] = {}
     discrete_ordering: dict[str, tuple[object, ...]] = {}
     for feature_name in expected:
@@ -153,7 +159,7 @@ def attach_conditional_mio_pair(
                 feature_name=feature_name,
             )
             continue
-        domain = TPMFeatureDomain.from_dict(validity.declared_domain)
+        domain = domain_by_name[feature_name]
         ordering = tuple(domain.ordering)
         if validity.feature_type == "binary":
             if not isinstance(mapping, TPMBinaryDecisionMapping):
@@ -204,10 +210,6 @@ def attach_conditional_mio_pair(
     block.continuous_features = backend.Set(
         initialize=continuous_names, ordered=True
     )
-    approximation_by_name = {
-        name: validity_by_name[name].approximation_domain
-        for name in continuous_names
-    }
     block.model_coordinate = backend.Var(
         block.continuous_features,
         domain=backend.Reals,
@@ -241,9 +243,7 @@ def attach_conditional_mio_pair(
     )
 
     def coordinate_link_rule(_block, name):
-        normalization = TPMNormalizationSpec.from_dict(
-            validity_by_name[name].normalization
-        )
+        normalization = normalization_by_name[name]
         physical = physical_expression_by_name[name]
         if normalization.kind == "min-max":
             coordinate = (physical - normalization.lower) / (
@@ -381,13 +381,260 @@ def attach_conditional_mio_pair(
         },
         diagnostic_components=diagnostic_components,
     )
-    try:
-        model.add_component(normalized_namespace, block)
-    except Exception:
-        if model.component(normalized_namespace) is block:
-            model.del_component(block)
-        raise
+    _add_attachment_block_atomically(
+        model,
+        namespace=normalized_namespace,
+        block=block,
+    )
     return result
+
+
+def _validate_pair_for_attachment(
+    pair: TPMConditionalPair,
+) -> tuple[
+    TPMConditionalPair,
+    dict[str, TPMConditionalFeatureValidity],
+    dict[str, TPMFeatureDomain],
+    dict[str, TPMNormalizationSpec],
+    dict[str, Mapping[str, object]],
+]:
+    """Revalidate identity and U-Bounds meaning before touching a caller model."""
+
+    try:
+        validated = TPMConditionalPair.from_dict(pair.to_dict())
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "conditional pair failed attachment identity/schema preflight"
+        ) from exc
+    validity_by_name = {
+        value.feature_name: value for value in validated.validity
+    }
+    schema_by_name = {
+        str(value["feature_name"]): value for value in validated.feature_schema
+    }
+    domains: dict[str, TPMFeatureDomain] = {}
+    normalizations: dict[str, TPMNormalizationSpec] = {}
+    approximations: dict[str, Mapping[str, object]] = {}
+    for feature_name in validated.retained_decisions:
+        validity = validity_by_name[feature_name]
+        schema = schema_by_name[feature_name]
+        if schema.get("feature_type") != validity.feature_type:
+            raise ValueError(
+                f"retained feature {feature_name!r} has inconsistent pair feature types"
+            )
+        try:
+            domain = TPMFeatureDomain.from_dict(validity.declared_domain)
+            normalization = TPMNormalizationSpec.from_dict(
+                validity.normalization
+            )
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"retained feature {feature_name!r} has invalid U-Bounds semantics"
+            ) from exc
+        if (
+            domain.feature_name != feature_name
+            or normalization.feature_name != feature_name
+            or domain.feature_kind != validity.feature_type
+            or normalization.feature_kind != validity.feature_type
+        ):
+            raise ValueError(
+                f"retained feature {feature_name!r} has mismatched domain or "
+                "normalization identity"
+            )
+        if domain.purpose != "decision-domain" or domain.origin != "caller-declared":
+            raise ValueError(
+                f"retained feature {feature_name!r} requires a caller-declared "
+                "decision domain"
+            )
+        if normalization.origin != "caller-declared":
+            raise ValueError(
+                f"retained feature {feature_name!r} requires caller-declared "
+                "normalization"
+            )
+        domains[feature_name] = domain
+        normalizations[feature_name] = normalization
+        if validity.feature_type == "continuous":
+            if (
+                domain.shape != "finite"
+                or domain.lower is None
+                or domain.upper is None
+                or domain.lower >= domain.upper
+            ):
+                raise ValueError(
+                    f"continuous feature {feature_name!r} requires a nondegenerate "
+                    "finite decision domain"
+                )
+            if normalization.kind != "min-max":
+                raise ValueError(
+                    f"finite continuous decision {feature_name!r} requires "
+                    "caller-declared min-max normalization"
+                )
+            approximation = _validate_attachment_approximation(
+                validity.approximation_domain,
+                feature_name=feature_name,
+                feature_index=validity.feature_index,
+                domain=domain,
+                normalization=normalization,
+            )
+            approximations[feature_name] = approximation
+        else:
+            if normalization.kind != "ordered-index":
+                raise ValueError(
+                    f"discrete feature {feature_name!r} requires ordered-index "
+                    "normalization"
+                )
+            if tuple(normalization.ordering) != tuple(domain.ordering):
+                raise ValueError(
+                    f"discrete feature {feature_name!r} has inconsistent declared "
+                    "and normalization ordering"
+                )
+    return validated, validity_by_name, domains, normalizations, approximations
+
+
+def _validate_attachment_approximation(
+    value: Mapping[str, object] | None,
+    *,
+    feature_name: str,
+    feature_index: int,
+    domain: TPMFeatureDomain,
+    normalization: TPMNormalizationSpec,
+) -> Mapping[str, object]:
+    if not isinstance(value, Mapping):
+        raise ValueError(
+            f"continuous feature {feature_name!r} lacks approximation validity"
+        )
+    if value.get("feature_name") != feature_name:
+        raise ValueError(
+            f"approximation validity for {feature_name!r} has a mismatched feature"
+        )
+    if "feature_index" in value and value["feature_index"] != feature_index:
+        raise ValueError(
+            f"approximation validity for {feature_name!r} has a mismatched index"
+        )
+    physical = _closed_interval(
+        value.get("physical_interval"),
+        field_name=f"{feature_name} physical approximation interval",
+    )
+    coordinate = _closed_interval(
+        value.get("model_interval"),
+        field_name=f"{feature_name} model approximation interval",
+    )
+    if physical[0] < domain.lower or physical[1] > domain.upper:
+        raise ValueError(
+            f"approximation interval for {feature_name!r} lies outside its "
+            "declared decision domain"
+        )
+    expected_coordinate = (
+        float(normalization.normalize_value(physical[0])),
+        float(normalization.normalize_value(physical[1])),
+    )
+    if any(
+        not math.isclose(actual, expected, rel_tol=1e-12, abs_tol=1e-12)
+        for actual, expected in zip(
+            coordinate, expected_coordinate, strict=True
+        )
+    ):
+        raise ValueError(
+            f"approximation validity for {feature_name!r} is inconsistent with "
+            "its persisted normalization"
+        )
+    for name, interval in (
+        ("physical_breakpoints", physical),
+        ("model_breakpoints", coordinate),
+    ):
+        if name not in value:
+            continue
+        points = _strictly_increasing_finite_sequence(
+            value[name], field_name=f"{feature_name} {name}"
+        )
+        if not (
+            math.isclose(points[0], interval[0], rel_tol=1e-12, abs_tol=1e-12)
+            and math.isclose(
+                points[-1], interval[1], rel_tol=1e-12, abs_tol=1e-12
+            )
+        ):
+            raise ValueError(
+                f"{feature_name} {name} must span its recorded validity interval"
+            )
+    embedded_normalization = value.get("normalization")
+    if embedded_normalization is not None:
+        if not isinstance(embedded_normalization, Mapping):
+            raise ValueError(
+                f"approximation validity for {feature_name!r} embeds invalid "
+                "normalization semantics"
+            )
+        if dict(embedded_normalization) != normalization.to_dict():
+            raise ValueError(
+                f"approximation validity for {feature_name!r} embeds different "
+                "normalization semantics"
+            )
+    for field_name in ("source", "encoding"):
+        if not isinstance(value.get(field_name), str) or not value[field_name]:
+            raise ValueError(
+                f"approximation validity for {feature_name!r} requires "
+                f"nonempty {field_name}"
+            )
+    return value
+
+
+def _closed_interval(value: object, *, field_name: str) -> tuple[float, float]:
+    if (
+        not isinstance(value, Sequence)
+        or isinstance(value, (str, bytes))
+        or len(value) != 2
+    ):
+        raise ValueError(f"{field_name} must contain exactly two endpoints")
+    lower = _finite_float(value[0], field_name=f"{field_name} lower")
+    upper = _finite_float(value[1], field_name=f"{field_name} upper")
+    if lower >= upper:
+        raise ValueError(f"{field_name} must be strictly increasing")
+    return lower, upper
+
+
+def _strictly_increasing_finite_sequence(
+    value: object,
+    *,
+    field_name: str,
+) -> tuple[float, ...]:
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+        raise TypeError(f"{field_name} must be a sequence")
+    points = tuple(
+        _finite_float(item, field_name=f"{field_name}[{index}]")
+        for index, item in enumerate(value)
+    )
+    if len(points) < 2 or any(
+        right <= left for left, right in zip(points, points[1:])
+    ):
+        raise ValueError(f"{field_name} must be strictly increasing")
+    return points
+
+
+def _add_attachment_block_atomically(
+    model: object,
+    *,
+    namespace: str,
+    block: object,
+) -> None:
+    try:
+        model.add_component(namespace, block)
+    except Exception as add_error:
+        if model.component(namespace) is block:
+            try:
+                model.del_component(block)
+            except Exception as rollback_error:  # pragma: no cover - defensive Pyomo failure
+                raise RuntimeError(
+                    f"conditional attachment {namespace!r} failed and its exact "
+                    "rollback also failed"
+                ) from rollback_error
+            if model.component(namespace) is not None:  # pragma: no cover - Pyomo invariant
+                raise RuntimeError(
+                    f"conditional attachment {namespace!r} failed to roll back"
+                ) from add_error
+        raise
+    if model.component(namespace) is not block:  # pragma: no cover - Pyomo invariant
+        raise RuntimeError(
+            f"conditional attachment {namespace!r} was not registered as requested"
+        )
 
 
 def inspect_conditional_mio_attachment(

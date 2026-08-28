@@ -288,6 +288,12 @@ def test_evidence_records_are_immutable_identified_and_create_or_verify(tmp_path
         parity.evidence_id = "changed"
     with pytest.raises(TypeError):
         parity.cases[0]["assignments"]["x"] = 0.0
+    with pytest.raises(TypeError):
+        parity.cases[0]["direct"]["assignments"]["x"] = 40.0
+    with pytest.raises(TypeError):
+        parity.metric_definitions["acceptance_gate"] = "changed"
+    with pytest.raises(TypeError):
+        parity.provenance["purpose"] = "changed"
 
     changed = build_embedding_parity_evidence(
         pair,

@@ -182,17 +182,17 @@ whole-model behavior remain unchanged.
 
 ### Tests for User Story 5
 
-- [ ] T044 [P] [US5] Extend pair/evidence tests with recursive mutation attempts, concurrent identical/conflicting publication, incomplete targets, unwritable destinations, changed-input non-overwrite behavior, and byte-stable evaluation reuse in `tests/unit/tpm/test_conditional_pair.py`
-- [ ] T045 [P] [US5] Extend attachment tests with two isolated namespaces, duplicate/unrelated component collisions, missing/duplicate/extra mappings, invalid pair/domain inputs, injected detached-build/final-add failures, exact rollback, and caller component snapshots in `tests/unit/tpm/test_conditional_attachment.py`
-- [ ] T046 [P] [US5] Add compatibility regressions proving existing whole-model compilation, categorical lookup compatibility, planning payloads, and public entry points retain their established behavior in `tests/unit/tpm/test_mio.py`, `tests/unit/planning/test_piecewise.py`, and `tests/integration/planning/test_problem_assembly.py`
+- [X] T044 [P] [US5] Extend pair/evidence tests with recursive mutation attempts, concurrent identical/conflicting publication, incomplete targets, unwritable destinations, changed-input non-overwrite behavior, and byte-stable evaluation reuse in `tests/unit/tpm/test_conditional_pair.py`
+- [X] T045 [P] [US5] Extend attachment tests with two isolated namespaces, duplicate/unrelated component collisions, missing/duplicate/extra mappings, invalid pair/domain inputs, injected detached-build/final-add failures, exact rollback, and caller component snapshots in `tests/unit/tpm/test_conditional_attachment.py`
+- [X] T046 [P] [US5] Add compatibility regressions proving existing whole-model compilation, categorical lookup compatibility, planning payloads, and public entry points retain their established behavior in `tests/unit/tpm/test_mio.py`, `tests/unit/planning/test_piecewise.py`, and `tests/integration/planning/test_problem_assembly.py`
 
 ### Implementation for User Story 5
 
-- [ ] T047 [US5] Add adversarial hardening beyond T007 for concurrent final-name appearance after preflight, simultaneous identical/conflicting publishers, injected write/link/fsync failures, directory durability, abandoned temporary files, and nested mutation attempts while preserving verified identical reuse in `src/open_energy_lab/tpm/conditional.py`
-- [ ] T048 [US5] Harden complete preflight, detached-block construction, one final component add, exact rollback, repeated distinct attachment, and collision diagnostics without deleting caller-owned components in `src/open_energy_lab/tpm/conditional_mio.py`
-- [ ] T049 [US5] Resolve only compatibility regressions exposed by T046 in existing whole-model and planning adapters, without adding a second conditioner or routing established public entry points through the new composable contract, in `src/open_energy_lab/tpm/mio.py`, `src/open_energy_lab/planning/piecewise.py`, and `src/open_energy_lab/planning/problem.py`
-- [ ] T050 [US5] Extend fixture verification with corruption/mismatch cases, immutable source/pair/evidence snapshots, repeated verified reuse, and failure-without-repair behavior in `examples/tpm_planning/run_conditional_mio_embedding.py`
-- [ ] T051 [US5] Run the US5 persistence, atomicity, existing TPM/planning compatibility, and verify-only fixture slices from `specs/016-conditional-mio-embedding/quickstart.md` and confirm no compatibility fixture was rewritten
+- [X] T047 [US5] Add adversarial hardening beyond T007 for concurrent final-name appearance after preflight, simultaneous identical/conflicting publishers, injected write/link/fsync failures, directory durability, abandoned temporary files, and nested mutation attempts while preserving verified identical reuse in `src/open_energy_lab/tpm/conditional.py`
+- [X] T048 [US5] Harden complete preflight, detached-block construction, one final component add, exact rollback, repeated distinct attachment, and collision diagnostics without deleting caller-owned components in `src/open_energy_lab/tpm/conditional_mio.py`
+- [X] T049 [US5] Resolve only compatibility regressions exposed by T046 in existing whole-model and planning adapters, without adding a second conditioner or routing established public entry points through the new composable contract, in `src/open_energy_lab/tpm/mio.py`, `src/open_energy_lab/planning/piecewise.py`, and `src/open_energy_lab/planning/problem.py`
+- [X] T050 [US5] Extend fixture verification with corruption/mismatch cases, immutable source/pair/evidence snapshots, repeated verified reuse, and failure-without-repair behavior in `examples/tpm_planning/run_conditional_mio_embedding.py`
+- [X] T051 [US5] Run the US5 persistence, atomicity, existing TPM/planning compatibility, and verify-only fixture slices from `specs/016-conditional-mio-embedding/quickstart.md` and confirm no compatibility fixture was rewritten
 
 **Checkpoint**: Conditional pairs and evidence are safely reusable, multiple attachments coexist,
 and rejected operations leave caller models and prior evidence intact.

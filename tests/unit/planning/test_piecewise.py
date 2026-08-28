@@ -312,6 +312,51 @@ def test_current_spflow_mio_payload_builds_conditional_planning_models() -> None
     assert conditional["denominator_model"]["nodes"][-1]["fixed_value"] == 0
 
 
+def test_existing_planning_payload_shape_remains_independent_of_composable_records() -> None:
+    compiled = _compiled_mio_payload()
+    before = copy.deepcopy(compiled)
+
+    planning_payload = build_current_spflow_planning_payload(
+        compiled,
+        approximation_metadata={
+            "compiler_version": "spflow-v1-mio-v1",
+            "mio_epsilon": 1e-6,
+        },
+        decision_features=("battery_capacity_kwh",),
+        event_target_name="shortfall_event",
+        chance_limit_epsilon=0.3,
+        shortfall_threshold=0.08,
+        payload_locator="sidecars/model.pkl",
+    )
+
+    assert compiled == before
+    assert set(planning_payload) == {
+        "source",
+        "payload_locator",
+        "decision_features",
+        "chance_limit_epsilon",
+        "target_threshold",
+        "shortfall_threshold",
+        "event_target_name",
+        "feature_schema",
+        "fitted_artifact_schema_version",
+        "compiled_validity",
+        "sum_encoding_mode",
+        "compiler_version",
+        "compiler_schema_version",
+        "compiled_mio",
+        "conditional_models",
+    }
+    assert "pair_id" not in planning_payload
+    assert "attachment" not in planning_payload
+    assert planning_payload["conditional_models"]["numerator_model"]["nodes"][-1][
+        "fixed_value"
+    ] == 1
+    assert planning_payload["conditional_models"]["denominator_model"]["nodes"][-1][
+        "fixed_value"
+    ] == 0
+
+
 def test_current_planning_conditioner_delegates_to_shared_tpm_primitive(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

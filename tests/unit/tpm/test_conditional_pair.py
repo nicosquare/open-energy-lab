@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import FrozenInstanceError
 import json
 import math
+from threading import Barrier
 
 import pytest
 
+import open_energy_lab.tpm.conditional as conditional_module
 from open_energy_lab.tpm.conditional import (
     CONDITIONAL_PAIR_COMPILER_VERSION,
     CONDITIONAL_PAIR_RECORD_KIND,
@@ -25,6 +28,7 @@ from open_energy_lab.tpm.conditional import (
     load_conditional_pair,
     publish_conditional_pair,
 )
+from open_energy_lab.tpm.conditional_mio import evaluate_conditional_mio_pair
 
 
 def _source_reference() -> TPMConditionalSourceReference:
@@ -333,6 +337,14 @@ def test_pair_is_recursively_immutable_and_returns_detached_serialization() -> N
         pair.feature_schema[0]["feature_name"] = "changed"
     with pytest.raises(TypeError):
         pair.provenance["source_rows_sha256"] = "changed"
+    with pytest.raises(TypeError):
+        pair.validity[0].approximation_domain["source"] = "changed"
+    with pytest.raises(TypeError):
+        pair.encoding.leaf_configuration["relative_breakpoints"][0] = 0.25
+    with pytest.raises(TypeError):
+        pair.numerator.nodes[0].parameters["breakpoints"][0] = 0.25
+    with pytest.raises(TypeError):
+        pair.numerical_policy.tolerances["positive_log_risk_limit"] = 1.0
 
     detached = pair.to_dict()
     detached["retained_decisions"].append("changed")
@@ -411,6 +423,227 @@ def test_pair_publication_rejects_conflicts_and_cleans_temporary_files(tmp_path)
         publish_conditional_pair(_pair(encoding=_encoding("piecewise")), output)
 
     assert not tuple(tmp_path.glob(".pair.json.*.tmp"))
+
+
+def test_pair_publication_concurrent_identical_publishers_create_once(tmp_path) -> None:
+    pair = _pair()
+    output = tmp_path / "pair.json"
+    barrier = Barrier(4)
+
+    def publish_once():
+        barrier.wait()
+        return publish_conditional_pair(pair, output)
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        publications = tuple(executor.map(lambda _index: publish_once(), range(4)))
+
+    assert sum(result.created for result in publications) == 1
+    assert sum(result.reused for result in publications) == 3
+    assert load_conditional_pair(output) == pair
+    assert not tuple(tmp_path.glob(".pair.json.*.tmp"))
+
+
+def test_pair_publication_concurrent_conflict_keeps_exactly_one_record(tmp_path) -> None:
+    candidates = (_pair(), _pair(encoding=_encoding("piecewise")))
+    output = tmp_path / "pair.json"
+    barrier = Barrier(2)
+
+    def publish(candidate):
+        barrier.wait()
+        try:
+            return publish_conditional_pair(candidate, output)
+        except FileExistsError as exc:
+            return exc
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = tuple(executor.map(publish, candidates))
+
+    assert sum(not isinstance(result, Exception) for result in results) == 1
+    assert sum(isinstance(result, FileExistsError) for result in results) == 1
+    assert load_conditional_pair(output).pair_id in {
+        candidate.pair_id for candidate in candidates
+    }
+    assert not tuple(tmp_path.glob(".pair.json.*.tmp"))
+
+
+@pytest.mark.parametrize("appearing_record", ["identical", "conflicting"])
+def test_pair_publication_validates_a_final_name_that_appears_after_preflight(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    appearing_record: str,
+) -> None:
+    pair = _pair()
+    output = tmp_path / "pair.json"
+    competing = pair if appearing_record == "identical" else _pair(
+        encoding=_encoding("piecewise")
+    )
+    real_link = conditional_module.os.link
+
+    def racing_link(source, destination):
+        destination = type(output)(destination)
+        destination.write_bytes(canonical_conditional_json_bytes(competing))
+        return real_link(source, destination)
+
+    monkeypatch.setattr(conditional_module.os, "link", racing_link)
+
+    if appearing_record == "identical":
+        publication = publish_conditional_pair(pair, output)
+        assert publication.reused is True
+        assert load_conditional_pair(output) == pair
+    else:
+        before = canonical_conditional_json_bytes(competing)
+        with pytest.raises(FileExistsError, match="conflicts"):
+            publish_conditional_pair(pair, output)
+        assert output.read_bytes() == before
+    assert not tuple(tmp_path.glob(".pair.json.*.tmp"))
+
+
+def test_pair_publication_rejects_incomplete_and_unwritable_targets_without_repair(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    incomplete = tmp_path / "incomplete.json"
+    incomplete.write_bytes(b'{"record_kind":"conditional-pair-v1"')
+    before = incomplete.read_bytes()
+
+    with pytest.raises(FileExistsError, match="conflicts"):
+        publish_conditional_pair(_pair(), incomplete)
+    assert incomplete.read_bytes() == before
+
+    denied = tmp_path / "denied.json"
+
+    def deny_temporary_file(*_args, **_kwargs):
+        raise PermissionError("injected unwritable destination")
+
+    monkeypatch.setattr(conditional_module.tempfile, "mkstemp", deny_temporary_file)
+    with pytest.raises(PermissionError, match="unwritable"):
+        publish_conditional_pair(_pair(), denied)
+    assert not denied.exists()
+    assert not tuple(tmp_path.glob(".denied.json.*.tmp"))
+
+
+@pytest.mark.parametrize("failure_stage", ["write", "file-fsync", "link"])
+def test_pair_publication_cleans_its_temporary_file_after_injected_io_failure(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure_stage: str,
+) -> None:
+    output = tmp_path / "pair.json"
+    if failure_stage == "write":
+        real_fdopen = conditional_module.os.fdopen
+
+        class FailingWriteStream:
+            def __init__(self, stream):
+                self.stream = stream
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                self.stream.close()
+
+            def write(self, _payload):
+                raise OSError("injected write")
+
+            def flush(self):  # pragma: no cover - write fails first
+                self.stream.flush()
+
+            def fileno(self):  # pragma: no cover - write fails first
+                return self.stream.fileno()
+
+        monkeypatch.setattr(
+            conditional_module.os,
+            "fdopen",
+            lambda descriptor, *args, **kwargs: FailingWriteStream(
+                real_fdopen(descriptor, *args, **kwargs)
+            ),
+        )
+    elif failure_stage == "file-fsync":
+        monkeypatch.setattr(
+            conditional_module.os,
+            "fsync",
+            lambda _descriptor: (_ for _ in ()).throw(OSError("injected fsync")),
+        )
+    else:
+        monkeypatch.setattr(
+            conditional_module.os,
+            "link",
+            lambda _source, _destination: (_ for _ in ()).throw(
+                OSError("injected link")
+            ),
+        )
+
+    with pytest.raises(OSError, match=failure_stage.split("-")[-1]):
+        publish_conditional_pair(_pair(), output)
+
+    assert not output.exists()
+    assert not tuple(tmp_path.glob(".pair.json.*.tmp"))
+
+
+def test_pair_publication_fsyncs_the_directory_after_link_and_recovers_by_reuse(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pair = _pair()
+    output = tmp_path / "pair.json"
+    calls = []
+    real_fsync_directory = conditional_module._fsync_directory
+
+    def observe_directory_fsync(directory):
+        assert output.exists()
+        assert load_conditional_pair(output) == pair
+        calls.append(directory)
+        real_fsync_directory(directory)
+
+    monkeypatch.setattr(
+        conditional_module, "_fsync_directory", observe_directory_fsync
+    )
+    first = publish_conditional_pair(pair, output)
+    second = publish_conditional_pair(pair, output)
+
+    assert first.created is True
+    assert second.reused is True
+    assert calls == [tmp_path]
+
+
+def test_pair_publication_directory_fsync_failure_leaves_complete_reusable_record(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pair = _pair()
+    output = tmp_path / "pair.json"
+
+    monkeypatch.setattr(
+        conditional_module,
+        "_fsync_directory",
+        lambda _directory: (_ for _ in ()).throw(OSError("directory fsync failed")),
+    )
+    with pytest.raises(OSError, match="directory fsync"):
+        publish_conditional_pair(pair, output)
+
+    assert load_conditional_pair(output) == pair
+    assert not tuple(tmp_path.glob(".pair.json.*.tmp"))
+    monkeypatch.undo()
+    assert publish_conditional_pair(pair, output).reused is True
+
+
+def test_pair_evaluation_and_changed_input_conflict_are_byte_stable(tmp_path) -> None:
+    pair = _pair()
+    output = tmp_path / "pair.json"
+    publish_conditional_pair(pair, output)
+    before = output.read_bytes()
+
+    first = evaluate_conditional_mio_pair(
+        load_conditional_pair(output), declared_domain_assignments={"x": 100.0}
+    )
+    second = evaluate_conditional_mio_pair(
+        load_conditional_pair(output), declared_domain_assignments={"x": 100.0}
+    )
+    with pytest.raises(FileExistsError, match="conflicts"):
+        publish_conditional_pair(_pair(encoding=_encoding("piecewise")), output)
+
+    assert first == second
+    assert output.read_bytes() == before
 
 
 def test_pair_loading_rejects_corruption_without_repairing_source_bytes(tmp_path) -> None:

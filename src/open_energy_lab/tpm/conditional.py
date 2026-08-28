@@ -1897,24 +1897,38 @@ def _publish_create_or_verify(
             )
         return TPMConditionalPublication(path=path, created=False, reused=True)
 
-    if path.exists():
+    if os.path.lexists(path):
         return verify_existing()
 
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f".{path.name}.", suffix=".tmp", dir=parent
     )
     temporary_path = Path(temporary_name)
-    linked = False
     try:
         with os.fdopen(descriptor, "wb") as stream:
-            stream.write(payload)
+            written = stream.write(payload)
+            if written != len(payload):
+                raise OSError(
+                    "conditional publication temporary write was incomplete"
+                )
             stream.flush()
             os.fsync(stream.fileno())
+        temporary_record = validator(temporary_path)
+        temporary_identity = getattr(
+            temporary_record, identity_attribute, None
+        )
+        if temporary_identity != expected_identity:
+            raise ValueError(
+                "conditional publication temporary record has a mismatched identity"
+            )
         try:
             os.link(temporary_path, path)
-            linked = True
         except FileExistsError:
             return verify_existing()
+        # Validate the exact final hard link before claiming successful creation.
+        # This also establishes that the linked bytes and identity survived the
+        # complete write path; the returned reuse flag is intentionally ignored.
+        verify_existing()
         _fsync_directory(parent)
         return TPMConditionalPublication(path=path, created=True, reused=False)
     finally:
@@ -1922,13 +1936,11 @@ def _publish_create_or_verify(
             temporary_path.unlink()
         except FileNotFoundError:
             pass
-        if not linked and path.exists():
-            # A concurrently published final name is never removed here.
-            pass
 
 
 def _fsync_directory(path: Path) -> None:
-    descriptor = os.open(path, os.O_RDONLY)
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    descriptor = os.open(path, flags)
     try:
         os.fsync(descriptor)
     finally:

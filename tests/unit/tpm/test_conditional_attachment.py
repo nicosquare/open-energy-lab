@@ -12,6 +12,7 @@ from open_energy_lab.tpm.artifact import load_tpm_artifact
 from open_energy_lab.tpm.conditional import (
     TPMBinaryDecisionMapping,
     TPMCategoricalDecisionMapping,
+    TPMConditionalPair,
     TPMContinuousDecisionMapping,
 )
 from open_energy_lab.tpm.conditional_mio import (
@@ -38,6 +39,13 @@ def _mixed_pair(monkeypatch: pytest.MonkeyPatch):
 
 def _component_names(model) -> tuple[str, ...]:
     return tuple(model.component_map())
+
+
+def _component_snapshot(model) -> tuple[tuple[str, int, str], ...]:
+    return tuple(
+        (name, id(component), component.ctype.__name__)
+        for name, component in model.component_map().items()
+    )
 
 
 def test_scalar_continuous_attachment_reuses_caller_variable_and_returns_roots() -> None:
@@ -186,6 +194,216 @@ def test_mapping_sequence_requires_exact_coverage_before_mutation() -> None:
         )
 
     assert _component_names(model) == before
+
+
+def test_same_pair_attaches_under_two_isolated_namespaces() -> None:
+    import pyomo.environ as pyo
+
+    pair = _pair()
+    model = pyo.ConcreteModel()
+    model.x = pyo.Var(bounds=(40.0, 160.0))
+    first = attach_conditional_mio_pair(
+        pair,
+        model,
+        mappings=(TPMContinuousDecisionMapping("x", model.x),),
+        namespace="first_risk",
+    )
+    first_snapshot = _component_snapshot(model)
+    second = attach_conditional_mio_pair(
+        pair,
+        model,
+        mappings=(TPMContinuousDecisionMapping("x", model.x),),
+        namespace="second_risk",
+    )
+
+    assert first.block is model.first_risk
+    assert second.block is model.second_risk
+    assert first.block is not second.block
+    assert first.decision_links["x"].physical_expression is model.x
+    assert second.decision_links["x"].physical_expression is model.x
+    assert _component_snapshot(model)[: len(first_snapshot)] == first_snapshot
+    assert first.pair_id == second.pair_id == pair.pair_id
+
+
+def test_duplicate_and_unrelated_namespace_collisions_preserve_existing_components() -> None:
+    import pyomo.environ as pyo
+
+    pair = _pair()
+    model = pyo.ConcreteModel()
+    model.x = pyo.Var(bounds=(40.0, 160.0))
+    model.unrelated = pyo.Block(concrete=True)
+    unrelated = model.unrelated
+    before = _component_snapshot(model)
+
+    with pytest.raises(ValueError, match="occupied"):
+        attach_conditional_mio_pair(
+            pair,
+            model,
+            mappings=(TPMContinuousDecisionMapping("x", model.x),),
+            namespace="unrelated",
+        )
+    assert _component_snapshot(model) == before
+    assert model.unrelated is unrelated
+
+    first = attach_conditional_mio_pair(
+        pair,
+        model,
+        mappings=(TPMContinuousDecisionMapping("x", model.x),),
+        namespace="conditional_risk",
+    )
+    after_first = _component_snapshot(model)
+    with pytest.raises(ValueError, match="occupied"):
+        attach_conditional_mio_pair(
+            pair,
+            model,
+            mappings=(TPMContinuousDecisionMapping("x", model.x),),
+            namespace="conditional_risk",
+        )
+    assert _component_snapshot(model) == after_first
+    assert model.conditional_risk is first.block
+    assert model.unrelated is unrelated
+
+
+def test_invalid_pair_identity_and_domain_fail_before_model_mutation() -> None:
+    import pyomo.environ as pyo
+
+    model = pyo.ConcreteModel()
+    model.x = pyo.Var(bounds=(40.0, 160.0))
+    before = _component_snapshot(model)
+
+    with pytest.raises(TypeError, match="TPMConditionalPair"):
+        attach_conditional_mio_pair(
+            object(),
+            model,
+            mappings=(TPMContinuousDecisionMapping("x", model.x),),
+            namespace="wrong_type",
+        )
+
+    bad_identity = _pair()
+    object.__setattr__(bad_identity, "pair_id", "0" * 64)
+    with pytest.raises(ValueError, match="pair_id|identity"):
+        attach_conditional_mio_pair(
+            bad_identity,
+            model,
+            mappings=(TPMContinuousDecisionMapping("x", model.x),),
+            namespace="bad_identity",
+        )
+
+    bad_domain_payload = _pair().to_dict()
+    bad_domain_payload["pair_id"] = ""
+    bad_domain_payload["validity"][0]["approximation_domain"][
+        "physical_interval"
+    ] = [160.0, 40.0]
+    bad_domain = TPMConditionalPair.from_dict(bad_domain_payload)
+    with pytest.raises(ValueError, match="approximation|interval|pair_id"):
+        attach_conditional_mio_pair(
+            bad_domain,
+            model,
+            mappings=(TPMContinuousDecisionMapping("x", model.x),),
+            namespace="bad_domain",
+        )
+
+    assert _component_snapshot(model) == before
+
+
+def test_detached_block_construction_failure_leaves_caller_model_exactly_unchanged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import pyomo.environ as pyo
+
+    model = pyo.ConcreteModel()
+    model.x = pyo.Var(bounds=(40.0, 160.0), initialize=100.0)
+    model.caller_constraint = pyo.Constraint(expr=model.x >= 50.0)
+    before = _component_snapshot(model)
+    original_domain = model.x.domain
+    original_fixed = model.x.fixed
+
+    def fail_encoding(*_args, **_kwargs):
+        raise RuntimeError("injected detached-build failure")
+
+    monkeypatch.setattr(
+        conditional_mio_module,
+        "encode_conditioned_spflow_circuit",
+        fail_encoding,
+    )
+    with pytest.raises(RuntimeError, match="detached-build"):
+        attach_conditional_mio_pair(
+            _pair(),
+            model,
+            mappings=(TPMContinuousDecisionMapping("x", model.x),),
+            namespace="failed_risk",
+        )
+
+    assert _component_snapshot(model) == before
+    assert model.x.domain is original_domain
+    assert model.x.fixed is original_fixed
+    assert not hasattr(model, "failed_risk")
+
+
+@pytest.mark.parametrize("failure_mode", ["before-registration", "after-registration"])
+def test_final_component_add_failure_rolls_back_only_the_new_block(
+    monkeypatch: pytest.MonkeyPatch,
+    failure_mode: str,
+) -> None:
+    import pyomo.environ as pyo
+
+    model = pyo.ConcreteModel()
+    model.x = pyo.Var(bounds=(40.0, 160.0))
+    model.caller_owned = pyo.Block(concrete=True)
+    caller_owned = model.caller_owned
+    before = _component_snapshot(model)
+    model_type = type(model)
+    real_add_component = model_type.add_component
+
+    def failing_add_component(instance, name, component):
+        if instance is model and name == "failed_risk":
+            if failure_mode == "after-registration":
+                real_add_component(instance, name, component)
+            raise RuntimeError(f"injected {failure_mode} add failure")
+        return real_add_component(instance, name, component)
+
+    monkeypatch.setattr(model_type, "add_component", failing_add_component)
+    with pytest.raises(RuntimeError, match=failure_mode):
+        attach_conditional_mio_pair(
+            _pair(),
+            model,
+            mappings=(TPMContinuousDecisionMapping("x", model.x),),
+            namespace="failed_risk",
+        )
+
+    assert _component_snapshot(model) == before
+    assert model.caller_owned is caller_owned
+    assert model.component("failed_risk") is None
+
+
+def test_final_add_collision_does_not_delete_concurrently_added_caller_component(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import pyomo.environ as pyo
+
+    model = pyo.ConcreteModel()
+    model.x = pyo.Var(bounds=(40.0, 160.0))
+    model_type = type(model)
+    real_add_component = model_type.add_component
+    concurrent = pyo.Block(concrete=True)
+
+    def competing_add_component(instance, name, component):
+        if instance is model and name == "contended_risk":
+            real_add_component(instance, name, concurrent)
+            raise RuntimeError("injected concurrent namespace collision")
+        return real_add_component(instance, name, component)
+
+    monkeypatch.setattr(model_type, "add_component", competing_add_component)
+    with pytest.raises(RuntimeError, match="concurrent namespace"):
+        attach_conditional_mio_pair(
+            _pair(),
+            model,
+            mappings=(TPMContinuousDecisionMapping("x", model.x),),
+            namespace="contended_risk",
+        )
+
+    assert model.contended_risk is concurrent
+    assert tuple(model.component_map()).count("contended_risk") == 1
 
 
 def test_constant_only_and_non_scalar_continuous_mappings_fail_before_mutation() -> None:
