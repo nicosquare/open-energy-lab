@@ -23,6 +23,7 @@ if TYPE_CHECKING:
         InvalidCommitmentDiagnosticReport,
         ReferenceComparisonReport,
         ReferenceFieldComparison,
+        build_accepted_plan_market_context,
         build_feature_010_market_context,
         build_settled_evaluation_report,
         build_validation_failed_evaluation_report,
@@ -31,6 +32,11 @@ if TYPE_CHECKING:
         evaluate_fixed_fcr_bid,
         recompute_reference_precision_bounds,
         replay_invalid_fcr_bid_diagnostic,
+    )
+    from .fcr_rolling_evaluation import (
+        FCRAcceptedPlanSegment,
+        FCRSegmentedEvaluationReport,
+        evaluate_fixed_fcr_bid_segments,
     )
     from .fcr_settlement import (
         DirectionalFCREnergy,
@@ -180,6 +186,10 @@ _EXPORT_MAP = {
         ".fcr_bid_evaluation",
         "ReferenceFieldComparison",
     ),
+    "build_accepted_plan_market_context": (
+        ".fcr_bid_evaluation",
+        "build_accepted_plan_market_context",
+    ),
     "build_feature_010_market_context": (
         ".fcr_bid_evaluation",
         "build_feature_010_market_context",
@@ -211,6 +221,18 @@ _EXPORT_MAP = {
     "replay_invalid_fcr_bid_diagnostic": (
         ".fcr_bid_evaluation",
         "replay_invalid_fcr_bid_diagnostic",
+    ),
+    "FCRAcceptedPlanSegment": (
+        ".fcr_rolling_evaluation",
+        "FCRAcceptedPlanSegment",
+    ),
+    "FCRSegmentedEvaluationReport": (
+        ".fcr_rolling_evaluation",
+        "FCRSegmentedEvaluationReport",
+    ),
+    "evaluate_fixed_fcr_bid_segments": (
+        ".fcr_rolling_evaluation",
+        "evaluate_fixed_fcr_bid_segments",
     ),
     "ArbitrageObjectiveRepresentation": (".pricing", "ArbitrageObjectiveRepresentation"),
     "ArbitrageScenario": (".scenario", "ArbitrageScenario"),
@@ -471,6 +493,7 @@ __all__ = [
     "EvaluationPriceObservation",
     "evaluate_demand_family",
     "evaluate_fixed_fcr_bid",
+    "evaluate_fixed_fcr_bid_segments",
     "export_planning_dataset",
     "generate_planning_study_dataset",
     "evaluate_with_controller",
@@ -489,8 +512,10 @@ __all__ = [
     "EnergyBaselineInterval",
     "EnergyBaselineSchedule",
     "FCRCapacitySchedule",
+    "FCRAcceptedPlanSegment",
     "FCRBidEvaluationRequest",
     "FCRBidEvaluationValidationError",
+    "FCRSegmentedEvaluationReport",
     "InvalidCommitmentDiagnosticReport",
     "ReferenceComparisonReport",
     "ReferenceFieldComparison",
@@ -506,6 +531,7 @@ __all__ = [
     "TerminalSOCTarget",
     "TerminalSOCReport",
     "build_energy_baseline_schedule",
+    "build_accepted_plan_market_context",
     "build_feature_010_market_context",
     "build_fcr_capacity_schedule",
     "build_settled_evaluation_report",

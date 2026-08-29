@@ -271,6 +271,60 @@ def test_feature_012_focused_reference_loader_import_is_offline_and_lightweight(
     )
 
 
+def test_feature_015_public_roots_and_symbols_stay_solver_and_research_lazy() -> None:
+    _run_isolated_python(
+        """
+        import sys
+
+        before = set(sys.modules)
+        from open_energy_lab.control import (
+            RollingFCRReferenceFixture,
+            RollingFCRStudyManifest,
+            RollingFCRStudyResult,
+            build_robust_fcr_rolling_problem,
+            compare_rolling_fcr_reference,
+            derive_rolling_fcr_state_carry,
+            extract_accepted_predecessor_fixings,
+            run_rolling_fcr_study,
+        )
+        from open_energy_lab.market import slice_regulation_activation_trace
+        from open_energy_lab.simulator import (
+            FCRAcceptedPlanSegment,
+            FCRSegmentedEvaluationReport,
+            build_accepted_plan_market_context,
+            evaluate_fixed_fcr_bid_segments,
+        )
+
+        assert RollingFCRReferenceFixture.__name__ == "RollingFCRReferenceFixture"
+        assert RollingFCRStudyManifest.__name__ == "RollingFCRStudyManifest"
+        assert RollingFCRStudyResult.__name__ == "RollingFCRStudyResult"
+        assert FCRAcceptedPlanSegment.__name__ == "FCRAcceptedPlanSegment"
+        assert FCRSegmentedEvaluationReport.__name__ == "FCRSegmentedEvaluationReport"
+        for function in (
+            build_robust_fcr_rolling_problem,
+            compare_rolling_fcr_reference,
+            derive_rolling_fcr_state_carry,
+            extract_accepted_predecessor_fixings,
+            run_rolling_fcr_study,
+            slice_regulation_activation_trace,
+            build_accepted_plan_market_context,
+            evaluate_fixed_fcr_bid_segments,
+        ):
+            assert callable(function)
+
+        newly_loaded = set(sys.modules) - before
+        forbidden = {
+            "baselines", "gurobipy", "highspy", "julia", "juliacall",
+            "legacy", "pandas", "pyomo", "requests",
+        }
+        loaded_roots = {name.split(".", 1)[0] for name in newly_loaded}
+        assert forbidden.isdisjoint(loaded_roots), sorted(
+            forbidden & loaded_roots
+        )
+        """
+    )
+
+
 def test_tpm_workflow_loads_spflow_and_torch_only_at_its_boundary() -> None:
     _run_isolated_python(
         """

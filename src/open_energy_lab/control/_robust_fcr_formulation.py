@@ -14,6 +14,7 @@ from .robust_fcr_bidding import (
     RobustFCRFormulationProfile,
     RobustFCRValidationError,
     _deep_freeze,
+    _fingerprint,
     _finite,
     _integer,
     _non_empty,
@@ -51,6 +52,151 @@ SOURCE_EQUATION_REFERENCES = MappingProxyType(
         ),
     }
 )
+
+
+@dataclass(frozen=True, slots=True)
+class RobustFCRReferenceIntervalAudit:
+    """Joint audit of one independently checked witness against closed boxes."""
+
+    field_residuals: Mapping[str, float]
+    maximum_interval_residual: float
+    maximum_modeled_slack: float
+    maximum_independent_residual: float
+    tolerance: float
+    passes: bool
+    audit_fingerprint: str = ""
+
+    def __post_init__(self) -> None:
+        residuals: dict[str, float] = {}
+        for name, value in self.field_residuals.items():
+            normalized_name = _non_empty(name, field_name="reference interval field")
+            normalized = _finite(
+                value, field_name=f"reference interval residual {normalized_name}"
+            )
+            if normalized < 0.0:
+                raise RobustFCRValidationError(
+                    "reference interval residuals must be non-negative"
+                )
+            residuals[normalized_name] = normalized
+        maximum_interval = _finite(
+            self.maximum_interval_residual,
+            field_name="maximum_interval_residual",
+        )
+        maximum_slack = _finite(
+            self.maximum_modeled_slack,
+            field_name="maximum_modeled_slack",
+        )
+        maximum_independent = _finite(
+            self.maximum_independent_residual,
+            field_name="maximum_independent_residual",
+        )
+        tolerance = _finite(self.tolerance, field_name="reference audit tolerance")
+        if min(maximum_interval, maximum_slack, maximum_independent, tolerance) < 0.0:
+            raise RobustFCRValidationError(
+                "reference interval audit values must be non-negative"
+            )
+        expected_maximum = max(residuals.values(), default=0.0)
+        if abs(maximum_interval - expected_maximum) > 1e-12:
+            raise RobustFCRValidationError(
+                "maximum interval residual does not reconcile field residuals"
+            )
+        expected_passes = max(
+            maximum_interval,
+            maximum_slack,
+            maximum_independent,
+        ) <= tolerance
+        if self.passes != expected_passes:
+            raise RobustFCRValidationError(
+                "reference interval audit status does not reconcile evidence"
+            )
+        object.__setattr__(
+            self,
+            "field_residuals",
+            MappingProxyType(dict(sorted(residuals.items()))),
+        )
+        object.__setattr__(self, "maximum_interval_residual", maximum_interval)
+        object.__setattr__(self, "maximum_modeled_slack", maximum_slack)
+        object.__setattr__(self, "maximum_independent_residual", maximum_independent)
+        object.__setattr__(self, "tolerance", tolerance)
+        payload = self._payload()
+        expected_fingerprint = _fingerprint(payload)
+        if self.audit_fingerprint and self.audit_fingerprint != expected_fingerprint:
+            raise RobustFCRValidationError(
+                "reference interval audit fingerprint mismatch"
+            )
+        object.__setattr__(self, "audit_fingerprint", expected_fingerprint)
+
+    def _payload(self) -> dict[str, object]:
+        return {
+            "field_residuals": dict(self.field_residuals),
+            "maximum_interval_residual": self.maximum_interval_residual,
+            "maximum_modeled_slack": self.maximum_modeled_slack,
+            "maximum_independent_residual": self.maximum_independent_residual,
+            "tolerance": self.tolerance,
+            "passes": self.passes,
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return {**self._payload(), "audit_fingerprint": self.audit_fingerprint}
+
+
+def audit_closed_reference_witness(
+    *,
+    field_values: Mapping[str, float],
+    closed_intervals: Mapping[str, tuple[float, float]],
+    maximum_modeled_slack: float,
+    maximum_independent_residual: float,
+    tolerance: float,
+) -> RobustFCRReferenceIntervalAudit:
+    """Audit one common witness against decisions, objective, and state boxes.
+
+    The helper deliberately consumes the independent equation-family residual
+    and modeled-slack evidence produced by Feature 013.  It adds only interval
+    membership checks and therefore does not create a second formulation or
+    feasibility model.
+    """
+
+    if set(field_values) != set(closed_intervals):
+        raise RobustFCRValidationError(
+            "reference witness fields and closed intervals must match exactly"
+        )
+    residuals: dict[str, float] = {}
+    for name in sorted(field_values):
+        value = _finite(field_values[name], field_name=f"field_values.{name}")
+        raw_interval = closed_intervals[name]
+        if len(raw_interval) != 2:
+            raise RobustFCRValidationError(
+                f"closed_intervals.{name} must contain two endpoints"
+            )
+        lower = _finite(raw_interval[0], field_name=f"closed_intervals.{name}.lower")
+        upper = _finite(raw_interval[1], field_name=f"closed_intervals.{name}.upper")
+        if lower > upper:
+            raise RobustFCRValidationError(
+                f"closed_intervals.{name} lower endpoint exceeds upper"
+            )
+        residuals[name] = max(lower - value, value - upper, 0.0)
+    maximum_interval = max(residuals.values(), default=0.0)
+    maximum_slack = _finite(
+        maximum_modeled_slack, field_name="maximum_modeled_slack"
+    )
+    maximum_independent = _finite(
+        maximum_independent_residual,
+        field_name="maximum_independent_residual",
+    )
+    normalized_tolerance = _finite(tolerance, field_name="tolerance")
+    passes = max(
+        maximum_interval,
+        maximum_slack,
+        maximum_independent,
+    ) <= normalized_tolerance
+    return RobustFCRReferenceIntervalAudit(
+        field_residuals=residuals,
+        maximum_interval_residual=maximum_interval,
+        maximum_modeled_slack=maximum_slack,
+        maximum_independent_residual=maximum_independent,
+        tolerance=normalized_tolerance,
+        passes=passes,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -209,12 +355,13 @@ def build_model_input(problem: RobustFCRBiddingProblem) -> RobustFCRModelInput:
         raise RobustFCRValidationError(
             "problem must be a validated RobustFCRBiddingProblem"
         )
-    index_sets = build_normalized_index_sets(96)
     battery = problem.battery
-    return RobustFCRModelInput(
+    return build_normalized_model_input(
         problem_fingerprint=problem.problem_fingerprint,
         planning_resolution_hours=0.25,
-        index_sets=index_sets,
+        planning_interval_count=96,
+        planning_intervals_per_energy_interval=4,
+        planning_intervals_per_fcr_block=16,
         payload={
             "source_minimum_power_kw": battery.source_minimum_power_kw,
             "source_maximum_power_kw": battery.source_maximum_power_kw,
@@ -244,6 +391,33 @@ def build_model_input(problem: RobustFCRBiddingProblem) -> RobustFCRModelInput:
                 problem.prices.fcr_capacity_prices_eur_per_kw_block
             ),
         },
+    )
+
+
+def build_normalized_model_input(
+    *,
+    problem_fingerprint: str,
+    planning_resolution_hours: float,
+    planning_interval_count: int,
+    planning_intervals_per_energy_interval: int,
+    planning_intervals_per_fcr_block: int,
+    payload: Mapping[str, object],
+) -> RobustFCRModelInput:
+    """Build a backend-neutral normalized frame for daily or rolling assembly."""
+
+    return RobustFCRModelInput(
+        problem_fingerprint=problem_fingerprint,
+        planning_resolution_hours=planning_resolution_hours,
+        index_sets=build_normalized_index_sets(
+            planning_interval_count,
+            planning_intervals_per_energy_interval=(
+                planning_intervals_per_energy_interval
+            ),
+            planning_intervals_per_fcr_block=(
+                planning_intervals_per_fcr_block
+            ),
+        ),
+        payload=payload,
     )
 
 
@@ -292,9 +466,14 @@ class RobustFCRModelHandoff:
     cardinality: Mapping[str, int]
 
     def __post_init__(self) -> None:
-        if self.formulation_kind not in {"restriction", "relaxation", "exact"}:
+        if self.formulation_kind not in {
+            "restriction",
+            "relaxation",
+            "exact",
+            "arbitrage_only",
+        }:
             raise RobustFCRValidationError(
-                "formulation_kind must be restriction, relaxation, or exact"
+                "formulation_kind must be restriction, relaxation, exact, or arbitrage_only"
             )
         object.__setattr__(
             self,
@@ -339,11 +518,33 @@ def assemble_robust_fcr_model(
 ) -> AssembledRobustFCRModel:
     """Assemble the preserved non-intraday formulation through injected Pyomo."""
 
+    if not isinstance(problem, RobustFCRBiddingProblem):
+        raise RobustFCRValidationError(
+            "problem must be a validated RobustFCRBiddingProblem"
+        )
+    return assemble_normalized_robust_fcr_model(
+        build_model_input(problem),
+        profile,
+        pyomo_environ=pyomo_environ,
+    )
+
+
+def assemble_normalized_robust_fcr_model(
+    data: RobustFCRModelInput,
+    profile: RobustFCRFormulationProfile,
+    *,
+    pyomo_environ: Any,
+) -> AssembledRobustFCRModel:
+    """Assemble one validated normalized frame through injected Pyomo."""
+
+    if not isinstance(data, RobustFCRModelInput):
+        raise RobustFCRValidationError(
+            "data must be a validated RobustFCRModelInput"
+        )
     if not isinstance(profile, RobustFCRFormulationProfile):
         raise RobustFCRValidationError(
             "profile must be RobustFCRFormulationProfile"
         )
-    data = build_model_input(problem)
     indices = data.index_sets
     values = data.payload
     pyo = pyomo_environ
@@ -642,6 +843,608 @@ def assemble_robust_fcr_model(
     )
 
 
+def derive_rolling_source_indices(
+    bidding_time_local_hour: int,
+    *,
+    planning_resolution_hours: float = 0.25,
+    current_planning_interval_count: int = 96,
+    planning_intervals_per_fcr_block: int = 16,
+) -> dict[str, tuple[int, ...] | int]:
+    """Derive the executable source's signed overlap indices.
+
+    This is the zero-I/O equivalent of ``compute_K̲`` in
+    ``baselines/robust_storage_bidding/code/02_model.jl:289-291``.
+    """
+
+    if isinstance(bidding_time_local_hour, bool) or not isinstance(
+        bidding_time_local_hour, int
+    ):
+        raise RobustFCRValidationError("bidding_time_local_hour must be an integer")
+    resolution = _finite(
+        planning_resolution_hours,
+        field_name="planning_resolution_hours",
+    )
+    if resolution <= 0.0:
+        raise RobustFCRValidationError("planning resolution must be positive")
+    count = _integer(
+        current_planning_interval_count,
+        field_name="current_planning_interval_count",
+        minimum=1,
+    )
+    fcr_stride = _integer(
+        planning_intervals_per_fcr_block,
+        field_name="planning_intervals_per_fcr_block",
+        minimum=1,
+    )
+    lower = round((bidding_time_local_hour - 24) / resolution + 1)
+    planning = tuple(range(lower, count + 1))
+    energy_lower = math.ceil(lower * resolution)
+    energy_upper = math.ceil(count * resolution)
+    fcr_lower = math.ceil(lower / fcr_stride)
+    fcr_upper = math.ceil(count / fcr_stride)
+    return {
+        "K_lower": lower,
+        "planning_indices": planning,
+        "energy_indices": tuple(range(energy_lower, energy_upper + 1)),
+        "fcr_indices": tuple(range(fcr_lower, fcr_upper + 1)),
+        "fixed_energy_indices": tuple(range(energy_lower, 1)),
+        "fixed_fcr_indices": tuple(range(fcr_lower, 1)),
+        "current_energy_indices": tuple(range(1, energy_upper + 1)),
+        "current_fcr_indices": tuple(range(1, fcr_upper + 1)),
+    }
+
+
+def _source_efficiency_consumption(
+    source_power_kw: float,
+    *,
+    charge_efficiency: float,
+    discharge_efficiency: float,
+) -> float:
+    return max(
+        charge_efficiency * source_power_kw,
+        source_power_kw / discharge_efficiency,
+    )
+
+
+def _allocate_activation_budget(
+    segments: list[tuple[float, float]],
+    *,
+    budget_hours: float,
+) -> float:
+    """Allocate a duration budget to descending non-negative marginal gains."""
+
+    remaining = max(budget_hours, 0.0)
+    total = 0.0
+    for marginal_kw, maximum_hours in sorted(
+        segments,
+        key=lambda item: (-item[0], -item[1]),
+    ):
+        if remaining <= 0.0:
+            break
+        used = min(maximum_hours, remaining)
+        total += used * max(marginal_kw, 0.0)
+        remaining -= used
+    return total
+
+
+def propagate_fixed_tail_robust_bounds(
+    *,
+    initial_stored_energy_kwh: float,
+    source_energy_positive_discharge_kw: tuple[float, ...],
+    fcr_capacity_kw: tuple[float, ...],
+    charge_efficiency: float,
+    discharge_efficiency: float,
+    activation_budget_hours: float,
+    planning_resolution_hours: float = 0.25,
+) -> tuple[float, float]:
+    """Return fixed-tail minimum/maximum stored energy at current midnight.
+
+    The calculation expands the accepted 16 hourly and four four-hour values
+    into 64 quarter-hours. It applies the same horizon-budget polytope as the
+    source's fixed-tail auxiliary solves, using exact piecewise marginal gains
+    for charge/discharge efficiency. No realized activation is consulted.
+    """
+
+    if len(source_energy_positive_discharge_kw) != 16:
+        raise RobustFCRValidationError("fixed tail must contain 16 hourly decisions")
+    if len(fcr_capacity_kw) != 4:
+        raise RobustFCRValidationError("fixed tail must contain four FCR decisions")
+    initial = _finite(
+        initial_stored_energy_kwh,
+        field_name="initial_stored_energy_kwh",
+    )
+    eta_c = _finite(charge_efficiency, field_name="charge_efficiency")
+    eta_d = _finite(discharge_efficiency, field_name="discharge_efficiency")
+    delta_t = _finite(
+        planning_resolution_hours,
+        field_name="planning_resolution_hours",
+    )
+    budget = _finite(
+        activation_budget_hours,
+        field_name="activation_budget_hours",
+    )
+    if not 0.0 < eta_c <= 1.0 or not 0.0 < eta_d <= 1.0:
+        raise RobustFCRValidationError("efficiencies must lie in (0, 1]")
+    if delta_t <= 0.0 or budget < 0.0:
+        raise RobustFCRValidationError("tail resolution must be positive and budget non-negative")
+    powers = tuple(
+        _finite(value, field_name="fixed energy decision")
+        for value in source_energy_positive_discharge_kw
+        for _ in range(4)
+    )
+    reserves = tuple(
+        _finite(value, field_name="fixed FCR decision")
+        for value in fcr_capacity_kw
+        for _ in range(16)
+    )
+    baseline_consumption = sum(
+        delta_t
+        * _source_efficiency_consumption(
+            power,
+            charge_efficiency=eta_c,
+            discharge_efficiency=eta_d,
+        )
+        for power in powers
+    )
+    upward_segments: list[tuple[float, float]] = []
+    downward_segments: list[tuple[float, float]] = []
+    for power, reserve in zip(powers, reserves, strict=True):
+        if reserve < 0.0:
+            raise RobustFCRValidationError("fixed FCR decisions must be non-negative")
+        baseline = _source_efficiency_consumption(
+            power,
+            charge_efficiency=eta_c,
+            discharge_efficiency=eta_d,
+        )
+        upward = _source_efficiency_consumption(
+            power + reserve,
+            charge_efficiency=eta_c,
+            discharge_efficiency=eta_d,
+        )
+        upward_segments.append(((upward - baseline), delta_t))
+        if reserve == 0.0:
+            downward_segments.append((0.0, delta_t))
+        elif power <= 0.0:
+            downward_segments.append((eta_c * reserve, delta_t))
+        elif power >= reserve:
+            downward_segments.append((reserve / eta_d, delta_t))
+        else:
+            crossing_fraction = power / reserve
+            downward_segments.append(
+                (reserve / eta_d, delta_t * crossing_fraction)
+            )
+            downward_segments.append(
+                (eta_c * reserve, delta_t * (1.0 - crossing_fraction))
+            )
+    lower = initial - baseline_consumption - _allocate_activation_budget(
+        upward_segments,
+        budget_hours=budget,
+    )
+    upper = initial - baseline_consumption + _allocate_activation_budget(
+        downward_segments,
+        budget_hours=budget,
+    )
+    return (0.0 if lower == 0.0 else lower, 0.0 if upper == 0.0 else upper)
+
+
+def assemble_arbitrage_only_model(
+    problem: Any,
+    *,
+    pyomo_environ: Any,
+) -> AssembledRobustFCRModel:
+    """Assemble the source's exact-zero-FCR hourly arbitrage formulation."""
+
+    pyo = pyomo_environ
+    battery = problem.battery
+    terminal_rule = problem.terminal_rule
+    prices = problem.current_prices.day_ahead_energy_prices_eur_per_kwh
+    if len(prices) != 24:
+        raise RobustFCRValidationError("arbitrage-only assembly requires 24 prices")
+    model = pyo.ConcreteModel(name="robust_fcr_arbitrage_only")
+    hours = tuple(range(1, 25))
+    strict_hours = tuple(range(1, 24))
+    blocks = tuple(range(1, 7))
+    model.H = pyo.Set(initialize=hours, ordered=True)
+    model.H_STRICT = pyo.Set(initialize=strict_hours, ordered=True)
+    model.B = pyo.Set(initialize=blocks, ordered=True)
+    model.x0 = pyo.Var(model.H, domain=pyo.Reals)
+    model.xr = pyo.Var(model.B, domain=pyo.NonNegativeReals)
+    for variable in model.xr.values():
+        variable.fix(0.0)
+    model.alpha = pyo.Var(model.H, domain=pyo.Reals)
+    model.u = pyo.Var(model.H_STRICT, domain=pyo.Binary)
+    model.symin = pyo.Var(model.H, domain=pyo.NonNegativeReals)
+    model.symax = pyo.Var(model.H, domain=pyo.NonNegativeReals)
+    model.syK = pyo.Var((0, 1), domain=pyo.NonNegativeReals)
+    for component in (model.symin, model.symax, model.syK):
+        for variable in component.values():
+            variable.fix(0.0)
+    constraints: dict[str, Any] = {}
+    for name in (
+        "power_lower",
+        "power_upper",
+        "stored_energy_lower",
+        "stored_energy_upper",
+        "alpha_charge_lower",
+        "alpha_discharge_lower",
+        "alpha_charge_upper",
+        "alpha_discharge_upper",
+        "arbitrage_case_lower",
+        "arbitrage_case_upper",
+        "terminal_stored_energy",
+    ):
+        constraints[name] = _add_constraint_family(model, pyo, f"c_{name}")
+    x_min = battery.source_minimum_power_kw
+    x_max = battery.source_maximum_power_kw
+    y_min = battery.minimum_stored_energy_kwh
+    y_max = battery.maximum_stored_energy_kwh
+    y_initial = battery.initial_stored_energy_kwh
+    eta_c = battery.charge_efficiency
+    eta_d = battery.discharge_efficiency
+    delta_eta = 1.0 / eta_d - eta_c
+    for k in hours:
+        constraints["power_lower"].add(model.x0[k] >= x_min)
+        constraints["power_upper"].add(model.x0[k] <= x_max)
+        constraints["stored_energy_lower"].add(
+            sum(model.alpha[l] for l in range(1, k + 1))
+            <= y_initial - y_min + model.symin[k]
+        )
+        constraints["stored_energy_upper"].add(
+            y_initial
+            - (
+                eta_c * model.x0[k]
+                + sum(model.alpha[l] for l in range(1, k))
+            )
+            <= y_max + model.symax[k]
+        )
+        constraints["alpha_charge_lower"].add(model.alpha[k] >= eta_c * model.x0[k])
+        constraints["alpha_discharge_lower"].add(model.alpha[k] >= model.x0[k] / eta_d)
+    for k in strict_hours:
+        constraints["arbitrage_case_lower"].add(
+            model.x0[k] >= (1.0 - model.u[k]) * x_min
+        )
+        constraints["arbitrage_case_upper"].add(
+            model.x0[k] <= model.u[k] * x_max
+        )
+        constraints["alpha_charge_upper"].add(
+            model.alpha[k]
+            <= eta_c * model.x0[k] + model.u[k] * delta_eta * x_max
+        )
+        constraints["alpha_discharge_upper"].add(
+            model.alpha[k]
+            <= model.x0[k] / eta_d
+            - (1.0 - model.u[k]) * delta_eta * x_min
+        )
+    constraints["terminal_stored_energy"].add(
+        sum(model.alpha[k] for k in hours)
+        <= y_initial
+        - terminal_rule.minimum_terminal_stored_energy_kwh
+        + model.syK[1]
+    )
+    model.objective = pyo.Objective(
+        expr=(
+            sum(prices[k - 1] * model.x0[k] for k in hours)
+            - terminal_rule.shortfall_penalty_eur_per_kwh
+            * (
+                sum(model.syK[index] for index in (0, 1))
+                + sum(model.symin[k] + model.symax[k] for k in hours)
+            )
+        ),
+        sense=pyo.maximize,
+    )
+    model_input = build_normalized_model_input(
+        problem_fingerprint=problem.rolling_problem_fingerprint,
+        planning_resolution_hours=1.0,
+        planning_interval_count=24,
+        planning_intervals_per_energy_interval=1,
+        planning_intervals_per_fcr_block=4,
+        payload={"formulation_kind": "arbitrage_only"},
+    )
+    variables = {
+        "x0": model.x0,
+        "xr": model.xr,
+        "alpha": model.alpha,
+        "u": model.u,
+        "symin": model.symin,
+        "symax": model.symax,
+        "syK": model.syK,
+    }
+    cardinality = {
+        "planning_intervals": 24,
+        "energy_intervals": 24,
+        "fcr_intervals": 6,
+        "variables": sum(1 for _ in model.component_data_objects(pyo.Var, active=True)),
+        "binaries": sum(
+            1
+            for variable in model.component_data_objects(pyo.Var, active=True)
+            if variable.is_binary()
+        ),
+        "active_constraints": sum(
+            1 for _ in model.component_data_objects(pyo.Constraint, active=True)
+        ),
+        "fixed_zero_fcr_decisions": 6,
+    }
+    handoff = RobustFCRModelHandoff(
+        formulation_kind="arbitrage_only",
+        equation_version="robust-storage-bidding-no-reg-v1",
+        model_input=model_input,
+        cardinality=cardinality,
+    )
+    return AssembledRobustFCRModel(
+        model=model,
+        handoff=handoff,
+        variable_handles=MappingProxyType(variables),
+        constraint_handles=MappingProxyType(constraints),
+    )
+
+
+def assemble_rolling_0800_model(
+    problem: Any,
+    *,
+    pyomo_environ: Any,
+) -> AssembledRobustFCRModel:
+    """Assemble the 40-hour fixed-overlap non-intraday restriction."""
+
+    pyo = pyomo_environ
+    indices = derive_rolling_source_indices(8)
+    planning_ext = tuple(indices["planning_indices"])
+    hours = tuple(indices["energy_indices"])
+    blocks = tuple(indices["fcr_indices"])
+    current = tuple(range(1, 97))
+    current_strict = tuple(range(1, 96))
+    triangular = tuple((k, l) for k in current for l in range(1, k + 1))
+    strict_triangular = tuple((k, l) for k in current for l in range(1, k))
+    e_of = {k: math.ceil(k * 0.25) for k in planning_ext}
+    b_of = {k: math.ceil(k / 16) for k in planning_ext}
+    model = pyo.ConcreteModel(name="robust_fcr_restriction_rolling_0800")
+    model.K_EXT = pyo.Set(initialize=planning_ext, ordered=True)
+    model.K = pyo.Set(initialize=current, ordered=True)
+    model.K_STRICT = pyo.Set(initialize=current_strict, ordered=True)
+    model.H = pyo.Set(initialize=hours, ordered=True)
+    model.B = pyo.Set(initialize=blocks, ordered=True)
+    model.TRI = pyo.Set(dimen=2, initialize=triangular, ordered=True)
+    model.STRICT_TRI = pyo.Set(
+        dimen=2,
+        initialize=strict_triangular,
+        ordered=True,
+    )
+    battery = problem.battery
+    eta_c = battery.charge_efficiency
+    eta_d = battery.discharge_efficiency
+    delta_eta = 1.0 / eta_d - eta_c
+    x_min = battery.source_minimum_power_kw
+    x_max = battery.source_maximum_power_kw
+    y_min = battery.minimum_stored_energy_kwh
+    y_max = battery.maximum_stored_energy_kwh
+    gamma = problem.uncertainty.horizon_wide.horizon_activation_budget_hours
+    delta_t = 0.25
+    terminal = problem.terminal_rule.minimum_terminal_stored_energy_kwh
+    penalty = problem.terminal_rule.shortfall_penalty_eur_per_kwh
+    model.x0 = pyo.Var(model.H, domain=pyo.Reals)
+    model.xr = pyo.Var(model.B, domain=pyo.NonNegativeReals)
+    model.xa = pyo.Var(model.K_EXT, domain=pyo.Reals)
+    for variable in model.xa.values():
+        variable.fix(0.0)
+    model.symin = pyo.Var(model.K_EXT, domain=pyo.NonNegativeReals)
+    model.symax = pyo.Var(model.K_EXT, domain=pyo.NonNegativeReals)
+    model.syK = pyo.Var((0, 1), domain=pyo.NonNegativeReals)
+    model.syK[0].fix(0.0)
+    if not problem.terminal_rule.allow_penalized_shortfall:
+        model.syK[1].fix(0.0)
+    model.alpha = pyo.Var(model.K_EXT, domain=pyo.Reals)
+    model.beta = pyo.Var(model.K_EXT, domain=pyo.Reals)
+    model.lambda_l = pyo.Var(model.K, domain=pyo.NonNegativeReals)
+    model.lambda_h = pyo.Var(model.K, bounds=(0.0, (x_max - x_min) / eta_d))
+    model.Lambda_l = pyo.Var(model.TRI, domain=pyo.NonNegativeReals)
+    model.Lambda_h = pyo.Var(model.TRI, domain=pyo.Reals)
+    model.u1 = pyo.Var(model.K_STRICT, domain=pyo.Binary)
+    model.u2 = pyo.Var(model.K_STRICT, domain=pyo.Binary)
+    model.v_res = pyo.Var(model.K_STRICT, domain=pyo.Binary)
+    fixings = problem.accepted_fixings
+    for index, value in zip(
+        indices["fixed_energy_indices"],
+        fixings.source_energy_positive_discharge_kw,
+        strict=True,
+    ):
+        model.x0[index].fix(value)
+    for index, value in zip(
+        indices["fixed_fcr_indices"],
+        fixings.fcr_capacity_kw,
+        strict=True,
+    ):
+        model.xr[index].fix(value)
+    constraints: dict[str, Any] = {}
+    for name in (
+        "pointwise_charge_headroom",
+        "pointwise_discharge_headroom",
+        "lower_stored_energy",
+        "lower_coupling",
+        "upper_stored_energy",
+        "alpha_charge_epigraph",
+        "alpha_discharge_epigraph",
+        "beta_charge_epigraph",
+        "beta_discharge_epigraph",
+        "lambda_h_diagonal_discharge",
+        "lambda_h_diagonal_activation",
+        "lambda_h_diagonal_nonnegative",
+        "u1_upper",
+        "u1_lower",
+        "u2_lower",
+        "u2_upper",
+        "lambda_h_offdiag_discharge_activation",
+        "lambda_h_offdiag_discharge_baseline",
+        "lambda_h_offdiag_charge_activation",
+        "lambda_h_offdiag_charge_baseline",
+        "restriction_classification_lower",
+        "restriction_classification_upper",
+        "restriction_tightening_charge",
+        "restriction_tightening_discharge",
+        "terminal_stored_energy",
+    ):
+        constraints[name] = _add_constraint_family(model, pyo, f"c_{name}")
+    for k in planning_ext:
+        x0 = model.x0[e_of[k]]
+        xr = model.xr[b_of[k]]
+        constraints["alpha_charge_epigraph"].add(model.alpha[k] >= eta_c * x0)
+        constraints["alpha_discharge_epigraph"].add(model.alpha[k] >= x0 / eta_d)
+        constraints["beta_charge_epigraph"].add(model.beta[k] >= eta_c * (x0 + xr))
+        constraints["beta_discharge_epigraph"].add(model.beta[k] >= (x0 + xr) / eta_d)
+    for k in current:
+        x0 = model.x0[e_of[k]]
+        xr = model.xr[b_of[k]]
+        constraints["pointwise_charge_headroom"].add(x0 - xr >= x_min)
+        constraints["pointwise_discharge_headroom"].add(x0 + xr <= x_max)
+        constraints["lower_stored_energy"].add(
+            problem.propagated_minimum_stored_energy_kwh
+            - gamma * model.lambda_l[k]
+            - delta_t * sum(model.alpha[l] + model.Lambda_l[k, l] for l in range(1, k + 1))
+            >= y_min
+        )
+        constraints["upper_stored_energy"].add(
+            problem.propagated_maximum_stored_energy_kwh
+            + gamma * model.lambda_h[k]
+            + delta_t * sum(model.Lambda_h[k, l] for l in range(1, k + 1))
+            <= y_max
+        )
+        for l in range(1, k + 1):
+            constraints["lower_coupling"].add(
+                model.Lambda_l[k, l] + model.lambda_l[k] + model.alpha[l] - model.beta[l] >= 0.0
+            )
+        constraints["lambda_h_diagonal_discharge"].add(model.Lambda_h[k, k] >= -eta_c * x0)
+        constraints["lambda_h_diagonal_activation"].add(
+            model.Lambda_h[k, k] >= eta_c * (xr - x0) - model.lambda_h[k]
+        )
+        constraints["lambda_h_diagonal_nonnegative"].add(model.Lambda_h[k, k] >= 0.0)
+    for l in current_strict:
+        x0 = model.x0[e_of[l]]
+        xr = model.xr[b_of[l]]
+        constraints["u1_upper"].add(x0 - xr <= model.u1[l] * x_max)
+        constraints["u1_lower"].add(x0 - xr >= (1.0 - model.u1[l]) * x_min)
+        constraints["u2_lower"].add(x0 >= model.u2[l] * x_min)
+        constraints["u2_upper"].add(x0 <= (1.0 - model.u2[l]) * x_max)
+        classification = xr - (1.0 - eta_c * eta_d) * x0 - eta_d * model.lambda_h[l]
+        constraints["restriction_classification_lower"].add(
+            classification >= -((2.0 - eta_c * eta_d) * x_max - x_min) * (1.0 - model.v_res[l])
+        )
+        constraints["restriction_classification_upper"].add(
+            classification <= model.v_res[l] * (eta_c * eta_d * x_max - x_min)
+        )
+    for k, l in strict_triangular:
+        x0 = model.x0[e_of[l]]
+        xr = model.xr[b_of[l]]
+        constraints["lambda_h_offdiag_discharge_activation"].add(
+            model.Lambda_h[k, l]
+            >= (xr - x0) / eta_d - model.lambda_h[k] + (1.0 - model.u1[l]) * delta_eta * x_min
+        )
+        constraints["lambda_h_offdiag_discharge_baseline"].add(
+            model.Lambda_h[k, l] >= -x0 / eta_d + model.u2[l] * delta_eta * x_min
+        )
+        constraints["lambda_h_offdiag_charge_activation"].add(
+            model.Lambda_h[k, l]
+            >= eta_c * (xr - x0) - model.lambda_h[k] - model.u1[l] * delta_eta * x_max
+        )
+        constraints["lambda_h_offdiag_charge_baseline"].add(
+            model.Lambda_h[k, l] >= -eta_c * x0 - (1.0 - model.u2[l]) * delta_eta * x_max
+        )
+        constraints["restriction_tightening_charge"].add(
+            model.Lambda_h[k, l]
+            >= -eta_c * x0 - (model.u1[l] + 1.0 - model.v_res[l]) * delta_eta * x_max
+        )
+        constraints["restriction_tightening_discharge"].add(
+            model.Lambda_h[k, l]
+            >= (xr - x0) / eta_d - model.lambda_h[k] + (model.u2[l] + model.v_res[l]) * delta_eta * x_min
+        )
+    constraints["terminal_stored_energy"].add(
+        battery.initial_stored_energy_kwh
+        - delta_t * sum(model.alpha[k] for k in planning_ext)
+        >= terminal - model.syK[1]
+    )
+    energy_prices = (
+        tuple(problem.predecessor_prices.day_ahead_energy_prices_eur_per_kwh[8:])
+        + tuple(problem.current_prices.day_ahead_energy_prices_eur_per_kwh)
+    )
+    fcr_prices = (
+        tuple(problem.predecessor_prices.fcr_capacity_prices_eur_per_kw_block[2:])
+        + tuple(problem.current_prices.fcr_capacity_prices_eur_per_kw_block)
+    )
+    energy_price_by_index = dict(zip(hours, energy_prices, strict=True))
+    fcr_price_by_index = dict(zip(blocks, fcr_prices, strict=True))
+    model.objective = pyo.Objective(
+        expr=(
+            delta_t * sum(energy_price_by_index[e_of[k]] * model.x0[e_of[k]] for k in planning_ext)
+            + sum(fcr_price_by_index[b] * model.xr[b] for b in blocks)
+            - penalty
+            * (
+                sum(model.syK[index] for index in (0, 1))
+                + sum(model.symin[k] + model.symax[k] for k in planning_ext)
+            )
+        ),
+        sense=pyo.maximize,
+    )
+    model_input = build_normalized_model_input(
+        problem_fingerprint=problem.rolling_problem_fingerprint,
+        planning_resolution_hours=0.25,
+        planning_interval_count=160,
+        planning_intervals_per_energy_interval=4,
+        planning_intervals_per_fcr_block=16,
+        payload={
+            "formulation_kind": "restriction_rolling_0800",
+            "K_lower": -63,
+            "source_energy_indices": hours,
+            "source_fcr_indices": blocks,
+        },
+    )
+    variables = {
+        name: getattr(model, name)
+        for name in (
+            "x0",
+            "xr",
+            "xa",
+            "symin",
+            "symax",
+            "syK",
+            "alpha",
+            "beta",
+            "lambda_l",
+            "lambda_h",
+            "Lambda_l",
+            "Lambda_h",
+            "u1",
+            "u2",
+            "v_res",
+        )
+    }
+    cardinality = {
+        "planning_intervals": 160,
+        "current_robust_planning_intervals": 96,
+        "energy_intervals": 40,
+        "fcr_intervals": 10,
+        "fixed_predecessor_energy_decisions": 16,
+        "fixed_predecessor_fcr_decisions": 4,
+        "variables": sum(1 for _ in model.component_data_objects(pyo.Var, active=True)),
+        "binaries": sum(
+            1
+            for variable in model.component_data_objects(pyo.Var, active=True)
+            if variable.is_binary()
+        ),
+        "active_constraints": sum(
+            1 for _ in model.component_data_objects(pyo.Constraint, active=True)
+        ),
+    }
+    handoff = RobustFCRModelHandoff(
+        formulation_kind="restriction",
+        equation_version="robust-storage-bidding-rolling-0800-restriction-v1",
+        model_input=model_input,
+        cardinality=cardinality,
+    )
+    return AssembledRobustFCRModel(
+        model=model,
+        handoff=handoff,
+        variable_handles=MappingProxyType(variables),
+        constraint_handles=MappingProxyType(constraints),
+    )
+
+
 def assemble_robust_fcr_reference_certificate(
     problem: RobustFCRBiddingProblem,
     request: Any,
@@ -755,12 +1558,20 @@ __all__ = [
     "NormalizedRobustFCRIndexSets",
     "RobustFCRModelHandoff",
     "RobustFCRModelInput",
+    "RobustFCRReferenceIntervalAudit",
     "SOURCE_EQUATION_REFERENCES",
     "SOURCE_EQUATION_VERSION",
+    "assemble_arbitrage_only_model",
+    "assemble_normalized_robust_fcr_model",
+    "assemble_rolling_0800_model",
     "build_normalized_index_sets",
+    "build_normalized_model_input",
     "build_model_input",
+    "derive_rolling_source_indices",
     "assemble_robust_fcr_model",
     "assemble_robust_fcr_reference_certificate",
+    "audit_closed_reference_witness",
     "model_cardinality_basis",
     "model_cardinality_metadata",
+    "propagate_fixed_tail_robust_bounds",
 ]

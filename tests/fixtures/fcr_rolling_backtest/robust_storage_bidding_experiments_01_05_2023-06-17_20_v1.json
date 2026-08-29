@@ -1,0 +1,3507 @@
+{
+  "delivery_evidence": [
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-17",
+      "evidence_fingerprint": "2c83c5329471e882e4d7f232b29000622cc56d9de986fb9522810b5d2f75e312",
+      "finalized_evidence_available": true,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": null,
+      "profile_id": "script-11-relaxation-reset-midnight-v1",
+      "source_lifecycle_status": "independent_complete"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-18",
+      "evidence_fingerprint": "e6510935bd0137b7b792bf47da428246c4425a35b1eb434e2d91a9e37766c8ab",
+      "finalized_evidence_available": true,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": null,
+      "profile_id": "script-11-relaxation-reset-midnight-v1",
+      "source_lifecycle_status": "independent_complete"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-19",
+      "evidence_fingerprint": "90e72649168fa12803b64d7d80d4aedadbef65650e7226846ebfd1d34ee54268",
+      "finalized_evidence_available": true,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": null,
+      "profile_id": "script-11-relaxation-reset-midnight-v1",
+      "source_lifecycle_status": "independent_complete"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-20",
+      "evidence_fingerprint": "f3ea9bcfce0a69764e1e768635e6548db6bc2b7c4e2fd97da5eecff8779e5c71",
+      "finalized_evidence_available": true,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": null,
+      "profile_id": "script-11-relaxation-reset-midnight-v1",
+      "source_lifecycle_status": "independent_complete"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-17",
+      "evidence_fingerprint": "0806b85b37a55e0aad1a3085b9652326ff97fd8946c29ae8fb94a9440bfb52eb",
+      "finalized_evidence_available": true,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": null,
+      "profile_id": "script-12-restriction-reset-midnight-v1",
+      "source_lifecycle_status": "independent_complete"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-18",
+      "evidence_fingerprint": "cd9cec1f62f21948f99c33bfdef6df3446620a9f5e3ba60004e8af92d8094060",
+      "finalized_evidence_available": true,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": null,
+      "profile_id": "script-12-restriction-reset-midnight-v1",
+      "source_lifecycle_status": "independent_complete"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-19",
+      "evidence_fingerprint": "2ab6b96d51393a9665abb714d864d9b3d7235bcda14633266ac31692b363aaa0",
+      "finalized_evidence_available": true,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": null,
+      "profile_id": "script-12-restriction-reset-midnight-v1",
+      "source_lifecycle_status": "independent_complete"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-20",
+      "evidence_fingerprint": "766240dc672cb1911713988fdde1f2d98249af6a453723e7bf3df172933a9857",
+      "finalized_evidence_available": true,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": null,
+      "profile_id": "script-12-restriction-reset-midnight-v1",
+      "source_lifecycle_status": "independent_complete"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-17",
+      "evidence_fingerprint": "37dfca43c048da6b2719cfc4fd9ab177192bc82772abdf09a8d1f680a55b5156",
+      "finalized_evidence_available": true,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": null,
+      "profile_id": "script-13-arbitrage-only-midnight-v1",
+      "source_lifecycle_status": "finalized"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-18",
+      "evidence_fingerprint": "fb700ec41fd72fa601db44d8911c3568eb7d7242b8e52364fd46ff90b2f5847a",
+      "finalized_evidence_available": true,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": "2023-06-17",
+      "profile_id": "script-13-arbitrage-only-midnight-v1",
+      "source_lifecycle_status": "finalized"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-19",
+      "evidence_fingerprint": "98bcef998162ea515006b4ac661fe006d1fc5fcba3aca4841b867e4d16ffb054",
+      "finalized_evidence_available": true,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": "2023-06-18",
+      "profile_id": "script-13-arbitrage-only-midnight-v1",
+      "source_lifecycle_status": "finalized"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-20",
+      "evidence_fingerprint": "a8dd2e6242a6b91c5af7842469ef1ade55ddab9cb66dc24cc6e74f82ec96c709",
+      "finalized_evidence_available": true,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": "2023-06-19",
+      "profile_id": "script-13-arbitrage-only-midnight-v1",
+      "source_lifecycle_status": "finalized"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-17",
+      "evidence_fingerprint": "51714712e58bc0d0986cfdafd87726626ffae53354b0fa4d1d0aeb36443c5f71",
+      "finalized_evidence_available": false,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": null,
+      "profile_id": "script-14-restriction-rolling-0800-v1",
+      "source_lifecycle_status": "initialization_only"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-18",
+      "evidence_fingerprint": "343f278297953bfc0417d5e0cf32f7ed5c26ac0e262b76e2ddeca5c3c0801372",
+      "finalized_evidence_available": true,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": "2023-06-17",
+      "profile_id": "script-14-restriction-rolling-0800-v1",
+      "source_lifecycle_status": "finalized"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-19",
+      "evidence_fingerprint": "f258468991897d8306e725db48fd7e8506430964bd823250f7b568763c510282",
+      "finalized_evidence_available": true,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": "2023-06-18",
+      "profile_id": "script-14-restriction-rolling-0800-v1",
+      "source_lifecycle_status": "finalized"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-20",
+      "evidence_fingerprint": "021c3b103e2611d93533ee1f4a63712181712d15b8cbe019fb8a41f005246dcc",
+      "finalized_evidence_available": false,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": "2023-06-19",
+      "profile_id": "script-14-restriction-rolling-0800-v1",
+      "source_lifecycle_status": "unfinalized"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-17",
+      "evidence_fingerprint": "acb96b64d8f265c44bf7ffde9c51a8d2b22feee95ad5d256aab7800623d44a28",
+      "finalized_evidence_available": true,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": null,
+      "profile_id": "script-15-restriction-rolling-midnight-v1",
+      "source_lifecycle_status": "finalized"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-18",
+      "evidence_fingerprint": "1619d45b6bed84ba1893abcb1781950d7d87d258d58aef58340b58bc71f91dd7",
+      "finalized_evidence_available": true,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": "2023-06-17",
+      "profile_id": "script-15-restriction-rolling-midnight-v1",
+      "source_lifecycle_status": "finalized"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-19",
+      "evidence_fingerprint": "783368a39eaadb90e7c832a983af95985145a77119595cb14d2a861d6714095d",
+      "finalized_evidence_available": true,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": "2023-06-18",
+      "profile_id": "script-15-restriction-rolling-midnight-v1",
+      "source_lifecycle_status": "finalized"
+    },
+    {
+      "activation_samples_redistributed": false,
+      "delivery_date": "2023-06-20",
+      "evidence_fingerprint": "1d22686c9ee0520050d45db6676442c7551f0a4675b45196c6f6cf1485283dda",
+      "finalized_evidence_available": true,
+      "original_evidence_available": true,
+      "predecessor_delivery_date": "2023-06-19",
+      "profile_id": "script-15-restriction-rolling-midnight-v1",
+      "source_lifecycle_status": "finalized"
+    }
+  ],
+  "discrepancies": [
+    {
+      "code": "script-13-time-limit-vs-paper-profile",
+      "description": "Script 13 inherits the 3,600-second default while the compared rolling source profiles set 900 seconds explicitly.",
+      "effect_on_claims": "Termination and runtime evidence are interpreted by executable script rather than inferred from the paper label.",
+      "scope": "script-13-versus-paper-experiment-4"
+    },
+    {
+      "code": "workbook-energy-metric-vs-paper-output",
+      "description": "The workbook energy column applies charging input times charging efficiency and is not the paper's discharge-energy output metric.",
+      "effect_on_claims": "The bounded fixture does not compare or claim the paper energy metric.",
+      "scope": "results/result_overview.xlsx"
+    },
+    {
+      "code": "bounded-fixture-not-table-a1",
+      "description": "The bounded four-day rerun cannot establish full-history Table A1 aggregates.",
+      "effect_on_claims": "No Table A1 parity claim is permitted.",
+      "scope": "2023-06-17-through-2023-06-20"
+    }
+  ],
+  "feature_013_cross_check": {
+    "governed_fixture_preserved": true,
+    "governed_raw_sha256": "8c13f8318d533c35755e90e4e45bcef336cb7b31c09afccbe616844acbddc1e6",
+    "rerun_raw_sha256": "6aee0bbc3353e0b08d1471b2e5c7c3b79aeffd220e2d9c1b69e8c4d711d8f37b",
+    "semantic_fields_compared": [
+      "objective_value_eur",
+      "objective_bound_eur",
+      "rounded_x0_kw",
+      "rounded_xr_kw"
+    ],
+    "semantic_outcome": "displayed_objective_bound_and_30_decisions_match"
+  },
+  "fixture_fingerprint": "d9f12af283ff0377e651d7c7aaf5e81a40f85372a6e1bf62a4f90ab928659d93",
+  "fixture_id": "robust-storage-bidding-experiments-01-05-2023-06-17-20-v1",
+  "precision_policy": {
+    "decision_interval_rule": "closed-half-displayed-unit-with-recorded-julia-endpoint-policy-v1",
+    "joint_certificate_required": true,
+    "objective_interval_rule": "closed-half-displayed-unit-plus-native-tolerance-v1",
+    "restriction_bilinear_violations_is_feasibility_evidence": false,
+    "source_decimal_places": 3,
+    "state_rounding_rule": "decimal-string-three-place-half-even-normalized-zero-v1"
+  },
+  "problem_inputs": [
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 53.328,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.13081,
+        0.1228,
+        0.11997,
+        0.11639,
+        0.11106,
+        0.11,
+        0.11025,
+        0.10801,
+        0.101,
+        0.0956,
+        0.085,
+        0.06999,
+        0.05936,
+        0.0484,
+        0.03938,
+        0.05608,
+        0.085,
+        0.10152,
+        0.11531,
+        0.13779,
+        0.14697,
+        0.14477,
+        0.142,
+        0.13665
+      ],
+      "delivery_date": "2023-06-17",
+      "fcr_prices_eur_per_kw_block": [
+        0.00848,
+        0.01104,
+        0.01104,
+        0.00808,
+        0.00552,
+        0.01104
+      ],
+      "input_fingerprint": "ed1ca13e94e314a441628ddd5f79ec7171e47ee1b13433f95365170bc647c0dc",
+      "profile_id": "script-11-relaxation-reset-midnight-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 53.328,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.12678,
+        0.10887,
+        0.10319,
+        0.1,
+        0.09601,
+        0.08681,
+        0.09475,
+        0.09206,
+        0.085,
+        0.07817,
+        0.06353,
+        0.05388,
+        0.046,
+        0.02952,
+        0.0251,
+        0.04914,
+        0.075,
+        0.09378,
+        0.10723,
+        0.11825,
+        0.12547,
+        0.13402,
+        0.13706,
+        0.11753
+      ],
+      "delivery_date": "2023-06-18",
+      "fcr_prices_eur_per_kw_block": [
+        0.06672,
+        0.1,
+        0.2136,
+        0.24848,
+        0.1028,
+        0.02792
+      ],
+      "input_fingerprint": "e50948da9c30b730fe8a9befffc45e022e5c1f08e0d72822cde46ab524e6e20a",
+      "profile_id": "script-11-relaxation-reset-midnight-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 53.328,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.09968,
+        0.09341,
+        0.08834,
+        0.08942,
+        0.09069,
+        0.09561,
+        0.10978,
+        0.13015,
+        0.13223,
+        0.11533,
+        0.10378,
+        0.09702,
+        0.09311,
+        0.09,
+        0.08849,
+        0.09401,
+        0.09811,
+        0.11008,
+        0.137,
+        0.16777,
+        0.16508,
+        0.14999,
+        0.14286,
+        0.13448
+      ],
+      "delivery_date": "2023-06-19",
+      "fcr_prices_eur_per_kw_block": [
+        0.072,
+        0.0556,
+        0.06576,
+        0.1,
+        0.06888,
+        0.0256
+      ],
+      "input_fingerprint": "fceb4c92e489d1fe2c2a5f84fda67144abbc62706e5e830989d1aaabe00a2c5e",
+      "profile_id": "script-11-relaxation-reset-midnight-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 53.328,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.1208,
+        0.11028,
+        0.10398,
+        0.101,
+        0.09945,
+        0.10107,
+        0.11189,
+        0.12621,
+        0.14631,
+        0.13089,
+        0.11401,
+        0.1098,
+        0.0999,
+        0.10152,
+        0.10177,
+        0.10321,
+        0.10515,
+        0.11854,
+        0.14,
+        0.16059,
+        0.16508,
+        0.15,
+        0.138,
+        0.12011
+      ],
+      "delivery_date": "2023-06-20",
+      "fcr_prices_eur_per_kw_block": [
+        0.00736,
+        0.00632,
+        0.012,
+        0.01104,
+        0.01104,
+        0.01104
+      ],
+      "input_fingerprint": "4730ed82089b2e9024799f18e86842bb46d324dd1b00d04236a950c110621ca5",
+      "profile_id": "script-11-relaxation-reset-midnight-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 53.328,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.13081,
+        0.1228,
+        0.11997,
+        0.11639,
+        0.11106,
+        0.11,
+        0.11025,
+        0.10801,
+        0.101,
+        0.0956,
+        0.085,
+        0.06999,
+        0.05936,
+        0.0484,
+        0.03938,
+        0.05608,
+        0.085,
+        0.10152,
+        0.11531,
+        0.13779,
+        0.14697,
+        0.14477,
+        0.142,
+        0.13665
+      ],
+      "delivery_date": "2023-06-17",
+      "fcr_prices_eur_per_kw_block": [
+        0.00848,
+        0.01104,
+        0.01104,
+        0.00808,
+        0.00552,
+        0.01104
+      ],
+      "input_fingerprint": "26e2a7efac6b7b8510727ac69710538becbd32f1d56113f9c074bc6dfffbbd33",
+      "profile_id": "script-12-restriction-reset-midnight-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 53.328,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.12678,
+        0.10887,
+        0.10319,
+        0.1,
+        0.09601,
+        0.08681,
+        0.09475,
+        0.09206,
+        0.085,
+        0.07817,
+        0.06353,
+        0.05388,
+        0.046,
+        0.02952,
+        0.0251,
+        0.04914,
+        0.075,
+        0.09378,
+        0.10723,
+        0.11825,
+        0.12547,
+        0.13402,
+        0.13706,
+        0.11753
+      ],
+      "delivery_date": "2023-06-18",
+      "fcr_prices_eur_per_kw_block": [
+        0.06672,
+        0.1,
+        0.2136,
+        0.24848,
+        0.1028,
+        0.02792
+      ],
+      "input_fingerprint": "8693a3da78ae4a531256555d79e768643c154995b9f3394b0711ab6c0951b849",
+      "profile_id": "script-12-restriction-reset-midnight-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 53.328,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.09968,
+        0.09341,
+        0.08834,
+        0.08942,
+        0.09069,
+        0.09561,
+        0.10978,
+        0.13015,
+        0.13223,
+        0.11533,
+        0.10378,
+        0.09702,
+        0.09311,
+        0.09,
+        0.08849,
+        0.09401,
+        0.09811,
+        0.11008,
+        0.137,
+        0.16777,
+        0.16508,
+        0.14999,
+        0.14286,
+        0.13448
+      ],
+      "delivery_date": "2023-06-19",
+      "fcr_prices_eur_per_kw_block": [
+        0.072,
+        0.0556,
+        0.06576,
+        0.1,
+        0.06888,
+        0.0256
+      ],
+      "input_fingerprint": "01da50b84b29bcfbac90feae97f19a7bc3bdea6cb693a78b718adda11ebdfdc0",
+      "profile_id": "script-12-restriction-reset-midnight-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 53.328,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.1208,
+        0.11028,
+        0.10398,
+        0.101,
+        0.09945,
+        0.10107,
+        0.11189,
+        0.12621,
+        0.14631,
+        0.13089,
+        0.11401,
+        0.1098,
+        0.0999,
+        0.10152,
+        0.10177,
+        0.10321,
+        0.10515,
+        0.11854,
+        0.14,
+        0.16059,
+        0.16508,
+        0.15,
+        0.138,
+        0.12011
+      ],
+      "delivery_date": "2023-06-20",
+      "fcr_prices_eur_per_kw_block": [
+        0.00736,
+        0.00632,
+        0.012,
+        0.01104,
+        0.01104,
+        0.01104
+      ],
+      "input_fingerprint": "7a187dc700fb2a6fd5aba326b1944e681797bebc0078feafe6ea5d58b8646f29",
+      "profile_id": "script-12-restriction-reset-midnight-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 53.328,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.13081,
+        0.1228,
+        0.11997,
+        0.11639,
+        0.11106,
+        0.11,
+        0.11025,
+        0.10801,
+        0.101,
+        0.0956,
+        0.085,
+        0.06999,
+        0.05936,
+        0.0484,
+        0.03938,
+        0.05608,
+        0.085,
+        0.10152,
+        0.11531,
+        0.13779,
+        0.14697,
+        0.14477,
+        0.142,
+        0.13665
+      ],
+      "delivery_date": "2023-06-17",
+      "fcr_prices_eur_per_kw_block": [
+        0.00848,
+        0.01104,
+        0.01104,
+        0.00808,
+        0.00552,
+        0.01104
+      ],
+      "input_fingerprint": "8af31db9a3cc33579049409d073e0882e206a28fc465da50c5c71ec4d9865db2",
+      "profile_id": "script-13-arbitrage-only-midnight-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 53.328,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.12678,
+        0.10887,
+        0.10319,
+        0.1,
+        0.09601,
+        0.08681,
+        0.09475,
+        0.09206,
+        0.085,
+        0.07817,
+        0.06353,
+        0.05388,
+        0.046,
+        0.02952,
+        0.0251,
+        0.04914,
+        0.075,
+        0.09378,
+        0.10723,
+        0.11825,
+        0.12547,
+        0.13402,
+        0.13706,
+        0.11753
+      ],
+      "delivery_date": "2023-06-18",
+      "fcr_prices_eur_per_kw_block": [
+        0.06672,
+        0.1,
+        0.2136,
+        0.24848,
+        0.1028,
+        0.02792
+      ],
+      "input_fingerprint": "803a25820807ed29a9ab97834e20f7fe87fae3a3e8afe75b7d4a7b1648ab7233",
+      "profile_id": "script-13-arbitrage-only-midnight-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 53.328,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.09968,
+        0.09341,
+        0.08834,
+        0.08942,
+        0.09069,
+        0.09561,
+        0.10978,
+        0.13015,
+        0.13223,
+        0.11533,
+        0.10378,
+        0.09702,
+        0.09311,
+        0.09,
+        0.08849,
+        0.09401,
+        0.09811,
+        0.11008,
+        0.137,
+        0.16777,
+        0.16508,
+        0.14999,
+        0.14286,
+        0.13448
+      ],
+      "delivery_date": "2023-06-19",
+      "fcr_prices_eur_per_kw_block": [
+        0.072,
+        0.0556,
+        0.06576,
+        0.1,
+        0.06888,
+        0.0256
+      ],
+      "input_fingerprint": "075de590289443151d918ac7fcc7cc5f2647186de5d0f21b2400ecfb426e7b82",
+      "profile_id": "script-13-arbitrage-only-midnight-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 53.328,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.1208,
+        0.11028,
+        0.10398,
+        0.101,
+        0.09945,
+        0.10107,
+        0.11189,
+        0.12621,
+        0.14631,
+        0.13089,
+        0.11401,
+        0.1098,
+        0.0999,
+        0.10152,
+        0.10177,
+        0.10321,
+        0.10515,
+        0.11854,
+        0.14,
+        0.16059,
+        0.16508,
+        0.15,
+        0.138,
+        0.12011
+      ],
+      "delivery_date": "2023-06-20",
+      "fcr_prices_eur_per_kw_block": [
+        0.00736,
+        0.00632,
+        0.012,
+        0.01104,
+        0.01104,
+        0.01104
+      ],
+      "input_fingerprint": "dee184573df16bbb4877528e903755cd1205f6fe534abc2f8f2aaaf48c5ea824",
+      "profile_id": "script-13-arbitrage-only-midnight-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 53.328,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.13081,
+        0.1228,
+        0.11997,
+        0.11639,
+        0.11106,
+        0.11,
+        0.11025,
+        0.10801,
+        0.101,
+        0.0956,
+        0.085,
+        0.06999,
+        0.05936,
+        0.0484,
+        0.03938,
+        0.05608,
+        0.085,
+        0.10152,
+        0.11531,
+        0.13779,
+        0.14697,
+        0.14477,
+        0.142,
+        0.13665
+      ],
+      "delivery_date": "2023-06-17",
+      "fcr_prices_eur_per_kw_block": [
+        0.00848,
+        0.01104,
+        0.01104,
+        0.00808,
+        0.00552,
+        0.01104
+      ],
+      "input_fingerprint": "4e8ef2c344847316bc83c4b6ef618f292918d5e679e4232153f7d5e34869a4d8",
+      "profile_id": "script-14-restriction-rolling-0800-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 10.0,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.12678,
+        0.10887,
+        0.10319,
+        0.1,
+        0.09601,
+        0.08681,
+        0.09475,
+        0.09206,
+        0.085,
+        0.07817,
+        0.06353,
+        0.05388,
+        0.046,
+        0.02952,
+        0.0251,
+        0.04914,
+        0.075,
+        0.09378,
+        0.10723,
+        0.11825,
+        0.12547,
+        0.13402,
+        0.13706,
+        0.11753
+      ],
+      "delivery_date": "2023-06-18",
+      "fcr_prices_eur_per_kw_block": [
+        0.06672,
+        0.1,
+        0.2136,
+        0.24848,
+        0.1028,
+        0.02792
+      ],
+      "input_fingerprint": "0ebe691ab4accea28b654966f359d6a5037c8f831129c948f4115158e496126a",
+      "profile_id": "script-14-restriction-rolling-0800-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 51.743,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.09968,
+        0.09341,
+        0.08834,
+        0.08942,
+        0.09069,
+        0.09561,
+        0.10978,
+        0.13015,
+        0.13223,
+        0.11533,
+        0.10378,
+        0.09702,
+        0.09311,
+        0.09,
+        0.08849,
+        0.09401,
+        0.09811,
+        0.11008,
+        0.137,
+        0.16777,
+        0.16508,
+        0.14999,
+        0.14286,
+        0.13448
+      ],
+      "delivery_date": "2023-06-19",
+      "fcr_prices_eur_per_kw_block": [
+        0.072,
+        0.0556,
+        0.06576,
+        0.1,
+        0.06888,
+        0.0256
+      ],
+      "input_fingerprint": "843b5841997741139b1fad77b08b13e0a9db2e56d4eb8006464a2721390f73d9",
+      "profile_id": "script-14-restriction-rolling-0800-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 57.988,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.1208,
+        0.11028,
+        0.10398,
+        0.101,
+        0.09945,
+        0.10107,
+        0.11189,
+        0.12621,
+        0.14631,
+        0.13089,
+        0.11401,
+        0.1098,
+        0.0999,
+        0.10152,
+        0.10177,
+        0.10321,
+        0.10515,
+        0.11854,
+        0.14,
+        0.16059,
+        0.16508,
+        0.15,
+        0.138,
+        0.12011
+      ],
+      "delivery_date": "2023-06-20",
+      "fcr_prices_eur_per_kw_block": [
+        0.00736,
+        0.00632,
+        0.012,
+        0.01104,
+        0.01104,
+        0.01104
+      ],
+      "input_fingerprint": "76b4a7725b3d6f1a4c6cab5aa7ff3da77490af7325051ec96a2c2026a9f303b7",
+      "profile_id": "script-14-restriction-rolling-0800-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 53.328,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.13081,
+        0.1228,
+        0.11997,
+        0.11639,
+        0.11106,
+        0.11,
+        0.11025,
+        0.10801,
+        0.101,
+        0.0956,
+        0.085,
+        0.06999,
+        0.05936,
+        0.0484,
+        0.03938,
+        0.05608,
+        0.085,
+        0.10152,
+        0.11531,
+        0.13779,
+        0.14697,
+        0.14477,
+        0.142,
+        0.13665
+      ],
+      "delivery_date": "2023-06-17",
+      "fcr_prices_eur_per_kw_block": [
+        0.00848,
+        0.01104,
+        0.01104,
+        0.00808,
+        0.00552,
+        0.01104
+      ],
+      "input_fingerprint": "7fb5260a68c88a870470be9198416d9f8439b90446ef9f270be627f28c10ac51",
+      "profile_id": "script-15-restriction-rolling-midnight-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 54.299,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.12678,
+        0.10887,
+        0.10319,
+        0.1,
+        0.09601,
+        0.08681,
+        0.09475,
+        0.09206,
+        0.085,
+        0.07817,
+        0.06353,
+        0.05388,
+        0.046,
+        0.02952,
+        0.0251,
+        0.04914,
+        0.075,
+        0.09378,
+        0.10723,
+        0.11825,
+        0.12547,
+        0.13402,
+        0.13706,
+        0.11753
+      ],
+      "delivery_date": "2023-06-18",
+      "fcr_prices_eur_per_kw_block": [
+        0.06672,
+        0.1,
+        0.2136,
+        0.24848,
+        0.1028,
+        0.02792
+      ],
+      "input_fingerprint": "375e238ef4be312c86d7760d14c5432c35590fa484ab26e5e88c785b40c7dee7",
+      "profile_id": "script-15-restriction-rolling-midnight-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 55.482,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.09968,
+        0.09341,
+        0.08834,
+        0.08942,
+        0.09069,
+        0.09561,
+        0.10978,
+        0.13015,
+        0.13223,
+        0.11533,
+        0.10378,
+        0.09702,
+        0.09311,
+        0.09,
+        0.08849,
+        0.09401,
+        0.09811,
+        0.11008,
+        0.137,
+        0.16777,
+        0.16508,
+        0.14999,
+        0.14286,
+        0.13448
+      ],
+      "delivery_date": "2023-06-19",
+      "fcr_prices_eur_per_kw_block": [
+        0.072,
+        0.0556,
+        0.06576,
+        0.1,
+        0.06888,
+        0.0256
+      ],
+      "input_fingerprint": "ab71f9592a24b82b53b4d6ed955d96fd505798a1a411abc5eeefd51a3f299567",
+      "profile_id": "script-15-restriction-rolling-midnight-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    },
+    {
+      "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "initial_stored_energy_kwh": 60.752,
+        "maximum_charge_power_kw": 50.0,
+        "maximum_discharge_power_kw": 50.0,
+        "maximum_stored_energy_kwh": 90.0,
+        "minimum_stored_energy_kwh": 10.0,
+        "source_power_sign": "positive_is_discharge"
+      },
+      "day_ahead_prices_eur_per_kwh": [
+        0.1208,
+        0.11028,
+        0.10398,
+        0.101,
+        0.09945,
+        0.10107,
+        0.11189,
+        0.12621,
+        0.14631,
+        0.13089,
+        0.11401,
+        0.1098,
+        0.0999,
+        0.10152,
+        0.10177,
+        0.10321,
+        0.10515,
+        0.11854,
+        0.14,
+        0.16059,
+        0.16508,
+        0.15,
+        0.138,
+        0.12011
+      ],
+      "delivery_date": "2023-06-20",
+      "fcr_prices_eur_per_kw_block": [
+        0.00736,
+        0.00632,
+        0.012,
+        0.01104,
+        0.01104,
+        0.01104
+      ],
+      "input_fingerprint": "01a270c8883e017c4a1eaf14c1b0a2e5e325926cf3b8c124e78adf90eb3b329d",
+      "profile_id": "script-15-restriction-rolling-midnight-v1",
+      "terminal_rule": {
+        "allow_penalized_shortfall": true,
+        "minimum_terminal_stored_energy_kwh": 53.327556325823224,
+        "shortfall_penalty_eur_per_kwh": 100.0,
+        "source_formula": "y0 - delta_t * sum(alpha[k]) >= ylK - syK[2]"
+      },
+      "uncertainty": {
+        "derivation_rule": "covering-window-budget-v1",
+        "horizon_activation_budget_hours": 2.75,
+        "pointwise_activation_bounds": [
+          -1.0,
+          1.0
+        ],
+        "recovery_activation_budget_hours": 0.25,
+        "recovery_window_hours": 2.25
+      }
+    }
+  ],
+  "profile_crosswalk": [
+    {
+      "executable_behavior": "relaxation with independent midnight reset days",
+      "mapping_status": "reconciled_by_behavior",
+      "paper_experiment": 1,
+      "profile_id": "script-11-relaxation-reset-midnight-v1",
+      "result_directory": "results/01",
+      "script": "code/11.jl",
+      "table_a1_claim": "not_claimed_by_bounded_fixture",
+      "workbook_column": "11"
+    },
+    {
+      "executable_behavior": "restriction with independent midnight reset days",
+      "mapping_status": "reconciled_by_behavior",
+      "paper_experiment": 2,
+      "profile_id": "script-12-restriction-reset-midnight-v1",
+      "result_directory": "results/02",
+      "script": "code/12.jl",
+      "table_a1_claim": "not_claimed_by_bounded_fixture",
+      "workbook_column": "12"
+    },
+    {
+      "executable_behavior": "day-ahead arbitrage with FCR fixed exactly to zero",
+      "mapping_status": "reconciled_by_behavior",
+      "paper_experiment": 4,
+      "profile_id": "script-13-arbitrage-only-midnight-v1",
+      "result_directory": "results/03",
+      "script": "code/13.jl",
+      "table_a1_claim": "not_claimed_by_bounded_fixture",
+      "workbook_column": "14"
+    },
+    {
+      "executable_behavior": "restriction with rolling 08:00 overlapping predecessor decisions",
+      "mapping_status": "reconciled_by_behavior",
+      "paper_experiment": 5,
+      "profile_id": "script-14-restriction-rolling-0800-v1",
+      "result_directory": "results/04",
+      "script": "code/14.jl",
+      "table_a1_claim": "not_claimed_by_bounded_fixture",
+      "workbook_column": "15"
+    },
+    {
+      "executable_behavior": "restriction with rolling midnight state carry-over",
+      "mapping_status": "reconciled_by_behavior",
+      "paper_experiment": 3,
+      "profile_id": "script-15-restriction-rolling-midnight-v1",
+      "result_directory": "results/05",
+      "script": "code/15.jl",
+      "table_a1_claim": "not_claimed_by_bounded_fixture",
+      "workbook_column": "13"
+    }
+  ],
+  "raw_input_manifest": [
+    {
+      "artifact_id": "source-01-datastruct",
+      "artifact_kind": "source",
+      "logical_source_path": "code/01_datastruct.jl",
+      "redistributed": false,
+      "sha256": "c80d012415fefc5501076ea7bff7ba6396b3aa782ef708e439b32112114fd44e",
+      "used_fields": [
+        "source_citation",
+        "battery_and_uncertainty_semantics"
+      ]
+    },
+    {
+      "artifact_id": "source-02-model",
+      "artifact_kind": "source",
+      "logical_source_path": "code/02_model.jl",
+      "redistributed": false,
+      "sha256": "1c2196a5cea8766c2a6df10175cfed7ce68fc05972e4a5b87dd502c70ea7d53e",
+      "used_fields": [
+        "source_citation",
+        "formulation_and_overlap_semantics"
+      ]
+    },
+    {
+      "artifact_id": "source-03-backtest-save",
+      "artifact_kind": "source",
+      "logical_source_path": "code/03_backtest_save.jl",
+      "redistributed": false,
+      "sha256": "887dd49002949855fedd1db015a624c80d8d02feea03037c335b0f77e879bf78",
+      "used_fields": [
+        "source_citation",
+        "lifecycle_and_state_semantics"
+      ]
+    },
+    {
+      "artifact_id": "source-04-parse-results",
+      "artifact_kind": "source",
+      "logical_source_path": "code/04_parse_results.jl",
+      "redistributed": false,
+      "sha256": "fa683f96ca1ea3f077ec50218dadc5eb63439fefd7548b176a8b2f0793ca6427",
+      "used_fields": [
+        "source_citation",
+        "workbook_metric_semantics"
+      ]
+    },
+    {
+      "artifact_id": "source-05-dates",
+      "artifact_kind": "source",
+      "logical_source_path": "code/05_dates.txt",
+      "redistributed": false,
+      "sha256": "6b2412144996135507ea85a73f51b7819897a1f98ae767df4396d18a9605ba51",
+      "used_fields": [
+        "source_citation",
+        "date_ordering"
+      ]
+    },
+    {
+      "artifact_id": "source-script-11",
+      "artifact_kind": "source",
+      "logical_source_path": "code/11.jl",
+      "redistributed": false,
+      "sha256": "a3e887361ac587474400cd16edd7e1a912ab1c838f4b70d85f9b55e1715b2df9",
+      "used_fields": [
+        "source_citation",
+        "profile_crosswalk"
+      ]
+    },
+    {
+      "artifact_id": "source-script-12",
+      "artifact_kind": "source",
+      "logical_source_path": "code/12.jl",
+      "redistributed": false,
+      "sha256": "df78edea85c56202de71b02955b703d04cb2e4e199f15f497440b0683343a767",
+      "used_fields": [
+        "source_citation",
+        "profile_crosswalk"
+      ]
+    },
+    {
+      "artifact_id": "source-script-13",
+      "artifact_kind": "source",
+      "logical_source_path": "code/13.jl",
+      "redistributed": false,
+      "sha256": "bd00654c88774320b749ce9605cf92b71f74dc86094b48e6fefb593148dd2ed9",
+      "used_fields": [
+        "source_citation",
+        "profile_crosswalk",
+        "time_limit_discrepancy"
+      ]
+    },
+    {
+      "artifact_id": "source-script-14",
+      "artifact_kind": "source",
+      "logical_source_path": "code/14.jl",
+      "redistributed": false,
+      "sha256": "b211be09799639c8069ece90fa6a9e6d7463e2b9a38fe38869b81a145a93901a",
+      "used_fields": [
+        "source_citation",
+        "profile_crosswalk",
+        "overlap_semantics"
+      ]
+    },
+    {
+      "artifact_id": "source-script-15",
+      "artifact_kind": "source",
+      "logical_source_path": "code/15.jl",
+      "redistributed": false,
+      "sha256": "d0e24887ded4615a643606dc1bd6cebe42f499564d155c3ac5c8d4a6415e6a6c",
+      "used_fields": [
+        "source_citation",
+        "profile_crosswalk",
+        "carry_semantics"
+      ]
+    },
+    {
+      "artifact_id": "result-01-2023-06-17",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/01/2023-06-17.json",
+      "redistributed": false,
+      "sha256": "c8966e5c936c2d5793f2ef8cb4a1b8a96c617abbd3e7aedfe376ec271a53eb40",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence"
+      ]
+    },
+    {
+      "artifact_id": "result-01-2023-06-18",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/01/2023-06-18.json",
+      "redistributed": false,
+      "sha256": "8ea5663112233cc157c36814024a1e15bd57fdafb01d0eaddba1d00b550dff9f",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence"
+      ]
+    },
+    {
+      "artifact_id": "result-01-2023-06-19",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/01/2023-06-19.json",
+      "redistributed": false,
+      "sha256": "b5b0113227d0901dfa2e685587d13465fe67851551262d7d9459dc797924bac3",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence"
+      ]
+    },
+    {
+      "artifact_id": "result-01-2023-06-20",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/01/2023-06-20.json",
+      "redistributed": false,
+      "sha256": "4eb00bb4521bbe17cad9b7c06640e0a3d342c7c4428617092558a9e84260a953",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence"
+      ]
+    },
+    {
+      "artifact_id": "result-02-2023-06-17",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/02/2023-06-17.json",
+      "redistributed": false,
+      "sha256": "b5d454e92bc999ff39cb84af32acc9ae5c71852a272b2581931ffed2acbbb043",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence"
+      ]
+    },
+    {
+      "artifact_id": "result-02-2023-06-18",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/02/2023-06-18.json",
+      "redistributed": false,
+      "sha256": "6aee0bbc3353e0b08d1471b2e5c7c3b79aeffd220e2d9c1b69e8c4d711d8f37b",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence",
+        "feature_013_cross_check"
+      ]
+    },
+    {
+      "artifact_id": "result-02-2023-06-19",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/02/2023-06-19.json",
+      "redistributed": false,
+      "sha256": "bc67a524722e487b73c36f1ff33ef37c00259210219639141d5224720c62502d",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence"
+      ]
+    },
+    {
+      "artifact_id": "result-02-2023-06-20",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/02/2023-06-20.json",
+      "redistributed": false,
+      "sha256": "1f47bc64a6267ef4b0d18247c3542d4c591e46c6a3f7860482ddbd3f15c66d79",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence"
+      ]
+    },
+    {
+      "artifact_id": "result-03-2023-06-17",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/03/2023-06-17.json",
+      "redistributed": false,
+      "sha256": "e5dbd535c9e5538d3bf5a4672010f3047c9d1e2d49a6382ab2ead22190e571ed",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence"
+      ]
+    },
+    {
+      "artifact_id": "result-03-2023-06-18",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/03/2023-06-18.json",
+      "redistributed": false,
+      "sha256": "d9ddbf93daeeb1d54573ea528f7bb94be26f5cfd79d586ed58faf76d98e82d60",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence"
+      ]
+    },
+    {
+      "artifact_id": "result-03-2023-06-19",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/03/2023-06-19.json",
+      "redistributed": false,
+      "sha256": "a80b25451a8d1c403f09780cbb3703b44c9082602eb56407b71cac09f464a4e8",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence"
+      ]
+    },
+    {
+      "artifact_id": "result-03-2023-06-20",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/03/2023-06-20.json",
+      "redistributed": false,
+      "sha256": "cfaac4826a0889a0d7b1575f23dca83ad35c5429717ff23c792ab4f95a3df855",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence"
+      ]
+    },
+    {
+      "artifact_id": "result-04-2023-06-17",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/04/2023-06-17.json",
+      "redistributed": false,
+      "sha256": "e6aec6a90dfa2858b7eec5411e871b40a21d46886387f8a5a3cd40f1ede3359e",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence",
+        "overlap_lifecycle"
+      ]
+    },
+    {
+      "artifact_id": "result-04-2023-06-18",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/04/2023-06-18.json",
+      "redistributed": false,
+      "sha256": "6b650f31c7a8c98f3b43644fe767d3fee2855b6eb0508858bbcccf358d8a7350",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence",
+        "accepted_overlap"
+      ]
+    },
+    {
+      "artifact_id": "result-04-2023-06-19",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/04/2023-06-19.json",
+      "redistributed": false,
+      "sha256": "62a7c1f480380bb8c10e1d2cb61b3dc78fa922b33286bb7198c1b41e07bf3850",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence",
+        "accepted_overlap"
+      ]
+    },
+    {
+      "artifact_id": "result-04-2023-06-20",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/04/2023-06-20.json",
+      "redistributed": false,
+      "sha256": "f5d6a234d9a41dfe1d619df86dedc86336401773331e3046613a869632e66dcb",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence",
+        "accepted_overlap"
+      ]
+    },
+    {
+      "artifact_id": "result-05-2023-06-17",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/05/2023-06-17.json",
+      "redistributed": false,
+      "sha256": "92df2f5cf73bc04b72f354936df1fe6a5b8d8288eef16be862884790b971fad6",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence"
+      ]
+    },
+    {
+      "artifact_id": "result-05-2023-06-18",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/05/2023-06-18.json",
+      "redistributed": false,
+      "sha256": "2502454768a8d5c55b84b1be5d3036bafd2b5603f7ff8d8062bc23060895e0c5",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence"
+      ]
+    },
+    {
+      "artifact_id": "result-05-2023-06-19",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/05/2023-06-19.json",
+      "redistributed": false,
+      "sha256": "d751f4c84a89850e608876018babda1dded67acd690c1a797e0ba719e543085d",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence"
+      ]
+    },
+    {
+      "artifact_id": "result-05-2023-06-20",
+      "artifact_kind": "generated_json",
+      "logical_source_path": "results/05/2023-06-20.json",
+      "redistributed": false,
+      "sha256": "81b3eb9cbb97068463f08b90a44b1dfa3f6574938a6edd519b921251d9830ead",
+      "used_fields": [
+        "problem_inputs",
+        "solve_record",
+        "delivery_evidence"
+      ]
+    },
+    {
+      "artifact_id": "log-11-2023-06-17",
+      "artifact_kind": "generated_log",
+      "logical_source_path": "code/11-2023-06-17.log",
+      "redistributed": false,
+      "sha256": "1a6aa86a6f422110f475b420675ae9bc9eca3209c6d3783f8cb0bb14b9f38221",
+      "used_fields": [
+        "termination",
+        "bound",
+        "runtime"
+      ]
+    },
+    {
+      "artifact_id": "log-11-2023-06-18",
+      "artifact_kind": "generated_log",
+      "logical_source_path": "code/11-2023-06-18.log",
+      "redistributed": false,
+      "sha256": "53472156883bcc7fe3d30dfbaae667408422737464613085c00261b360fedea9",
+      "used_fields": [
+        "termination",
+        "bound",
+        "runtime"
+      ]
+    },
+    {
+      "artifact_id": "log-11-2023-06-19",
+      "artifact_kind": "generated_log",
+      "logical_source_path": "code/11-2023-06-19.log",
+      "redistributed": false,
+      "sha256": "e42a4ec493866cdf0906375d7a9ad38b19760efc751cb5031000124e01d69a3b",
+      "used_fields": [
+        "termination",
+        "bound",
+        "runtime"
+      ]
+    },
+    {
+      "artifact_id": "log-11-2023-06-20",
+      "artifact_kind": "generated_log",
+      "logical_source_path": "code/11-2023-06-20.log",
+      "redistributed": false,
+      "sha256": "34f137ed15c0cdf87ac995d78338d0d6613db1c4a34e930a9111e15e8d3ead7b",
+      "used_fields": [
+        "termination",
+        "bound",
+        "runtime"
+      ]
+    },
+    {
+      "artifact_id": "log-12-2023-06-17",
+      "artifact_kind": "generated_log",
+      "logical_source_path": "code/12-2023-06-17.log",
+      "redistributed": false,
+      "sha256": "d48b597579f93101ea96d6db98b49768c516213c7c68e977bb1e9e0edf93d8b3",
+      "used_fields": [
+        "termination",
+        "bound",
+        "runtime"
+      ]
+    },
+    {
+      "artifact_id": "log-12-2023-06-18",
+      "artifact_kind": "generated_log",
+      "logical_source_path": "code/12-2023-06-18.log",
+      "redistributed": false,
+      "sha256": "341b6b785ba27007afc5eeb8fbd909c89a49a9bf89538e9a0e9a290e2fbdb813",
+      "used_fields": [
+        "termination",
+        "bound",
+        "runtime"
+      ]
+    },
+    {
+      "artifact_id": "log-12-2023-06-19",
+      "artifact_kind": "generated_log",
+      "logical_source_path": "code/12-2023-06-19.log",
+      "redistributed": false,
+      "sha256": "98c85088a1de65cac9c0c9467f6ca4ddece0c8cf9ccaef563e9cd591c2fe4b41",
+      "used_fields": [
+        "termination",
+        "bound",
+        "runtime"
+      ]
+    },
+    {
+      "artifact_id": "log-12-2023-06-20",
+      "artifact_kind": "generated_log",
+      "logical_source_path": "code/12-2023-06-20.log",
+      "redistributed": false,
+      "sha256": "78cb98c77702fa27bea43041ed3d60d5a65f43e90586a428607a0f8b80e6b430",
+      "used_fields": [
+        "termination",
+        "bound",
+        "runtime"
+      ]
+    },
+    {
+      "artifact_id": "log-13-bounded",
+      "artifact_kind": "generated_log",
+      "logical_source_path": "code/13.log",
+      "redistributed": false,
+      "sha256": "063db1e3f712f9a8bfda8807e4280b3c1a1f9e18f2d20c08f14e38b070c87160",
+      "used_fields": [
+        "termination",
+        "bound",
+        "runtime",
+        "run_segmentation"
+      ]
+    },
+    {
+      "artifact_id": "log-14-bounded",
+      "artifact_kind": "generated_log",
+      "logical_source_path": "code/14.log",
+      "redistributed": false,
+      "sha256": "7eb2a8a06e1c17b61aa17aad177eeb53963fadd8b97944c4a8bdce30ebde0437",
+      "used_fields": [
+        "termination",
+        "bound",
+        "runtime",
+        "run_segmentation"
+      ]
+    },
+    {
+      "artifact_id": "log-15-bounded",
+      "artifact_kind": "generated_log",
+      "logical_source_path": "code/15.log",
+      "redistributed": false,
+      "sha256": "94aeec52eb11d0580bf8afbafaa92a184db73a823914908ac33559b833944a5c",
+      "used_fields": [
+        "termination",
+        "bound",
+        "runtime",
+        "run_segmentation"
+      ]
+    },
+    {
+      "artifact_id": "day-ahead-fr",
+      "artifact_kind": "input_data",
+      "logical_source_path": "data/day_ahead_FR.csv",
+      "redistributed": false,
+      "sha256": "d4c2e7de6efb2a33864cd8c378dbef1a583b81172b917ed2beca2f7caf63667d",
+      "used_fields": [
+        "day_ahead_descriptor"
+      ]
+    },
+    {
+      "artifact_id": "fcr-rte",
+      "artifact_kind": "input_data",
+      "logical_source_path": "data/FCR_RTE.csv",
+      "redistributed": false,
+      "sha256": "0245ddc39adb7816d1e122d1d6047c03903b744f115aa97c46c9c585ceee47df",
+      "used_fields": [
+        "fcr_capacity_descriptor"
+      ]
+    },
+    {
+      "artifact_id": "activation-trace",
+      "artifact_kind": "input_data",
+      "logical_source_path": "data/regulation_signal.csv",
+      "redistributed": false,
+      "sha256": "0c2bf5203410f193c555460ec5593b546af42556f29afac821584e403c407d13",
+      "used_fields": [
+        "activation_descriptor_only"
+      ]
+    },
+    {
+      "artifact_id": "julia-project",
+      "artifact_kind": "project",
+      "logical_source_path": "code/Project.toml",
+      "redistributed": false,
+      "sha256": "6201753a3c5923f221ae39b7db85a4a660aca5653be9e6329840073e374940d5",
+      "used_fields": [
+        "environment_lineage"
+      ]
+    },
+    {
+      "artifact_id": "julia-manifest",
+      "artifact_kind": "manifest",
+      "logical_source_path": "code/Manifest.toml",
+      "redistributed": false,
+      "sha256": "949ce539f7238a48336c20c42ff923d54a658d26e14d1572f423c7afb9741da9",
+      "used_fields": [
+        "committed_environment"
+      ]
+    },
+    {
+      "artifact_id": "reference-readme",
+      "artifact_kind": "source",
+      "logical_source_path": "README.md",
+      "redistributed": false,
+      "sha256": "42f8932becad9813150044334481e19ed0ae6d22a50d5c15e34ce0d6f03d8f84",
+      "used_fields": [
+        "readme_claims"
+      ]
+    },
+    {
+      "artifact_id": "result-overview-workbook",
+      "artifact_kind": "workbook",
+      "logical_source_path": "results/result_overview.xlsx",
+      "redistributed": false,
+      "sha256": "d6be18cf436c312a06676678af0e1e4a5815593c38a446839d36d4b7fa9a8c6b",
+      "used_fields": [
+        "profile_crosswalk",
+        "metric_discrepancy"
+      ]
+    },
+    {
+      "artifact_id": "feature-013-governed-fixture",
+      "artifact_kind": "input_data",
+      "logical_source_path": "tests/fixtures/fcr_bidding/robust_storage_bidding_2023-06-18_restriction_v1.json",
+      "redistributed": false,
+      "sha256": "d00ecee3adf98e5c1a955f7bb9129ff729df6c14fd592a27db05e31d382a324e",
+      "used_fields": [
+        "feature_013_cross_check"
+      ]
+    }
+  ],
+  "redistribution_status": {
+    "fixture_contains_activation_samples": false,
+    "fixture_contains_machine_or_license_data": false,
+    "fixture_contains_raw_json": false,
+    "fixture_contains_raw_logs": false,
+    "fixture_contains_workbook": false,
+    "normalized_fields_only": true
+  },
+  "reference_provenance": {
+    "committed_environment": {
+      "gurobi_jl": "1.3.1",
+      "gurobi_runtime": "11.0.3",
+      "julia": "1.10.1",
+      "jump": "1.23.3"
+    },
+    "normalizer_version": "oel-fcr-rolling-normalizer-v1",
+    "readme_claims": {
+      "gurobi": "11.0.2",
+      "julia": "1.10.1",
+      "jump": "1.22.2"
+    },
+    "reference_repository": "robust_storage_bidding",
+    "reference_revision": "7e44738bb30e5c8204efe40103b9be4c2203685c",
+    "runtime_evidence": {
+      "gurobi_runtime_version": "11.0.3",
+      "julia_version": "1.10.1"
+    },
+    "source_kind": "generated-untracked-bounded-rerun-evidence"
+  },
+  "schema_version": "fcr-rolling-reference-fixture-v1",
+  "solve_records": [
+    {
+      "absolute_gap_eur": 0.0009999999999994458,
+      "accepted_overlap": null,
+      "best_upper_bound_eur": 6.566,
+      "cutoff_stored_energy_kwh": null,
+      "delivery_date": "2023-06-17",
+      "fcr_capacity_kw": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        13.598
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        39.862,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -36.957,
+        -50.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        33.739,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "initial_stored_energy_kwh": 53.328,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 6.565,
+      "profile_id": "script-11-relaxation-reset-midnight-v1",
+      "record_fingerprint": "4e320fbdae0af4f8ee1c16b1f63437cf6c9ca61ea5e208ba8d124b509e3d6795",
+      "relative_gap": 0.00015229972586040905,
+      "runtime_seconds": 284.324,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "OPTIMAL"
+      },
+      "source_json_artifact_id": "result-01-2023-06-17",
+      "source_log_artifact_id": "log-11-2023-06-17",
+      "terminal_stored_energy_kwh": 54.299
+    },
+    {
+      "absolute_gap_eur": 0.0,
+      "accepted_overlap": null,
+      "best_upper_bound_eur": 11.028,
+      "cutoff_stored_energy_kwh": null,
+      "delivery_date": "2023-06-18",
+      "fcr_capacity_kw": [
+        12.269,
+        14.495,
+        14.495,
+        14.495,
+        14.495,
+        14.495
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        27.593,
+        -12.269,
+        -12.269,
+        0.0,
+        -3.162,
+        -4.901,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "initial_stored_energy_kwh": 53.328,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 11.028,
+      "profile_id": "script-11-relaxation-reset-midnight-v1",
+      "record_fingerprint": "88d1292564b5e6147c6c5fbb90f9a957924bc95bfa1c47c6eb8e78f62459043c",
+      "relative_gap": 0.0,
+      "runtime_seconds": 521.698,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "OPTIMAL"
+      },
+      "source_json_artifact_id": "result-01-2023-06-18",
+      "source_log_artifact_id": "log-11-2023-06-18",
+      "terminal_stored_energy_kwh": 55.482
+    },
+    {
+      "absolute_gap_eur": 0.0,
+      "accepted_overlap": null,
+      "best_upper_bound_eur": 5.622,
+      "cutoff_stored_energy_kwh": null,
+      "delivery_date": "2023-06-19",
+      "fcr_capacity_kw": [
+        14.495,
+        14.495,
+        14.495,
+        14.495,
+        14.495,
+        14.495
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "initial_stored_energy_kwh": 53.328,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 5.622,
+      "profile_id": "script-11-relaxation-reset-midnight-v1",
+      "record_fingerprint": "53ed53712259a6165982116dbb1fb27a25b1135175c99861ecc505bfe1346903",
+      "relative_gap": 0.0,
+      "runtime_seconds": 1436.11,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "OPTIMAL"
+      },
+      "source_json_artifact_id": "result-01-2023-06-19",
+      "source_log_artifact_id": "log-11-2023-06-19",
+      "terminal_stored_energy_kwh": 60.919
+    },
+    {
+      "absolute_gap_eur": 0.0,
+      "accepted_overlap": null,
+      "best_upper_bound_eur": 4.155,
+      "cutoff_stored_energy_kwh": null,
+      "delivery_date": "2023-06-20",
+      "fcr_capacity_kw": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        39.862,
+        0.0,
+        0.0,
+        -36.957,
+        -50.0,
+        0.0,
+        0.0,
+        0.0,
+        50.0,
+        23.6,
+        0.0,
+        0.0,
+        -50.0,
+        -36.957,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        23.6,
+        50.0,
+        0.0,
+        0.0,
+        -47.095
+      ],
+      "initial_stored_energy_kwh": 53.328,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 4.155,
+      "profile_id": "script-11-relaxation-reset-midnight-v1",
+      "record_fingerprint": "3258ee5caaa5a3cb4ba3486f1ce6aa38c94160d1b4a1c97f0c3326474e855723",
+      "relative_gap": 0.0,
+      "runtime_seconds": 73.1642,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "OPTIMAL"
+      },
+      "source_json_artifact_id": "result-01-2023-06-20",
+      "source_log_artifact_id": "log-11-2023-06-20",
+      "terminal_stored_energy_kwh": 53.328
+    },
+    {
+      "absolute_gap_eur": 0.0009999999999994458,
+      "accepted_overlap": null,
+      "best_upper_bound_eur": 6.566,
+      "cutoff_stored_energy_kwh": null,
+      "delivery_date": "2023-06-17",
+      "fcr_capacity_kw": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        13.598
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        39.862,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -36.957,
+        -50.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        33.739,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "initial_stored_energy_kwh": 53.328,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 6.565,
+      "profile_id": "script-12-restriction-reset-midnight-v1",
+      "record_fingerprint": "fab6733f330f9c4f3ff31f2c65b1514c719f558fe205893477803677586e5c37",
+      "relative_gap": 0.00015229972586040905,
+      "runtime_seconds": 1016.21,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "OPTIMAL"
+      },
+      "source_json_artifact_id": "result-02-2023-06-17",
+      "source_log_artifact_id": "log-12-2023-06-17",
+      "terminal_stored_energy_kwh": 54.299
+    },
+    {
+      "absolute_gap_eur": 0.0,
+      "accepted_overlap": null,
+      "best_upper_bound_eur": 11.028,
+      "cutoff_stored_energy_kwh": null,
+      "delivery_date": "2023-06-18",
+      "fcr_capacity_kw": [
+        12.269,
+        14.495,
+        14.495,
+        14.495,
+        14.495,
+        14.495
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        27.593,
+        -12.269,
+        -12.269,
+        0.0,
+        -3.162,
+        -4.901,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "initial_stored_energy_kwh": 53.328,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 11.028,
+      "profile_id": "script-12-restriction-reset-midnight-v1",
+      "record_fingerprint": "f07ac6538ccd8d163f5e5f703138b5d9742a2b86ee8ad05730d88a4d6a98f5f8",
+      "relative_gap": 0.0,
+      "runtime_seconds": 928.185,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "OPTIMAL"
+      },
+      "source_json_artifact_id": "result-02-2023-06-18",
+      "source_log_artifact_id": "log-12-2023-06-18",
+      "terminal_stored_energy_kwh": 55.482
+    },
+    {
+      "absolute_gap_eur": 0.0,
+      "accepted_overlap": null,
+      "best_upper_bound_eur": 5.622,
+      "cutoff_stored_energy_kwh": null,
+      "delivery_date": "2023-06-19",
+      "fcr_capacity_kw": [
+        14.495,
+        14.495,
+        14.495,
+        14.495,
+        14.495,
+        14.495
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "initial_stored_energy_kwh": 53.328,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 5.622,
+      "profile_id": "script-12-restriction-reset-midnight-v1",
+      "record_fingerprint": "39ef88df76f4c41598f672a8054b5c8902b1be379bdf4c7f2f1eef82dd964a13",
+      "relative_gap": 0.0,
+      "runtime_seconds": 1513.68,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "OPTIMAL"
+      },
+      "source_json_artifact_id": "result-02-2023-06-19",
+      "source_log_artifact_id": "log-12-2023-06-19",
+      "terminal_stored_energy_kwh": 60.919
+    },
+    {
+      "absolute_gap_eur": 0.0009999999999994458,
+      "accepted_overlap": null,
+      "best_upper_bound_eur": 4.156,
+      "cutoff_stored_energy_kwh": null,
+      "delivery_date": "2023-06-20",
+      "fcr_capacity_kw": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        39.862,
+        0.0,
+        0.0,
+        -36.957,
+        -50.0,
+        0.0,
+        0.0,
+        0.0,
+        50.0,
+        23.6,
+        0.0,
+        0.0,
+        -50.0,
+        -36.957,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        23.6,
+        50.0,
+        0.0,
+        0.0,
+        -47.095
+      ],
+      "initial_stored_energy_kwh": 53.328,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 4.155,
+      "profile_id": "script-12-restriction-reset-midnight-v1",
+      "record_fingerprint": "f523a630e7e736ebcb45b3efadc9b3b8660c004da8a1123a57762540dbee1283",
+      "relative_gap": 0.00024061597690073287,
+      "runtime_seconds": 90.8207,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "OPTIMAL"
+      },
+      "source_json_artifact_id": "result-02-2023-06-20",
+      "source_log_artifact_id": "log-12-2023-06-20",
+      "terminal_stored_energy_kwh": 53.328
+    },
+    {
+      "absolute_gap_eur": 0.0,
+      "accepted_overlap": null,
+      "best_upper_bound_eur": 6.415,
+      "cutoff_stored_energy_kwh": null,
+      "delivery_date": "2023-06-17",
+      "fcr_capacity_kw": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        39.862,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -36.957,
+        -50.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        33.739,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "initial_stored_energy_kwh": 53.328,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 6.415,
+      "profile_id": "script-13-arbitrage-only-midnight-v1",
+      "record_fingerprint": "dd9e4fc1b106a228fbaf7572790439c21194b8022c78d75c40f5c7b8a59022b6",
+      "relative_gap": 0.0,
+      "runtime_seconds": 0.00878096,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "OPTIMAL"
+      },
+      "source_json_artifact_id": "result-03-2023-06-17",
+      "source_log_artifact_id": "log-13-bounded",
+      "terminal_stored_energy_kwh": 53.328
+    },
+    {
+      "absolute_gap_eur": 0.0,
+      "accepted_overlap": null,
+      "best_upper_bound_eur": 7.332,
+      "cutoff_stored_energy_kwh": null,
+      "delivery_date": "2023-06-18",
+      "fcr_capacity_kw": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        39.862,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -36.957,
+        -50.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        33.739,
+        0.0
+      ],
+      "initial_stored_energy_kwh": 53.328,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 7.332,
+      "profile_id": "script-13-arbitrage-only-midnight-v1",
+      "record_fingerprint": "b90c8f184b3b2f327a9ac428a7395556134a57a692b790dd1d69d27c470e426a",
+      "relative_gap": 0.0,
+      "runtime_seconds": 0.00875592,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "OPTIMAL"
+      },
+      "source_json_artifact_id": "result-03-2023-06-18",
+      "source_log_artifact_id": "log-13-bounded",
+      "terminal_stored_energy_kwh": 53.328
+    },
+    {
+      "absolute_gap_eur": 0.0,
+      "accepted_overlap": null,
+      "best_upper_bound_eur": 4.362,
+      "cutoff_stored_energy_kwh": null,
+      "delivery_date": "2023-06-19",
+      "fcr_capacity_kw": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        0.0,
+        0.0,
+        -39.861,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        23.6,
+        50.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -36.957,
+        -50.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        50.0,
+        23.6,
+        0.0,
+        0.0,
+        -47.095
+      ],
+      "initial_stored_energy_kwh": 53.328,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 4.362,
+      "profile_id": "script-13-arbitrage-only-midnight-v1",
+      "record_fingerprint": "6aeae4e2f7e5c41058db0429ecfb355d74575ffeac7ea08352a71203608cf7d8",
+      "relative_gap": 0.0,
+      "runtime_seconds": 0.00812006,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "OPTIMAL"
+      },
+      "source_json_artifact_id": "result-03-2023-06-19",
+      "source_log_artifact_id": "log-13-bounded",
+      "terminal_stored_energy_kwh": 53.328
+    },
+    {
+      "absolute_gap_eur": 0.0,
+      "accepted_overlap": null,
+      "best_upper_bound_eur": 4.155,
+      "cutoff_stored_energy_kwh": null,
+      "delivery_date": "2023-06-20",
+      "fcr_capacity_kw": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        39.862,
+        0.0,
+        0.0,
+        -36.957,
+        -50.0,
+        0.0,
+        0.0,
+        0.0,
+        50.0,
+        23.6,
+        0.0,
+        0.0,
+        -50.0,
+        -36.957,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        23.6,
+        50.0,
+        0.0,
+        0.0,
+        -47.095
+      ],
+      "initial_stored_energy_kwh": 53.328,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 4.155,
+      "profile_id": "script-13-arbitrage-only-midnight-v1",
+      "record_fingerprint": "b231959edf3d702c9988278a2b6bc92217e641b845026f4324f60b6e88a116e7",
+      "relative_gap": 0.0,
+      "runtime_seconds": 0.00817609,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "OPTIMAL"
+      },
+      "source_json_artifact_id": "result-03-2023-06-20",
+      "source_log_artifact_id": "log-13-bounded",
+      "terminal_stored_energy_kwh": 53.328
+    },
+    {
+      "absolute_gap_eur": 0.009999999999999787,
+      "accepted_overlap": null,
+      "best_upper_bound_eur": 6.575,
+      "cutoff_stored_energy_kwh": 10.0,
+      "delivery_date": "2023-06-17",
+      "fcr_capacity_kw": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        13.598
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        39.862,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -36.957,
+        -50.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        33.739,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "initial_stored_energy_kwh": 53.328,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 6.565,
+      "profile_id": "script-14-restriction-rolling-0800-v1",
+      "record_fingerprint": "26e5788f4c2dd029a1d484d99a9b22de0deee3922ddfe87d20bebcb0d93b5a19",
+      "relative_gap": 0.0015209125475284847,
+      "runtime_seconds": 900.537,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "TIME_LIMIT"
+      },
+      "source_json_artifact_id": "result-04-2023-06-17",
+      "source_log_artifact_id": "log-14-bounded",
+      "terminal_stored_energy_kwh": 54.299
+    },
+    {
+      "absolute_gap_eur": 0.5309999999999997,
+      "accepted_overlap": {
+        "fcr_capacity_kw": [
+          0.0,
+          0.0,
+          0.0,
+          13.598
+        ],
+        "fixed_tail_objective_eur": 1.3510239499999992,
+        "hourly_energy_source_positive_discharge_kw": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -36.957,
+          -50.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          33.739,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "overlap_fingerprint": "b90157f494dd3260c1e4f4e42b6145d220a5267e7aec51abf92da7a2a71a65b3",
+        "predecessor_delivery_date": "2023-06-17"
+      },
+      "best_upper_bound_eur": 4.887,
+      "cutoff_stored_energy_kwh": 51.743,
+      "delivery_date": "2023-06-18",
+      "fcr_capacity_kw": [
+        3.088,
+        3.648,
+        3.648,
+        3.648,
+        3.648,
+        3.648
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        6.49,
+        0.0,
+        -3.088,
+        0.0,
+        -0.263,
+        -1.206,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -1.944,
+        -1.167,
+        0.0,
+        -0.166,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.14,
+        0.0
+      ],
+      "initial_stored_energy_kwh": 54.299,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 4.356,
+      "profile_id": "script-14-restriction-rolling-0800-v1",
+      "record_fingerprint": "f2c585af3829ac71c6150cfe89467698df37a47f44c3e3d72cd54319392d7b72",
+      "relative_gap": 0.1086556169429097,
+      "runtime_seconds": 900.072,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "TIME_LIMIT"
+      },
+      "source_json_artifact_id": "result-04-2023-06-18",
+      "source_log_artifact_id": "log-14-bounded",
+      "terminal_stored_energy_kwh": 54.907
+    },
+    {
+      "absolute_gap_eur": 0.06699999999999928,
+      "accepted_overlap": {
+        "fcr_capacity_kw": [
+          3.648,
+          3.648,
+          3.648,
+          3.648
+        ],
+        "fixed_tail_objective_eur": 2.06001454,
+        "hourly_energy_source_positive_discharge_kw": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -1.944,
+          -1.167,
+          0.0,
+          -0.166,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.14,
+          0.0
+        ],
+        "overlap_fingerprint": "4412b6e168e95ce9b2c304239441f4fa1dd3515c564c6308640a061c535f1e89",
+        "predecessor_delivery_date": "2023-06-18"
+      },
+      "best_upper_bound_eur": 6.805,
+      "cutoff_stored_energy_kwh": 57.988,
+      "delivery_date": "2023-06-19",
+      "fcr_capacity_kw": [
+        11.736,
+        11.736,
+        11.736,
+        11.736,
+        11.736,
+        11.736
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        1.122,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.345,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.345,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "initial_stored_energy_kwh": 54.906,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 6.738,
+      "profile_id": "script-14-restriction-rolling-0800-v1",
+      "record_fingerprint": "125a163d60a3477c683ef1bf3ad912c0fc429c0cfc788336125c2f4573f2320c",
+      "relative_gap": 0.009845701689933766,
+      "runtime_seconds": 900.647,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "TIME_LIMIT"
+      },
+      "source_json_artifact_id": "result-04-2023-06-19",
+      "source_log_artifact_id": "log-14-bounded",
+      "terminal_stored_energy_kwh": 59.929
+    },
+    {
+      "absolute_gap_eur": 0.0,
+      "accepted_overlap": {
+        "fcr_capacity_kw": [
+          11.736,
+          11.736,
+          11.736,
+          11.736
+        ],
+        "fixed_tail_objective_eur": 3.02364759,
+        "hourly_energy_source_positive_discharge_kw": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.345,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "overlap_fingerprint": "afd45325496483399383481f9aaa8bfc51a7d2e7ed4f2199d4a53d54629224c9",
+        "predecessor_delivery_date": "2023-06-19"
+      },
+      "best_upper_bound_eur": 5.527,
+      "cutoff_stored_energy_kwh": 70.03,
+      "delivery_date": "2023-06-20",
+      "fcr_capacity_kw": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        20.969,
+        0.0,
+        0.0,
+        0.0,
+        -35.754,
+        0.0,
+        0.0,
+        0.0,
+        30.262,
+        0.0,
+        0.0,
+        0.0,
+        -35.754,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        30.262,
+        0.0,
+        0.0,
+        -19.364
+      ],
+      "initial_stored_energy_kwh": 59.929,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 5.527,
+      "profile_id": "script-14-restriction-rolling-0800-v1",
+      "record_fingerprint": "6a8591dcd746ad0229c8a7ea4e784b0c527a871a740ae30e8c92d0d43da9cd05",
+      "relative_gap": 0.0,
+      "runtime_seconds": 199.479,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "OPTIMAL"
+      },
+      "source_json_artifact_id": "result-04-2023-06-20",
+      "source_log_artifact_id": "log-14-bounded",
+      "terminal_stored_energy_kwh": 54.952
+    },
+    {
+      "absolute_gap_eur": 0.009999999999999787,
+      "accepted_overlap": null,
+      "best_upper_bound_eur": 6.575,
+      "cutoff_stored_energy_kwh": null,
+      "delivery_date": "2023-06-17",
+      "fcr_capacity_kw": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        13.598
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        39.862,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -36.957,
+        -50.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        33.739,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "initial_stored_energy_kwh": 53.328,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 6.565,
+      "profile_id": "script-15-restriction-rolling-midnight-v1",
+      "record_fingerprint": "367ccafa6161e8e13a60664afc9331f766c1719a2a9445f14c718668ceab9348",
+      "relative_gap": 0.0015209125475284847,
+      "runtime_seconds": 900.56,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "TIME_LIMIT"
+      },
+      "source_json_artifact_id": "result-05-2023-06-17",
+      "source_log_artifact_id": "log-15-bounded",
+      "terminal_stored_energy_kwh": 54.299
+    },
+    {
+      "absolute_gap_eur": 0.0010000000000012221,
+      "accepted_overlap": null,
+      "best_upper_bound_eur": 11.143,
+      "cutoff_stored_energy_kwh": null,
+      "delivery_date": "2023-06-18",
+      "fcr_capacity_kw": [
+        12.269,
+        14.495,
+        14.495,
+        14.495,
+        14.495,
+        14.495
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        28.486,
+        -12.269,
+        -12.269,
+        0.0,
+        -3.162,
+        -4.901,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "initial_stored_energy_kwh": 54.299,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 11.142,
+      "profile_id": "script-15-restriction-rolling-midnight-v1",
+      "record_fingerprint": "fe17eafac651bee1f66e36537743fe32e08a12a3fd75077da61d481712ca2784",
+      "relative_gap": 8.974243919960711e-05,
+      "runtime_seconds": 900.066,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "TIME_LIMIT"
+      },
+      "source_json_artifact_id": "result-05-2023-06-18",
+      "source_log_artifact_id": "log-15-bounded",
+      "terminal_stored_energy_kwh": 55.482
+    },
+    {
+      "absolute_gap_eur": 0.0860000000000003,
+      "accepted_overlap": null,
+      "best_upper_bound_eur": 5.833,
+      "cutoff_stored_energy_kwh": null,
+      "delivery_date": "2023-06-19",
+      "fcr_capacity_kw": [
+        13.643,
+        13.643,
+        14.279,
+        14.279,
+        14.279,
+        14.279
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        2.577,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.831,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.703,
+        0.0,
+        0.0,
+        0.0,
+        -0.703
+      ],
+      "initial_stored_energy_kwh": 55.482,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 5.747,
+      "profile_id": "script-15-restriction-rolling-midnight-v1",
+      "record_fingerprint": "71dfc15fce76c77c8a62738218e040b3e945fc1ede72d64cc6b7facfb2e2aaef",
+      "relative_gap": 0.014743699639979478,
+      "runtime_seconds": 900.099,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "TIME_LIMIT"
+      },
+      "source_json_artifact_id": "result-05-2023-06-19",
+      "source_log_artifact_id": "log-15-bounded",
+      "terminal_stored_energy_kwh": 60.752
+    },
+    {
+      "absolute_gap_eur": 0.0,
+      "accepted_overlap": null,
+      "best_upper_bound_eur": 4.98,
+      "cutoff_stored_energy_kwh": null,
+      "delivery_date": "2023-06-20",
+      "fcr_capacity_kw": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hourly_energy_source_positive_discharge_kw": [
+        46.692,
+        0.0,
+        0.0,
+        -36.957,
+        -50.0,
+        0.0,
+        0.0,
+        0.0,
+        50.0,
+        23.6,
+        0.0,
+        0.0,
+        -50.0,
+        -36.957,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        23.6,
+        50.0,
+        0.0,
+        0.0,
+        -47.095
+      ],
+      "initial_stored_energy_kwh": 60.752,
+      "modeled_feasibility_claim": "unavailable_pending_independent_audit",
+      "objective_eur": 4.98,
+      "profile_id": "script-15-restriction-rolling-midnight-v1",
+      "record_fingerprint": "f94c9c242429b9263d5226bf1fc4e4f3b93577ffaacf8c45727ed6370e5c0ff0",
+      "relative_gap": 0.0,
+      "runtime_seconds": 90.5996,
+      "solver_evidence": {
+        "dual_status": "NO_SOLUTION",
+        "incumbent_available": true,
+        "primal_status": "FEASIBLE_POINT",
+        "source_evidence": "combined",
+        "termination_condition": "OPTIMAL"
+      },
+      "source_json_artifact_id": "result-05-2023-06-20",
+      "source_log_artifact_id": "log-15-bounded",
+      "terminal_stored_energy_kwh": 53.328
+    }
+  ],
+  "study_window": {
+    "edge_policy": {
+      "rolling_0800_first_date": "initialization_only",
+      "rolling_0800_last_date": "unfinalized"
+    },
+    "ordered_dates": [
+      "2023-06-17",
+      "2023-06-18",
+      "2023-06-19",
+      "2023-06-20"
+    ],
+    "primary_comparison_dates": [
+      "2023-06-18",
+      "2023-06-19"
+    ]
+  },
+  "unavailable_fields": [
+    {
+      "field_path": "source.unrounded_decisions",
+      "reason": "Source JSON persists market decisions only to three decimals.",
+      "required_for": [
+        "exact_decision_parity",
+        "exact_rolling_restart"
+      ]
+    },
+    {
+      "field_path": "source.restriction_independent_residual_audit",
+      "reason": "Restriction JSON has no independent equation-family residual audit; bilinear_violations=0 is not feasibility evidence.",
+      "required_for": [
+        "source_feasibility_proof"
+      ]
+    },
+    {
+      "field_path": "profiles.script-14.exact_full_precision_restart",
+      "reason": "The source did not persist the full-precision predecessor decisions fixed in the next 08:00 solve.",
+      "required_for": [
+        "exact_cross_day_restart_parity"
+      ]
+    },
+    {
+      "field_path": "source.feature_012_schedule_fingerprints",
+      "reason": "The Julia source predates Feature 012 schedule identities.",
+      "required_for": [
+        "exact_schedule_fingerprint_parity"
+      ]
+    },
+    {
+      "field_path": "source.activation_samples",
+      "reason": "The complete external activation trace is not redistributed.",
+      "required_for": [
+        "realized_replay",
+        "realized_settlement"
+      ]
+    }
+  ]
+}

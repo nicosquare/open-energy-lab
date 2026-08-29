@@ -52,6 +52,7 @@ EXPECTED_EXPORTS = [
     "UnsupportedActivationSchemaError",
     "import_regulation_activation_trace",
     "load_regulation_activation_trace",
+    "slice_regulation_activation_trace",
     "write_regulation_activation_trace",
     "RESTORATION_MARKET_SCHEMA_VERSION",
     "RESTORATION_STUDY_BUNDLE_SCHEMA_VERSION",
@@ -214,6 +215,7 @@ def test_every_documented_export_resolves_from_its_owned_module():
         "UnsupportedActivationSchemaError",
         "import_regulation_activation_trace",
         "load_regulation_activation_trace",
+        "slice_regulation_activation_trace",
         "write_regulation_activation_trace",
     }
     restoration_exports = {

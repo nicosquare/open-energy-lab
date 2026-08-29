@@ -131,3 +131,54 @@ def test_ci_robust_fcr_backend_matrix_collects_only_bounded_feature_013_paths() 
     assert "tests/unit/planning" not in robust_fcr_job
     assert "tests/parity/test_robust_fcr_reference_benchmark.py" not in robust_fcr_job
     assert "test_robust_fcr_external_reference_replay.py" not in robust_fcr_job
+
+
+def test_ci_collects_bounded_feature_015_control_and_common_replay_paths() -> None:
+    workflow = CI_WORKFLOW_PATH.read_text(encoding="utf-8")
+    robust_fcr_job = workflow.split(
+        "  robust-fcr-required-backends:\n",
+        maxsplit=1,
+    )[1].split(
+        "  offline-feature-regressions:\n",
+        maxsplit=1,
+    )[0]
+    offline_job = workflow.split(
+        "  offline-feature-regressions:\n",
+        maxsplit=1,
+    )[1]
+
+    for required_path in (
+        "tests/unit/control/test_fcr_rolling_import_boundary.py",
+        "tests/unit/control/test_fcr_rolling_manifest.py",
+        "tests/unit/control/test_fcr_rolling_orchestration.py",
+        "tests/unit/control/test_fcr_rolling_reference.py",
+        "tests/unit/control/test_fcr_rolling_results.py",
+        "tests/integration/control/test_fcr_rolling_highs.py",
+        "tests/integration/control/test_fcr_rolling_reference_normalization.py",
+        "tests/integration/control/test_fcr_rolling_resume.py",
+    ):
+        assert required_path in robust_fcr_job
+    assert (
+        "tests/integration/simulator/test_fcr_rolling_feature_012_replay.py"
+        in offline_job
+    )
+    assert robust_fcr_job.count(
+        "timeout --signal=TERM --kill-after=10s 120s"
+    ) >= 1
+    assert offline_job.count(
+        "timeout --signal=TERM --kill-after=10s 120s"
+    ) >= 2
+
+    for job in (robust_fcr_job, offline_job):
+        assert '-m "not reference_benchmark and not external_reference_data"' in job
+        assert "tests/parity/test_fcr_rolling_reference_benchmark.py" not in job
+        assert (
+            "tests/integration/simulator/"
+            "test_fcr_rolling_external_reference_replay.py"
+            not in job
+        )
+        assert "test_robust_fcr_optional_gurobi.py" not in job or (
+            "--ignore=tests/integration/control/"
+            "test_robust_fcr_optional_gurobi.py"
+            in job
+        )

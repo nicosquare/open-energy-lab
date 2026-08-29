@@ -1,7 +1,7 @@
 # Roadmap Note: From BESS Service Environments To TPM FCR Bidding
 
 **Date:** 2026-08-20
-**Updated:** 2026-08-25
+**Updated:** 2026-08-28
 **Status:** Current capability assessment and granular feature roadmap
 
 ## Purpose
@@ -13,13 +13,19 @@ results of
 then develop and compare a TPM-based bidding alternative on the same evaluation
 environment.
 
-Features `010-bess-stacked-services` and `011-afrr-mfrr-services` now provide
-the market-artifact, fixed-commitment, physical replay, and product-settlement
-boundaries that were prospective in the original version of this note. The
-next work should not widen restoration-product scope. It should make the
-existing FCR environment sufficient for paper-result parity, implement the
-reference robust bidder against that boundary, and only then introduce the TPM
-bidder.
+Features `010-bess-stacked-services` and `011-afrr-mfrr-services` provide the
+market-artifact, fixed-commitment, physical replay, and product-settlement
+boundaries that were prospective in the original version of this note. Feature
+`012-fcr-bid-evaluation-parity` made the FCR environment a bidder-neutral,
+paper-compatible evaluator, and Feature `013-reference-robust-fcr-bidding`
+implemented the native single-day non-intraday reference bidder. Feature
+`014-declared-feature-domains`, completed in a separate TPM-focused workflow,
+strengthened the TPM foundation without changing the FCR reference sequence.
+
+The next work should not widen restoration-product scope or start the TPM
+bidder prematurely. It should extend the completed single-day reference path
+into a rolling non-intraday historical backtest, then add causal intraday
+recourse before the TPM comparison stages.
 
 The comparison must hold the environment constant. The reference robust method
 and the TPM method should receive equivalent market and battery information,
@@ -572,25 +578,34 @@ high-resolution regulation trace remains a separate source contract until the
 resolution and meaning of relevant ENTSO-E balancing documents are proven
 equivalent to the required FCR activation signal.
 
-## Current Baseline Before New Features
+## Current Implemented Baseline
 
 | Feature | Status | Reusable result |
 | --- | --- | --- |
 | `009-tpm-planning` | Complete | TPM/SPN fit, query, persistence, MIO compilation, Pyomo solve, and native verification. |
 | `010-bess-stacked-services` | Complete | French day-ahead/FCR artifacts, fixed schedules, 10-second replay, battery physics, and partial FCR settlement. |
 | `011-afrr-mfrr-services` | Complete | Separate restoration-product acquisition, commitments, replay, and settlement; not part of the immediate FCR bidding objective. |
+| `012-fcr-bid-evaluation-parity` | Complete | Bidder-neutral fixed-plan evaluation, reference-sign mapping, physical replay, settlement, diagnostics, provenance, and bounded Julia-result comparison. |
+| `013-reference-robust-fcr-bidding` | Complete | Native Pyomo restriction and relaxation, routine HiGHS solving, optional Gurobi evidence, robust plan extraction, and Feature 012 replay. |
+| `014-declared-feature-domains` | Complete | Caller-declared TPM mathematical domains, stable normalization semantics, query validation, and qualified compiler approximation regions. |
 
-The existing FCR environment is sufficient to evaluate one fixed bid plan
-physically. It is not yet sufficient to reproduce the paper's reported profit
-and rolling/intraday experiments because activation-energy settlement, daily
-state carry-over, reference formulations, and causal intraday adjustments are
+The existing FCR environment can evaluate fixed plans and select one day's
+non-intraday robust bids without seeing realized activation. It is not yet
+sufficient to reproduce the paper's rolling or intraday experiments because a
+versioned multi-day study manifest, deterministic daily orchestration, optional
+SOC carry-over, experiment profiles, and causal intraday adjustments are still
 missing.
 
-## Granular Next Features
+Feature identifiers are immutable once implemented. Because the TPM-focused
+Feature 014 was merged independently, the next unallocated identifier is 015.
+The scientific order below is unchanged, but every previously proposed feature
+from rolling backtest parity onward moves forward by one number.
+
+## Granular Feature Sequence
 
 ### 1. FCR Bid-Evaluation Parity
 
-**Suggested identifier:** `012-fcr-bid-evaluation-parity`
+**Implemented:** `012-fcr-bid-evaluation-parity`
 
 **Goal:** Make the existing simulator a bidder-neutral evaluator for one
 paper-compatible 24-hour bid plan before implementing any bidder.
@@ -619,7 +634,7 @@ in this feature.
 
 ### 2. Single-Day Reference Robust Bidding Core
 
-**Suggested identifier:** `013-reference-robust-fcr-bidding`
+**Implemented:** `013-reference-robust-fcr-bidding`
 
 **Goal:** Reproduce the paper's non-intraday bid-selection method in Python for
 one 24-hour day and emit the Feature 012 bidder result.
@@ -649,7 +664,7 @@ activation trace must not enter bid selection.
 
 ### 3. Rolling Historical Backtest Parity
 
-**Suggested identifier:** `014-fcr-rolling-backtest-parity`
+**Next proposed identifier:** `015-fcr-rolling-backtest-parity`
 
 **Goal:** Reproduce the paper's non-intraday daily experiments and aggregate
 reported metrics without changing the bidder or simulator equations.
@@ -677,7 +692,7 @@ unit-test requirement.
 
 ### 4. Causal Intraday Adjustment And Remaining Paper Experiments
 
-**Suggested identifier:** `015-fcr-intraday-recourse`
+**Suggested identifier:** `016-fcr-intraday-recourse`
 
 **Goal:** Reproduce the paper's intraday experiments without giving the bidder
 future activation information.
@@ -700,14 +715,16 @@ Acceptance requires no-lookahead tests, component-wise profit reconciliation,
 and explicit reporting of the small realized SOC violations discussed by the
 paper rather than silently clipping them out of the comparison.
 
-Completion of Features 012--015 establishes reference-result reproduction.
+Completion of Features 012, 013, 015, and 016 establishes reference-result
+reproduction. Feature 014 is a completed TPM-foundation side track rather than
+one of the reference-reproduction stages.
 Historical numerical equality is evaluated only when the exact released input
 data and versioned experiment profile are available; library-fabricated cases
 are methodological replications, not reproductions of the published totals.
 
 ### 5. Seeded FCR Market Scenario Families
 
-**Suggested identifier:** `016-fcr-market-scenario-families`
+**Suggested identifier:** `017-fcr-market-scenario-families`
 
 **Goal:** Fabricate reproducible market and activation cases on which robust
 and TPM bidders can be compared beyond the historical sample.
@@ -731,7 +748,7 @@ label fabricated activation as an observed operator command.
 
 ### 6. Bid-Study Dataset For TPM Fitting
 
-**Suggested identifier:** `017-tpm-fcr-bidding-dataset`
+**Suggested identifier:** `018-tpm-fcr-bidding-dataset`
 
 **Goal:** Convert bidder/environment evaluations into a leakage-free dataset
 that the existing TPM stack can fit and query.
@@ -757,7 +774,7 @@ split-integrity tests, fit/query success, and held-out calibration reporting.
 
 ### 7. Discrete TPM FCR Bid Selection
 
-**Suggested identifier:** `018-tpm-fcr-bid-selection`
+**Suggested identifier:** `019-tpm-fcr-bid-selection`
 
 **Goal:** Deliver the first genuine TPM bidding alternative using the current
 categorical decision and SPN/MIO strengths before attempting continuous
@@ -783,9 +800,9 @@ calibration, and regret relative to the reference bidder on identical cases.
 
 ### 8. Structured Or Continuous TPM Bidding
 
-**Suggested identifier:** `019-tpm-structured-fcr-bidding`
+**Suggested identifier:** `020-tpm-structured-fcr-bidding`
 
-**Goal:** Move beyond catalog selection only after Feature 018 establishes that
+**Goal:** Move beyond catalog selection only after Feature 019 establishes that
 the TPM signal is useful out of sample.
 
 Candidate approaches include autoregressive block decisions, quantized
@@ -793,7 +810,7 @@ hour/block vectors with refinement, or an extension of the SPN-to-MIO compiler
 for bounded continuous bid variables. Whichever representation is selected
 must preserve schedule completeness, power headroom, causal information, and
 native TPM verification. This feature should be specified only after the
-Feature 018 evidence identifies the dimensionality and approximation bottleneck.
+Feature 019 evidence identifies the dimensionality and approximation bottleneck.
 
 ## Required Dependency Order
 
@@ -803,35 +820,39 @@ completed: 010 FCR environment
 completed: 011 aFRR/mFRR environment
                  |
                  v
-012 bid-evaluation parity
+completed: 012 bid-evaluation parity
                  |
                  v
-013 single-day reference robust bidder
+completed: 013 single-day reference robust bidder
                  |
                  v
-014 rolling non-intraday backtest
+015 rolling non-intraday backtest
                  |
                  v
-015 intraday parity -------- reference reproduction gate
+016 intraday parity -------- reference reproduction gate
                  |
                  v
-016 seeded FCR market scenario families
+017 seeded FCR market scenario families
                  |
                  v
-017 TPM bidding dataset
+018 TPM bidding dataset
                  |
                  v
-018 discrete TPM bid selection --- first TPM alternative
+019 discrete TPM bid selection --- first TPM alternative
                  |
                  v
-019 structured/continuous TPM bidding
+020 structured/continuous TPM bidding
+
+completed: 014 declared TPM feature domains
+                 |
+                 +--------------------------> supports 018, 019, and 020
 ```
 
-Feature 016 may begin after Feature 012 if parallel work is useful, but its
+Feature 017 may begin after Feature 012 if parallel work is useful, but its
 public contract should not be frozen until the reference backtest identifies
-all required market and activation fields. Features 017 and 018 require the
-Feature 012 evaluation outputs, not the implementation internals of the
-reference bidder.
+all required market and activation fields. Features 018 and 019 require the
+Feature 012 evaluation outputs and Feature 014's declared-domain semantics,
+not the implementation internals of the reference bidder.
 
 ## Comparison Contract
 

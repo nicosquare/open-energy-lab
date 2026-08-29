@@ -613,6 +613,82 @@ def import_regulation_activation_trace(
     )
 
 
+def slice_regulation_activation_trace(
+    trace: RegulationActivationTrace,
+    *,
+    period: CanonicalInterval,
+) -> RegulationActivationTrace:
+    """Return one exact half-open subset with retained parent lineage.
+
+    The parent is fully revalidated before slicing. Boundaries must coincide
+    with sample boundaries, so a sample beginning at the cutoff belongs only
+    to the right-hand slice. New ``ActivationSample`` instances detach the
+    returned trace from the parent while preserving normalized values.
+    """
+
+    if not isinstance(trace, RegulationActivationTrace):
+        raise TypeError("trace must be a RegulationActivationTrace")
+    if not isinstance(period, CanonicalInterval):
+        raise ActivationValidationError("period must be a CanonicalInterval")
+    verified = RegulationActivationTrace.from_dict(trace.to_dict())
+    covered = verified.covered_period
+    if (
+        period.start_utc < covered.start_utc
+        or period.end_utc > covered.end_utc
+    ):
+        raise ActivationValidationError(
+            "activation slice period must remain inside parent coverage"
+        )
+    step = parse_iso8601_duration(verified.resolution)
+    start_offset = period.start_utc - covered.start_utc
+    end_offset = period.end_utc - covered.start_utc
+    if start_offset % step != timedelta(0) or end_offset % step != timedelta(0):
+        raise ActivationValidationError(
+            "activation slice boundaries must align with the declared resolution"
+        )
+    selected = tuple(
+        ActivationSample(
+            interval=sample.interval,
+            activation=sample.activation,
+            source_value=sample.source_value,
+            source_unit=sample.source_unit,
+            conversion_ref=sample.conversion_ref,
+        )
+        for sample in verified.samples
+        if sample.interval.start_utc >= period.start_utc
+        and sample.interval.end_utc <= period.end_utc
+    )
+    _validate_sample_tiling(
+        selected,
+        start=period.start_utc,
+        end=period.end_utc,
+        step=step,
+    )
+    source = {
+        **_thaw(verified.source),
+        "parent_trace_id": verified.trace_id,
+        "parent_content_fingerprint": verified.content_fingerprint,
+        "parent_trace_fingerprint": verified.artifact_fingerprint,
+        "slice_start_utc": _format_utc(period.start_utc),
+        "slice_end_utc": _format_utc(period.end_utc),
+        "slice_interval_convention": "start-inclusive/end-exclusive",
+    }
+    return _build_trace(
+        trace_id=(
+            f"{verified.trace_id}-slice-"
+            f"{period.start_utc.strftime('%Y%m%dT%H%M%SZ')}-"
+            f"{period.end_utc.strftime('%Y%m%dT%H%M%SZ')}"
+        ),
+        created_at_utc=verified.created_at_utc,
+        covered_period=period,
+        resolution=verified.resolution,
+        source=source,
+        normalization=_thaw(verified.normalization),
+        samples=selected,
+        retention_and_license=_thaw(verified.retention_and_license),
+    )
+
+
 def _trace_from_payload(payload: Mapping[str, Any]) -> RegulationActivationTrace:
     required = {
         "schema_version",
@@ -827,5 +903,6 @@ __all__ = [
     "UnsupportedActivationSchemaError",
     "import_regulation_activation_trace",
     "load_regulation_activation_trace",
+    "slice_regulation_activation_trace",
     "write_regulation_activation_trace",
 ]

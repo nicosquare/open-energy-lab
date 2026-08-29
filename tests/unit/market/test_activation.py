@@ -461,3 +461,86 @@ def test_trace_from_dict_rejects_nonfinite_json_even_if_decoder_allows_it() -> N
 
     with pytest.raises(validation_error, match="finite"):
         trace_type.from_dict(payload)
+
+
+def test_half_open_slice_preserves_exact_coverage_lineage_and_identity() -> None:
+    slice_trace = _require("slice_regulation_activation_trace")
+    canonical_interval = importlib.import_module(
+        "open_energy_lab.market.time"
+    ).CanonicalInterval
+    trace = _import_trace()
+    period = canonical_interval.from_utc(
+        PERIOD_START + timedelta(minutes=15),
+        PERIOD_END,
+    )
+
+    sliced = slice_trace(trace, period=period)
+    repeated = slice_trace(trace, period=period)
+
+    assert sliced.covered_period == period
+    assert len(sliced.samples) == 3
+    assert sliced.samples[0].interval.start_utc == period.start_utc
+    assert sliced.samples[-1].interval.end_utc == period.end_utc
+    assert sliced.samples is not trace.samples
+    assert sliced.samples[0] is not trace.samples[1]
+    assert sliced.source["parent_trace_fingerprint"] == trace.artifact_fingerprint
+    assert sliced.source["slice_start_utc"].endswith("Z")
+    assert sliced.source["slice_end_utc"].endswith("Z")
+    assert sliced.artifact_fingerprint == repeated.artifact_fingerprint
+    assert sliced.content_fingerprint == repeated.content_fingerprint
+
+
+def test_half_open_slices_assign_cutoff_sample_to_right_side_only() -> None:
+    slice_trace = _require("slice_regulation_activation_trace")
+    canonical_interval = importlib.import_module(
+        "open_energy_lab.market.time"
+    ).CanonicalInterval
+    trace = _import_trace()
+    cutoff = PERIOD_START + timedelta(minutes=30)
+    left = slice_trace(
+        trace,
+        period=canonical_interval.from_utc(PERIOD_START, cutoff),
+    )
+    right = slice_trace(
+        trace,
+        period=canonical_interval.from_utc(cutoff, PERIOD_END),
+    )
+
+    left_starts = {sample.interval.start_utc for sample in left.samples}
+    right_starts = {sample.interval.start_utc for sample in right.samples}
+    assert cutoff not in left_starts
+    assert cutoff in right_starts
+    assert left.covered_period.end_utc == right.covered_period.start_utc
+    assert len(left.samples) + len(right.samples) == len(trace.samples)
+
+
+def test_half_open_slice_rejects_outside_misaligned_and_gapped_coverage() -> None:
+    from dataclasses import replace
+
+    slice_trace = _require("slice_regulation_activation_trace")
+    validation_error = _require("ActivationValidationError")
+    canonical_interval = importlib.import_module(
+        "open_energy_lab.market.time"
+    ).CanonicalInterval
+    trace = _import_trace()
+
+    invalid_periods = (
+        canonical_interval.from_utc(
+            PERIOD_START - timedelta(minutes=10),
+            PERIOD_START + timedelta(minutes=20),
+        ),
+        canonical_interval.from_utc(
+            PERIOD_START + timedelta(minutes=5),
+            PERIOD_START + timedelta(minutes=25),
+        ),
+    )
+    for period in invalid_periods:
+        with pytest.raises(validation_error, match="coverage|boundary|resolution"):
+            slice_trace(trace, period=period)
+
+    gapped = replace(trace, samples=trace.samples[:2] + trace.samples[3:])
+    with pytest.raises(validation_error, match="gap|coverage"):
+        slice_trace(
+            gapped,
+            period=canonical_interval.from_utc(PERIOD_START, PERIOD_END),
+        )
