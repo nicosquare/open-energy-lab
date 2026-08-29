@@ -10,6 +10,52 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from .conditional import (
+        CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND,
+        CONDITIONAL_EMBEDDING_PARITY_RECORD_KIND,
+        CONDITIONAL_EVIDENCE_EVALUATOR_VERSION,
+        CONDITIONAL_EVIDENCE_SCHEMA_VERSION,
+        CONDITIONAL_PAIR_COMPILER_VERSION,
+        CONDITIONAL_PAIR_RECORD_KIND,
+        CONDITIONAL_PAIR_SCHEMA_VERSION,
+        TPMBinaryDecisionLink,
+        TPMBinaryDecisionMapping,
+        TPMCategoricalDecisionLink,
+        TPMCategoricalDecisionMapping,
+        TPMConditionalAttachment,
+        TPMConditionalAttachmentDiagnostics,
+        TPMConditionalCircuit,
+        TPMConditionalCircuitNode,
+        TPMConditionalCompilationRequest,
+        TPMConditionalDecisionLink,
+        TPMConditionalEncodingPolicy,
+        TPMConditionalEvaluation,
+        TPMConditionalEvent,
+        TPMConditionalFeatureValidity,
+        TPMConditionalNumericalPolicy,
+        TPMConditionalPair,
+        TPMConditionalPublication,
+        TPMConditionalSourceReference,
+        TPMCompilerFidelityEvidence,
+        TPMContinuousDecisionMapping,
+        TPMEmbeddingParityEvidence,
+        TPMNativeConditionalEvaluation,
+        canonical_conditional_json_bytes,
+        load_conditional_evidence,
+        load_conditional_pair,
+        publish_conditional_evidence,
+        publish_conditional_pair,
+    )
+    from .conditional_mio import (
+        TPMConditionalDiagnosticsError,
+        TPMConditionalEvaluationError,
+        attach_conditional_mio_pair,
+        build_compiler_fidelity_evidence,
+        build_embedding_parity_evidence,
+        compile_conditional_mio_pair,
+        evaluate_conditional_mio_pair,
+        inspect_conditional_mio_attachment,
+    )
     from .artifact import (
         LegacyTPMArtifactVersionError,
         SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS,
@@ -79,9 +125,41 @@ if TYPE_CHECKING:
         build_piecewise_metadata,
         load_piecewise_metadata,
     )
-    from .query import TPMQueryRequest, query_tpm_artifact
+    from .query import (
+        TPMQueryRequest,
+        evaluate_native_conditional_pair,
+        query_tpm_artifact,
+    )
 
 _EXPORT_MAP = {
+    "CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND": (
+        ".conditional",
+        "CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND",
+    ),
+    "CONDITIONAL_EMBEDDING_PARITY_RECORD_KIND": (
+        ".conditional",
+        "CONDITIONAL_EMBEDDING_PARITY_RECORD_KIND",
+    ),
+    "CONDITIONAL_EVIDENCE_EVALUATOR_VERSION": (
+        ".conditional",
+        "CONDITIONAL_EVIDENCE_EVALUATOR_VERSION",
+    ),
+    "CONDITIONAL_EVIDENCE_SCHEMA_VERSION": (
+        ".conditional",
+        "CONDITIONAL_EVIDENCE_SCHEMA_VERSION",
+    ),
+    "CONDITIONAL_PAIR_COMPILER_VERSION": (
+        ".conditional",
+        "CONDITIONAL_PAIR_COMPILER_VERSION",
+    ),
+    "CONDITIONAL_PAIR_RECORD_KIND": (
+        ".conditional",
+        "CONDITIONAL_PAIR_RECORD_KIND",
+    ),
+    "CONDITIONAL_PAIR_SCHEMA_VERSION": (
+        ".conditional",
+        "CONDITIONAL_PAIR_SCHEMA_VERSION",
+    ),
     "LegacyTPMArtifactVersionError": (
         ".artifact",
         "LegacyTPMArtifactVersionError",
@@ -96,6 +174,87 @@ _EXPORT_MAP = {
     ),
     "TPMArtifact": (".artifact", "TPMArtifact"),
     "TPMArtifactIntegrityError": (".artifact", "TPMArtifactIntegrityError"),
+    "TPMBinaryDecisionLink": (".conditional", "TPMBinaryDecisionLink"),
+    "TPMBinaryDecisionMapping": (".conditional", "TPMBinaryDecisionMapping"),
+    "TPMCategoricalDecisionLink": (
+        ".conditional",
+        "TPMCategoricalDecisionLink",
+    ),
+    "TPMCategoricalDecisionMapping": (
+        ".conditional",
+        "TPMCategoricalDecisionMapping",
+    ),
+    "TPMConditionalAttachment": (
+        ".conditional",
+        "TPMConditionalAttachment",
+    ),
+    "TPMConditionalAttachmentDiagnostics": (
+        ".conditional",
+        "TPMConditionalAttachmentDiagnostics",
+    ),
+    "TPMConditionalCircuit": (".conditional", "TPMConditionalCircuit"),
+    "TPMConditionalCircuitNode": (
+        ".conditional",
+        "TPMConditionalCircuitNode",
+    ),
+    "TPMConditionalCompilationRequest": (
+        ".conditional",
+        "TPMConditionalCompilationRequest",
+    ),
+    "TPMConditionalDecisionLink": (
+        ".conditional",
+        "TPMConditionalDecisionLink",
+    ),
+    "TPMConditionalEncodingPolicy": (
+        ".conditional",
+        "TPMConditionalEncodingPolicy",
+    ),
+    "TPMConditionalEvaluation": (
+        ".conditional",
+        "TPMConditionalEvaluation",
+    ),
+    "TPMConditionalEvaluationError": (
+        ".conditional_mio",
+        "TPMConditionalEvaluationError",
+    ),
+    "TPMConditionalDiagnosticsError": (
+        ".conditional_mio",
+        "TPMConditionalDiagnosticsError",
+    ),
+    "TPMConditionalEvent": (".conditional", "TPMConditionalEvent"),
+    "TPMConditionalFeatureValidity": (
+        ".conditional",
+        "TPMConditionalFeatureValidity",
+    ),
+    "TPMConditionalNumericalPolicy": (
+        ".conditional",
+        "TPMConditionalNumericalPolicy",
+    ),
+    "TPMConditionalPair": (".conditional", "TPMConditionalPair"),
+    "TPMConditionalPublication": (
+        ".conditional",
+        "TPMConditionalPublication",
+    ),
+    "TPMConditionalSourceReference": (
+        ".conditional",
+        "TPMConditionalSourceReference",
+    ),
+    "TPMCompilerFidelityEvidence": (
+        ".conditional",
+        "TPMCompilerFidelityEvidence",
+    ),
+    "TPMContinuousDecisionMapping": (
+        ".conditional",
+        "TPMContinuousDecisionMapping",
+    ),
+    "TPMEmbeddingParityEvidence": (
+        ".conditional",
+        "TPMEmbeddingParityEvidence",
+    ),
+    "TPMNativeConditionalEvaluation": (
+        ".conditional",
+        "TPMNativeConditionalEvaluation",
+    ),
     "UnsupportedTPMArtifactVersionError": (
         ".artifact",
         "UnsupportedTPMArtifactVersionError",
@@ -112,6 +271,20 @@ _EXPORT_MAP = {
     "dump_feature_schema": (".features", "dump_feature_schema"),
     "infer_feature_role": (".features", "infer_feature_role"),
     "load_feature_schema": (".features", "load_feature_schema"),
+    "canonical_conditional_json_bytes": (
+        ".conditional",
+        "canonical_conditional_json_bytes",
+    ),
+    "load_conditional_evidence": (
+        ".conditional",
+        "load_conditional_evidence",
+    ),
+    "load_conditional_pair": (".conditional", "load_conditional_pair"),
+    "publish_conditional_evidence": (
+        ".conditional",
+        "publish_conditional_evidence",
+    ),
+    "publish_conditional_pair": (".conditional", "publish_conditional_pair"),
     "TPMFitConfig": (".fit", "TPMFitConfig"),
     "TPMFitMemoryError": (".fit", "TPMFitMemoryError"),
     "TPMArtifactBuildRequest": (".fit", "TPMArtifactBuildRequest"),
@@ -145,6 +318,30 @@ _EXPORT_MAP = {
     ),
     "build_spn_modeling_terms": (".mio", "build_spn_modeling_terms"),
     "compile_spflow_model_to_mio": (".mio", "compile_spflow_model_to_mio"),
+    "compile_conditional_mio_pair": (
+        ".conditional_mio",
+        "compile_conditional_mio_pair",
+    ),
+    "attach_conditional_mio_pair": (
+        ".conditional_mio",
+        "attach_conditional_mio_pair",
+    ),
+    "build_compiler_fidelity_evidence": (
+        ".conditional_mio",
+        "build_compiler_fidelity_evidence",
+    ),
+    "build_embedding_parity_evidence": (
+        ".conditional_mio",
+        "build_embedding_parity_evidence",
+    ),
+    "evaluate_conditional_mio_pair": (
+        ".conditional_mio",
+        "evaluate_conditional_mio_pair",
+    ),
+    "inspect_conditional_mio_attachment": (
+        ".conditional_mio",
+        "inspect_conditional_mio_attachment",
+    ),
     "evaluate_compiled_spflow_probability": (
         ".mio",
         "evaluate_compiled_spflow_probability",
@@ -202,15 +399,50 @@ _EXPORT_MAP = {
     "build_piecewise_metadata": (".piecewise", "build_piecewise_metadata"),
     "load_piecewise_metadata": (".piecewise", "load_piecewise_metadata"),
     "TPMQueryRequest": (".query", "TPMQueryRequest"),
+    "evaluate_native_conditional_pair": (
+        ".query",
+        "evaluate_native_conditional_pair",
+    ),
     "query_tpm_artifact": (".query", "query_tpm_artifact"),
 }
 
 __all__ = [
+    "CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND",
+    "CONDITIONAL_EMBEDDING_PARITY_RECORD_KIND",
+    "CONDITIONAL_EVIDENCE_EVALUATOR_VERSION",
+    "CONDITIONAL_EVIDENCE_SCHEMA_VERSION",
+    "CONDITIONAL_PAIR_COMPILER_VERSION",
+    "CONDITIONAL_PAIR_RECORD_KIND",
+    "CONDITIONAL_PAIR_SCHEMA_VERSION",
     "LegacyTPMArtifactVersionError",
     "SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS",
     "SUPPORTED_TPM_EXECUTION_MODES",
     "TPMArtifact",
     "TPMArtifactIntegrityError",
+    "TPMBinaryDecisionLink",
+    "TPMBinaryDecisionMapping",
+    "TPMCategoricalDecisionLink",
+    "TPMCategoricalDecisionMapping",
+    "TPMConditionalAttachment",
+    "TPMConditionalAttachmentDiagnostics",
+    "TPMConditionalCircuit",
+    "TPMConditionalCircuitNode",
+    "TPMConditionalCompilationRequest",
+    "TPMConditionalDecisionLink",
+    "TPMConditionalEncodingPolicy",
+    "TPMConditionalEvaluation",
+    "TPMConditionalDiagnosticsError",
+    "TPMConditionalEvaluationError",
+    "TPMConditionalEvent",
+    "TPMConditionalFeatureValidity",
+    "TPMConditionalNumericalPolicy",
+    "TPMConditionalPair",
+    "TPMConditionalPublication",
+    "TPMConditionalSourceReference",
+    "TPMCompilerFidelityEvidence",
+    "TPMContinuousDecisionMapping",
+    "TPMEmbeddingParityEvidence",
+    "TPMNativeConditionalEvaluation",
     "UnsupportedTPMArtifactVersionError",
     "load_tpm_artifact",
     "TPMTrainingData",
@@ -224,6 +456,11 @@ __all__ = [
     "dump_feature_schema",
     "infer_feature_role",
     "load_feature_schema",
+    "canonical_conditional_json_bytes",
+    "load_conditional_evidence",
+    "load_conditional_pair",
+    "publish_conditional_evidence",
+    "publish_conditional_pair",
     "TPMFitConfig",
     "TPMFitMemoryError",
     "TPMArtifactBuildRequest",
@@ -242,6 +479,12 @@ __all__ = [
     "build_compiled_spflow_decision_link_model",
     "build_spn_modeling_terms",
     "compile_spflow_model_to_mio",
+    "compile_conditional_mio_pair",
+    "attach_conditional_mio_pair",
+    "build_compiler_fidelity_evidence",
+    "build_embedding_parity_evidence",
+    "evaluate_conditional_mio_pair",
+    "inspect_conditional_mio_attachment",
     "evaluate_compiled_spflow_probability",
     "extract_spn_solution",
     "infer_max_sum_terms",
@@ -262,6 +505,7 @@ __all__ = [
     "build_piecewise_metadata",
     "load_piecewise_metadata",
     "TPMQueryRequest",
+    "evaluate_native_conditional_pair",
     "query_tpm_artifact",
     "unregister_spflow_backend_adapter",
 ]

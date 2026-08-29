@@ -44,7 +44,7 @@ def test_ci_runs_broad_offline_feature_regressions() -> None:
 def test_ci_required_backend_matrix_remains_focused_on_tpm_and_planning() -> None:
     workflow = CI_WORKFLOW_PATH.read_text(encoding="utf-8")
     required_job = workflow.split("  required-backends:\n", maxsplit=1)[1].split(
-        "  robust-fcr-required-backends:\n",
+        "  conditional-mio-notebook:\n",
         maxsplit=1,
     )[0]
 
@@ -59,6 +59,38 @@ def test_ci_required_backend_matrix_remains_focused_on_tpm_and_planning() -> Non
         assert required_path in required_job
 
     assert "robust_fcr" not in required_job
+    assert "--group notebook" not in required_job
+    assert (
+        "--ignore=tests/integration/tpm/test_conditional_mio_notebook_execution.py"
+        in required_job
+    )
+
+
+def test_ci_runs_conditional_mio_notebook_once_on_locked_python_311() -> None:
+    workflow = CI_WORKFLOW_PATH.read_text(encoding="utf-8")
+    notebook_job = workflow.split(
+        "  conditional-mio-notebook:\n", maxsplit=1
+    )[1].split("  robust-fcr-required-backends:\n", maxsplit=1)[0]
+
+    assert 'python-version: "3.11"' in notebook_job
+    assert "matrix.python-version" not in notebook_job
+    assert "uv sync --locked --group dev --group notebook" in notebook_job
+    for required_import in (
+        "import spflow",
+        "import pyomo.environ as pyo",
+        "import highspy",
+        "import nbclient",
+        "import nbformat",
+        "import ipykernel",
+    ):
+        assert required_import in notebook_job
+    assert 'pyo.SolverFactory("highs")' in notebook_job
+    assert "uv run --offline --locked --no-sync pytest" in notebook_job
+    assert "tests/unit/tpm/test_conditional_mio_notebook.py" in notebook_job
+    assert (
+        "tests/integration/tpm/test_conditional_mio_notebook_execution.py"
+        in notebook_job
+    )
 
 
 def test_ci_robust_fcr_backend_matrix_collects_only_bounded_feature_013_paths() -> None:

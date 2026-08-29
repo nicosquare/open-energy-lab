@@ -10,6 +10,7 @@ from open_energy_lab.tpm.piecewise import (
     load_piecewise_metadata,
 )
 from open_energy_lab.tpm.domains import TPMCompiledValidityRecord
+from open_energy_lab.tpm.mio import condition_compiled_spflow_mio
 
 DEFAULT_EXP_PIECEWISE_DOMAIN_FLOOR = -500.0
 CURRENT_SPFLOW_MIO_SCHEMA_VERSION = "v2"
@@ -287,131 +288,16 @@ def _condition_compiled_mio(
     event_target_name: str,
     include_event: bool,
 ) -> dict[str, object]:
-    source_nodes = {
-        int(node["id"]): node
-        for node in _required_mapping_sequence(compiled["nodes"], field_name="nodes")
-    }
-    output_nodes: list[dict[str, object]] = []
-    cache: dict[int, int] = {}
-
-    def append(node: Mapping[str, object]) -> int:
-        node_id = len(output_nodes)
-        output_nodes.append({"id": node_id, **dict(node)})
-        return node_id
-
-    def neutral() -> int:
-        return append(
-            {
-                "type": "leaf_binary",
-                "feature_name": "__marginalized_constant__",
-                "densities": [1.0, 1.0],
-                "fixed_value": 0,
-            }
+    try:
+        return condition_compiled_spflow_mio(
+            compiled,
+            decision_features=decision_features,
+            event_target_name=event_target_name,
+            event_value_index=1 if include_event else None,
+            compatibility_mode="planning-v1",
         )
-
-    def product(children: Sequence[int]) -> int:
-        normalized = tuple(int(child) for child in children)
-        if not normalized:
-            return neutral()
-        if len(normalized) == 1:
-            return normalized[0]
-        return append({"type": "product", "children": list(normalized)})
-
-    def transform(source_id: int) -> int:
-        if source_id in cache:
-            return cache[source_id]
-        if source_id not in source_nodes:
-            raise PlanningMIOCompatibilityError(
-                f"compiled MIO node {source_id} does not exist"
-            )
-        source = source_nodes[source_id]
-        node_type = str(source.get("type", ""))
-        if node_type == "normal":
-            retained = []
-            for curve in _required_mapping_sequence(
-                source.get("curves"),
-                field_name=f"normal node {source_id} curves",
-            ):
-                feature_name = str(curve.get("feature_name", ""))
-                if feature_name not in decision_features:
-                    continue
-                retained.append(
-                    append(
-                        {
-                            "type": "leaf_piecewise",
-                            "feature_name": feature_name,
-                            "breakpoints": list(curve["breakpoints"]),
-                            "log_values": list(curve["log_values"]),
-                        }
-                    )
-                )
-            result = product(retained)
-        elif node_type in {"bernoulli", "categorical"}:
-            feature_names = tuple(str(name) for name in source.get("feature_names", ()))
-            probabilities = source.get("probabilities")
-            if not isinstance(probabilities, Sequence):
-                raise PlanningMIOCompatibilityError(
-                    f"compiled MIO {node_type} node {source_id} probabilities must be a sequence"
-                )
-            retained = []
-            for index, feature_name in enumerate(feature_names):
-                if index >= len(probabilities) or not isinstance(probabilities[index], Sequence):
-                    raise PlanningMIOCompatibilityError(
-                        f"compiled MIO {node_type} node {source_id} probabilities do not align"
-                    )
-                if feature_name in decision_features:
-                    retained.append(
-                        append(
-                            {
-                                "type": (
-                                    "leaf_binary"
-                                    if node_type == "bernoulli"
-                                    else "leaf_categorical"
-                                ),
-                                "feature_name": feature_name,
-                                "densities": list(probabilities[index]),
-                            }
-                        )
-                    )
-                elif feature_name == event_target_name and include_event:
-                    retained.append(
-                        append(
-                            {
-                                "type": (
-                                    "leaf_binary"
-                                    if node_type == "bernoulli"
-                                    else "leaf_categorical"
-                                ),
-                                "feature_name": feature_name,
-                                "densities": list(probabilities[index]),
-                                "fixed_value": 1,
-                            }
-                        )
-                    )
-            result = product(retained)
-        elif node_type == "product":
-            result = product(
-                [transform(int(child)) for child in source.get("children", ())]
-            )
-        elif node_type == "sum":
-            children = [transform(int(child)) for child in source.get("children", ())]
-            weights = list(source.get("weights", ()))
-            if not children or len(children) != len(weights):
-                raise PlanningMIOCompatibilityError(
-                    f"compiled MIO sum node {source_id} children and weights must align"
-                )
-            result = append(
-                {"type": "sum", "children": children, "weights": weights}
-            )
-        else:
-            raise PlanningMIOCompatibilityError(
-                f"compiled MIO node {source_id} has unsupported type {node_type!r}"
-            )
-        cache[source_id] = result
-        return result
-
-    root_id = transform(int(compiled["root_id"]))
-    return {"root_id": root_id, "nodes": output_nodes}
+    except (KeyError, TypeError, ValueError) as exc:
+        raise PlanningMIOCompatibilityError(str(exc)) from exc
 
 
 def _required_mapping(value: object, *, field_name: str) -> dict[str, object]:

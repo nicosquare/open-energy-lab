@@ -1,0 +1,170 @@
+{
+  "fixture_name": "conditional_mio_embedding_v1",
+  "fixture_status": "active-input",
+  "schema_version": "v1",
+  "spec_feature": "016-conditional-mio-embedding",
+  "purpose": "Human-reviewable nonuniform mixed-feature rows and fixed compiler inputs for conditional numerator/denominator validation.",
+  "provenance": {
+    "author": "OpenAI Codex",
+    "origin": "Manually reviewed diagnostic rows constructed for feature 016; the committed table contains physical inputs only and no fitted or compiled output.",
+    "legacy_evidence_paths": [],
+    "refresh_policy": "Change the source table or configuration only through an ordinary reviewed source-control change. Regenerate derived evidence once in a fresh staging directory, without retries or adaptive changes.",
+    "generation_command": "uv run --offline --locked --no-sync python -m json.tool tests/fixtures/tpm/conditional_mio_embedding_v1.json",
+    "random_generation": false
+  },
+  "planned_contracts": [
+    "specs/016-conditional-mio-embedding/contracts/conditional-pair-contract.md",
+    "specs/016-conditional-mio-embedding/contracts/direct-evaluation-contract.md",
+    "specs/016-conditional-mio-embedding/contracts/pyomo-attachment-contract.md",
+    "specs/016-conditional-mio-embedding/contracts/parity-fidelity-evidence-contract.md",
+    "specs/016-conditional-mio-embedding/contracts/validation-contract.md"
+  ],
+  "notes": [
+    "The x observations are deliberately concentrated below 90, so the learned x marginal must not be replaced by a uniform-density assumption.",
+    "All declared binary and categorical values occur in the source rows, but representative evidence covers only three non-Cartesian joint assignments.",
+    "Demand is explicitly unbounded and is marginalized in both conditional circuits.",
+    "Violation is supplied explicitly as Y = 1[demand > x], and event value 1.0 means violation.",
+    "The exact row count is fixture implementation detail rather than a public scientific contract."
+  ],
+  "fit_case": {
+    "artifact_id": "tpm-artifact:conditional-mio-embedding-v3",
+    "dataset_reference": "conditional-mio-embedding-v1",
+    "decision_features": ["x", "activation", "service_tier"],
+    "target_name": "demand",
+    "event_target_name": "violation",
+    "event_value": 1.0,
+    "training_random_seed": 16028,
+    "learn_spn_options": {
+      "min_instances_slice": 4,
+      "min_features_slice": 2,
+      "n_clusters": 2,
+      "threshold": 0.3
+    },
+    "expected_graph_invariant": "The retained compiled graph and both conditioned circuits contain at least one genuine Sum node.",
+    "retry_policy": "none"
+  },
+  "feature_order": ["x", "activation", "service_tier", "demand", "violation"],
+  "feature_declarations": {
+    "x": {
+      "feature_kind": "continuous",
+      "purpose": "decision-domain",
+      "shape": "finite",
+      "lower": 40.0,
+      "upper": 160.0,
+      "origin": "caller-declared"
+    },
+    "activation": {
+      "feature_kind": "binary",
+      "purpose": "decision-domain",
+      "values": ["off", "on"],
+      "ordering": ["off", "on"],
+      "origin": "caller-declared"
+    },
+    "service_tier": {
+      "feature_kind": "categorical",
+      "purpose": "decision-domain",
+      "values": ["economy", "standard", "priority"],
+      "ordering": ["economy", "standard", "priority"],
+      "origin": "caller-declared"
+    },
+    "demand": {
+      "feature_kind": "continuous",
+      "purpose": "distribution-support",
+      "shape": "unbounded",
+      "origin": "caller-declared"
+    }
+  },
+  "physical_training_rows": [
+    {"x": 42.0, "activation": "off", "service_tier": "economy", "demand": 36.0, "violation": 0.0},
+    {"x": 44.0, "activation": "on", "service_tier": "standard", "demand": 61.0, "violation": 1.0},
+    {"x": 46.0, "activation": "off", "service_tier": "priority", "demand": 53.0, "violation": 1.0},
+    {"x": 48.0, "activation": "on", "service_tier": "economy", "demand": 45.0, "violation": 0.0},
+    {"x": 50.0, "activation": "off", "service_tier": "standard", "demand": 71.0, "violation": 1.0},
+    {"x": 52.0, "activation": "on", "service_tier": "priority", "demand": 49.0, "violation": 0.0},
+    {"x": 54.0, "activation": "off", "service_tier": "economy", "demand": 67.0, "violation": 1.0},
+    {"x": 56.0, "activation": "on", "service_tier": "standard", "demand": 52.0, "violation": 0.0},
+    {"x": 58.0, "activation": "off", "service_tier": "priority", "demand": 79.0, "violation": 1.0},
+    {"x": 60.0, "activation": "on", "service_tier": "economy", "demand": 55.0, "violation": 0.0},
+    {"x": 62.0, "activation": "off", "service_tier": "standard", "demand": 83.0, "violation": 1.0},
+    {"x": 64.0, "activation": "on", "service_tier": "priority", "demand": 59.0, "violation": 0.0},
+    {"x": 43.0, "activation": "on", "service_tier": "economy", "demand": 70.0, "violation": 1.0},
+    {"x": 47.0, "activation": "off", "service_tier": "standard", "demand": 41.0, "violation": 0.0},
+    {"x": 51.0, "activation": "on", "service_tier": "priority", "demand": 76.0, "violation": 1.0},
+    {"x": 55.0, "activation": "off", "service_tier": "economy", "demand": 50.0, "violation": 0.0},
+    {"x": 59.0, "activation": "on", "service_tier": "standard", "demand": 86.0, "violation": 1.0},
+    {"x": 63.0, "activation": "off", "service_tier": "priority", "demand": 57.0, "violation": 0.0},
+    {"x": 66.0, "activation": "on", "service_tier": "economy", "demand": 91.0, "violation": 1.0},
+    {"x": 69.0, "activation": "off", "service_tier": "standard", "demand": 64.0, "violation": 0.0},
+    {"x": 72.0, "activation": "on", "service_tier": "priority", "demand": 98.0, "violation": 1.0},
+    {"x": 75.0, "activation": "off", "service_tier": "economy", "demand": 68.0, "violation": 0.0},
+    {"x": 78.0, "activation": "on", "service_tier": "standard", "demand": 105.0, "violation": 1.0},
+    {"x": 82.0, "activation": "off", "service_tier": "priority", "demand": 74.0, "violation": 0.0},
+    {"x": 88.0, "activation": "on", "service_tier": "economy", "demand": 111.0, "violation": 1.0},
+    {"x": 94.0, "activation": "off", "service_tier": "standard", "demand": 81.0, "violation": 0.0},
+    {"x": 100.0, "activation": "on", "service_tier": "priority", "demand": 124.0, "violation": 1.0},
+    {"x": 106.0, "activation": "off", "service_tier": "economy", "demand": 93.0, "violation": 0.0},
+    {"x": 112.0, "activation": "on", "service_tier": "standard", "demand": 131.0, "violation": 1.0},
+    {"x": 118.0, "activation": "off", "service_tier": "priority", "demand": 102.0, "violation": 0.0},
+    {"x": 126.0, "activation": "on", "service_tier": "economy", "demand": 142.0, "violation": 1.0},
+    {"x": 134.0, "activation": "off", "service_tier": "standard", "demand": 119.0, "violation": 0.0},
+    {"x": 142.0, "activation": "on", "service_tier": "priority", "demand": 151.0, "violation": 1.0},
+    {"x": 150.0, "activation": "off", "service_tier": "economy", "demand": 137.0, "violation": 0.0},
+    {"x": 156.0, "activation": "on", "service_tier": "standard", "demand": 159.0, "violation": 1.0},
+    {"x": 158.0, "activation": "off", "service_tier": "priority", "demand": 145.0, "violation": 0.0}
+  ],
+  "conditional_compilation": {
+    "retained_decisions": ["x", "activation", "service_tier"],
+    "event_target": "violation",
+    "event_value": 1.0,
+    "marginalization_policy": "marginalize-all-nonevent-nondecision-features",
+    "approximation_domains": [
+      {"feature_name": "x", "lower": 40.0, "upper": 160.0, "source": "conditional-mio-embedding-v1", "encoding": "piecewise-log-density"}
+    ],
+    "leaf_policy": {
+      "policy_name": "physical-interval-relative-v2",
+      "relative_breakpoints": [0.0, 0.25, 0.5, 0.75, 1.0],
+      "mio_epsilon": 1e-6,
+      "discrete_probability_floor": 1e-12
+    },
+    "sum_policies": {
+      "max": {
+        "mode": "max",
+        "approximation_label": "weighted-log-sum-exp-max-approximation",
+        "certification_label": "uncertified",
+        "sum_big_m": 100.0
+      },
+      "pwl": {
+        "mode": "piecewise",
+        "approximation_label": "weighted-log-sum-exp-piecewise-linear-approximation",
+        "certification_label": "not-applicable",
+        "breakpoint_policy": {
+          "policy_name": "legacy-logspace-v1",
+          "piecewise_breakpoint_count": 5,
+          "exp_probability_floor": 0.001,
+          "exp_breakpoint_start": 0.3
+        },
+        "sum_big_m": 100.0,
+        "exp_domain_floor": -500.0
+      }
+    },
+    "numerical_policy": {
+      "mio_epsilon": 1e-6,
+      "embedding_parity_absolute_tolerance": 1e-6,
+      "constraint_residual_absolute_tolerance": 1e-6,
+      "positive_log_risk_limit": 1e-6,
+      "domain_membership_tolerance": 0.0
+    }
+  },
+  "representative_assignments": [
+    {"case_name": "lower-boundary", "assignment_mode": "declared-domain", "values": {"x": 40.0, "activation": "off", "service_tier": "economy"}},
+    {"case_name": "interior", "assignment_mode": "declared-domain", "values": {"x": 100.0, "activation": "on", "service_tier": "standard"}},
+    {"case_name": "upper-boundary", "assignment_mode": "declared-domain", "values": {"x": 160.0, "activation": "off", "service_tier": "priority"}}
+  ],
+  "future_derived_fixture_paths": {
+    "artifact_manifest": "tests/fixtures/tpm/tpm_artifact_conditional_mio_v3.json",
+    "artifact_sidecar": "tests/fixtures/tpm/sidecars/tpm_artifact_conditional_mio_v3.spn_payload.pkl",
+    "max_pair": "tests/fixtures/tpm/conditional_pair_max_v1.json",
+    "pwl_pair": "tests/fixtures/tpm/conditional_pair_pwl_v1.json",
+    "evidence": "tests/fixtures/tpm/conditional_mio_evidence_v1.json"
+  }
+}

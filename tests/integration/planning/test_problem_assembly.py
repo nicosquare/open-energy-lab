@@ -10,6 +10,7 @@ from types import SimpleNamespace
 
 import pytest
 import open_energy_lab.planning.problem as problem_module
+import open_energy_lab.tpm.conditional_mio as conditional_mio_module
 
 from open_energy_lab.planning import load_planning_dataset
 from open_energy_lab.planning.problem import (
@@ -54,7 +55,16 @@ def _write_test_sidecar_payload(
     )
 
 
-def test_assemble_planning_problem_replays_committed_tpm_artifact_offline() -> None:
+def test_assemble_planning_problem_replays_committed_tpm_artifact_offline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        conditional_mio_module,
+        "attach_conditional_mio_pair",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("planning assembly used the composable attachment path")
+        ),
+    )
     artifact = load_tpm_artifact(load_planning_fixture(TPM_ARTIFACT_FIXTURE_PATH))
     planning_fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
     expected_assembly = planning_fixture["expected_assembly"]

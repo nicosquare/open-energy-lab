@@ -9,6 +9,8 @@ import math
 import pyomo.environ as pyo
 import pytest
 
+import open_energy_lab.tpm as tpm_package
+import open_energy_lab.tpm.conditional_mio as conditional_mio_module
 from open_energy_lab.planning.piecewise import build_piecewise_planning_terms
 from open_energy_lab.tpm.mio import (
     build_spn_chance_model,
@@ -230,6 +232,46 @@ def test_build_spn_chance_model_supports_only_valid_sum_encodings(
         assert hasattr(model.denominator_spn, "sum_log_piecewise_13")
 
 
+def test_existing_whole_model_public_entry_point_does_not_route_through_attachment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def forbidden_composable_attachment(*_args, **_kwargs):
+        raise AssertionError("whole-model compatibility path used composable attachment")
+
+    monkeypatch.setattr(
+        conditional_mio_module,
+        "attach_conditional_mio_pair",
+        forbidden_composable_attachment,
+    )
+    assert tpm_package.build_spn_chance_model is build_spn_chance_model
+    piecewise_terms = build_piecewise_planning_terms(
+        {"approximation_kind": "piecewise", "sum_encoding_mode": "max"},
+        max_terms=2,
+        decision_features=("battery_capacity_kwh",),
+        decision_feature_types={"battery_capacity_kwh": "continuous"},
+    )
+
+    model = tpm_package.build_spn_chance_model(
+        pyo,
+        problem_id="whole-model-compatibility",
+        spn_payload={
+            "feature_schema": _feature_schema(),
+            "decision_features": ["battery_capacity_kwh"],
+            "sum_encoding_mode": "max",
+            "conditional_models": _serialized_conditional_models(),
+        },
+        cost_terms={"battery_capacity_kwh": 100.0},
+        chance_limit_epsilon=0.1,
+        numeric_tolerance=1e-9,
+        piecewise_terms=piecewise_terms,
+    )
+
+    assert model._open_energy_lab_sum_encoding_mode == "max"
+    assert hasattr(model, "total_cost")
+    assert hasattr(model, "chance_constraint")
+    assert not hasattr(model, "conditional_pair")
+
+
 def test_compiled_v1_remains_normalized_only_without_physical_promotion() -> None:
     compiled = _normalized_only_compiled_v1()
     before = copy.deepcopy(compiled)
@@ -354,6 +396,10 @@ def test_categorical_spn_uses_exact_compiled_risk_lookup() -> None:
         (0.2, 0.2, 0.02, 0.02)
     )
     assert not hasattr(model, "numerator_spn")
+    assert not hasattr(model, "conditional_pair")
+    assert not any(
+        name.startswith("conditional_risk") for name in model.component_map()
+    )
 
 
 def test_infer_max_sum_terms_uses_the_largest_sum_node_arity() -> None:

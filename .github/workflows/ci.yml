@@ -74,6 +74,7 @@ jobs:
               tests/unit/planning \
               tests/integration/tpm \
               tests/integration/planning \
+              --ignore=tests/integration/tpm/test_conditional_mio_notebook_execution.py \
               --ignore=tests/integration/tpm/test_backend_adapter_workflow.py \
               --ignore=tests/integration/tpm/test_generic_rows_workflow.py \
               --ignore=tests/integration/tpm/test_mio_solver.py \
@@ -84,6 +85,76 @@ jobs:
               --ignore=tests/integration/planning/test_spn_mio_gurobi.py \
               --ignore=tests/integration/planning/test_tpm_fit_workflow.py \
               --ignore=tests/integration/planning/test_tpm_fixture_schema.py \
+              --strict-markers \
+              -ra
+
+  conditional-mio-notebook:
+    name: Conditional MIO notebook (Python 3.11)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.5"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-suffix: conditional-mio-notebook-py311
+
+      - name: Install locked notebook environment
+        run: uv sync --locked --group dev --group notebook
+
+      - name: Verify conditional MIO notebook backends
+        run: |
+          uv run --locked --no-sync python - <<'PY'
+          from importlib.metadata import version
+
+          import highspy
+          import ipykernel
+          import nbclient
+          import nbformat
+          import pyomo.environ as pyo
+          import spflow
+
+          expected = {
+              "spflow": "1.1.0",
+              "pyomo": "6.10.1",
+              "highspy": "1.15.1",
+          }
+          actual = {package: version(package) for package in expected}
+          if actual != expected:
+              raise RuntimeError(
+                  f"conditional MIO backend versions differ: {actual!r}"
+              )
+
+          solver = pyo.SolverFactory("highs")
+          if not solver.available(exception_flag=False):
+              raise RuntimeError("required Pyomo HiGHS solver is unavailable")
+
+          notebook_versions = {
+              package: version(package)
+              for package in ("nbclient", "nbformat", "ipykernel")
+          }
+          print(f"required backend versions: {actual}")
+          print(f"notebook dependency versions: {notebook_versions}")
+          print(f"HiGHS runtime version: {highspy.Highs().version()}")
+          PY
+
+      - name: Execute conditional MIO notebook offline (180-second limit)
+        run: |
+          timeout --signal=TERM --kill-after=10s 180s \
+            uv run --offline --locked --no-sync pytest \
+              tests/unit/tpm/test_conditional_mio_notebook.py \
+              tests/integration/tpm/test_conditional_mio_notebook_execution.py \
               --strict-markers \
               -ra
 

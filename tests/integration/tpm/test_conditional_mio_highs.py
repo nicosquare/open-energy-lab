@@ -1,0 +1,288 @@
+"""Consumer-owned Pyomo composition around an attached conditional pair."""
+
+from __future__ import annotations
+
+import math
+
+import pytest
+
+from open_energy_lab.tpm.artifact import load_tpm_artifact
+from open_energy_lab.tpm.conditional import (
+    TPMBinaryDecisionMapping,
+    TPMCategoricalDecisionMapping,
+    TPMConditionalCompilationRequest,
+    TPMConditionalEncodingPolicy,
+    TPMConditionalNumericalPolicy,
+    TPMContinuousDecisionMapping,
+    load_conditional_pair,
+    publish_conditional_pair,
+)
+from open_energy_lab.tpm.conditional_mio import (
+    attach_conditional_mio_pair,
+    build_embedding_parity_evidence,
+    compile_conditional_mio_pair,
+    evaluate_conditional_mio_pair,
+    inspect_conditional_mio_attachment,
+)
+from open_energy_lab.tpm.query import evaluate_native_conditional_pair
+from tests.integration.tpm.conditional_mio_test_support import (
+    CONDITIONAL_MAX_PAIR_PATH,
+    CONDITIONAL_MIO_ARTIFACT_PATH,
+    CONDITIONAL_PWL_PAIR_PATH,
+    load_conditional_mio_source,
+)
+from tests.unit.tpm.test_conditional_pair import _pair
+
+
+def _mapping(value: object, *, field_name: str) -> dict[str, object]:
+    if not isinstance(value, dict):
+        raise TypeError(f"{field_name} must be a mapping")
+    return dict(value)
+
+
+def _fixed_mixed_attachment(pair, assignments: dict[str, object], *, namespace: str):
+    import pyomo.environ as pyo
+
+    model = pyo.ConcreteModel()
+    model.x = pyo.Var(bounds=(40.0, 160.0))
+    model.activation = pyo.Var(domain=pyo.Binary)
+    model.category = pyo.Set(
+        initialize=("economy", "standard", "priority"), ordered=True
+    )
+    model.service_tier = pyo.Var(model.category, domain=pyo.Binary)
+    attachment = attach_conditional_mio_pair(
+        pair,
+        model,
+        mappings=(
+            TPMContinuousDecisionMapping("x", model.x),
+            TPMBinaryDecisionMapping("activation", model.activation),
+            TPMCategoricalDecisionMapping(
+                "service_tier",
+                tuple(
+                    (label, model.service_tier[label]) for label in model.category
+                ),
+            ),
+        ),
+        namespace=namespace,
+    )
+    model.x.fix(float(assignments["x"]))
+    model.activation.fix(1 if assignments["activation"] == "on" else 0)
+    for label in model.category:
+        model.service_tier[label].fix(
+            int(label == assignments["service_tier"])
+        )
+    return model, attachment
+
+
+def _solve_and_inspect(model, attachment):
+    import highspy
+    import pyomo.environ as pyo
+
+    solver = pyo.SolverFactory("highs")
+    # HiGHS owns a process-global scheduler; use the repository's established
+    # single-threaded CPU setting so later compatibility solves can request the
+    # same setting in this pytest process.
+    solver.options["threads"] = 1
+    results = solver.solve(model)
+    return inspect_conditional_mio_attachment(
+        attachment,
+        solver_metadata={
+            "solver_name": "highs",
+            "solver_version": highspy.Highs().version(),
+            "status": str(results.solver.status),
+            "termination_condition": str(results.solver.termination_condition),
+        },
+    )
+
+
+def _max_compilation_request(artifact_path, source: dict[str, object]):
+    compilation = _mapping(
+        source["conditional_compilation"], field_name="conditional_compilation"
+    )
+    policies = _mapping(
+        compilation["sum_policies"], field_name="sum_policies"
+    )
+    selected = _mapping(policies["max"], field_name="sum_policies.max")
+    return TPMConditionalCompilationRequest(
+        source_artifact=str(artifact_path),
+        event_target=str(compilation["event_target"]),
+        event_value=compilation["event_value"],
+        retained_decisions=tuple(
+            str(name) for name in compilation["retained_decisions"]
+        ),
+        approximation_domains=tuple(
+            _mapping(value, field_name="approximation_domain")
+            for value in compilation["approximation_domains"]
+        ),
+        encoding=TPMConditionalEncodingPolicy(
+            mode=str(selected["mode"]),
+            approximation_label=str(selected["approximation_label"]),
+            certification_label=str(selected["certification_label"]),
+            leaf_configuration=_mapping(
+                compilation["leaf_policy"], field_name="leaf_policy"
+            ),
+            sum_configuration={
+                name: value
+                for name, value in selected.items()
+                if name
+                not in {"mode", "approximation_label", "certification_label"}
+            },
+        ),
+        numerical_policy=TPMConditionalNumericalPolicy(
+            tolerances=_mapping(
+                compilation["numerical_policy"], field_name="numerical_policy"
+            )
+        ),
+    )
+
+
+def test_consumer_owns_objective_deterministic_policy_and_chance_threshold() -> None:
+    import pyomo.environ as pyo
+
+    pair = _pair()
+    model = pyo.ConcreteModel()
+    model.quantity = pyo.Var(domain=pyo.NonNegativeReals, bounds=(40.0, 160.0))
+    model.reserve = pyo.Var(domain=pyo.NonNegativeReals, initialize=0.0)
+    model.reserve.fix(0.0)
+    attachment = attach_conditional_mio_pair(
+        pair,
+        model,
+        mappings=(
+            TPMContinuousDecisionMapping(
+                "x", model.quantity + model.reserve
+            ),
+        ),
+        namespace="oel_conditional_risk",
+    )
+
+    model.alpha = pyo.Param(initialize=0.2)
+    model.storage_limit = pyo.Constraint(expr=model.quantity <= 150.0)
+    model.risk_limit = pyo.Constraint(
+        expr=attachment.conditional_log_risk <= math.log(pyo.value(model.alpha))
+    )
+    model.cost = pyo.Objective(expr=3.0 * model.quantity + model.reserve)
+
+    direct = evaluate_conditional_mio_pair(
+        pair, declared_domain_assignments={"x": 100.0}
+    )
+    model.quantity.set_value(100.0)
+    link = attachment.decision_links["x"]
+    link.model_coordinate.set_value(0.5)
+    attachment.numerator_root.set_value(direct.numerator_log)
+    attachment.denominator_root.set_value(direct.denominator_log)
+
+    assert math.isfinite(pyo.value(model.cost.expr))
+    assert pyo.value(attachment.conditional_log_risk) == pytest.approx(
+        direct.conditional_log_risk
+    )
+    assert math.isfinite(pyo.value(model.risk_limit.body))
+    assert not model.quantity.fixed
+    assert model.quantity.domain is pyo.NonNegativeReals
+    assert model.storage_limit.parent_block() is model
+    assert model.risk_limit.parent_block() is model
+    assert model.cost.parent_block() is model
+    assert not tuple(
+        attachment.block.component_objects(pyo.Objective, descend_into=True)
+    )
+    assert not hasattr(attachment.block, "alpha")
+    assert not hasattr(attachment.block, "risk_limit")
+    assert not hasattr(attachment.block, "storage_limit")
+
+
+@pytest.mark.parametrize(
+    ("mode", "pair_path"),
+    (("max", CONDITIONAL_MAX_PAIR_PATH), ("pwl", CONDITIONAL_PWL_PAIR_PATH)),
+)
+def test_objective_free_highs_matches_direct_pair_at_predeclared_cases(
+    mode: str,
+    pair_path,
+) -> None:
+    import pyomo.environ as pyo
+
+    pair_before = pair_path.read_bytes()
+    pair = load_conditional_pair(pair_path)
+    source = load_conditional_mio_source()
+    case_results = {}
+
+    for raw_case in source["representative_assignments"]:
+        case = _mapping(raw_case, field_name="representative_assignment")
+        assignments = _mapping(case["values"], field_name="values")
+        direct = evaluate_conditional_mio_pair(
+            pair, declared_domain_assignments=assignments
+        )
+        model, attachment = _fixed_mixed_attachment(
+            pair,
+            assignments,
+            namespace=f"{mode}_{case['case_name'].replace('-', '_')}",
+        )
+        diagnostics = _solve_and_inspect(model, attachment)
+        case_results[str(case["case_name"])] = (direct, diagnostics)
+
+        assert not tuple(
+            attachment.block.component_objects(
+                pyo.Objective,
+                descend_into=True,
+            )
+        )
+
+    evidence = build_embedding_parity_evidence(
+        pair,
+        case_results=case_results,
+        provenance={"purpose": "required fixed-assignment integration parity"},
+    )
+    assert evidence.accepted is True
+    assert len(evidence.cases) == 3
+    assert all(case["accepted"] is True for case in evidence.cases)
+    assert all(
+        case["attached"]["maximum_constraint_residual"] <= 1e-6
+        for case in evidence.cases
+    )
+    assert pair_path.read_bytes() == pair_before
+
+
+def test_uninterrupted_real_fit_to_highs_path_uses_the_same_persisted_pair(
+    tmp_path,
+) -> None:
+    from tests.integration.tpm.test_conditional_mio_current_spflow import (
+        _fit_real_artifact,
+    )
+
+    source = load_conditional_mio_source()
+    artifact_path = tmp_path / "artifact.json"
+    fitted = _fit_real_artifact(artifact_path)
+    artifact = load_tpm_artifact(fitted.source_path)
+    compiled = compile_conditional_mio_pair(
+        _max_compilation_request(artifact_path, source)
+    )
+    pair_path = tmp_path / "pair-max.json"
+    publication = publish_conditional_pair(compiled, pair_path)
+    assert publication.created and not publication.reused
+    pair = load_conditional_pair(pair_path)
+    pair_before = pair_path.read_bytes()
+    raw_case = source["representative_assignments"][1]
+    case = _mapping(raw_case, field_name="representative_assignment")
+    assignments = _mapping(case["values"], field_name="values")
+
+    native = evaluate_native_conditional_pair(
+        artifact,
+        pair,
+        declared_domain_assignments=assignments,
+    )
+    direct = evaluate_conditional_mio_pair(
+        pair, declared_domain_assignments=assignments
+    )
+    model, attachment = _fixed_mixed_attachment(
+        pair, assignments, namespace="uninterrupted_real_backend"
+    )
+    diagnostics = _solve_and_inspect(model, attachment)
+    parity = build_embedding_parity_evidence(
+        pair,
+        case_results={str(case["case_name"]): (direct, diagnostics)},
+        provenance={"path": "fit-persist-reload-native-compile-direct-attach-highs"},
+    )
+
+    assert artifact.execution_mode == "production"
+    assert pair.source.sidecar_sha256 == artifact.payload_hash
+    assert native.backend_generation == "current-spflow"
+    assert parity.accepted is True
+    assert pair_path.read_bytes() == pair_before

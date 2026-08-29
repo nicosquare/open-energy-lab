@@ -17,6 +17,13 @@ REQUIRED_LAZY_BACKEND_MODULES = {
     "spflow",
     "torch",
 }
+NOTEBOOK_RUNTIME_MODULES = {
+    "IPython",
+    "ipykernel",
+    "nbclient",
+    "nbformat",
+    "notebook",
+}
 OPTIONAL_RESEARCH_MODULES = {
     "citylearn",
     "docplex",
@@ -25,7 +32,11 @@ OPTIONAL_RESEARCH_MODULES = {
     "torchrl",
     "wandb",
 }
-LAZY_RESEARCH_MODULES = REQUIRED_LAZY_BACKEND_MODULES | OPTIONAL_RESEARCH_MODULES
+LAZY_RESEARCH_MODULES = (
+    REQUIRED_LAZY_BACKEND_MODULES
+    | NOTEBOOK_RUNTIME_MODULES
+    | OPTIONAL_RESEARCH_MODULES
+)
 WEATHER_WORKFLOW_MODULES = {
     "pandas",
     "pvlib",
@@ -356,6 +367,220 @@ def test_planning_workflow_loads_pyomo_and_highspy_only_at_its_boundary() -> Non
     )
 
 
+def test_feature_016_core_and_direct_evaluation_work_without_backend_or_notebook_stacks() -> None:
+    _run_isolated_python(
+        """
+        import importlib.abc
+        import sys
+
+        blocked = {
+            "IPython", "highspy", "ipykernel", "nbclient", "nbformat",
+            "notebook", "pyomo", "spflow", "torch",
+        }
+
+        class BlockedDependencyFinder(importlib.abc.MetaPathFinder):
+            def find_spec(self, fullname, path=None, target=None):
+                root = fullname.split(".", 1)[0]
+                if root in blocked:
+                    raise ModuleNotFoundError(
+                        f"blocked Feature 016 dependency: {root}", name=root
+                    )
+                return None
+
+        sys.meta_path.insert(0, BlockedDependencyFinder())
+
+        import open_energy_lab
+        import open_energy_lab.planning
+        import open_energy_lab.tpm as tpm
+
+        pair = tpm.load_conditional_pair(
+            "tests/fixtures/tpm/conditional_pair_max_v1.json"
+        )
+        evaluation = tpm.evaluate_conditional_mio_pair(
+            pair,
+            declared_domain_assignments={
+                "x": 100.0,
+                "activation": "on",
+                "service_tier": "standard",
+            },
+        )
+        assert evaluation.pair_id == pair.pair_id
+        assert blocked.isdisjoint(
+            name.split(".", 1)[0] for name in sys.modules
+        )
+        """
+    )
+
+
+def test_feature_016_spflow_boundaries_fail_clearly_without_fallback() -> None:
+    _run_isolated_python(
+        """
+        import importlib.abc
+        import sys
+
+        class BlockedSPFlowFinder(importlib.abc.MetaPathFinder):
+            def find_spec(self, fullname, path=None, target=None):
+                if fullname.split(".", 1)[0] in {"spflow", "torch"}:
+                    raise ModuleNotFoundError(
+                        "blocked current-SPFlow dependency", name="spflow"
+                    )
+                return None
+
+        sys.meta_path.insert(0, BlockedSPFlowFinder())
+
+        from open_energy_lab.tpm import (
+            SPFlowDependencyUnavailableError,
+            TPMConditionalCompilationRequest,
+            compile_conditional_mio_pair,
+            evaluate_native_conditional_pair,
+            load_conditional_pair,
+        )
+
+        artifact_path = "tests/fixtures/tpm/tpm_artifact_conditional_mio_v3.json"
+        pair = load_conditional_pair(
+            "tests/fixtures/tpm/conditional_pair_max_v1.json"
+        )
+        request = TPMConditionalCompilationRequest(
+            source_artifact=artifact_path,
+            event_target=pair.event.feature_name,
+            event_value=pair.event.declared_value,
+            retained_decisions=pair.retained_decisions,
+            approximation_domains=tuple(
+                dict(validity.approximation_domain)
+                for validity in pair.validity
+                if validity.approximation_domain is not None
+            ),
+            encoding=pair.encoding,
+            numerical_policy=pair.numerical_policy,
+        )
+
+        try:
+            compile_conditional_mio_pair(request)
+        except SPFlowDependencyUnavailableError as exc:
+            assert "SPFlow" in str(exc)
+        else:
+            raise AssertionError("conditional compilation used an SPFlow fallback")
+
+        try:
+            evaluate_native_conditional_pair(
+                artifact_path,
+                pair,
+                declared_domain_assignments={
+                    "x": 100.0,
+                    "activation": "on",
+                    "service_tier": "standard",
+                },
+            )
+        except SPFlowDependencyUnavailableError as exc:
+            assert "SPFlow" in str(exc)
+        else:
+            raise AssertionError("native conditional query used a fallback")
+        """
+    )
+
+
+def test_feature_016_attachment_fails_clearly_without_pyomo() -> None:
+    _run_isolated_python(
+        """
+        import importlib.abc
+        import sys
+
+        class BlockedPyomoFinder(importlib.abc.MetaPathFinder):
+            def find_spec(self, fullname, path=None, target=None):
+                if fullname.split(".", 1)[0] == "pyomo":
+                    raise ModuleNotFoundError("blocked Pyomo dependency", name="pyomo")
+                return None
+
+        sys.meta_path.insert(0, BlockedPyomoFinder())
+
+        from open_energy_lab.tpm import (
+            SPNSolverDependencyUnavailableError,
+            attach_conditional_mio_pair,
+            load_conditional_pair,
+        )
+
+        pair = load_conditional_pair(
+            "tests/fixtures/tpm/conditional_pair_max_v1.json"
+        )
+        try:
+            attach_conditional_mio_pair(
+                pair, object(), mappings=(), namespace="risk"
+            )
+        except SPNSolverDependencyUnavailableError as exc:
+            assert "Pyomo" in str(exc)
+        else:
+            raise AssertionError("conditional attachment used a Pyomo fallback")
+        """
+    )
+
+
+def test_required_solver_validation_fails_clearly_without_highspy() -> None:
+    _run_isolated_python(
+        """
+        import importlib.abc
+        import sys
+
+        class BlockedHighsFinder(importlib.abc.MetaPathFinder):
+            def find_spec(self, fullname, path=None, target=None):
+                if fullname.split(".", 1)[0] == "highspy":
+                    raise ModuleNotFoundError("blocked highspy dependency", name="highspy")
+                return None
+
+        sys.meta_path.insert(0, BlockedHighsFinder())
+
+        from open_energy_lab.planning.optional_solver import (
+            PlanningSolverDependencyUnavailableError,
+            require_pyomo_backend,
+        )
+
+        try:
+            require_pyomo_backend()
+        except PlanningSolverDependencyUnavailableError as exc:
+            assert "highspy" in str(exc)
+        else:
+            raise AssertionError("required solver validation used a HiGHS fallback")
+        """
+    )
+
+
+def test_feature_016_notebook_execution_fails_if_notebook_runtime_is_absent() -> None:
+    _run_isolated_python(
+        """
+        import importlib.abc
+        from pathlib import Path
+        import sys
+        import tempfile
+
+        class BlockedNotebookFinder(importlib.abc.MetaPathFinder):
+            def find_spec(self, fullname, path=None, target=None):
+                if fullname.split(".", 1)[0] in {
+                    "nbclient", "nbformat", "ipykernel"
+                }:
+                    root = fullname.split(".", 1)[0]
+                    raise ModuleNotFoundError(
+                        f"blocked notebook dependency: {root}", name=root
+                    )
+                return None
+
+        sys.meta_path.insert(0, BlockedNotebookFinder())
+
+        from tests.integration.tpm.test_conditional_mio_notebook_execution import (
+            test_conditional_mio_notebook_executes_offline_without_mutating_evidence,
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            try:
+                test_conditional_mio_notebook_executes_offline_without_mutating_evidence(
+                    Path(directory)
+                )
+            except ModuleNotFoundError as exc:
+                assert exc.name == "nbclient"
+            else:
+                raise AssertionError("notebook execution used a dependency fallback")
+        """
+    )
+
+
 @pytest.mark.parametrize(
     "module_name",
     (
@@ -410,6 +635,8 @@ def test_package_imports_stay_clear_of_lazy_research_stacks(module_name: str) ->
         "open_energy_lab.simulator.fcr_settlement",
         "open_energy_lab.tpm",
         "open_energy_lab.tpm.artifact",
+        "open_energy_lab.tpm.conditional",
+        "open_energy_lab.tpm.conditional_mio",
         "open_energy_lab.tpm.data",
         "open_energy_lab.tpm.domains",
         "open_energy_lab.tpm.features",

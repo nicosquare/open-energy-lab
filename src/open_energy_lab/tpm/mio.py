@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -62,6 +64,335 @@ class UnsupportedSPFlowModuleError(ValueError):
             f"unsupported SPFlow module type {self.module_type!r} at scope "
             f"{scope_label}: {self.reason}"
         )
+
+
+def condition_compiled_spflow_mio(
+    compiled: Mapping[str, object],
+    *,
+    decision_features: Sequence[str],
+    event_target_name: str,
+    event_value_index: int | None,
+    compatibility_mode: str | None = None,
+) -> dict[str, object]:
+    """Derive one event-fixed or event-marginalized serialized circuit.
+
+    The default feature-016 representation uses an exact ``log_one`` node and
+    removes normalized subcircuits that have become fully marginalized before
+    a Sum approximation is selected. ``planning-v1`` preserves the established
+    planning payload vocabulary while delegating the transformation itself to
+    this TPM-owned primitive.
+    """
+
+    if not isinstance(compiled, Mapping):
+        raise TypeError("compiled MIO payload must be a mapping")
+    if compatibility_mode not in {None, "planning-v1"}:
+        raise ValueError("compatibility_mode must be None or 'planning-v1'")
+    event_target = str(event_target_name)
+    if not event_target:
+        raise ValueError("event_target_name must be nonempty")
+    if event_value_index is not None and (
+        isinstance(event_value_index, bool) or event_value_index not in (0, 1)
+    ):
+        raise ValueError("event_value_index must be 0, 1, or None")
+    retained = tuple(str(name) for name in decision_features)
+    if not retained or any(not name for name in retained):
+        raise ValueError("decision_features must contain nonempty names")
+    if len(set(retained)) != len(retained):
+        raise ValueError("decision_features must be unique")
+    if event_target in retained:
+        raise ValueError("event target cannot also be a retained decision feature")
+
+    feature_schema = _sequence_of_mappings(
+        compiled.get("feature_schema"), field_name="feature_schema"
+    )
+    feature_names = tuple(str(spec.get("feature_name", "")) for spec in feature_schema)
+    if any(not name for name in feature_names) or len(set(feature_names)) != len(
+        feature_names
+    ):
+        raise ValueError("compiled feature_schema must use unique nonempty names")
+    unknown_decisions = [name for name in retained if name not in feature_names]
+    if unknown_decisions:
+        raise ValueError(
+            "compiled MIO decision feature does not exist: "
+            + ", ".join(unknown_decisions)
+        )
+    if event_target not in feature_names:
+        raise ValueError(f"compiled MIO event target {event_target!r} does not exist")
+    event_spec = feature_schema[feature_names.index(event_target)]
+    event_ordering = tuple(
+        event_spec.get("ordering") or event_spec.get("discrete_values") or ()
+    )
+    if event_spec.get("feature_type") != "binary" or len(event_ordering) != 2:
+        raise ValueError("compiled MIO event target must have a declared binary ordering")
+
+    raw_nodes = _sequence_of_mappings(compiled.get("nodes"), field_name="nodes")
+    source_nodes = {int(node["id"]): node for node in raw_nodes}
+    if len(source_nodes) != len(raw_nodes):
+        raise ValueError("compiled MIO nodes must use unique integer ids")
+    root_id = int(compiled.get("root_id", -1))
+    if root_id not in source_nodes:
+        raise ValueError(f"compiled MIO root node {root_id} does not exist")
+
+    output_nodes: list[dict[str, object]] = []
+    cache: dict[int, int] = {}
+    active: set[int] = set()
+
+    def append(node: Mapping[str, object]) -> int:
+        node_id = len(output_nodes)
+        output_nodes.append({"id": node_id, **dict(node)})
+        return node_id
+
+    def log_one() -> int:
+        if compatibility_mode == "planning-v1":
+            return append(
+                {
+                    "type": "leaf_binary",
+                    "feature_name": "__marginalized_constant__",
+                    "densities": [1.0, 1.0],
+                    "fixed_value": 0,
+                }
+            )
+        return append({"type": "log_one", "log_value": 0.0})
+
+    def is_exact_log_one(node_id: int) -> bool:
+        return (
+            compatibility_mode is None
+            and output_nodes[node_id].get("type") == "log_one"
+        )
+
+    def product(children: Sequence[int]) -> int:
+        normalized = tuple(int(child) for child in children)
+        if compatibility_mode is None:
+            normalized = tuple(
+                child for child in normalized if not is_exact_log_one(child)
+            )
+        if not normalized:
+            return log_one()
+        if len(normalized) == 1:
+            return normalized[0]
+        return append({"type": "product", "children": list(normalized)})
+
+    def transform(source_id: int) -> int:
+        if source_id in cache:
+            return cache[source_id]
+        if source_id in active:
+            raise ValueError("compiled MIO nodes must form an acyclic graph")
+        if source_id not in source_nodes:
+            raise ValueError(f"compiled MIO node {source_id} does not exist")
+        active.add(source_id)
+        source = source_nodes[source_id]
+        node_type = str(source.get("type", ""))
+        if node_type == "normal":
+            retained_leaves: list[int] = []
+            for curve in _sequence_of_mappings(
+                source.get("curves"), field_name=f"normal node {source_id} curves"
+            ):
+                feature_name = str(curve.get("feature_name", ""))
+                if feature_name not in retained:
+                    continue
+                curve_payload = {
+                    str(key): value
+                    for key, value in curve.items()
+                    if key not in {"feature_name"}
+                }
+                retained_leaves.append(
+                    append(
+                        {
+                            "type": "leaf_piecewise",
+                            "feature_name": feature_name,
+                            **curve_payload,
+                        }
+                    )
+                )
+            result = product(retained_leaves)
+        elif node_type in {"bernoulli", "categorical"}:
+            scoped_names = tuple(str(name) for name in source.get("feature_names", ()))
+            probabilities = source.get("probabilities")
+            if not _is_sequence_value(probabilities):
+                raise ValueError(
+                    f"compiled MIO {node_type} node {source_id} probabilities must be a sequence"
+                )
+            retained_leaves = []
+            for index, feature_name in enumerate(scoped_names):
+                if index >= len(probabilities) or not _is_sequence_value(
+                    probabilities[index]
+                ):
+                    raise ValueError(
+                        f"compiled MIO {node_type} node {source_id} probabilities do not align"
+                    )
+                density_row = [float(value) for value in probabilities[index]]
+                leaf_type = (
+                    "leaf_binary" if node_type == "bernoulli" else "leaf_categorical"
+                )
+                if feature_name in retained:
+                    retained_leaves.append(
+                        append(
+                            {
+                                "type": leaf_type,
+                                "feature_name": feature_name,
+                                "densities": density_row,
+                            }
+                        )
+                    )
+                elif feature_name == event_target and event_value_index is not None:
+                    if node_type != "bernoulli":
+                        raise ValueError("conditional event target must use a Bernoulli leaf")
+                    if event_value_index >= len(density_row):
+                        raise ValueError(
+                            "event_value_index is outside the compiled event ordering"
+                        )
+                    retained_leaves.append(
+                        append(
+                            {
+                                "type": "leaf_binary",
+                                "feature_name": feature_name,
+                                "densities": density_row,
+                                "fixed_value": event_value_index,
+                            }
+                        )
+                    )
+            result = product(retained_leaves)
+        elif node_type == "product":
+            children = source.get("children")
+            if not _is_sequence_value(children):
+                raise ValueError(
+                    f"compiled MIO product node {source_id} children must be a sequence"
+                )
+            result = product(tuple(transform(int(child)) for child in children))
+        elif node_type == "sum":
+            children = source.get("children")
+            weights = source.get("weights")
+            if not _is_sequence_value(children) or not _is_sequence_value(weights):
+                raise ValueError(
+                    f"compiled MIO sum node {source_id} children and weights must be sequences"
+                )
+            transformed = tuple(transform(int(child)) for child in children)
+            normalized_weights = tuple(float(weight) for weight in weights)
+            if not transformed or len(transformed) != len(normalized_weights):
+                raise ValueError(
+                    f"compiled MIO sum node {source_id} children and weights must align"
+                )
+            if any(
+                not math.isfinite(weight) or weight <= 0.0
+                for weight in normalized_weights
+            ):
+                raise ValueError(
+                    f"compiled MIO sum node {source_id} weights must be finite and positive"
+                )
+            if compatibility_mode is None and all(
+                is_exact_log_one(child) for child in transformed
+            ):
+                result = log_one()
+            else:
+                result = append(
+                    {
+                        "type": "sum",
+                        "children": list(transformed),
+                        "weights": list(normalized_weights),
+                    }
+                )
+        else:
+            raise ValueError(
+                f"compiled MIO node {source_id} has unsupported type {node_type!r}"
+            )
+        active.remove(source_id)
+        cache[source_id] = result
+        return result
+
+    conditioned_root = transform(root_id)
+    compact_root, compact_nodes = _compact_conditioned_graph(
+        conditioned_root, output_nodes
+    )
+    if compatibility_mode == "planning-v1":
+        return {"root_id": compact_root, "nodes": compact_nodes}
+
+    source_payload = {
+        "schema_version": compiled.get("schema_version"),
+        "compiler_version": compiled.get("compiler_version"),
+        "root_id": root_id,
+        "nodes": [dict(node) for node in raw_nodes],
+        "feature_schema": [dict(spec) for spec in feature_schema],
+        "fitted_artifact": dict(compiled.get("fitted_artifact", {})),
+    }
+    source_digest = hashlib.sha256(
+        (
+            json.dumps(
+                source_payload,
+                allow_nan=False,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            )
+            + "\n"
+        ).encode("utf-8")
+    ).hexdigest()
+    marginalized = [
+        name for name in feature_names if name not in retained and name != event_target
+    ]
+    return {
+        "root_id": compact_root,
+        "nodes": compact_nodes,
+        "conditioning": {
+            "decision_features": list(retained),
+            "event_target_name": event_target,
+            "event_treatment": (
+                "marginalized" if event_value_index is None else "fixed"
+            ),
+            "event_value_index": event_value_index,
+            "marginalized_features": marginalized,
+        },
+        "source_model": {
+            "schema_version": compiled.get("schema_version"),
+            "compiler_version": compiled.get("compiler_version"),
+            "source_root_id": root_id,
+            "model_digest": source_digest,
+            "fitted_artifact": dict(compiled.get("fitted_artifact", {})),
+        },
+    }
+
+
+def _compact_conditioned_graph(
+    root_id: int,
+    nodes: Sequence[Mapping[str, object]],
+) -> tuple[int, list[dict[str, object]]]:
+    """Remove superseded simplification nodes and assign stable postorder ids."""
+
+    node_by_id = {int(node["id"]): node for node in nodes}
+    active: set[int] = set()
+    order: list[int] = []
+
+    def visit(node_id: int) -> None:
+        if node_id in order:
+            return
+        if node_id in active:
+            raise ValueError("conditioned circuit nodes must form an acyclic graph")
+        if node_id not in node_by_id:
+            raise ValueError(f"conditioned circuit node {node_id} does not exist")
+        active.add(node_id)
+        children = node_by_id[node_id].get("children", ())
+        if not _is_sequence_value(children):
+            raise ValueError("conditioned circuit children must be a sequence")
+        for child in children:
+            visit(int(child))
+        active.remove(node_id)
+        order.append(node_id)
+
+    visit(root_id)
+    remap = {old_id: new_id for new_id, old_id in enumerate(order)}
+    compact: list[dict[str, object]] = []
+    for old_id in order:
+        source = dict(node_by_id[old_id])
+        source["id"] = remap[old_id]
+        if "children" in source:
+            source["children"] = [remap[int(child)] for child in source["children"]]
+        compact.append(source)
+    return remap[root_id], compact
+
+
+def _is_sequence_value(value: object) -> bool:
+    return isinstance(value, Sequence) and not isinstance(
+        value, (str, bytes, bytearray)
+    )
 
 
 def compile_spflow_model_to_mio(
@@ -2237,6 +2568,312 @@ def _decode_decision_value(
     raise ValueError(f"unsupported decision payload kind {kind!r}")
 
 
+def encode_conditioned_spflow_circuit(
+    backend: Any,
+    block: object,
+    *,
+    circuit: Mapping[str, object],
+    decision_variables: Mapping[str, Mapping[str, object]],
+    encoding: Mapping[str, object],
+) -> Mapping[str, object]:
+    """Encode one conditioned circuit against shared caller-supplied coordinates."""
+
+    nodes = _sequence_of_mappings(
+        circuit.get("nodes"), field_name="conditioned circuit nodes"
+    )
+    root_id = int(circuit["root_id"])
+    node_ids = tuple(int(node["id"]) for node in nodes)
+    if len(set(node_ids)) != len(node_ids) or root_id not in set(node_ids):
+        raise ValueError("conditioned circuit node ids must be unique and contain root_id")
+    encoding_mode = str(encoding.get("mode", ""))
+    if encoding_mode not in {"max", "piecewise"}:
+        raise ValueError("conditioned circuit encoding mode must be max or piecewise")
+    leaf_configuration = _mapping(
+        encoding.get("leaf_configuration"),
+        field_name="conditional leaf_configuration",
+    )
+    sum_configuration = _mapping(
+        encoding.get("sum_configuration"),
+        field_name="conditional sum_configuration",
+    )
+    probability_floor = float(leaf_configuration["discrete_probability_floor"])
+    if not math.isfinite(probability_floor) or probability_floor <= 0.0:
+        raise ValueError("conditional discrete probability floor must be positive and finite")
+
+    block.NODE_IDS = backend.Set(initialize=node_ids, ordered=True)
+    block.node_out = backend.Var(block.NODE_IDS, within=backend.Reals)
+    node_by_id = {int(node["id"]): node for node in nodes}
+    for node_id in node_ids:
+        node = node_by_id[node_id]
+        node_type = str(node["type"])
+        if node_type == "log_one":
+            block.add_component(
+                f"log_one_{node_id}",
+                backend.Constraint(expr=block.node_out[node_id] == 0.0),
+            )
+            continue
+        if node_type == "leaf_piecewise":
+            _encode_conditioned_piecewise_leaf(
+                backend,
+                block,
+                node_id=node_id,
+                node=node,
+                decision_variables=decision_variables,
+            )
+            continue
+        if node_type in {"leaf_binary", "leaf_categorical"}:
+            densities = _float_sequence(node["densities"])
+            log_densities = tuple(
+                math.log(max(value, probability_floor)) for value in densities
+            )
+            if "fixed_value" in node:
+                index = int(node["fixed_value"])
+                if not 0 <= index < len(densities):
+                    raise ValueError(
+                        f"conditioned discrete leaf {node_id} fixed index is invalid"
+                    )
+                block.add_component(
+                    f"discrete_leaf_fixed_{node_id}",
+                    backend.Constraint(
+                        expr=block.node_out[node_id] == log_densities[index]
+                    ),
+                )
+                continue
+            feature_name = str(node["feature_name"])
+            if feature_name not in decision_variables:
+                raise ValueError(
+                    f"conditioned discrete leaf {node_id} has no decision mapping"
+                )
+            payload = decision_variables[feature_name]
+            kind = str(payload.get("kind"))
+            if node_type == "leaf_binary" and kind == "binary":
+                variable = payload["normalized_var"]
+                block.add_component(
+                    f"binary_leaf_{node_id}",
+                    backend.Constraint(
+                        expr=block.node_out[node_id]
+                        == (1.0 - variable) * log_densities[0]
+                        + variable * log_densities[1]
+                    ),
+                )
+                continue
+            if node_type == "leaf_categorical" and kind == "categorical":
+                indicators = tuple(payload["normalized_var"])
+                if len(indicators) != len(log_densities):
+                    raise ValueError(
+                        f"categorical leaf {node_id} indicator count differs from densities"
+                    )
+                block.add_component(
+                    f"categorical_leaf_{node_id}",
+                    backend.Constraint(
+                        expr=block.node_out[node_id]
+                        == sum(
+                            indicator * log_density
+                            for indicator, log_density in zip(
+                                indicators, log_densities, strict=True
+                            )
+                        )
+                    ),
+                )
+                continue
+            raise ValueError(
+                f"conditioned discrete leaf {node_id} mapping kind {kind!r} is invalid"
+            )
+        if node_type == "product":
+            child_ids = tuple(int(value) for value in node.get("children", ()))
+            block.add_component(
+                f"product_{node_id}",
+                backend.Constraint(
+                    expr=block.node_out[node_id]
+                    == sum(block.node_out[child_id] for child_id in child_ids)
+                ),
+            )
+            continue
+        if node_type == "sum":
+            _encode_conditioned_sum_node(
+                backend,
+                block,
+                node_id=node_id,
+                node=node,
+                mode=encoding_mode,
+                sum_configuration=sum_configuration,
+            )
+            continue
+        raise ValueError(f"unsupported conditioned circuit node type {node_type!r}")
+
+    constraint_names = tuple(
+        component.getname(fully_qualified=False)
+        for component in block.component_objects(
+            backend.Constraint, active=True, descend_into=True
+        )
+    )
+    return {
+        "root": block.node_out[root_id],
+        "node_output": block.node_out,
+        "constraint_component_names": constraint_names,
+    }
+
+
+def _encode_conditioned_piecewise_leaf(
+    backend: Any,
+    block: object,
+    *,
+    node_id: int,
+    node: Mapping[str, object],
+    decision_variables: Mapping[str, Mapping[str, object]],
+) -> None:
+    feature_name = str(node["feature_name"])
+    breakpoints = _float_sequence(node["breakpoints"])
+    log_values = _float_sequence(node["log_values"])
+    if len(breakpoints) < 2 or len(breakpoints) != len(log_values):
+        raise ValueError(
+            f"conditioned piecewise leaf {node_id} points must align"
+        )
+    if feature_name in decision_variables:
+        payload = decision_variables[feature_name]
+        if str(payload.get("kind")) != "continuous":
+            raise ValueError(
+                f"conditioned piecewise leaf {node_id} requires a continuous mapping"
+            )
+        block.add_component(
+            f"piecewise_leaf_{node_id}",
+            backend.Piecewise(
+                block.node_out[node_id],
+                payload["normalized_var"],
+                pw_pts=list(breakpoints),
+                pw_constr_type="EQ",
+                pw_repn="DCC",
+                f_rule=list(log_values),
+            ),
+        )
+        return
+    if "fixed_value" not in node:
+        raise ValueError(
+            f"conditioned piecewise leaf {node_id} has no decision mapping"
+        )
+    fixed_log_value = _linear_interpolate(
+        float(node["fixed_value"]),
+        x_values=breakpoints,
+        y_values=log_values,
+    )
+    block.add_component(
+        f"piecewise_leaf_fixed_{node_id}",
+        backend.Constraint(expr=block.node_out[node_id] == fixed_log_value),
+    )
+
+
+def _encode_conditioned_sum_node(
+    backend: Any,
+    block: object,
+    *,
+    node_id: int,
+    node: Mapping[str, object],
+    mode: str,
+    sum_configuration: Mapping[str, object],
+) -> None:
+    child_ids = tuple(int(value) for value in node["children"])
+    weights = _float_sequence(node["weights"])
+    if not child_ids or len(child_ids) != len(weights):
+        raise ValueError(f"conditioned Sum {node_id} children and weights must align")
+    if any(not math.isfinite(weight) or weight <= 0.0 for weight in weights):
+        raise ValueError(f"conditioned Sum {node_id} weights must be positive and finite")
+    weighted_terms = tuple(
+        block.node_out[child_id] + math.log(weight)
+        for child_id, weight in zip(child_ids, weights, strict=True)
+    )
+    sum_big_m = float(sum_configuration["sum_big_m"])
+    if not math.isfinite(sum_big_m) or sum_big_m <= 0.0:
+        raise ValueError("conditional sum_big_m must be positive and finite")
+    indices = tuple(range(len(child_ids)))
+    choice_index = backend.Set(initialize=indices, ordered=True)
+    block.add_component(f"sum_choice_index_{node_id}", choice_index)
+    active = backend.Var(choice_index, domain=backend.Binary)
+    block.add_component(f"sum_choice_var_{node_id}", active)
+    block.add_component(
+        f"sum_choice_one_hot_{node_id}",
+        backend.Constraint(expr=sum(active[index] for index in indices) == 1),
+    )
+    maximum = backend.Var(within=backend.Reals)
+    block.add_component(f"sum_max_var_{node_id}", maximum)
+    block.add_component(
+        f"sum_max_lb_{node_id}",
+        backend.Constraint(
+            choice_index,
+            rule=lambda _block, index: maximum >= weighted_terms[index],
+        ),
+    )
+    block.add_component(
+        f"sum_max_ub_{node_id}",
+        backend.Constraint(
+            choice_index,
+            rule=lambda _block, index: maximum
+            <= weighted_terms[index] + sum_big_m * (1 - active[index]),
+        ),
+    )
+    if mode == "max":
+        block.add_component(
+            f"sum_max_output_{node_id}",
+            backend.Constraint(expr=block.node_out[node_id] == maximum),
+        )
+        return
+
+    exp_x = _float_sequence(sum_configuration["exp_x_points"])
+    exp_y = _float_sequence(sum_configuration["exp_y_points"])
+    log_x = _float_sequence(sum_configuration["log_x_points"])
+    log_y = _float_sequence(sum_configuration["log_y_points"])
+    relative = backend.Var(choice_index, bounds=(exp_x[0], exp_x[-1]))
+    block.add_component(f"sum_relative_var_{node_id}", relative)
+    exponentials = backend.Var(
+        choice_index, bounds=(min(exp_y), max(exp_y))
+    )
+    block.add_component(f"sum_exp_var_{node_id}", exponentials)
+    block.add_component(
+        f"sum_relative_constraint_{node_id}",
+        backend.Constraint(
+            choice_index,
+            rule=lambda _block, index: relative[index]
+            == weighted_terms[index] - maximum,
+        ),
+    )
+    for index in indices:
+        block.add_component(
+            f"sum_exp_piecewise_{node_id}_{index}",
+            backend.Piecewise(
+                exponentials[index],
+                relative[index],
+                pw_pts=list(exp_x),
+                pw_constr_type="EQ",
+                pw_repn="DCC",
+                f_rule=list(exp_y),
+            ),
+        )
+    total = backend.Var(bounds=(log_x[0], log_x[-1]))
+    block.add_component(f"sum_exp_total_{node_id}", total)
+    block.add_component(
+        f"sum_exp_total_constraint_{node_id}",
+        backend.Constraint(
+            expr=total == sum(exponentials[index] for index in indices)
+        ),
+    )
+    logarithm = backend.Var(bounds=(min(log_y), max(log_y)))
+    block.add_component(f"sum_log_var_{node_id}", logarithm)
+    block.add_component(
+        f"sum_log_piecewise_{node_id}",
+        backend.Piecewise(
+            logarithm,
+            total,
+            pw_pts=list(log_x),
+            pw_constr_type="EQ",
+            pw_repn="DCC",
+            f_rule=list(log_y),
+        ),
+    )
+    block.add_component(
+        f"sum_output_{node_id}",
+        backend.Constraint(expr=block.node_out[node_id] == maximum + logarithm),
+    )
+
+
 def _encode_serialized_spn(
     backend: Any,
     block: object,
@@ -2707,6 +3344,7 @@ __all__ = [
     "build_spn_chance_model",
     "compile_spflow_model_to_mio",
     "evaluate_compiled_spflow_probability",
+    "encode_conditioned_spflow_circuit",
     "extract_spn_solution",
     "infer_max_sum_terms",
     "require_pyomo_backend",

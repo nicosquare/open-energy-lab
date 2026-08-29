@@ -1,0 +1,2469 @@
+{
+  "approximation_metadata": {
+    "approximation_kind": "piecewise",
+    "breakpoint_policy": {
+      "exp_breakpoint_start": 0.3,
+      "exp_probability_floor": 0.001,
+      "piecewise_breakpoint_count": 5,
+      "policy_name": "legacy-logspace-v1"
+    },
+    "fit_numeric_tolerance": 1e-09,
+    "leaf_encoding_mode": "histogram",
+    "legacy_reference_paths": [
+      "legacy/old_tpm/src_py/tpm/spn/main.py",
+      "legacy/old_tpm/src_py/tpm/spn/encoding.py",
+      "legacy/old_tpm/src_py/utils/densities.py"
+    ],
+    "mio_epsilon": 1e-06,
+    "query_numeric_tolerance": 1e-09,
+    "sum_encoding_mode": "piecewise",
+    "tolerance": 1e-09
+  },
+  "artifact_id": "tpm-artifact:conditional-mio-embedding-v3",
+  "backend_api_version": "1.1.0",
+  "backend_generation": "current-spflow",
+  "created_at": "2026-08-28T00:00:00Z",
+  "dataset_reference": "conditional-mio-embedding-v1",
+  "execution_mode": "production",
+  "feature_schema": [
+    {
+      "bounds": [
+        40.0,
+        160.0
+      ],
+      "feature_name": "x",
+      "feature_role": "decision",
+      "feature_type": "continuous",
+      "mathematical_domain": {
+        "feature_kind": "continuous",
+        "feature_name": "x",
+        "lower": 40.0,
+        "origin": "caller-declared",
+        "purpose": "decision-domain",
+        "shape": "finite",
+        "upper": 160.0
+      },
+      "modifiable": true,
+      "monotonicity": "none",
+      "normalization": {
+        "feature_kind": "continuous",
+        "feature_name": "x",
+        "kind": "min-max",
+        "lower": 40.0,
+        "origin": "caller-declared",
+        "upper": 160.0
+      },
+      "normalization_rule": "minmax",
+      "training_support": {
+        "feature_kind": "continuous",
+        "feature_name": "x",
+        "maximum": 158.0,
+        "minimum": 42.0,
+        "origin": "physical-training-rows"
+      }
+    },
+    {
+      "discrete_values": [
+        "off",
+        "on"
+      ],
+      "feature_name": "activation",
+      "feature_role": "decision",
+      "feature_type": "binary",
+      "mathematical_domain": {
+        "feature_kind": "binary",
+        "feature_name": "activation",
+        "ordering": [
+          "off",
+          "on"
+        ],
+        "origin": "caller-declared",
+        "purpose": "decision-domain",
+        "values": [
+          "off",
+          "on"
+        ]
+      },
+      "modifiable": true,
+      "monotonicity": "none",
+      "normalization": {
+        "feature_kind": "binary",
+        "feature_name": "activation",
+        "kind": "ordered-index",
+        "ordering": [
+          "off",
+          "on"
+        ],
+        "origin": "caller-declared"
+      },
+      "normalization_rule": "binary_index",
+      "ordering": [
+        "off",
+        "on"
+      ],
+      "training_support": {
+        "feature_kind": "binary",
+        "feature_name": "activation",
+        "observed_values": [
+          "off",
+          "on"
+        ],
+        "origin": "physical-training-rows"
+      }
+    },
+    {
+      "discrete_values": [
+        "economy",
+        "standard",
+        "priority"
+      ],
+      "feature_name": "service_tier",
+      "feature_role": "decision",
+      "feature_type": "categorical",
+      "mathematical_domain": {
+        "feature_kind": "categorical",
+        "feature_name": "service_tier",
+        "ordering": [
+          "economy",
+          "standard",
+          "priority"
+        ],
+        "origin": "caller-declared",
+        "purpose": "decision-domain",
+        "values": [
+          "economy",
+          "standard",
+          "priority"
+        ]
+      },
+      "modifiable": true,
+      "monotonicity": "none",
+      "normalization": {
+        "feature_kind": "categorical",
+        "feature_name": "service_tier",
+        "kind": "ordered-index",
+        "ordering": [
+          "economy",
+          "standard",
+          "priority"
+        ],
+        "origin": "caller-declared"
+      },
+      "normalization_rule": "categorical_index",
+      "ordering": [
+        "economy",
+        "standard",
+        "priority"
+      ],
+      "training_support": {
+        "feature_kind": "categorical",
+        "feature_name": "service_tier",
+        "observed_values": [
+          "economy",
+          "standard",
+          "priority"
+        ],
+        "origin": "physical-training-rows"
+      }
+    },
+    {
+      "feature_name": "demand",
+      "feature_role": "metric_target",
+      "feature_type": "continuous",
+      "mathematical_domain": {
+        "feature_kind": "continuous",
+        "feature_name": "demand",
+        "origin": "caller-declared",
+        "purpose": "distribution-support",
+        "shape": "unbounded"
+      },
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization": {
+        "feature_kind": "continuous",
+        "feature_name": "demand",
+        "kind": "identity",
+        "origin": "caller-declared"
+      },
+      "normalization_rule": "identity",
+      "training_support": {
+        "feature_kind": "continuous",
+        "feature_name": "demand",
+        "maximum": 159.0,
+        "minimum": 36.0,
+        "origin": "physical-training-rows"
+      }
+    },
+    {
+      "discrete_values": [
+        0.0,
+        1.0
+      ],
+      "feature_name": "violation",
+      "feature_role": "target",
+      "feature_type": "binary",
+      "mathematical_domain": {
+        "feature_kind": "binary",
+        "feature_name": "violation",
+        "ordering": [
+          0.0,
+          1.0
+        ],
+        "origin": "internal-exact-target",
+        "purpose": "distribution-support",
+        "values": [
+          0.0,
+          1.0
+        ]
+      },
+      "modifiable": false,
+      "monotonicity": "none",
+      "normalization": {
+        "feature_kind": "binary",
+        "feature_name": "violation",
+        "kind": "ordered-index",
+        "ordering": [
+          0.0,
+          1.0
+        ],
+        "origin": "internal-exact-target"
+      },
+      "normalization_rule": "binary_index",
+      "ordering": [
+        0.0,
+        1.0
+      ],
+      "training_support": {
+        "feature_kind": "binary",
+        "feature_name": "violation",
+        "observed_values": [
+          0.0,
+          1.0
+        ],
+        "origin": "physical-training-rows"
+      }
+    }
+  ],
+  "fit_configuration": {
+    "backend_api_version": "1.1.0",
+    "backend_generation": "current-spflow",
+    "backend_name": "spflow",
+    "determinism_configuration": {
+      "canonical_random_seed": 13,
+      "cudnn_benchmark": false,
+      "cudnn_deterministic": true,
+      "numpy_random_seed": 16028,
+      "python_random_seed": 16028,
+      "robustness_random_seeds": [
+        37,
+        101
+      ],
+      "selected_random_seed": 16028,
+      "torch_deterministic_algorithms": true,
+      "torch_device": "cpu",
+      "torch_dtype": "float64",
+      "torch_num_threads": 1,
+      "torch_random_seed": 16028,
+      "torch_version": "2.13.0+cu130"
+    },
+    "execution_mode": "production",
+    "fit_summary": {
+      "likelihood": {
+        "maximum": 30.321353192371173,
+        "mean": -5.345547353500425,
+        "minimum": -11.818098648760872,
+        "shape": [
+          36,
+          1,
+          1,
+          1
+        ],
+        "value_count": 36,
+        "values": [
+          -4.999363186458465,
+          -6.5248849895816035,
+          -6.1887414254440145,
+          -5.460827621269031,
+          -3.462922698194286,
+          -2.6049983068341063,
+          -5.864891340275782,
+          -4.69610125302283,
+          -5.756487465619643,
+          -4.758502967250227,
+          -5.713783991869338,
+          -5.305987861651823,
+          -3.485148244262403,
+          -4.4507116487471325,
+          -6.35965071836494,
+          -2.60843978592783,
+          30.321353192371173,
+          -5.875673337019168,
+          -11.818098648760872,
+          -5.1092998486408225,
+          -9.290685790297818,
+          -5.178539596159696,
+          -8.053009276123408,
+          -6.224445289715231,
+          -7.827077677023141,
+          -6.43071313325707,
+          -8.619272721695143,
+          -9.589069765899609,
+          -7.265818421218027,
+          -7.830906321183731,
+          -6.90355364178279,
+          -9.819013815305249,
+          -6.459040984844227,
+          -7.9072709240015735,
+          -6.569722306995652,
+          -7.7484029136897865
+        ]
+      },
+      "parameters": {
+        "parameter_count": 121,
+        "tensors": [
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.loc",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.9333333333333332,
+              151.66666666666666
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.log_scale",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -2.275551482358908,
+              2.2958735828279755
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1._logits",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.6931471805599452,
+              0.6931471805599452
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.loc",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.7444444444444445,
+              136.66666666666666
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.log_scale",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -1.4850683631825137,
+              2.0526971992043426
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1._logits",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.6931471805599452,
+              0.6931471805599452
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.logits",
+            "shape": [
+              1,
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -0.6931471805599453,
+              -0.6931471805599453
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.loc",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.6416666666666666,
+              121.5
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.log_scale",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -20.72326583694641,
+              -20.72326583694641
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1._logits",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.loc",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.29166666666666663,
+              101.5
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.log_scale",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -20.72326583694641,
+              -20.72326583694641
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1._logits",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              20.723265864228342,
+              20.723265864228342
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.loc",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              0.525
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.log_scale",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              -1.7328679513998633
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1._logits",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              0.0
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs.inputs.2.loc",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              106.5
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs.inputs.2.log_scale",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              1.8506509870562466
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs.inputs.3._logits",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              0.0
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.logits",
+            "shape": [
+              1,
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -0.6931471805599453,
+              -0.6931471805599453
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.logits",
+            "shape": [
+              1,
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -1.0986122886681098,
+              -0.40546510810816444
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.0.logits",
+            "shape": [
+              1,
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -0.6931471805599453,
+              -0.6931471805599453
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.loc",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.38333333333333336,
+              92.0
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.log_scale",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -20.72326583694641,
+              -20.72326583694641
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1._logits",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.loc",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.15833333333333333,
+              86.0
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.log_scale",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -18.420680743952367,
+              -18.420680743952367
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1._logits",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              20.723265864228342,
+              20.723265864228342
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.loc",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.2611111111111111,
+              81.0
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.log_scale",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -1.458700215142042,
+              1.0397207708399179
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1._logits",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -18.420680733952366,
+              0.6931471805599452
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.logits",
+            "shape": [
+              1,
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -1.3862943611198906,
+              -0.2876820724517809
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.logits",
+            "shape": [
+              1,
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -1.0986122886681098,
+              -0.40546510810816444
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.loc",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              0.22083333333333333
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.log_scale",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              -1.7000781285768727
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1._logits",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              0.0
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.2.loc",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              75.0
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.2.log_scale",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              0.3465735902799726
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.3._logits",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              0.0
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.loc",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              0.05416666666666667
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.log_scale",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              -3.1881551840067055
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1._logits",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              0.0
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.2.loc",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              70.5
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.2.log_scale",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              -0.34657359027997275
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.3._logits",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              20.723265864228342
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.logits",
+            "shape": [
+              1,
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -0.6931471805599453,
+              -0.6931471805599453
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.loc",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.21666666666666667,
+              66.33333333333333
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.log_scale",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -2.0598311851031954,
+              1.0797421246766863
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1._logits",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -18.420680733952366,
+              -0.6931471805599454
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.logits",
+            "shape": [
+              1,
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -0.5596157879354228,
+              -0.8472978603872037
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.logits",
+            "shape": [
+              1,
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -0.7731898882334817,
+              -0.6190392084062235
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.loc",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.1416666666666667,
+              59.0
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.log_scale",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -2.0188246092727775,
+              1.0397207708399179
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1._logits",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.6931471805599452,
+              -0.6931471805599454
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.loc",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              0.1125
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.log_scale",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              -4.035453044393909
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1._logits",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              0.0
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.2.loc",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              49.5
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.2.log_scale",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              -0.34657359027997275
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.3._logits",
+            "shape": [
+              1,
+              1,
+              1
+            ],
+            "values": [
+              -18.420680733952366
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.loc",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.11666666666666665,
+              53.333333333333336
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.log_scale",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -2.4652962932113596,
+              0.7702225204735743
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1._logits",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.6931471805599452,
+              -0.6931471805599454
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.logits",
+            "shape": [
+              1,
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -0.916290731874155,
+              -0.5108256237659907
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.logits",
+            "shape": [
+              1,
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -0.9808292530117262,
+              -0.4700036292457356
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.loc",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              0.04722222222222222,
+              40.666666666666664
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.log_scale",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -3.273230694593555,
+              1.8527043780325736
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1._logits",
+            "shape": [
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -0.6931471805599454,
+              -18.420680733952366
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.logits",
+            "shape": [
+              1,
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -0.3184537311185346,
+              -1.2992829841302609
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.inputs.inputs.1.logits",
+            "shape": [
+              1,
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -0.6131044728864089,
+              -0.7801585575495751
+            ]
+          },
+          {
+            "name": "inputs.inputs.0.logits",
+            "shape": [
+              1,
+              2,
+              1,
+              1
+            ],
+            "values": [
+              -1.0986122886681098,
+              -0.40546510810816444
+            ]
+          },
+          {
+            "name": "inputs.inputs.1._logits",
+            "shape": [
+              1,
+              1,
+              1,
+              3
+            ],
+            "values": [
+              -1.0986122886681098,
+              -1.0986122886681098,
+              -1.0986122886681098
+            ]
+          }
+        ]
+      },
+      "structure": {
+        "module_count": 129,
+        "modules": [
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.products.product.Product",
+            "path": "<root>",
+            "query_scope": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs",
+            "query_scope": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.sums.sum.Sum",
+            "path": "inputs.inputs.0",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.sums.sum.Sum",
+            "path": "inputs.inputs.0.inputs.inputs.0",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.sums.sum.Sum",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.products.product.Product",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0",
+            "query_scope": [
+              0,
+              3
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1",
+            "query_scope": [
+              1,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.products.product.Product",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0",
+            "query_scope": [
+              0,
+              3
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1",
+            "query_scope": [
+              1,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.sums.sum.Sum",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.products.product.Product",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0",
+            "query_scope": [
+              0,
+              3
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1",
+            "query_scope": [
+              1,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.sums.sum.Sum",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.products.product.Product",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0",
+            "query_scope": [
+              0,
+              3
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1",
+            "query_scope": [
+              1,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.products.product.Product",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0",
+            "query_scope": [
+              0
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1",
+            "query_scope": [
+              1
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs.inputs.2",
+            "query_scope": [
+              3
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs.inputs.3",
+            "query_scope": [
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.sums.sum.Sum",
+            "path": "inputs.inputs.0.inputs.inputs.1",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.sums.sum.Sum",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.sums.sum.Sum",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.products.product.Product",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0",
+            "query_scope": [
+              0,
+              3
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1",
+            "query_scope": [
+              1,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.sums.sum.Sum",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.products.product.Product",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0",
+            "query_scope": [
+              0,
+              3
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1",
+            "query_scope": [
+              1,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.products.product.Product",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0",
+            "query_scope": [
+              0,
+              3
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1",
+            "query_scope": [
+              1,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.sums.sum.Sum",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.sums.sum.Sum",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.products.product.Product",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0",
+            "query_scope": [
+              0
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1",
+            "query_scope": [
+              1
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.2",
+            "query_scope": [
+              3
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.3",
+            "query_scope": [
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.products.product.Product",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0",
+            "query_scope": [
+              0
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1",
+            "query_scope": [
+              1
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.2",
+            "query_scope": [
+              3
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.3",
+            "query_scope": [
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.products.product.Product",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0",
+            "query_scope": [
+              0,
+              3
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1",
+            "query_scope": [
+              1,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.sums.sum.Sum",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.sums.sum.Sum",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.products.product.Product",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.0",
+            "query_scope": [
+              0,
+              3
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0.inputs.inputs.1",
+            "query_scope": [
+              1,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.sums.sum.Sum",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.products.product.Product",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.0",
+            "query_scope": [
+              0
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1",
+            "query_scope": [
+              1
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.2",
+            "query_scope": [
+              3
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.0.inputs.inputs.3",
+            "query_scope": [
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.products.product.Product",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0",
+            "query_scope": [
+              0,
+              3
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1",
+            "query_scope": [
+              1,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.products.product.Product",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.ops.cat.Cat",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs",
+            "query_scope": [
+              0,
+              1,
+              3,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "torch.nn.modules.container.ModuleList",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs.inputs",
+            "query_scope": []
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.normal.Normal",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs.inputs.0",
+            "query_scope": [
+              0,
+              3
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.bernoulli.Bernoulli",
+            "path": "inputs.inputs.0.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1.inputs.inputs.1",
+            "query_scope": [
+              1,
+              4
+            ]
+          },
+          {
+            "evidence_scope": [],
+            "module_type": "spflow.modules.leaves.categorical.Categorical",
+            "path": "inputs.inputs.1",
+            "query_scope": [
+              2
+            ]
+          }
+        ]
+      }
+    },
+    "input_column_order": [
+      "x",
+      "activation",
+      "service_tier",
+      "demand",
+      "violation"
+    ],
+    "input_row_count": 36,
+    "leaf_families": [
+      "Normal",
+      "Bernoulli",
+      "Categorical"
+    ],
+    "learn_mspn_kwargs": {
+      "min_features_slice": 2,
+      "min_instances_slice": 4,
+      "n_clusters": 2,
+      "threshold": 0.3
+    },
+    "learn_spn_kwargs": {
+      "clustering_args": {
+        "n_clusters": 2
+      },
+      "min_features_slice": 2,
+      "min_instances_slice": 4,
+      "partitioning_args": {
+        "threshold": 0.3
+      }
+    },
+    "notes": [
+      "conditional-mio-embedding-v1",
+      "offline-cpu-current-spflow"
+    ],
+    "training_random_seed": 16028
+  },
+  "fixture_name": "tpm_artifact_conditional_mio_v3",
+  "fixture_status": "active-source-artifact",
+  "notes": [
+    "The source rows are deliberately nonuniform in the retained decision x.",
+    "This artifact is fitted evidence; final max/PWL pair fixtures are published only after mixed symbolic attachment support exists.",
+    "Verification refits and compares semantic values; it does not require pickle-byte identity."
+  ],
+  "payload_hash": "2157d35ec4d18c230e8c01a074dae271c0cb161af1520582325420361bb7bc6f",
+  "provenance": {
+    "artifact_schema_version": "v3",
+    "author": "OpenAI Codex",
+    "backend_api_version": "1.1.0",
+    "backend_generation": "current-spflow",
+    "commercial_solver_required": false,
+    "legacy_evidence_paths": [
+      "legacy/old_tpm/src_py/tpm/data/datahandler.py",
+      "legacy/old_tpm/src_py/tpm/spn/main.py",
+      "legacy/old_tpm/src_py/tpm/spn/encoding.py",
+      "legacy/old_tpm/src_py/utils/densities.py"
+    ],
+    "network_required": false,
+    "origin": "Real current-SPFlow fit from the reviewed nonuniform conditional-MIO physical rows",
+    "python_version": "3.14.6",
+    "refresh_policy": "Stage exactly once in a fresh directory after an intentional reviewed input change; do not retry or adapt after inspecting output.",
+    "retry_policy": "none",
+    "sidecar_sha256": "2157d35ec4d18c230e8c01a074dae271c0cb161af1520582325420361bb7bc6f",
+    "source_fixture": "tests/fixtures/tpm/conditional_mio_embedding_v1.json",
+    "source_fixture_sha256": "394f4ab76de48457f36ea03e451fbb608b66b8660ca1374b92f6260396b110bd",
+    "staging_command": "uv run --offline --locked --no-sync python examples/tpm_planning/run_conditional_mio_embedding.py --stage-fixtures <fresh-directory>",
+    "torch_device": "cpu",
+    "torch_version": "2.13.0+cu130",
+    "training_column_order": [
+      "x",
+      "activation",
+      "service_tier",
+      "demand",
+      "violation"
+    ],
+    "training_dataset_id": "conditional-mio-embedding-v1",
+    "training_random_seed": 16028,
+    "training_row_count": 36,
+    "verification_command": "uv run --offline --locked --no-sync python examples/tpm_planning/run_conditional_mio_embedding.py --verify-fixtures"
+  },
+  "purpose": "Real current-SPFlow schema-v3 source artifact for feature 016 conditional numerator/denominator compilation.",
+  "query_configuration": {
+    "required_decision_features": [
+      "x",
+      "activation",
+      "service_tier"
+    ],
+    "supported_output_modes": [
+      "conditional_probability",
+      "log_likelihood"
+    ]
+  },
+  "schema_version": "v3",
+  "spec_feature": "016-conditional-mio-embedding",
+  "spn_payload": {
+    "backend": "spflow",
+    "locator": "sidecars/tpm_artifact_conditional_mio_v3.spn_payload.pkl",
+    "serialization": "spflow-model-sidecar"
+  },
+  "spn_payload_format": "spflow-model-sidecar",
+  "target_definition": {
+    "event_target_name": "violation",
+    "event_threshold_source": "artifact_rows",
+    "supported_query_mode": "exceedance-probability",
+    "target_name": "demand",
+    "threshold_default": 0.0
+  }
+}

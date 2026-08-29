@@ -34,6 +34,11 @@ FEATURE_014_DOMAIN_MODULES = (
     TARGET_PACKAGE / "planning" / "problem.py",
     TARGET_PACKAGE / "planning" / "workflow.py",
 )
+FEATURE_016_IMPORT_LIGHT_MODULES = (
+    TARGET_PACKAGE / "tpm" / "conditional.py",
+    TARGET_PACKAGE / "tpm" / "conditional_mio.py",
+    TARGET_PACKAGE / "tpm" / "query.py",
+)
 FEATURE_013_OFFLINE_MODULES = (
     TARGET_PACKAGE / "control" / "robust_fcr_bidding.py",
     TARGET_PACKAGE / "control" / "_robust_fcr_formulation.py",
@@ -60,6 +65,18 @@ FEATURE_012_FORBIDDEN_IMPORTS = {
 FEATURE_013_FORBIDDEN_IMPORTS = FEATURE_012_FORBIDDEN_IMPORTS | {
     "highspy",
     "pandas",
+}
+FEATURE_016_FORBIDDEN_IMPORTS = {
+    "IPython",
+    "highspy",
+    "ipykernel",
+    "legacy",
+    "nbclient",
+    "nbformat",
+    "notebook",
+    "pyomo",
+    "spflow",
+    "torch",
 }
 FEATURE_011_FORBIDDEN_IMPORTS = {
     "IPython",
@@ -99,6 +116,17 @@ def _imported_modules(path: Path) -> set[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=path.as_posix())
     imported: set[str] = set()
     for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module is not None:
+            imported.add(node.module)
+    return imported
+
+
+def _top_level_imported_modules(path: Path) -> set[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=path.as_posix())
+    imported: set[str] = set()
+    for node in tree.body:
         if isinstance(node, ast.Import):
             imported.update(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module is not None:
@@ -205,6 +233,27 @@ def test_feature_014_domain_and_planning_modules_import_no_legacy_code() -> None
             offending_files.append(path.as_posix())
 
     assert offending_files == []
+
+
+def test_feature_016_modules_import_no_backend_notebook_or_legacy_code() -> None:
+    violations: dict[str, list[str]] = {}
+    for path in FEATURE_016_IMPORT_LIGHT_MODULES:
+        assert path.is_file(), f"missing Feature 016 module: {path}"
+        imported = _top_level_imported_modules(path)
+        forbidden = sorted(
+            name
+            for name in imported
+            if any(
+                name == blocked or name.startswith(f"{blocked}.")
+                for blocked in FEATURE_016_FORBIDDEN_IMPORTS
+            )
+        )
+        if LEGACY_IMPORT_PATTERN.search(path.read_text(encoding="utf-8")):
+            forbidden.append("legacy-runtime-import")
+        if forbidden:
+            violations[path.as_posix()] = forbidden
+
+    assert violations == {}
 
 
 def test_feature_013_pure_modules_import_no_reference_solver_or_external_data_code() -> None:

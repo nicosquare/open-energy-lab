@@ -6,6 +6,8 @@ import copy
 
 import pytest
 
+import open_energy_lab.planning.piecewise as piecewise_module
+
 from open_energy_lab.planning.piecewise import (
     DEFAULT_EXP_PIECEWISE_DOMAIN_FLOOR,
     PlanningMIOCompatibilityError,
@@ -308,6 +310,98 @@ def test_current_spflow_mio_payload_builds_conditional_planning_models() -> None
     conditional = planning_payload["conditional_models"]
     assert conditional["numerator_model"]["nodes"][-1]["fixed_value"] == 1
     assert conditional["denominator_model"]["nodes"][-1]["fixed_value"] == 0
+
+
+def test_existing_planning_payload_shape_remains_independent_of_composable_records() -> None:
+    compiled = _compiled_mio_payload()
+    before = copy.deepcopy(compiled)
+
+    planning_payload = build_current_spflow_planning_payload(
+        compiled,
+        approximation_metadata={
+            "compiler_version": "spflow-v1-mio-v1",
+            "mio_epsilon": 1e-6,
+        },
+        decision_features=("battery_capacity_kwh",),
+        event_target_name="shortfall_event",
+        chance_limit_epsilon=0.3,
+        shortfall_threshold=0.08,
+        payload_locator="sidecars/model.pkl",
+    )
+
+    assert compiled == before
+    assert set(planning_payload) == {
+        "source",
+        "payload_locator",
+        "decision_features",
+        "chance_limit_epsilon",
+        "target_threshold",
+        "shortfall_threshold",
+        "event_target_name",
+        "feature_schema",
+        "fitted_artifact_schema_version",
+        "compiled_validity",
+        "sum_encoding_mode",
+        "compiler_version",
+        "compiler_schema_version",
+        "compiled_mio",
+        "conditional_models",
+    }
+    assert "pair_id" not in planning_payload
+    assert "attachment" not in planning_payload
+    assert planning_payload["conditional_models"]["numerator_model"]["nodes"][-1][
+        "fixed_value"
+    ] == 1
+    assert planning_payload["conditional_models"]["denominator_model"]["nodes"][-1][
+        "fixed_value"
+    ] == 0
+
+
+def test_current_planning_conditioner_delegates_to_shared_tpm_primitive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, object]] = []
+
+    def fake_conditioner(compiled, **kwargs):
+        calls.append({"compiled": compiled, **kwargs})
+        return {
+            "root_id": 0,
+            "nodes": [
+                {
+                    "id": 0,
+                    "type": "leaf_binary",
+                    "feature_name": "__marginalized_constant__",
+                    "densities": [1.0, 1.0],
+                    "fixed_value": 0,
+                }
+            ],
+        }
+
+    monkeypatch.setattr(
+        piecewise_module,
+        "condition_compiled_spflow_mio",
+        fake_conditioner,
+    )
+    compiled = _compiled_mio_payload()
+
+    payload = build_current_spflow_planning_payload(
+        compiled,
+        approximation_metadata={
+            "compiler_version": "spflow-v1-mio-v1",
+            "mio_epsilon": 1e-6,
+        },
+        decision_features=("battery_capacity_kwh",),
+        event_target_name="shortfall_event",
+        chance_limit_epsilon=0.3,
+        shortfall_threshold=0.08,
+        payload_locator="sidecars/model.pkl",
+    )
+
+    assert len(calls) == 2
+    assert [call["event_value_index"] for call in calls] == [1, None]
+    assert all(call["compatibility_mode"] == "planning-v1" for call in calls)
+    assert all(call["compiled"] is not compiled for call in calls)
+    assert payload["conditional_models"]["numerator_model"]["root_id"] == 0
 
 
 @pytest.mark.parametrize(
