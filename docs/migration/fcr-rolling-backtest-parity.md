@@ -451,3 +451,30 @@ migration documentation contracts completed with `22 passed in 0.10s`, and
 `git diff --check` was clean. The final Phase 10 diff was limited to the
 Feature 015 quickstart, this validation ledger, and task completion evidence;
 neither `baselines/robust_storage_bidding` nor `legacy/*` was modified.
+
+### Phase 11 — source-only visual walkthrough follow-up
+
+The Feature 015 example now includes
+`examples/fcr_rolling_backtest/fcr_rolling_backtest_walkthrough.ipynb`. The
+offline default builds all five profile manifests, executes the lightweight
+four-day Script 13 study with required HiGHS, and delegates every realized
+state, settlement, and profit value to Feature 012. It also performs a real
+two-day checkpoint/resume demonstration and inspects all twenty records in the
+committed normalized Julia/Gurobi fixture. Research-scale all-profile solving,
+the native reference benchmark, explicit external-activation verification,
+and figure export remain disabled by default.
+
+Markdown equations document the uncertainty-budget derivation, midnight
+state handoff, three-decimal precision envelope, 08:00 accepted fixings,
+causal half-open cutoff, and ex-ante/ex-post economic boundary. Seven figures
+use explicit kW, kWh, EUR, time, or categorical axes; no normalized deviation
+is plotted as though it had an energy unit. The committed notebook retains
+stable cell IDs, empty outputs, and no execution counts.
+
+Notebook source and guarded offline execution contracts completed with
+`7 passed`. The focused Feature 015 source-documentation, lazy-import,
+no-legacy/no-baseline, fixture-provenance, and migration-policy regression
+selection completed with `128 passed`. The execution contract blocks network
+and credential access, verifies the pinned display fingerprint, preserves the
+committed notebook bytes, and confirms that default execution exports no
+files.

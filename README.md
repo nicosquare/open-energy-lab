@@ -85,6 +85,7 @@ service capabilities remain outside the routine environment and import path.
 - [Feature 015 routine and research quickstart](specs/015-fcr-rolling-backtest-parity/quickstart.md)
 - [Rolling FCR parity and validation ledger](docs/migration/fcr-rolling-backtest-parity.md)
 - [Rolling FCR study and reference workflows](examples/fcr_rolling_backtest/README.md)
+- [Source-only rolling FCR walkthrough notebook](examples/fcr_rolling_backtest/fcr_rolling_backtest_walkthrough.ipynb)
 - [Fixture provenance rules](tests/fixtures/README.md)
 - [Active Spec Kit plan](specs/015-fcr-rolling-backtest-parity/plan.md)
 

@@ -81,7 +81,8 @@ unrounded solver-proof or full-trace equality.
   [rolling evidence ledger](../migration/fcr-rolling-backtest-parity.md), and
   [routine/research quickstart](../../specs/015-fcr-rolling-backtest-parity/quickstart.md).
 - Examples: [authored studies, fixture normalization, bounded benchmark,
-  external replay, and resumable full-history paths](../../examples/fcr_rolling_backtest/README.md).
+  external replay, and resumable full-history paths](../../examples/fcr_rolling_backtest/README.md),
+  plus the [source-only visual walkthrough](../../examples/fcr_rolling_backtest/fcr_rolling_backtest_walkthrough.ipynb).
 
 Each manifest represents exactly one executable profile: scripts 11–15 cover
 independent reset, diagnostic relaxation, exact-zero-FCR arbitrage, 08:00

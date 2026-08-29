@@ -22,6 +22,30 @@ complete activation CSV remain outside the committed fixture tree. The
 normalized fixture records evidence strength: source-rounded schedules and
 time-limited incumbents are not presented as proven optimal parity.
 
+## Source-only walkthrough notebook
+
+[`fcr_rolling_backtest_walkthrough.ipynb`](fcr_rolling_backtest_walkthrough.ipynb)
+is the visual research walkthrough for Feature 015. It builds all five
+profile manifests and, by default, solves the lightweight four-day Script 13
+study so midnight carry-over, Feature 012 replay, settlement, and semantic
+fingerprints remain quick to inspect. It also visualizes source-compatible
+versus full-precision state handoff, the 08:00 fixed overlap, causal cutoffs,
+ex-ante versus ex-post economics, lifecycle edges, and the bounded normalized
+Julia/Gurobi evidence with explicit units.
+
+Install the optional notebook group and start it from the repository root:
+
+```bash
+uv sync --group notebook
+uv run jupyter lab \
+  examples/fcr_rolling_backtest/fcr_rolling_backtest_walkthrough.ipynb
+```
+
+The committed notebook is source-only with empty outputs. All-profile native
+solves, the bounded reference benchmark, the external activation path, and
+figure export are disabled by default. Enabling the all-profile solve can be
+slow because the mixed-binary cases may use their full per-day time limits.
+
 ## Authored offline studies
 
 From the repository root, run all five profiles as separate manifests and

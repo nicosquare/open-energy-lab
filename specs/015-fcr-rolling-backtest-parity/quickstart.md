@@ -65,6 +65,20 @@ duration. They never solve all four reference dates at full size.
 
 ## 3. Run an authored offline rolling study
 
+For a visual, source-only walkthrough with the important equations, unit-labelled
+figures, and optional research toggles, install the notebook group and open:
+
+```bash
+uv sync --group notebook
+uv run jupyter lab \
+  examples/fcr_rolling_backtest/fcr_rolling_backtest_walkthrough.ipynb
+```
+
+The default notebook executes only the lightweight four-day Script 13 study;
+it still builds all five profile contracts and inspects all twenty normalized
+source records. All-profile native solving, external activation verification,
+the native reference benchmark, and figure export remain disabled by default.
+
 ```bash
 uv run python examples/fcr_rolling_backtest/run_authored_study.py
 ```
