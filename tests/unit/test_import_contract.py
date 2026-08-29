@@ -18,14 +18,23 @@ OPTIONAL_RESEARCH_MODULES = {
 }
 
 EXPECTED_CONTROL_EXPORTS = sorted([
+    "AGGREGATION_POLICY",
     "AFRRBaselineConfig",
     "AFRRBaselineMode",
     "ArbitrageOnlyBaselineConfig",
     "BaselineScheduleBundle",
     "BidPlanProducer",
+    "AcceptedBidPolicy",
+    "AggregateMetricEvidence",
+    "CallerSuppliedRollingState",
+    "ContinuitySegment",
     "ConstraintFamilyResidual",
     "DirectionalCapacityCommitmentInterval",
     "DirectionalCapacitySchedule",
+    "DeliveryDateClassification",
+    "DeliveryDateRecordEnvelope",
+    "FAILURE_POLICY_COUPLED",
+    "FAILURE_POLICY_INDEPENDENT",
     "FCRBidPlanValidationError",
     "FeasibilityAudit",
     "FixedFCRBidPlan",
@@ -42,12 +51,14 @@ EXPECTED_CONTROL_EXPORTS = sorted([
     "PriceThresholdController",
     "RegulationOnlyBaselineConfig",
     "RecoveryWindowActivationBudget",
+    "RESUME_POLICY",
     "RestorationBaselineBundle",
     "RestorationCapability",
     "RestorationControlValidationError",
     "RestorationEnergyBaselineInterval",
     "RestorationEnergyBaselineSchedule",
     "RobustFCRBatteryParameters",
+    "RobustFCRAcceptedDecisionFixings",
     "RobustFCRBiddingProblem",
     "RobustFCRBoundComparison",
     "RobustFCRDecisions",
@@ -55,6 +66,8 @@ EXPECTED_CONTROL_EXPORTS = sorted([
     "RobustFCRPriceInputs",
     "RobustFCRReferenceComparison",
     "RobustFCRReferenceFixture",
+    "RobustFCRRollingBiddingProblem",
+    "RobustFCRRollingSolveResult",
     "RobustFCRSolvePolicy",
     "RobustFCRSolveResult",
     "RobustFCRSolverDependencyUnavailableError",
@@ -62,6 +75,21 @@ EXPECTED_CONTROL_EXPORTS = sorted([
     "RobustFCRTimeContract",
     "RobustFCRUncertaintyProfile",
     "RobustFCRValidationError",
+    "RollingFCRBatteryBinding",
+    "RollingFCRDataDescriptor",
+    "RollingFCRDayInput",
+    "RollingFCRDayRevision",
+    "RollingFCRExperimentProfile",
+    "RollingFCRNumericPolicy",
+    "RollingFCRReferenceComparison",
+    "RollingFCRReferenceFieldResult",
+    "RollingFCRReferenceFixture",
+    "RollingFCRResumeEvidence",
+    "RollingFCRStateCarryEvidence",
+    "RollingFCRStateLink",
+    "RollingFCRStudyManifest",
+    "RollingFCRStudyResult",
+    "RollingFCRValidationError",
     "SerializedScheduleReference",
     "SocGuardrailConfig",
     "SocGuardrailController",
@@ -80,13 +108,25 @@ EXPECTED_CONTROL_EXPORTS = sorted([
     "build_restoration_capability",
     "build_robust_fcr_bidding_problem",
     "build_robust_fcr_reference_problem",
+    "build_robust_fcr_rolling_problem",
     "build_robust_fcr_time_contract",
+    "build_rolling_fcr_experiment_profile",
+    "build_rolling_fcr_study_manifest",
+    "aggregate_rolling_fcr_records",
+    "assess_rolling_fcr_resume",
     "build_stacked_heuristic_baseline",
     "compare_robust_fcr_bounds",
     "compare_robust_fcr_reference",
+    "compare_rolling_fcr_reference",
     "derive_non_intraday_horizon_budget",
+    "derive_rolling_fcr_state_carry",
+    "load_rolling_fcr_study_result",
+    "extract_accepted_predecessor_fixings",
     "load_robust_fcr_reference_fixture",
+    "load_rolling_fcr_reference_fixture",
+    "run_rolling_fcr_study",
     "solve_robust_fcr_bid",
+    "solve_robust_fcr_rolling_bid",
 ])
 EXPECTED_VISUALIZATION_EXPORTS = [
     "build_inspection_view",
@@ -390,6 +430,87 @@ def test_feature_013_public_imports_have_exact_owners_and_stay_solver_lazy():
         "highspy",
         "julia",
         "juliacall",
+        "pandas",
+        "pyomo",
+    }
+    assert forbidden.isdisjoint(
+        {name.split(".", 1)[0] for name in newly_loaded}
+    )
+
+
+def test_feature_015_public_imports_have_exact_owners_and_stay_solver_lazy():
+    before_import = set(sys.modules)
+    control = importlib.import_module("open_energy_lab.control")
+    market = importlib.import_module("open_energy_lab.market")
+    simulator = importlib.import_module("open_energy_lab.simulator")
+    study_owner = "open_energy_lab.control.fcr_rolling_backtest"
+    rolling_owner = "open_energy_lab.control.robust_fcr_rolling"
+    reference_owner = "open_energy_lab.control.fcr_rolling_reference"
+    expected = {
+        control.AcceptedBidPolicy: study_owner,
+        control.AggregateMetricEvidence: study_owner,
+        control.CallerSuppliedRollingState: study_owner,
+        control.ContinuitySegment: study_owner,
+        control.DeliveryDateClassification: study_owner,
+        control.DeliveryDateRecordEnvelope: study_owner,
+        control.RollingFCRBatteryBinding: study_owner,
+        control.RollingFCRDataDescriptor: study_owner,
+        control.RollingFCRDayInput: study_owner,
+        control.RollingFCRDayRevision: study_owner,
+        control.RollingFCRExperimentProfile: study_owner,
+        control.RollingFCRNumericPolicy: study_owner,
+        control.RollingFCRResumeEvidence: study_owner,
+        control.RollingFCRStateCarryEvidence: study_owner,
+        control.RollingFCRStateLink: study_owner,
+        control.RollingFCRStudyManifest: study_owner,
+        control.RollingFCRStudyResult: study_owner,
+        control.RollingFCRValidationError: study_owner,
+        control.aggregate_rolling_fcr_records: study_owner,
+        control.assess_rolling_fcr_resume: study_owner,
+        control.build_rolling_fcr_experiment_profile: study_owner,
+        control.build_rolling_fcr_study_manifest: study_owner,
+        control.derive_rolling_fcr_state_carry: study_owner,
+        control.load_rolling_fcr_study_result: study_owner,
+        control.run_rolling_fcr_study: study_owner,
+        control.RobustFCRAcceptedDecisionFixings: rolling_owner,
+        control.RobustFCRRollingBiddingProblem: rolling_owner,
+        control.RobustFCRRollingSolveResult: rolling_owner,
+        control.build_robust_fcr_rolling_problem: rolling_owner,
+        control.extract_accepted_predecessor_fixings: rolling_owner,
+        control.solve_robust_fcr_rolling_bid: rolling_owner,
+        control.RollingFCRReferenceComparison: reference_owner,
+        control.RollingFCRReferenceFieldResult: reference_owner,
+        control.RollingFCRReferenceFixture: reference_owner,
+        control.compare_rolling_fcr_reference: reference_owner,
+        control.load_rolling_fcr_reference_fixture: reference_owner,
+        market.slice_regulation_activation_trace: (
+            "open_energy_lab.market.activation"
+        ),
+        simulator.FCRAcceptedPlanSegment: (
+            "open_energy_lab.simulator.fcr_rolling_evaluation"
+        ),
+        simulator.FCRSegmentedEvaluationReport: (
+            "open_energy_lab.simulator.fcr_rolling_evaluation"
+        ),
+        simulator.evaluate_fixed_fcr_bid_segments: (
+            "open_energy_lab.simulator.fcr_rolling_evaluation"
+        ),
+        simulator.build_accepted_plan_market_context: (
+            "open_energy_lab.simulator.fcr_bid_evaluation"
+        ),
+    }
+
+    assert {value: value.__module__ for value in expected} == expected
+    assert control.AGGREGATION_POLICY == "coverage-labelled-no-zero-fill-v1"
+    assert control.RESUME_POLICY == "exact-semantic-evidence-v1"
+    newly_loaded = set(sys.modules) - before_import
+    forbidden = {
+        "baselines",
+        "gurobipy",
+        "highspy",
+        "julia",
+        "juliacall",
+        "legacy",
         "pandas",
         "pyomo",
     }

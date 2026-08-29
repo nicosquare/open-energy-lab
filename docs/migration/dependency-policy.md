@@ -328,6 +328,58 @@ no native tolerance, time-limit, seed, incumbent-acceptance, or comparison
 policy. The full selected benchmark supplies the complete
 `native-reference-benchmark-highs-v1` policy and its fingerprint independently.
 
+## Rolling FCR Backtest Parity Classification
+
+Feature `015-fcr-rolling-backtest-parity` adds zero required or core
+dependencies. It reuses the exact Pyomo `6.10.1`, highspy `1.15.1`, and
+optional gurobipy `13.0.2` pins already governed for Feature 013. Rolling
+contracts, fixture loading/comparison, persistence, aggregation, resume, and
+package-root imports remain usable without loading a solver backend.
+
+```text
+Dependency: Pyomo 6.10.1 and highspy 1.15.1
+Requested by: bounded Feature 015 exact-zero-FCR, restriction, relaxation, midnight-carry, and 08:00 fixed-overlap solves
+Target module: src/open_energy_lab/control/_fcr_rolling_orchestrator.py, src/open_energy_lab/control/robust_fcr_rolling.py, and shared private Feature 013 formulation/solver adapters
+Classification: required, unchanged from Features 009 and 013
+Import boundary: loaded only after an explicit rolling solve; package roots, pure manifests/results, normalized fixtures, persistence, resume inspection, and comparison stay backend-free
+Install mechanism: existing `uv sync --dev`; no Feature 015 dependency addition
+Fallback or skip behavior: missing or incompatible Pyomo/HiGHS fails required-backend validation; it never becomes a successful skip and never falls back to Gurobi
+External service, license, hardware, or scheduler assumptions: offline one-thread CPU only
+Rationale: the rolling layer must reuse the governed optimizer rather than create a second solver or equation stack
+Alternatives considered: eager solver imports, a new rolling optimizer dependency, and weakening required HiGHS checks were rejected
+```
+
+```text
+Dependency: Gurobi/gurobipy 13.0.2
+Requested by: explicitly selected rolling benchmark research evidence where the implemented formulation adapter supports it
+Target module: shared src/open_energy_lab/control/_robust_fcr_solver.py adapter and examples/fcr_rolling_backtest/run_reference_benchmark.py
+Classification: optional and license-backed, unchanged from Feature 013
+Import boundary: package and license are probed only after explicit solver_name="gurobi" selection
+Install mechanism: `uv sync --dev --extra gurobi` plus a caller-managed valid license
+Fallback or skip behavior: report structured package/license/formulation unavailability; never substitute HiGHS after Gurobi selection and never weaken routine evidence
+External service, license, hardware, or scheduler assumptions: compatible local binary and license for the selected check only
+Rationale: source-family research can reduce solver uncertainty without turning a commercial backend into an acceptance dependency
+Alternatives considered: mandatory Gurobi and silent solver fallback were rejected
+```
+
+```text
+Dependency: normalized rolling fixture and caller-owned research artifacts
+Requested by: bounded source comparison, optional external activation replay, and research-only full-history execution
+Target module: committed tests/fixtures/fcr_rolling_backtest JSON; explicit example/marker paths for raw evidence, activation CSV, and resumable outputs
+Classification: committed derived fixture plus optional external or research-only artifacts
+Import boundary: production and routine tests never resolve baselines, raw JSON/logs, workbook, external CSV, credentials, or caller-local paths; only the explicit digest-pinned normalizer or selected research command may receive them
+Install mechanism: no dependency installation; caller supplies governed bytes beneath ignored artifacts or another explicit path
+Fallback or skip behavior: routine fixture comparison remains available; selected external evidence skips or reports unavailability actionably and never downloads, searches, infers, or substitutes data
+External service, license, hardware, or scheduler assumptions: none for routine validation; selected research evidence may require local licensed/data resources
+Rationale: small provenance-rich derived evidence supports offline review while raw and non-redistributable material stays outside the package
+Alternatives considered: runtime baseline reads, committing raw outputs, credential inspection, and automatic data discovery were rejected
+```
+
+The 1,453-date workflow and complete four-date benchmark are resource policies,
+not new dependencies or release gates. Their output belongs beneath ignored
+caller-owned research paths and never enters wheels, sdists, package imports,
+or routine CI.
+
 ## Native Controller Pack Classification
 
 The `005-controller-pack` feature extends the stable control surface without

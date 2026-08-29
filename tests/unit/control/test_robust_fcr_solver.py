@@ -591,3 +591,36 @@ def test_result_contract_enforces_formulation_deployability_roles() -> None:
         replace(relaxation, deployability_status="eligible")
     with pytest.raises(ValueError, match="only an eligible restriction"):
         replace(relaxation, deployable_plan=eligible.deployable_plan)
+
+
+def test_feature_015_refactor_guard_preserves_controlled_result_and_plan() -> None:
+    """Freeze canonical decisions, schedules, result identity, and eligibility."""
+
+    result = _finalize(_raw_result(witness=_zero_witness()))
+    plan = result.deployable_plan
+
+    assert result.deployability_status == "eligible"
+    assert result.deployability_reasons == ()
+    assert plan is not None
+    assert result.decisions.energy_baseline_charge_positive_kw == (0.0,) * 24
+    assert result.decisions.fcr_capacity_kw == (0.0,) * 6
+    assert (
+        result.decisions.decision_vector_fingerprint
+        == "a00a601eb3cdd1acabf87e3c58c75233b9af3c109675c5d41af0a797bc5a180c"
+    )
+    assert (
+        result.semantic_result_fingerprint
+        == "15f1f5077033ecd7b7c2261bed82706ad26b56ead7c4f6889ab87e2f74ea2cae"
+    )
+    assert (
+        plan.energy_schedule.schedule_fingerprint
+        == "1e83cf52c59b1b85d6796bc063ef1d9f90b94d22fe076d58b30ca190debb73b2"
+    )
+    assert (
+        plan.fcr_schedule.schedule_fingerprint
+        == "1d1f4651e2bf2a691d227cdf3c7c315d558e798d7f24e510dc470d4a9f9a110a"
+    )
+    assert (
+        plan.plan_fingerprint
+        == "e81de0cad18c716aa8476883e90477e5a7dd056678bfe8391b9446be031d06e7"
+    )

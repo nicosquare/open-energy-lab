@@ -31,7 +31,11 @@ FEATURE_010_DEFAULT_SETTLEMENT_PROFILE = "feature-010-default-v1"
 REFERENCE_SETTLEMENT_PROFILE = "robust-storage-bidding-reference-settlement-v1"
 
 _SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
-_CONTEXT_KINDS = {"feature_010_market_artifact", "reference_result"}
+_CONTEXT_KINDS = {
+    "accepted_plan",
+    "feature_010_market_artifact",
+    "reference_result",
+}
 _SETTLEMENT_PROFILES = {
     FEATURE_010_DEFAULT_SETTLEMENT_PROFILE,
     REFERENCE_SETTLEMENT_PROFILE,
@@ -239,7 +243,8 @@ class EvaluationMarketContext:
     def __post_init__(self) -> None:
         if self.context_kind not in _CONTEXT_KINDS:
             raise FCRBidEvaluationValidationError(
-                "context kind must be feature_010_market_artifact or reference_result"
+                "context kind must be accepted_plan, feature_010_market_artifact, "
+                "or reference_result"
             )
         object.__setattr__(
             self,
@@ -392,6 +397,207 @@ def build_feature_010_market_context(
         fcr_capacity_prices=fcr_prices,
         accepted_bid_evidence=accepted,
         source_fingerprints={"market_artifact": market_artifact.artifact_fingerprint},
+    )
+
+
+def _accepted_policy_payload(acceptance_policy: object) -> dict[str, object]:
+    if isinstance(acceptance_policy, Mapping):
+        payload = {str(key): value for key, value in acceptance_policy.items()}
+    elif hasattr(acceptance_policy, "to_dict"):
+        raw = acceptance_policy.to_dict()
+        if not isinstance(raw, Mapping):
+            raise FCRBidEvaluationValidationError(
+                "acceptance policy to_dict() must return a mapping"
+            )
+        payload = {str(key): value for key, value in raw.items()}
+    else:
+        raise FCRBidEvaluationValidationError(
+            "acceptance_policy must be a validated accepted-bid policy"
+        )
+    expected_fingerprint = _sha256(
+        payload.get("policy_fingerprint"),
+        field_name="acceptance policy fingerprint",
+    )
+    semantic_payload = {
+        key: value for key, value in payload.items() if key != "policy_fingerprint"
+    }
+    if _fingerprint(semantic_payload) != expected_fingerprint:
+        raise FCRBidEvaluationValidationError(
+            "acceptance policy fingerprint does not match its semantic content"
+        )
+    policy_id = _non_empty(payload.get("policy_id"), field_name="acceptance policy_id")
+    kind = payload.get("kind")
+    if kind not in {"assumed_accepted", "evidence_backed_accepted"}:
+        raise FCRBidEvaluationValidationError(
+            "acceptance policy kind must be assumed_accepted or evidence_backed_accepted"
+        )
+    if payload.get("reject_system_volume_as_individual_evidence") is not True:
+        raise FCRBidEvaluationValidationError(
+            "acceptance policy must reject system-wide volume as individual acceptance"
+        )
+    normalized = {
+        **semantic_payload,
+        "policy_id": policy_id,
+        "kind": kind,
+        "policy_fingerprint": expected_fingerprint,
+    }
+    if kind == "assumed_accepted":
+        normalized["assumption_statement"] = _non_empty(
+            payload.get("assumption_statement"),
+            field_name="accepted-bid assumption statement",
+        )
+        if payload.get("evidence_descriptor") is not None:
+            raise FCRBidEvaluationValidationError(
+                "assumed acceptance must not claim observed award evidence"
+            )
+    else:
+        descriptor = payload.get("evidence_descriptor")
+        if not isinstance(descriptor, Mapping):
+            raise FCRBidEvaluationValidationError(
+                "evidence-backed acceptance requires an individual award descriptor"
+            )
+        descriptor_kind = descriptor.get("kind")
+        if descriptor_kind == "system_wide_contracted_reserve_volume":
+            raise FCRBidEvaluationValidationError(
+                "system-wide contracted reserve volume is not individual acceptance evidence"
+            )
+        if descriptor_kind != "individual_bid_award":
+            raise FCRBidEvaluationValidationError(
+                "evidence-backed acceptance requires individual acceptance evidence"
+            )
+        _sha256(
+            descriptor.get("content_fingerprint"),
+            field_name="individual award descriptor content_fingerprint",
+        )
+        normalized["evidence_descriptor"] = dict(descriptor)
+    return normalized
+
+
+def build_accepted_plan_market_context(
+    *,
+    plan: FixedFCRBidPlan,
+    period: CanonicalInterval,
+    day_ahead_prices_eur_per_kwh: Sequence[float],
+    fcr_capacity_prices_eur_per_kw_block: Sequence[float],
+    acceptance_policy: object,
+    source_fingerprints: Mapping[str, str],
+) -> EvaluationMarketContext:
+    """Bind explicit individual-plan acceptance and converted settlement prices."""
+
+    if not isinstance(plan, FixedFCRBidPlan):
+        raise FCRBidEvaluationValidationError("plan must be one FixedFCRBidPlan")
+    if not isinstance(period, CanonicalInterval):
+        raise FCRBidEvaluationValidationError("period must be a CanonicalInterval")
+    plan_period = plan.energy_schedule.covered_period
+    if (
+        period.start_utc < plan_period.start_utc
+        or period.end_utc > plan_period.end_utc
+    ):
+        raise FCRBidEvaluationValidationError(
+            "accepted-plan market period must remain inside the plan period"
+        )
+    energy_intervals = tuple(
+        item
+        for item in plan.energy_schedule.intervals
+        if item.interval.start_utc >= period.start_utc
+        and item.interval.end_utc <= period.end_utc
+    )
+    fcr_intervals = tuple(
+        item
+        for item in plan.fcr_schedule.intervals
+        if item.interval.start_utc >= period.start_utc
+        and item.interval.end_utc <= period.end_utc
+    )
+    if (
+        not energy_intervals
+        or energy_intervals[0].interval.start_utc != period.start_utc
+        or energy_intervals[-1].interval.end_utc != period.end_utc
+    ):
+        raise FCRBidEvaluationValidationError(
+            "accepted-plan period must have exact hourly schedule coverage"
+        )
+    if (
+        not fcr_intervals
+        or fcr_intervals[0].interval.start_utc != period.start_utc
+        or fcr_intervals[-1].interval.end_utc != period.end_utc
+    ):
+        raise FCRBidEvaluationValidationError(
+            "accepted-plan period must have exact four-hour FCR coverage"
+        )
+    day_values = tuple(day_ahead_prices_eur_per_kwh)
+    fcr_values = tuple(fcr_capacity_prices_eur_per_kw_block)
+    if len(day_values) != len(energy_intervals):
+        raise FCRBidEvaluationValidationError(
+            "day-ahead prices must match accepted hourly plan coverage"
+        )
+    if len(fcr_values) != len(fcr_intervals):
+        raise FCRBidEvaluationValidationError(
+            "FCR prices must match accepted four-hour plan coverage"
+        )
+    policy = _accepted_policy_payload(acceptance_policy)
+    day_prices = tuple(
+        EvaluationPriceObservation(
+            interval=item.interval,
+            price_kind="day_ahead_energy",
+            source_value=_finite(value, field_name=f"day-ahead price {index}"),
+            source_unit="EUR/kWh",
+            canonical_value=(
+                1000.0 * _finite(value, field_name=f"day-ahead price {index}")
+            ),
+            canonical_unit="EUR/MWh",
+            conversion_id="eur-per-kwh-to-eur-per-mwh-times-1000-v1",
+            source_ref=f"accepted_plan_day_ahead_price:{index}",
+        )
+        for index, (item, value) in enumerate(
+            zip(energy_intervals, day_values, strict=True)
+        )
+    )
+    fcr_prices = tuple(
+        EvaluationPriceObservation(
+            interval=item.interval,
+            price_kind="fcr_capacity",
+            source_value=_finite(value, field_name=f"FCR capacity price {index}"),
+            source_unit="EUR/kW/block",
+            canonical_value=_finite(value, field_name=f"FCR capacity price {index}"),
+            canonical_unit="EUR/kW/block",
+            conversion_id="accepted-plan-fcr-block-price-identity-v1",
+            source_ref=item.price_observation_ref,
+        )
+        for index, (item, value) in enumerate(
+            zip(fcr_intervals, fcr_values, strict=True)
+        )
+    )
+    evidence_kind = str(policy["kind"])
+    accepted = {
+        item.volume_observation_ref: {
+            "capacity_kw": item.capacity_kw,
+            "unit": "kW",
+            "evidence_kind": evidence_kind,
+            "plan_fingerprint": plan.plan_fingerprint,
+            "acceptance_policy_id": policy["policy_id"],
+            "acceptance_policy_fingerprint": policy["policy_fingerprint"],
+            "evidence_descriptor": policy.get("evidence_descriptor"),
+            "assumption_statement": policy.get("assumption_statement"),
+        }
+        for item in fcr_intervals
+    }
+    if not isinstance(source_fingerprints, Mapping):
+        raise FCRBidEvaluationValidationError(
+            "source_fingerprints must be a mapping"
+        )
+    combined_sources = {
+        **{str(key): value for key, value in source_fingerprints.items()},
+        "accepted_plan": plan.plan_fingerprint,
+        "acceptance_policy": str(policy["policy_fingerprint"]),
+    }
+    return EvaluationMarketContext(
+        context_kind="accepted_plan",
+        semantics_version="feature-015-accepted-plan-market-context-v1",
+        period=period,
+        day_ahead_prices=day_prices,
+        fcr_capacity_prices=fcr_prices,
+        accepted_bid_evidence=accepted,
+        source_fingerprints=combined_sources,
     )
 
 
@@ -2102,6 +2308,7 @@ __all__ = [
     "ReferenceComparisonReport",
     "ReferenceFieldComparison",
     "InvalidCommitmentDiagnosticReport",
+    "build_accepted_plan_market_context",
     "build_feature_010_market_context",
     "build_settled_evaluation_report",
     "build_validation_failed_evaluation_report",

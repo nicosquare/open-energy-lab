@@ -318,3 +318,27 @@ def test_price_values_from_shared_mapping_are_not_mutated() -> None:
     original = dict(values)
     build_authored_problem()
     assert values == original
+
+
+def test_feature_015_refactor_guard_preserves_ordinary_problem_identity() -> None:
+    """Freeze Feature 013's governed public 24/96/6 problem before reuse."""
+
+    problem = build_authored_problem()
+
+    assert len(problem.time_contract.planning_intervals) == 96
+    assert len(problem.time_contract.energy_intervals) == 24
+    assert len(problem.time_contract.fcr_intervals) == 6
+    assert len(problem.prices.day_ahead_energy_prices_eur_per_kwh) == 24
+    assert len(problem.prices.fcr_capacity_prices_eur_per_kw_block) == 6
+    assert (
+        problem.problem_fingerprint
+        == "60096175d66da13ee99eac05b0680a040e7d8dd15f8ebd6f9aca3f8f0a4c1a62"
+    )
+    assert (
+        problem.comparison_problem_fingerprint
+        == "8b5b362db4bed3af10a3026ff678b3cc338e3ee96da134d0f432817e4968da52"
+    )
+    assert (
+        problem.time_contract.time_contract_fingerprint
+        == "9d584023b06e5a6f5ea4e475cd9aa49d1a4d63b0edef9aafb7c4181e78d63c56"
+    )

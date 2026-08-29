@@ -25,6 +25,7 @@ if TYPE_CHECKING:
         UnsupportedActivationSchemaError,
         import_regulation_activation_trace,
         load_regulation_activation_trace,
+        slice_regulation_activation_trace,
         write_regulation_activation_trace,
     )
     from .artifact import (
@@ -174,6 +175,10 @@ _EXPORT_MAP = {
     "load_regulation_activation_trace": (
         "activation",
         "load_regulation_activation_trace",
+    ),
+    "slice_regulation_activation_trace": (
+        "activation",
+        "slice_regulation_activation_trace",
     ),
     "write_regulation_activation_trace": (
         "activation",

@@ -78,6 +78,31 @@ solver, Julia, network, or credential action. `pyproject.toml` needs no Feature
 013 dependency change because Pyomo 6.10.1 and highspy 1.15.1 are already
 locked required dependencies.
 
+## Feature 015 Rolling FCR Reference Fixture
+
+```text
+Fixture path: tests/fixtures/fcr_rolling_backtest/robust_storage_bidding_experiments_01_05_2023-06-17_20_v1.json
+Purpose: normalized offline comparison evidence for all five non-intraday executable profiles over the bounded 2023-06-17 through 2023-06-20 Julia/Gurobi rerun
+Origin: robust-storage-bidding revision 7e44738bb30e5c8204efe40103b9be4c2203685c plus caller-generated scripts 11 through 15 JSON and retained log evidence
+Source legacy path or generation script: baselines/robust_storage_bidding/results/01 through 05, corresponding generated logs below baselines/robust_storage_bidding/code, and examples/fcr_rolling_backtest/normalize_reference_fixture.py
+Generation command: uv run python examples/fcr_rolling_backtest/normalize_reference_fixture.py --source-root baselines/robust_storage_bidding --input-manifest examples/fcr_rolling_backtest/reference_inputs_v1.json --destination-dir artifacts/reference/fcr_rolling_backtest
+Random seed: none declared by the source rerun; every native benchmark seed belongs to its separate caller-owned solve policy
+Input data: five executable profiles, four ordinary dates, battery/uncertainty/terminal contracts, 24 hourly and six four-hour prices per delivery day, source lifecycle/carry evidence, 20 generated JSON files, 11 log segments, exact source/package references, and pinned SHA-256 identities
+Expected output or invariant: canonical 5-by-4 profile/date evidence, six retained time-limit incumbents with same-solve upper bounds, source-rounded decisions/objectives/states, 08:00 initialization/finalization roles, explicit unavailable fields, and a byte-preserving semantic cross-check of Feature 013's governed fixture
+Tolerance: displayed source decimals use closed +/-0.0005 intervals; compatibility requires one joint Feature 013 formulation witness plus the declared native feasibility/objective policy and never treats bilinear_violations=0 as proof
+License, access, or privacy notes: only the small derived normalized JSON is committed; raw JSON, logs, workbook, activation CSV, credentials, license text, machine identities, and caller-local paths are excluded
+Refresh policy: verify every entry in reference_inputs_v1.json before parsing, write only beneath ignored artifacts, inspect the ordered semantic diff, preserve the Feature 013 fixture unchanged, and promote reviewed canonical bytes as a separate action
+```
+
+The fixture is 99,635 bytes, has committed-byte SHA-256
+`c075d81cb8a388c82f57c78f3f36aedf9c0da9b0dadbed636b6422e87081be4f`,
+and semantic fingerprint
+`d9f12af283ff0377e651d7c7aaf5e81a40f85372a6e1bf62a4f90ab928659d93`.
+It supports bounded executable-profile comparison, not full-history Table A1
+parity. Time-limited source records are feasible incumbents plus retained
+bounds, not proven optima. Complete activation replay remains separately
+selected external evidence.
+
 ## Simulator Fixture Notes
 
 `tests/fixtures/simulator/` is reserved for deterministic simulator validation

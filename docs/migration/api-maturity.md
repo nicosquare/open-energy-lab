@@ -85,6 +85,49 @@ fingerprint
 `d4d8934676fce6755f525ef8844f796669e0ec49158a2107515b2dee29b682ed`;
 the source fixture owns no native policy.
 
+## Stable Public v1 Rolling FCR Study Surface
+
+Feature `015-fcr-rolling-backtest-parity` promotes additive immutable rolling
+contracts, orchestration, reference comparison, activation slicing, and
+segmented replay composition as stable lazy exports. The exact symbol set and
+behavior are pinned by
+`specs/015-fcr-rolling-backtest-parity/contracts/python-api.md` and package
+import-contract tests.
+
+The stable `open_energy_lab.control` scope includes:
+
+- five fixed executable profiles for scripts 11–15;
+- versioned study manifests, accepted-bid policy, date classifications,
+  numeric/carry policy, daily inputs, revisions, envelopes, state links,
+  continuity segments, aggregates, results, persistence, and fail-closed
+  resume assessment;
+- additive exact-zero-FCR and 40-hour fixed-overlap problem/result contracts
+  that reuse Feature 013's private formulation and solver machinery; and
+- the normalized rolling fixture loader and source-precision/incumbent-aware
+  comparison entry point.
+
+`open_energy_lab.market.slice_regulation_activation_trace` is the stable
+half-open realized-data slicing boundary.
+`open_energy_lab.simulator.FCRAcceptedPlanSegment`,
+`FCRSegmentedEvaluationReport`, and `evaluate_fixed_fcr_bid_segments` compose
+Feature 012 replay without owning another transition or settlement model.
+Every package root remains import-light; Pyomo, HiGHS, optional Gurobi, pandas,
+baseline paths, and external data are absent until an explicit workflow asks
+for their relevant boundary.
+
+This maturity does not widen Feature 013's ordinary-day 24/96/6 public
+contract. It also does not promote full-history execution, raw reference logs
+or JSON, the external activation CSV, Julia, a licensed Gurobi environment, or
+the source workbook into library API. The full four-date benchmark and
+1,453-date workflow remain explicitly selected research commands.
+
+Rolling comparison outcomes are evidence categories rather than maturity
+levels. A time-limited source incumbent can be source-incumbent-equivalent or
+an improved feasible incumbent compatible with its retained bound, but it is
+never called an alternative optimum without sufficient two-sided optimality
+and common-feasibility evidence. Unfinalized edges remain incomplete evidence,
+and the bounded fixture makes no Table A1 or full-history parity claim.
+
 ### Feature 010 Single-Owner Matrix
 
 | Responsibility ID | Responsibility | Single owner |

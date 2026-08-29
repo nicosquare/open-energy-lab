@@ -160,3 +160,35 @@ def test_real_highs_paired_results_repeat_exact_numeric_payloads() -> None:
         assert left.solver.absolute_gap_eur == right.solver.absolute_gap_eur
         assert left.solver.relative_gap == right.solver.relative_gap
         assert left.semantic_result_fingerprint == right.semantic_result_fingerprint
+
+
+def test_feature_015_refactor_guard_preserves_real_highs_golden_evidence() -> None:
+    problem = _presolve_zero_problem(
+        problem_id="feature-013-golden-regression-v1"
+    )
+    result = solve_robust_fcr_bid(problem)
+    plan = result.deployable_plan
+
+    assert result.solver.solve_status == "optimal"
+    assert result.deployability_status == "eligible"
+    assert plan is not None
+    assert (
+        problem.problem_fingerprint
+        == "f70b5e7556dc837a2a77a40eeef53b818cc254b58b3bdae8783974bc88b4dad3"
+    )
+    assert (
+        result.semantic_result_fingerprint
+        == "92b532198aae634948e96369dbd48101f9c7bb7cc8fbb0bd7c798ab010ff4deb"
+    )
+    assert (
+        plan.energy_schedule.schedule_fingerprint
+        == "55e8ed6ae3f6eaf49ecdcd80d9688504a070c326d6c17a60c32fa1bcfcb67bba"
+    )
+    assert (
+        plan.fcr_schedule.schedule_fingerprint
+        == "e48a5eb3158743f84b1e24756f15c03f7ec1c7397a6c3d7448df2f0ab6707bc2"
+    )
+    assert (
+        plan.plan_fingerprint
+        == "5da0ba402a0f973117539b42d1f798c9adc24ac52ed841b15069409a3bd35992"
+    )

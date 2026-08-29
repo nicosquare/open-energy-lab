@@ -10,6 +10,44 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from .fcr_rolling_reference import (
+        RollingFCRReferenceComparison,
+        RollingFCRReferenceFieldResult,
+        RollingFCRReferenceFixture,
+        compare_rolling_fcr_reference,
+        load_rolling_fcr_reference_fixture,
+    )
+    from .fcr_rolling_backtest import (
+        AGGREGATION_POLICY,
+        FAILURE_POLICY_COUPLED,
+        FAILURE_POLICY_INDEPENDENT,
+        RESUME_POLICY,
+        AcceptedBidPolicy,
+        AggregateMetricEvidence,
+        CallerSuppliedRollingState,
+        ContinuitySegment,
+        DeliveryDateClassification,
+        DeliveryDateRecordEnvelope,
+        RollingFCRBatteryBinding,
+        RollingFCRDataDescriptor,
+        RollingFCRDayInput,
+        RollingFCRDayRevision,
+        RollingFCRExperimentProfile,
+        RollingFCRNumericPolicy,
+        RollingFCRResumeEvidence,
+        RollingFCRStateCarryEvidence,
+        RollingFCRStateLink,
+        RollingFCRStudyManifest,
+        RollingFCRStudyResult,
+        RollingFCRValidationError,
+        build_rolling_fcr_experiment_profile,
+        build_rolling_fcr_study_manifest,
+        aggregate_rolling_fcr_records,
+        assess_rolling_fcr_resume,
+        derive_rolling_fcr_state_carry,
+        load_rolling_fcr_study_result,
+        run_rolling_fcr_study,
+    )
     from .robust_fcr_reference import (
         JointReferenceCertificate,
         RobustFCRReferenceComparison,
@@ -17,6 +55,14 @@ if TYPE_CHECKING:
         build_robust_fcr_reference_problem,
         compare_robust_fcr_reference,
         load_robust_fcr_reference_fixture,
+    )
+    from .robust_fcr_rolling import (
+        RobustFCRAcceptedDecisionFixings,
+        RobustFCRRollingBiddingProblem,
+        RobustFCRRollingSolveResult,
+        build_robust_fcr_rolling_problem,
+        extract_accepted_predecessor_fixings,
+        solve_robust_fcr_rolling_bid,
     )
     from .robust_fcr_bidding import (
         ConstraintFamilyResidual,
@@ -94,6 +140,147 @@ if TYPE_CHECKING:
 
 
 _EXPORT_MAP = {
+    "RollingFCRReferenceComparison": (
+        ".fcr_rolling_reference",
+        "RollingFCRReferenceComparison",
+    ),
+    "RollingFCRReferenceFieldResult": (
+        ".fcr_rolling_reference",
+        "RollingFCRReferenceFieldResult",
+    ),
+    "RollingFCRReferenceFixture": (
+        ".fcr_rolling_reference",
+        "RollingFCRReferenceFixture",
+    ),
+    "compare_rolling_fcr_reference": (
+        ".fcr_rolling_reference",
+        "compare_rolling_fcr_reference",
+    ),
+    "load_rolling_fcr_reference_fixture": (
+        ".fcr_rolling_reference",
+        "load_rolling_fcr_reference_fixture",
+    ),
+    "AGGREGATION_POLICY": (".fcr_rolling_backtest", "AGGREGATION_POLICY"),
+    "FAILURE_POLICY_COUPLED": (
+        ".fcr_rolling_backtest",
+        "FAILURE_POLICY_COUPLED",
+    ),
+    "FAILURE_POLICY_INDEPENDENT": (
+        ".fcr_rolling_backtest",
+        "FAILURE_POLICY_INDEPENDENT",
+    ),
+    "RESUME_POLICY": (".fcr_rolling_backtest", "RESUME_POLICY"),
+    "AcceptedBidPolicy": (".fcr_rolling_backtest", "AcceptedBidPolicy"),
+    "AggregateMetricEvidence": (
+        ".fcr_rolling_backtest",
+        "AggregateMetricEvidence",
+    ),
+    "CallerSuppliedRollingState": (
+        ".fcr_rolling_backtest",
+        "CallerSuppliedRollingState",
+    ),
+    "ContinuitySegment": (".fcr_rolling_backtest", "ContinuitySegment"),
+    "DeliveryDateClassification": (
+        ".fcr_rolling_backtest",
+        "DeliveryDateClassification",
+    ),
+    "DeliveryDateRecordEnvelope": (
+        ".fcr_rolling_backtest",
+        "DeliveryDateRecordEnvelope",
+    ),
+    "RollingFCRBatteryBinding": (
+        ".fcr_rolling_backtest",
+        "RollingFCRBatteryBinding",
+    ),
+    "RollingFCRDataDescriptor": (
+        ".fcr_rolling_backtest",
+        "RollingFCRDataDescriptor",
+    ),
+    "RollingFCRDayInput": (".fcr_rolling_backtest", "RollingFCRDayInput"),
+    "RollingFCRDayRevision": (
+        ".fcr_rolling_backtest",
+        "RollingFCRDayRevision",
+    ),
+    "RollingFCRExperimentProfile": (
+        ".fcr_rolling_backtest",
+        "RollingFCRExperimentProfile",
+    ),
+    "RollingFCRNumericPolicy": (
+        ".fcr_rolling_backtest",
+        "RollingFCRNumericPolicy",
+    ),
+    "RollingFCRResumeEvidence": (
+        ".fcr_rolling_backtest",
+        "RollingFCRResumeEvidence",
+    ),
+    "RollingFCRStateCarryEvidence": (
+        ".fcr_rolling_backtest",
+        "RollingFCRStateCarryEvidence",
+    ),
+    "RollingFCRStateLink": (
+        ".fcr_rolling_backtest",
+        "RollingFCRStateLink",
+    ),
+    "RollingFCRStudyManifest": (
+        ".fcr_rolling_backtest",
+        "RollingFCRStudyManifest",
+    ),
+    "RollingFCRStudyResult": (
+        ".fcr_rolling_backtest",
+        "RollingFCRStudyResult",
+    ),
+    "RollingFCRValidationError": (
+        ".fcr_rolling_backtest",
+        "RollingFCRValidationError",
+    ),
+    "build_rolling_fcr_experiment_profile": (
+        ".fcr_rolling_backtest",
+        "build_rolling_fcr_experiment_profile",
+    ),
+    "build_rolling_fcr_study_manifest": (
+        ".fcr_rolling_backtest",
+        "build_rolling_fcr_study_manifest",
+    ),
+    "aggregate_rolling_fcr_records": (
+        ".fcr_rolling_backtest",
+        "aggregate_rolling_fcr_records",
+    ),
+    "assess_rolling_fcr_resume": (
+        ".fcr_rolling_backtest",
+        "assess_rolling_fcr_resume",
+    ),
+    "load_rolling_fcr_study_result": (
+        ".fcr_rolling_backtest",
+        "load_rolling_fcr_study_result",
+    ),
+    "run_rolling_fcr_study": (
+        ".fcr_rolling_backtest",
+        "run_rolling_fcr_study",
+    ),
+    "RobustFCRAcceptedDecisionFixings": (
+        ".robust_fcr_rolling",
+        "RobustFCRAcceptedDecisionFixings",
+    ),
+    "RobustFCRRollingBiddingProblem": (
+        ".robust_fcr_rolling",
+        "RobustFCRRollingBiddingProblem",
+    ),
+    "RobustFCRRollingSolveResult": (
+        ".robust_fcr_rolling",
+        "RobustFCRRollingSolveResult",
+    ),
+    "build_robust_fcr_rolling_problem": (
+        ".robust_fcr_rolling",
+        "build_robust_fcr_rolling_problem",
+    ),
+    "extract_accepted_predecessor_fixings": (
+        ".robust_fcr_rolling",
+        "extract_accepted_predecessor_fixings",
+    ),
+    "solve_robust_fcr_rolling_bid": (
+        ".robust_fcr_rolling",
+        "solve_robust_fcr_rolling_bid",
+    ),
     "JointReferenceCertificate": (
         ".robust_fcr_reference",
         "JointReferenceCertificate",
@@ -191,6 +378,10 @@ _EXPORT_MAP = {
     "derive_non_intraday_horizon_budget": (
         ".robust_fcr_bidding",
         "derive_non_intraday_horizon_budget",
+    ),
+    "derive_rolling_fcr_state_carry": (
+        ".fcr_rolling_backtest",
+        "derive_rolling_fcr_state_carry",
     ),
     "solve_robust_fcr_bid": (".robust_fcr_bidding", "solve_robust_fcr_bid"),
     "BidPlanProducer": (".fcr_bid_plan", "BidPlanProducer"),
@@ -301,14 +492,23 @@ _EXPORT_MAP = {
 }
 
 __all__ = sorted([
+    "AGGREGATION_POLICY",
     "AFRRBaselineConfig",
     "AFRRBaselineMode",
     "ArbitrageOnlyBaselineConfig",
     "BaselineScheduleBundle",
     "BidPlanProducer",
+    "AcceptedBidPolicy",
+    "AggregateMetricEvidence",
+    "CallerSuppliedRollingState",
+    "ContinuitySegment",
     "ConstraintFamilyResidual",
     "DirectionalCapacityCommitmentInterval",
     "DirectionalCapacitySchedule",
+    "DeliveryDateClassification",
+    "DeliveryDateRecordEnvelope",
+    "FAILURE_POLICY_COUPLED",
+    "FAILURE_POLICY_INDEPENDENT",
     "FCRBidPlanValidationError",
     "FeasibilityAudit",
     "FixedFCRBidPlan",
@@ -325,12 +525,14 @@ __all__ = sorted([
     "PriceThresholdController",
     "RegulationOnlyBaselineConfig",
     "RecoveryWindowActivationBudget",
+    "RESUME_POLICY",
     "RestorationBaselineBundle",
     "RestorationCapability",
     "RestorationControlValidationError",
     "RestorationEnergyBaselineInterval",
     "RestorationEnergyBaselineSchedule",
     "RobustFCRBatteryParameters",
+    "RobustFCRAcceptedDecisionFixings",
     "RobustFCRBiddingProblem",
     "RobustFCRBoundComparison",
     "RobustFCRDecisions",
@@ -338,6 +540,8 @@ __all__ = sorted([
     "RobustFCRPriceInputs",
     "RobustFCRReferenceComparison",
     "RobustFCRReferenceFixture",
+    "RobustFCRRollingBiddingProblem",
+    "RobustFCRRollingSolveResult",
     "RobustFCRSolvePolicy",
     "RobustFCRSolveResult",
     "RobustFCRSolverDependencyUnavailableError",
@@ -345,6 +549,21 @@ __all__ = sorted([
     "RobustFCRTimeContract",
     "RobustFCRUncertaintyProfile",
     "RobustFCRValidationError",
+    "RollingFCRBatteryBinding",
+    "RollingFCRDataDescriptor",
+    "RollingFCRDayInput",
+    "RollingFCRDayRevision",
+    "RollingFCRExperimentProfile",
+    "RollingFCRNumericPolicy",
+    "RollingFCRReferenceComparison",
+    "RollingFCRReferenceFieldResult",
+    "RollingFCRReferenceFixture",
+    "RollingFCRResumeEvidence",
+    "RollingFCRStateCarryEvidence",
+    "RollingFCRStateLink",
+    "RollingFCRStudyManifest",
+    "RollingFCRStudyResult",
+    "RollingFCRValidationError",
     "SerializedScheduleReference",
     "SocGuardrailConfig",
     "SocGuardrailController",
@@ -363,13 +582,25 @@ __all__ = sorted([
     "build_restoration_capability",
     "build_robust_fcr_bidding_problem",
     "build_robust_fcr_reference_problem",
+    "build_robust_fcr_rolling_problem",
     "build_robust_fcr_time_contract",
+    "build_rolling_fcr_experiment_profile",
+    "build_rolling_fcr_study_manifest",
+    "aggregate_rolling_fcr_records",
+    "assess_rolling_fcr_resume",
     "build_stacked_heuristic_baseline",
     "compare_robust_fcr_bounds",
     "compare_robust_fcr_reference",
+    "compare_rolling_fcr_reference",
     "derive_non_intraday_horizon_budget",
+    "derive_rolling_fcr_state_carry",
+    "extract_accepted_predecessor_fixings",
     "load_robust_fcr_reference_fixture",
+    "load_rolling_fcr_reference_fixture",
+    "load_rolling_fcr_study_result",
+    "run_rolling_fcr_study",
     "solve_robust_fcr_bid",
+    "solve_robust_fcr_rolling_bid",
 ])
 
 

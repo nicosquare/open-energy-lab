@@ -2695,9 +2695,14 @@ def _canonicalize_kw(value: float) -> float:
 
 def _canonicalize_witness_decisions(
     witness: Mapping[str, object],
+    *,
+    energy_interval_count: int = 24,
+    fcr_interval_count: int = 6,
 ) -> tuple[RobustFCRDecisions, Mapping[str, object]]:
-    source_x0 = _witness_vector(witness, "x0", 24)
-    source_xr = _witness_vector(witness, "xr", 6)
+    """Canonicalize source-frame decisions for an explicitly sized output frame."""
+
+    source_x0 = _witness_vector(witness, "x0", energy_interval_count)
+    source_xr = _witness_vector(witness, "xr", fcr_interval_count)
     public_energy = tuple(_canonicalize_kw(-value) for value in source_x0)
     public_fcr = tuple(_canonicalize_kw(value) for value in source_xr)
     decisions = RobustFCRDecisions(
@@ -2812,27 +2817,35 @@ def _make_feasibility_audit(
     )
 
 
-def _build_deployable_plan(
-    problem: RobustFCRBiddingProblem,
+def _build_fixed_fcr_plan_from_decisions(
+    *,
+    plan_id: str,
+    energy_schedule_id: str,
+    fcr_schedule_id: str,
+    producer: object,
+    information_cutoff_utc: datetime,
+    time_contract: RobustFCRTimeContract,
     decisions: RobustFCRDecisions,
-    solver: SolverEvidence,
-    audit: FeasibilityAudit,
-    diagnostics: Sequence[RobustFCRDiagnostic],
+    producer_input_fingerprints: Mapping[str, str],
+    solve_status: str,
+    objective: object,
+    objective_bound: object,
+    diagnostics: Sequence[object],
+    energy_schedule_source: str = "fixed",
+    accepted_volume_ref_prefix: str = "robust_accepted_fcr_bid",
+    capacity_price_ref_prefix: str = "robust_fcr_capacity_price",
 ) -> Any:
-    from open_energy_lab.control.fcr_bid_plan import (
-        BidPlanProducer,
-        OptimizationMetric,
-        PlanDiagnostic,
-        build_fixed_fcr_bid_plan,
-    )
+    """Map canonical 24/6 decisions into one bidder-neutral fixed plan."""
+
+    from open_energy_lab.control.fcr_bid_plan import build_fixed_fcr_bid_plan
     from open_energy_lab.simulator.stacked_service import (
         build_energy_baseline_schedule,
         build_fcr_capacity_schedule,
     )
 
-    period = problem.time_contract.delivery_period
+    period = time_contract.delivery_period
     energy_schedule = build_energy_baseline_schedule(
-        schedule_id=f"{problem.problem_id}-energy-v1",
+        schedule_id=energy_schedule_id,
         semantics_version="charge-positive-fixed-v1",
         covered_start_utc=period.start_utc,
         covered_end_utc=period.end_utc,
@@ -2841,17 +2854,17 @@ def _build_deployable_plan(
                 "start_utc": interval.start_utc,
                 "end_utc": interval.end_utc,
                 "power_kw": value,
-                "schedule_source": "fixed",
+                "schedule_source": energy_schedule_source,
             }
             for interval, value in zip(
-                problem.time_contract.energy_intervals,
+                time_contract.energy_intervals,
                 decisions.energy_baseline_charge_positive_kw,
                 strict=True,
             )
         ),
     )
     fcr_schedule = build_fcr_capacity_schedule(
-        schedule_id=f"{problem.problem_id}-fcr-v1",
+        schedule_id=fcr_schedule_id,
         semantics_version="symmetric-fcr-fixed-v1",
         product_identity={
             "product": "symmetric-fcr",
@@ -2865,17 +2878,47 @@ def _build_deployable_plan(
                 "start_utc": interval.start_utc,
                 "end_utc": interval.end_utc,
                 "capacity_kw": value,
-                "volume_observation_ref": f"robust_accepted_fcr_bid:{index}",
-                "price_observation_ref": f"robust_fcr_capacity_price:{index}",
+                "volume_observation_ref": (
+                    f"{accepted_volume_ref_prefix}:{index}"
+                ),
+                "price_observation_ref": (
+                    f"{capacity_price_ref_prefix}:{index}"
+                ),
             }
             for index, (interval, value) in enumerate(
                 zip(
-                    problem.time_contract.fcr_intervals,
+                    time_contract.fcr_intervals,
                     decisions.fcr_capacity_kw,
                     strict=True,
                 )
             )
         ),
+    )
+    return build_fixed_fcr_bid_plan(
+        plan_id=plan_id,
+        producer=producer,
+        information_cutoff_utc=information_cutoff_utc,
+        energy_schedule=energy_schedule,
+        fcr_schedule=fcr_schedule,
+        producer_input_fingerprints=producer_input_fingerprints,
+        solve_status=solve_status,
+        objective=objective,
+        objective_bound=objective_bound,
+        diagnostics=diagnostics,
+    )
+
+
+def _build_deployable_plan(
+    problem: RobustFCRBiddingProblem,
+    decisions: RobustFCRDecisions,
+    solver: SolverEvidence,
+    audit: FeasibilityAudit,
+    diagnostics: Sequence[RobustFCRDiagnostic],
+) -> Any:
+    from open_energy_lab.control.fcr_bid_plan import (
+        BidPlanProducer,
+        OptimizationMetric,
+        PlanDiagnostic,
     )
     solve_evidence_fingerprint = _fingerprint(
         {
@@ -2908,8 +2951,10 @@ def _build_deployable_plan(
             if value.severity != "error"
         ]
     )
-    return build_fixed_fcr_bid_plan(
+    return _build_fixed_fcr_plan_from_decisions(
         plan_id=f"{problem.problem_id}-robust-plan-v1",
+        energy_schedule_id=f"{problem.problem_id}-energy-v1",
+        fcr_schedule_id=f"{problem.problem_id}-fcr-v1",
         producer=BidPlanProducer(
             producer_id="open-energy-lab-robust-fcr-bidder",
             producer_kind="robust",
@@ -2918,8 +2963,8 @@ def _build_deployable_plan(
             configuration_unavailable_reason=None,
         ),
         information_cutoff_utc=problem.information_cutoff_utc,
-        energy_schedule=energy_schedule,
-        fcr_schedule=fcr_schedule,
+        time_contract=problem.time_contract,
+        decisions=decisions,
         producer_input_fingerprints={
             "robust_problem": problem.problem_fingerprint,
             "uncertainty_profile": (
