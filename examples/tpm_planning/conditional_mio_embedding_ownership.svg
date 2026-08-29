@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="410" viewBox="0 0 1040 410" role="img" aria-labelledby="title description">
+  <title id="title">Conditional MIO embedding ownership flow</title>
+  <desc id="description">Caller-owned decisions enter an OEL attachment containing decision links, numerator and denominator circuits, and conditional log-risk. The resulting expression returns to caller-owned constraints and objective.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#334155"/>
+    </marker>
+    <style>
+      .title { font: 700 22px sans-serif; fill: #0f172a; }
+      .owner { font: 700 16px sans-serif; fill: #0f172a; }
+      .label { font: 600 14px sans-serif; fill: #0f172a; }
+      .small { font: 13px sans-serif; fill: #334155; }
+      .arrow { stroke: #334155; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1040" height="410" rx="18" fill="#f8fafc"/>
+  <text x="520" y="34" text-anchor="middle" class="title">Embedding: the compiled pair inside a caller-owned Pyomo model</text>
+
+  <rect x="25" y="125" width="235" height="160" rx="14" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="142" y="154" text-anchor="middle" class="owner">Caller owns</text>
+  <text x="142" y="187" text-anchor="middle" class="label">Primary decisions</text>
+  <text x="142" y="213" text-anchor="middle" class="small">continuous or affine x</text>
+  <text x="142" y="236" text-anchor="middle" class="small">binary activation</text>
+  <text x="142" y="259" text-anchor="middle" class="small">ordered one-hot category</text>
+
+  <rect x="310" y="72" width="420" height="265" rx="18" fill="#f0fdf4" stroke="#15803d" stroke-width="2.5"/>
+  <text x="520" y="101" text-anchor="middle" class="owner">OEL owns one namespaced attachment block</text>
+
+  <rect x="355" y="122" width="330" height="48" rx="10" fill="#ffffff" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="520" y="143" text-anchor="middle" class="label">Decision links and validity</text>
+  <text x="520" y="161" text-anchor="middle" class="small">U-Bounds normalization and one-hot exactly-one</text>
+
+  <rect x="345" y="198" width="160" height="64" rx="10" fill="#ffffff" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="425" y="224" text-anchor="middle" class="label">Numerator circuit</text>
+  <text x="425" y="247" text-anchor="middle" class="small">z_num</text>
+
+  <rect x="535" y="198" width="160" height="64" rx="10" fill="#ffffff" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="615" y="224" text-anchor="middle" class="label">Denominator circuit</text>
+  <text x="615" y="247" text-anchor="middle" class="small">z_den</text>
+
+  <path d="M425 263 L475 286" class="arrow"/>
+  <path d="M615 263 L565 286" class="arrow"/>
+  <rect x="420" y="279" width="200" height="42" rx="10" fill="#dcfce7" stroke="#15803d" stroke-width="1.5"/>
+  <text x="520" y="305" text-anchor="middle" class="label">log-risk = z_num − z_den</text>
+
+  <rect x="780" y="125" width="235" height="160" rx="14" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+  <text x="897" y="154" text-anchor="middle" class="owner">Caller owns</text>
+  <text x="897" y="187" text-anchor="middle" class="small">chance constraint and α</text>
+  <text x="897" y="215" text-anchor="middle" class="small">deterministic constraints</text>
+  <text x="897" y="243" text-anchor="middle" class="small">objective and solver call</text>
+  <text x="897" y="268" text-anchor="middle" class="small">interpretation of the solution</text>
+
+  <path d="M260 205 L310 205" class="arrow"/>
+  <path d="M730 205 L780 205" class="arrow"/>
+  <text x="285" y="192" text-anchor="middle" class="small">map</text>
+  <text x="755" y="192" text-anchor="middle" class="small">compose</text>
+
+  <text x="520" y="377" text-anchor="middle" class="small">OEL embeds reusable risk mathematics; it does not take ownership of the surrounding optimization problem.</text>
+</svg>

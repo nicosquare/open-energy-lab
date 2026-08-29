@@ -95,7 +95,11 @@ assert len(loaded_parity_records) == 2
 assert len(loaded_fidelity_records) == 2
 assert all(record.accepted for record in loaded_parity_records)
 assert all("accepted" not in record.to_dict() for record in loaded_fidelity_records)
+assert len(evidence_figure.axes) == 2
+assert evidence_figure.axes[0].get_yscale() == "log"
+assert len(evidence_figure.axes[1].patches) == 6
 assert policy_unsolved
+assert piecewise_notice_count > 0
 assert policy_attachment.block is policy_model.policy_risk
 assert policy_model.component("caller_objective") is not None
 assert policy_model.component("caller_deterministic_constraint") is not None

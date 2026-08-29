@@ -10,6 +10,9 @@ from pathlib import Path
 NOTEBOOK_PATH = Path(
     "examples/tpm_planning/conditional_mio_embedding_walkthrough.ipynb"
 )
+OWNERSHIP_DIAGRAM_PATH = Path(
+    "examples/tpm_planning/conditional_mio_embedding_ownership.svg"
+)
 
 
 def _notebook() -> dict[str, object]:
@@ -48,6 +51,8 @@ def test_notebook_explains_conditional_mathematics_and_ownership() -> None:
         "chance constraint",
         "Embedding/solver parity",
         "Native/compiler fidelity",
+        "What embedding means here",
+        "conditional_mio_embedding_ownership.svg",
     ):
         assert required in source
 
@@ -68,6 +73,10 @@ def test_notebook_uses_public_fixture_backed_composition_for_all_mapping_forms()
         "evaluate_conditional_mio_pair",
         "inspect_conditional_mio_attachment",
         "build_embedding_parity_evidence",
+        "_attach_with_compact_piecewise_notices",
+        "NEAR_EQUAL_SLOPE_NOTICE",
+        "redirect_stdout",
+        "near_equal_pwl_slope_notices",
         'pyo.SolverFactory("highs")',
         '"max"',
         '"piecewise"',
@@ -76,6 +85,9 @@ def test_notebook_uses_public_fixture_backed_composition_for_all_mapping_forms()
         "policy_model.caller_chance_constraint",
         "policy_unsolved",
         "conditional_demo_complete",
+        "evidence_figure",
+        "embedding_parity_absolute_tolerance",
+        'set_yscale("log")',
     ):
         assert required in source
 
@@ -110,6 +122,8 @@ def test_notebook_remains_thin_without_fitting_compilation_or_enumeration() -> N
         "np.linspace",
         "numpy.linspace",
         "solver.solve(policy_model",
+        "plt.savefig",
+        "warning_tol",
     ):
         assert prohibited not in lowered
 
@@ -125,3 +139,11 @@ def test_notebook_code_compiles_and_source_is_output_free() -> None:
         ast.parse("".join(cell["source"]))
         assert cell.get("execution_count") is None
         assert cell.get("outputs", []) == []
+
+
+def test_notebook_ownership_diagram_is_a_local_svg_asset() -> None:
+    assert OWNERSHIP_DIAGRAM_PATH.is_file()
+    source = OWNERSHIP_DIAGRAM_PATH.read_text(encoding="utf-8")
+    assert source.startswith("<svg")
+    assert "Caller owns" in source
+    assert "OEL owns one namespaced attachment block" in source
