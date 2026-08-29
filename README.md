@@ -81,6 +81,7 @@ service capabilities remain outside the routine environment and import path.
 - [Feature 013 review and benchmark quickstart](specs/013-reference-robust-fcr-bidding/quickstart.md)
 - [Reference robust-FCR bidding migration and evidence ledger](docs/migration/reference-robust-fcr-bidding.md)
 - [Robust-FCR bidding examples](examples/robust_fcr_bidding/README.md)
+- [Source-only robust-FCR bidding walkthrough](examples/robust_fcr_bidding/robust_fcr_bidding_walkthrough.ipynb)
 - [Feature 015 rolling FCR backtest design](specs/015-fcr-rolling-backtest-parity/plan.md)
 - [Feature 015 routine and research quickstart](specs/015-fcr-rolling-backtest-parity/quickstart.md)
 - [Rolling FCR parity and validation ledger](docs/migration/fcr-rolling-backtest-parity.md)
@@ -138,7 +139,11 @@ unchanged. After market acceptance, callers use Feature 012—not a bidder-owned
 replay—for physical delivery and realized settlement. Start with the
 [Feature 013 plan](specs/013-reference-robust-fcr-bidding/plan.md),
 [example guide](examples/robust_fcr_bidding/README.md), and
-[review quickstart](specs/013-reference-robust-fcr-bidding/quickstart.md).
+[review quickstart](specs/013-reference-robust-fcr-bidding/quickstart.md), or
+open the
+[source-only bidding walkthrough](examples/robust_fcr_bidding/robust_fcr_bidding_walkthrough.ipynb)
+for an offline visual audit of uncertainty budgets, restriction/relaxation
+roles, deployability, Feature 012 handoff, and bounded source precision.
 The historical Julia comparison is deliberately bounded by rounded source
 precision and unavailable source metadata; it does not claim identical
 unrounded decisions, solver proof, or complete Julia trace parity.

@@ -7,10 +7,11 @@ restriction and relaxation with native Python and Pyomo. HiGHS remains the
 routine backend; the explicitly installed `gurobi` extra provides optional
 licensed cross-backend evidence.
 
-This example area is deliberately separated into three evidence paths:
+This example area is deliberately separated into four evidence paths:
 
 | Path | Purpose | Routine offline? | Deployable plan? |
 | --- | --- | --- | --- |
+| `robust_fcr_bidding_walkthrough.ipynb` | Visually connect the 24/96/6 inputs, uncertainty budgets, paired formulations, deployability audit, Feature 012 handoff, and bounded Julia fixture | yes, with empty committed outputs | restriction only, after every gate passes |
 | `run_small_case.py` | Solve an authored restriction and relaxation, audit the equations, and inspect the Feature 012 plan | yes | restriction only, after every gate passes |
 | `run_reference_benchmark.py` | Run the explicit full 2023-06-18 optimization comparison | no; selected research/release gate | only an eligible native restriction incumbent |
 | `normalize_reference_fixture.py` | Normalize digest-pinned generated Julia result evidence below ignored `artifacts/` | no; maintainer refresh path | no |
@@ -54,6 +55,16 @@ data acquisition, and full-history paper experiments remain out of scope.
 
 The exact commands and interpretation rules are maintained in the
 [Feature 013 quickstart](../../specs/013-reference-robust-fcr-bidding/quickstart.md).
+
+For a guided review, open the
+[source-only robust-bidding walkthrough](robust_fcr_bidding_walkthrough.ipynb).
+Its default authored case produces a nonzero 10 kW symmetric-FCR plan in a
+presolve-friendly problem, plots every numerical result with explicit physical
+or monetary units, and replays the accepted restriction plan only through
+Feature 012. The complete native reference benchmark, licensed exact solve,
+external activation replay, and figure export are separately named switches
+that default to disabled. Figure export, when selected, is restricted to
+`tmp/robust-fcr-bidding-notebook/figures`.
 
 With the governed activation CSV installed explicitly, run only the optional
 external replay with:

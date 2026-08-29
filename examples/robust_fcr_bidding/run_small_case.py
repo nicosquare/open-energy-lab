@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, date, datetime
 import hashlib
 import json
@@ -267,6 +268,56 @@ def build_small_problem():
         provenance={
             "source": "examples/robust_fcr_bidding/run_small_case.py",
             "case_kind": "project-authored",
+        },
+    )
+
+
+def build_walkthrough_problem():
+    """Build the presolve-friendly nonzero-FCR case used by the notebook.
+
+    The existing CLI retains its unique zero-bid case.  This companion keeps
+    the same ordinary-day time contract, uncertainty sets, and deterministic
+    HiGHS policy while giving the visual walkthrough a nonzero reserve plan.
+    Wide stored-energy limits and unit efficiencies make the resulting
+    10 kW reserve schedule hand-calculable without weakening any public
+    24/96/6 validation.
+    """
+
+    base = build_small_problem()
+    battery = RobustFCRBatteryParameters(
+        maximum_charge_power_kw=10.0,
+        maximum_discharge_power_kw=10.0,
+        minimum_stored_energy_kwh=0.0,
+        maximum_stored_energy_kwh=100.0,
+        initial_stored_energy_kwh=50.0,
+        charge_efficiency=1.0,
+        discharge_efficiency=1.0,
+    )
+    prices = RobustFCRPriceInputs(
+        day_ahead_energy_prices_eur_per_kwh=(0.0,) * 24,
+        fcr_capacity_prices_eur_per_kw_block=(0.1,) * 6,
+        energy_interval_refs=base.prices.energy_interval_refs,
+        fcr_interval_refs=base.prices.fcr_interval_refs,
+    )
+    terminal = TerminalStoredEnergyRule(
+        minimum_terminal_stored_energy_kwh=0.0,
+        allow_penalized_shortfall=False,
+        shortfall_penalty_eur_per_kwh=100.0,
+        rule_id="feature-013-walkthrough-terminal-v1",
+    )
+    return replace(
+        base,
+        problem_id="feature-013-walkthrough-case-v1",
+        battery=battery,
+        prices=prices,
+        terminal_rule=terminal,
+        producer_input_fingerprints={
+            "authored_case": _digest("feature-013-walkthrough-case-v1"),
+            "market_prices": prices.price_input_fingerprint,
+        },
+        provenance={
+            "source": "examples/robust_fcr_bidding/run_small_case.py",
+            "case_kind": "project-authored-visual-walkthrough",
         },
     )
 

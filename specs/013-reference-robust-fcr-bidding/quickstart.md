@@ -88,6 +88,30 @@ model. In serialized bid evidence, `optimization_objective_eur` and
 `best_upper_bound_eur` are ex-ante quantities; Feature 012 realized settlement
 and profit remain unavailable until the third stage.
 
+### Guided source-only notebook
+
+Install the optional notebook tools and open the walkthrough from the
+repository root:
+
+```bash
+uv sync --group notebook
+uv run jupyter lab \
+  examples/robust_fcr_bidding/robust_fcr_bidding_walkthrough.ipynb
+```
+
+The committed notebook has stable cell IDs, empty execution state, and no
+saved outputs. Its default path is offline and uses HiGHS to solve a
+presolve-friendly nonzero-FCR restriction and relaxation. It then audits the
+24/96/6 mapping, derives the 2.75-hour horizon budget, plots headroom and a
+hand-calculable stored-energy envelope, and sends only the eligible restriction
+plan to Feature 012 for authored post-acceptance replay and settlement.
+
+The complete native 2023-06-18 benchmark, licensed Gurobi exact evidence,
+explicit external activation replay, and figure export each have a separate
+switch that defaults to `False`. The notebook never searches for reference
+data. If enabled, figure export writes only beneath
+`tmp/robust-fcr-bidding-notebook/figures`.
+
 ## 4. Inspect normalized reference evidence
 
 ```bash

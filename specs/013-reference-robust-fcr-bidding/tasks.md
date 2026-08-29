@@ -277,6 +277,19 @@ benchmark records, and final repository checks across all user stories.
 
 ---
 
+## Phase 10: Source-Only Walkthrough Follow-Up
+
+**Purpose**: Add the guided visual demonstration requested after Feature 013's
+original implementation without changing its public library contracts.
+
+- [X] T086 Add a presolve-friendly nonzero-FCR authored problem builder beside the existing zero-bid CLI case in `examples/robust_fcr_bidding/run_small_case.py`, preserving the CLI's behavior and fingerprints
+- [X] T087 Add `examples/robust_fcr_bidding/robust_fcr_bidding_walkthrough.ipynb` with stable cell IDs, empty outputs, equations, explicit units, restriction/relaxation evidence, deployability audit, Feature 012 replay, settlement separation, normalized source-precision inspection, and disabled research switches
+- [X] T088 Add source-contract and optional offline execution coverage in `tests/unit/control/test_robust_fcr_notebook.py` and `tests/integration/control/test_robust_fcr_notebook_execution.py`
+- [X] T089 Link the walkthrough from the example guide, root README, architecture index, and Feature 013 quickstart, and record its evidence boundary in `docs/migration/reference-robust-fcr-bidding.md`
+- [X] T090 Run the focused notebook tests, existing Feature 013 routine gate, documentation/import contracts, `git diff --check`, and verify the baseline submodule remains untouched
+
+---
+
 ## Dependencies and Execution Order
 
 ### Phase Dependencies
@@ -299,6 +312,8 @@ benchmark records, and final repository checks across all user stories.
 - **US6 (Phase 8)**: Foundational isolation work can begin after Phase 2, but
   final status/fingerprint/CI matrices depend on US1-US5 surfaces.
 - **Phase 9 (Polish)**: Depends on every selected user story.
+- **Phase 10 (Source-only walkthrough follow-up)**: Depends on the completed
+  Feature 012/013 contracts and does not alter their public API.
 
 ### User Story Dependency Graph
 

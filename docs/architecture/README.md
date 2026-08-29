@@ -55,7 +55,8 @@ ten-second Julia trace parity is claimed.
 - Design: [Feature 013 implementation plan](../../specs/013-reference-robust-fcr-bidding/plan.md),
   [migration/equation ledger](../migration/reference-robust-fcr-bidding.md),
   and [review quickstart](../../specs/013-reference-robust-fcr-bidding/quickstart.md).
-- Examples: [authored solve, explicit historical benchmark, and fixture-normalization paths](../../examples/robust_fcr_bidding/README.md).
+- Examples: [authored solve, explicit historical benchmark, and fixture-normalization paths](../../examples/robust_fcr_bidding/README.md),
+  plus the [source-only robust-bidding walkthrough](../../examples/robust_fcr_bidding/robust_fcr_bidding_walkthrough.ipynb).
 
 The deployable restriction and upper-bound relaxation preserve the pinned
 single-day, non-intraday 24/96/6 formulation. Bid selection cannot access

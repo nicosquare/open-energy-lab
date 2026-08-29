@@ -360,3 +360,30 @@ Different trace, settlement, and profit values are expected because this gate
 replays different accepted schedules. It demonstrates one common evaluator and
 activation input; it does not establish schedule equality or Julia optimization
 parity.
+
+### Source-only walkthrough follow-up (2026-08-29)
+
+The guided notebook at
+`examples/robust_fcr_bidding/robust_fcr_bidding_walkthrough.ipynb` uses a
+presolve-friendly authored 24/96/6 problem with a nonzero 10 kW symmetric-FCR
+schedule. Default execution remains offline: HiGHS solves the restriction and
+relaxation, the complete independent audit governs restriction deployability,
+and only the emitted fixed plan enters Feature 012 with a later-authored
+activation trace. The notebook does not introduce another replay, battery
+transition, settlement, or profit implementation.
+
+Seven figures keep energy, power, stored energy, SOC, price, objective, and
+settlement units explicit. The normalized Julia/Gurobi fixture is displayed in
+the source positive-discharge frame with closed three-decimal precision
+intervals in kW; it is not shown as a unitless multiple or relative deviation.
+The complete historical native solve, optional Gurobi exact route, external
+activation replay, and figure export are disabled by default. The committed
+notebook retains stable cell IDs, empty outputs, and no execution counts.
+
+The follow-up validation passed six focused notebook source/execution tests,
+the existing 137-test Feature 013 routine gate, and 130 documentation,
+source-boundary, lazy-import, and no-legacy contracts. The execution test
+blocked network calls and credential reads, verified seven in-memory figures,
+confirmed the pinned display fingerprint
+`a8de959baccdeda692f29b6edfc6c1e164ae73070758b7c9d759931cc04e0ce4`,
+and observed no exported files or changes to the committed notebook.
