@@ -46,6 +46,7 @@ from open_energy_lab.tpm.query import reduce_spflow_log_likelihood
 from open_energy_lab.tpm.piecewise import (
     PiecewiseBreakpointPolicy,
     build_logsumexp_piecewise_spec,
+    resolve_guarded_exponential_spec,
 )
 
 
@@ -59,8 +60,8 @@ SIDECAR_PATH = (
     / "sidecars"
     / "tpm_artifact_conditional_mio_v3.spn_payload.pkl"
 )
-MAX_PAIR_PATH = FIXTURE_DIRECTORY / "conditional_pair_max_v1.json"
-PWL_PAIR_PATH = FIXTURE_DIRECTORY / "conditional_pair_pwl_v1.json"
+MAX_PAIR_PATH = FIXTURE_DIRECTORY / "conditional_pair_max_v2.json"
+PWL_PAIR_PATH = FIXTURE_DIRECTORY / "conditional_pair_pwl_v2.json"
 EVIDENCE_PATH = FIXTURE_DIRECTORY / "conditional_mio_evidence_v1.json"
 FIXED_FIXTURE_TIMESTAMP = "2026-08-28T00:00:00Z"
 STAGING_COMMAND = (
@@ -241,10 +242,17 @@ def _conditional_encoding(
         exp_floor = float(selected["exp_domain_floor"])
         exp_x = tuple(float(value) for value in curves["exp_x_points"])
         exp_y = tuple(float(value) for value in curves["exp_y_points"])
-        sum_configuration.update(curves)
-        if exp_floor < exp_x[0]:
-            sum_configuration["exp_x_points"] = (exp_floor, *exp_x)
-            sum_configuration["exp_y_points"] = (0.0, *exp_y)
+        sum_configuration.update(
+            {
+                "log_x_points": curves["log_x_points"],
+                "log_y_points": curves["log_y_points"],
+                **resolve_guarded_exponential_spec(
+                    base_x_points=exp_x,
+                    base_y_points=exp_y,
+                    domain_floor=exp_floor,
+                ),
+            }
+        )
         sum_configuration.pop("breakpoint_policy", None)
     return TPMConditionalEncodingPolicy(
         mode=mode,

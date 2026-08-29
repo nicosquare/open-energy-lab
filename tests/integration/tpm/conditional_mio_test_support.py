@@ -23,8 +23,8 @@ CONDITIONAL_MIO_SIDECAR_PATH = (
     / "sidecars"
     / "tpm_artifact_conditional_mio_v3.spn_payload.pkl"
 )
-CONDITIONAL_MAX_PAIR_PATH = TPM_FIXTURE_DIRECTORY / "conditional_pair_max_v1.json"
-CONDITIONAL_PWL_PAIR_PATH = TPM_FIXTURE_DIRECTORY / "conditional_pair_pwl_v1.json"
+CONDITIONAL_MAX_PAIR_PATH = TPM_FIXTURE_DIRECTORY / "conditional_pair_max_v2.json"
+CONDITIONAL_PWL_PAIR_PATH = TPM_FIXTURE_DIRECTORY / "conditional_pair_pwl_v2.json"
 CONDITIONAL_EVIDENCE_PATH = (
     TPM_FIXTURE_DIRECTORY / "conditional_mio_evidence_v1.json"
 )
@@ -53,8 +53,8 @@ class ConditionalMIOTemporaryPaths:
             artifact_sidecar=(
                 sidecars / "tpm_artifact_conditional_mio_v3.spn_payload.pkl"
             ),
-            max_pair=resolved / "conditional_pair_max_v1.json",
-            pwl_pair=resolved / "conditional_pair_pwl_v1.json",
+            max_pair=resolved / "conditional_pair_max_v2.json",
+            pwl_pair=resolved / "conditional_pair_pwl_v2.json",
             evidence=resolved / "conditional_mio_evidence_v1.json",
         )
 

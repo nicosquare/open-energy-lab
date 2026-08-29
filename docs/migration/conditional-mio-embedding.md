@@ -10,7 +10,7 @@ points.
 A fitted TPM artifact describes one learned joint distribution. A conditional MIO pair is derived
 compiler evidence with a different lifecycle: it fixes one binary event in a numerator, marginalizes
 that event in a denominator, and applies one selected max or PWL approximation to both circuits.
-OEL therefore persists it as a focused `conditional-pair-v1` record rather than strengthening the
+OEL therefore persists it as a focused `conditional-pair-v2` record rather than strengthening the
 source artifact, calling it an artifact v4, or treating it as a compiled-v3 whole model.
 
 For retained decisions $X=x$ and declared event value $Y=1$, the roots mean
@@ -156,6 +156,35 @@ There is no silent fallback between policies and no adaptive tuning in this feat
 breakpoints, Sum constants, big-M values, PWL curves, validity intervals, labels, and versions needed
 to reproduce the selected semantics are part of the pair. Scientific qualification of settings
 belongs to downstream compiler experiments.
+
+## Conditional-pair-v2 guarded exponential correction
+
+`conditional-pair-v1` placed a zero-valued guard point at `-500` before the first positive
+exponential point at $c=\log(10^{-3})$. Linear interpolation therefore created a small positive
+ramp throughout `(-500, c)`, even though the intended guarded function was zero below the cutoff.
+The older reference representation used a duplicated cutoff input to express a vertical jump;
+that duplicate input is not a single-valued continuous PWL function and cannot be passed unchanged
+to Pyomo's continuous `Piecewise` component.
+
+Pair v2 replaces both ambiguous forms with one deterministic continuous policy:
+
+- $B$ is the unchanged resolution-specific base PWL exponential curve;
+- the output is exactly zero for $r\leq c$;
+- the fixed transition width is $\delta=10^{-3}$ log-units;
+- the segment from $(c,0)$ to $(c+\delta,B(c+\delta))$ is linear; and
+- $B(r)$ is reproduced unchanged for every $r\geq c+\delta$.
+
+The guard policy name, probability floor, $c$, boundary convention, $\delta$, transition end,
+base points/values, and resolved strictly increasing, monotone table are persisted in pair identity.
+Compilation, direct evaluation, and Pyomo attachment validate and consume that same resolved table.
+The transition width is a versioned conformance constant; it is not fitted or tuned against native
+SPFlow or downstream accuracy evidence.
+
+The corrected runtime intentionally rejects every `conditional-pair-v1` record with guidance to
+recompile its fitted artifact. It does not maintain dual evaluation semantics or reinterpret old
+bytes. Existing production schema-v3 fitted SPNs remain valid inputs and can be recompiled into
+distinguishable v2 max and PWL pairs. Historical v1 files remain useful as immutable rejection and
+diagnostic evidence only.
 
 ## Numerical policy
 

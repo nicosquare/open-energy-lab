@@ -29,6 +29,7 @@ from open_energy_lab.tpm.conditional import (
     publish_conditional_pair,
 )
 from open_energy_lab.tpm.conditional_mio import evaluate_conditional_mio_pair
+from open_energy_lab.tpm.piecewise import resolve_guarded_exponential_spec
 
 
 def _source_reference() -> TPMConditionalSourceReference:
@@ -99,6 +100,11 @@ def _encoding(mode: str = "max") -> TPMConditionalEncodingPolicy:
             },
             sum_configuration={"sum_big_m": 100.0},
         )
+    guarded = resolve_guarded_exponential_spec(
+        base_x_points=[math.log(1e-3), -2.0, -1.0, -0.3, 0.0],
+        base_y_points=[0.001, 0.14, 0.37, 0.74, 1.0],
+        domain_floor=-500.0,
+    )
     return TPMConditionalEncodingPolicy(
         mode="piecewise",
         approximation_label=(
@@ -113,9 +119,7 @@ def _encoding(mode: str = "max") -> TPMConditionalEncodingPolicy:
         },
         sum_configuration={
             "sum_big_m": 100.0,
-            "exp_domain_floor": -500.0,
-            "exp_x_points": [-500.0, -6.9, -2.0, -1.0, -0.3, 0.0],
-            "exp_y_points": [0.0, 0.001, 0.14, 0.37, 0.74, 1.0],
+            **guarded,
             "log_x_points": [1.0, 1.19, 1.41, 1.68, 2.0],
             "log_y_points": [0.0, 0.17, 0.35, 0.52, 0.69],
         },

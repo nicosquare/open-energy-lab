@@ -101,7 +101,8 @@ The reviewed inputs are:
 
 - `conditional_mio_embedding_v1.json`, the human-reviewed nonuniform source;
 - `tpm_artifact_conditional_mio_v3.json` and its checked sidecar;
-- `conditional_pair_max_v1.json` and `conditional_pair_pwl_v1.json`; and
+- `conditional_pair_max_v2.json` and `conditional_pair_pwl_v2.json` (the retained
+  `*_v1.json` files are rejection-only historical fixtures); and
 - `conditional_mio_evidence_v1.json`.
 
 Run the same required source and headless execution checks offline on CPU:

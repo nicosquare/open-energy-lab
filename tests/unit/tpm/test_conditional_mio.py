@@ -19,6 +19,7 @@ from open_energy_lab.tpm.conditional import (
     TPMConditionalEncodingPolicy,
     TPMConditionalNumericalPolicy,
     TPMConditionalPair,
+    resolve_conditional_attachment_formulation,
 )
 from open_energy_lab.tpm.conditional_mio import (
     TPMConditionalEvaluationError,
@@ -604,6 +605,11 @@ def _pair_with_circuits(
     payload["pair_id"] = ""
     payload["numerator"] = numerator.to_dict()
     payload["denominator"] = denominator.to_dict()
+    payload["attachment_formulation"] = resolve_conditional_attachment_formulation(
+        encoding=base.encoding,
+        numerator=numerator,
+        denominator=denominator,
+    ).to_dict()
     return TPMConditionalPair.from_dict(payload)
 
 
@@ -890,7 +896,7 @@ def test_direct_evaluator_executes_max_rather_than_exact_logsumexp() -> None:
     assert result.numerator_log != pytest.approx(exact)
 
 
-def test_direct_evaluator_rejects_pwl_interpolation_outside_persisted_domain() -> None:
+def test_pair_rejects_noncanonical_guarded_pwl_table() -> None:
     numerator, denominator = _sum_circuits()
     base = _pair_with_circuits(
         mode="piecewise",
@@ -906,13 +912,8 @@ def test_direct_evaluator_rejects_pwl_interpolation_outside_persisted_domain() -
             "exp_y_points": [0.9, 1.0],
         }
     )
-    narrow = TPMConditionalPair.from_dict(payload)
-
-    with pytest.raises(ValueError, match="outside"):
-        evaluate_conditional_mio_pair(
-            narrow,
-            model_coordinate_assignments={"x": 0.5},
-        )
+    with pytest.raises(ValueError, match="guard|canonical"):
+        TPMConditionalPair.from_dict(payload)
 
 
 def test_native_evaluator_returns_raw_explicit_event_roots_without_clamping(

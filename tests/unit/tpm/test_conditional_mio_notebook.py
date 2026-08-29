@@ -63,8 +63,8 @@ def test_notebook_uses_public_fixture_backed_composition_for_all_mapping_forms()
 
     for required in (
         "tpm_artifact_conditional_mio_v3.json",
-        "conditional_pair_max_v1.json",
-        "conditional_pair_pwl_v1.json",
+        "conditional_pair_max_v2.json",
+        "conditional_pair_pwl_v2.json",
         "conditional_mio_evidence_v1.json",
         "TPMContinuousDecisionMapping",
         "TPMBinaryDecisionMapping",

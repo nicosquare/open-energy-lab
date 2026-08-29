@@ -30,6 +30,14 @@ from .conditional import (
     TPMEmbeddingParityEvidence,
     TPMNativeConditionalEvaluation,
 )
+from .piecewise import (
+    CONDITIONAL_GUARD_DOMAIN_FLOOR,
+    CONDITIONAL_GUARD_TRANSITION_WIDTH,
+    DEFAULT_EXP_PROBABILITY_FLOOR,
+    evaluate_guarded_exponential,
+    guarded_exponential_points,
+    resolve_guarded_exponential_spec,
+)
 from .domains import (
     TPMApproximationDomain,
     TPMCompiledValidityRecord,
@@ -1478,16 +1486,38 @@ def _resolve_encoding_policy(
     if requested.mode == "piecewise":
         log_x = tuple(float(value) for value in sum_configuration["log_x_points"])
         exp_x = tuple(float(value) for value in sum_configuration["exp_x_points"])
+        exp_y = tuple(float(value) for value in sum_configuration["exp_y_points"])
         if log_x[0] > 1.0 or log_x[-1] < float(maximum_sum_arity):
             raise ValueError(
                 "piecewise logarithm curve does not cover the resolved Sum arity"
             )
         if exp_x[-1] != 0.0:
             raise ValueError("piecewise exponential curve must end exactly at zero")
-        if float(sum_configuration["exp_domain_floor"]) != exp_x[0]:
-            raise ValueError(
-                "piecewise exp_domain_floor must match the first exponential point"
+        if "guard_policy" not in sum_configuration:
+            cutoff = math.log(DEFAULT_EXP_PROBABILITY_FLOOR)
+            base_pairs = tuple(
+                (x_value, y_value)
+                for x_value, y_value in zip(exp_x, exp_y, strict=True)
+                if x_value >= cutoff and y_value > 0.0
             )
+            if len(base_pairs) < 2:
+                raise ValueError(
+                    "piecewise exponential curve does not retain a base curve "
+                    "covering the guarded transition"
+                )
+            guarded = resolve_guarded_exponential_spec(
+                base_x_points=tuple(value[0] for value in base_pairs),
+                base_y_points=tuple(value[1] for value in base_pairs),
+                domain_floor=float(
+                    sum_configuration.get(
+                        "exp_domain_floor", CONDITIONAL_GUARD_DOMAIN_FLOOR
+                    )
+                ),
+                probability_floor=DEFAULT_EXP_PROBABILITY_FLOOR,
+                transition_width=CONDITIONAL_GUARD_TRANSITION_WIDTH,
+            )
+            sum_configuration.update(guarded)
+        guarded_exponential_points(sum_configuration)
     return TPMConditionalEncodingPolicy(
         mode=requested.mode,
         approximation_label=requested.approximation_label,
@@ -1670,11 +1700,9 @@ def _evaluate_circuit(
             else:
                 sum_configuration = encoding.sum_configuration
                 exp_values = tuple(
-                    _strict_linear_interpolate(
+                    evaluate_guarded_exponential(
                         term - maximum,
-                        x_values=sum_configuration["exp_x_points"],
-                        y_values=sum_configuration["exp_y_points"],
-                        field_name=f"PWL exponential at Sum {node.node_id}",
+                        configuration=sum_configuration,
                     )
                     for term in terms
                 )

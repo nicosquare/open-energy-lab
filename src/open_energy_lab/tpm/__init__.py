@@ -24,6 +24,7 @@ if TYPE_CHECKING:
         TPMCategoricalDecisionMapping,
         TPMConditionalAttachment,
         TPMConditionalAttachmentDiagnostics,
+        TPMConditionalAttachmentFormulation,
         TPMConditionalCircuit,
         TPMConditionalCircuitNode,
         TPMConditionalCompilationRequest,
@@ -45,6 +46,7 @@ if TYPE_CHECKING:
         load_conditional_pair,
         publish_conditional_evidence,
         publish_conditional_pair,
+        resolve_conditional_attachment_formulation,
     )
     from .conditional_mio import (
         TPMConditionalDiagnosticsError,
@@ -192,6 +194,10 @@ _EXPORT_MAP = {
         ".conditional",
         "TPMConditionalAttachmentDiagnostics",
     ),
+    "TPMConditionalAttachmentFormulation": (
+        ".conditional",
+        "TPMConditionalAttachmentFormulation",
+    ),
     "TPMConditionalCircuit": (".conditional", "TPMConditionalCircuit"),
     "TPMConditionalCircuitNode": (
         ".conditional",
@@ -285,6 +291,10 @@ _EXPORT_MAP = {
         "publish_conditional_evidence",
     ),
     "publish_conditional_pair": (".conditional", "publish_conditional_pair"),
+    "resolve_conditional_attachment_formulation": (
+        ".conditional",
+        "resolve_conditional_attachment_formulation",
+    ),
     "TPMFitConfig": (".fit", "TPMFitConfig"),
     "TPMFitMemoryError": (".fit", "TPMFitMemoryError"),
     "TPMArtifactBuildRequest": (".fit", "TPMArtifactBuildRequest"),
@@ -425,6 +435,7 @@ __all__ = [
     "TPMCategoricalDecisionMapping",
     "TPMConditionalAttachment",
     "TPMConditionalAttachmentDiagnostics",
+    "TPMConditionalAttachmentFormulation",
     "TPMConditionalCircuit",
     "TPMConditionalCircuitNode",
     "TPMConditionalCompilationRequest",
@@ -461,6 +472,7 @@ __all__ = [
     "load_conditional_pair",
     "publish_conditional_evidence",
     "publish_conditional_pair",
+    "resolve_conditional_attachment_formulation",
     "TPMFitConfig",
     "TPMFitMemoryError",
     "TPMArtifactBuildRequest",
