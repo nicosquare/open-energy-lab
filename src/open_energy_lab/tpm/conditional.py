@@ -56,6 +56,9 @@ _REQUIRED_NUMERICAL_TOLERANCES = frozenset(
         "domain_membership_tolerance",
     }
 )
+_GUARDED_INPUT_COORDINATE_POLICY = "unit-affine-log-v1"
+_GUARDED_INPUT_COORDINATE_OFFSET = 500.0
+_GUARDED_INPUT_COORDINATE_SCALE = 500.0
 _ATTACHMENT_POLICY_LABELS = MappingProxyType(
     {
         "bounds": "outward-rounded-circuit-intervals-v1",
@@ -64,7 +67,7 @@ _ATTACHMENT_POLICY_LABELS = MappingProxyType(
         "continuous_leaf_other": "DCC",
         "sum_exponential": "DCC",
         "sum_logarithm": "DCC",
-        "guarded_input_coordinate": "native-log-v1",
+        "guarded_input_coordinate": _GUARDED_INPUT_COORDINATE_POLICY,
     }
 )
 
@@ -1068,6 +1071,30 @@ def _resolve_circuit_attachment_formulation(
     probability_floor = float(
         encoding.leaf_configuration["discrete_probability_floor"]
     )
+    guarded_coordinate: dict[str, object] | None = None
+    if encoding.mode == "piecewise":
+        native_points, _ = guarded_exponential_points(encoding.sum_configuration)
+        expected_lower = -_GUARDED_INPUT_COORDINATE_OFFSET
+        if native_points[0] != expected_lower or native_points[-1] != 0.0:
+            raise ValueError(
+                "guarded exponential inputs must span the canonical [-500, 0] "
+                "native-log domain"
+            )
+        solver_points = tuple(
+            (value + _GUARDED_INPUT_COORDINATE_OFFSET)
+            / _GUARDED_INPUT_COORDINATE_SCALE
+            for value in native_points
+        )
+        if solver_points[0] != 0.0 or solver_points[-1] != 1.0:
+            raise ValueError("guarded solver coordinates must span the unit interval")
+        guarded_coordinate = {
+            "policy": _GUARDED_INPUT_COORDINATE_POLICY,
+            "native_offset": _GUARDED_INPUT_COORDINATE_OFFSET,
+            "native_scale": _GUARDED_INPUT_COORDINATE_SCALE,
+            "native_bounds": {"lower": expected_lower, "upper": 0.0},
+            "solver_bounds": {"lower": 0.0, "upper": 1.0},
+            "solver_breakpoints": list(solver_points),
+        }
 
     def resolve(node_id: int) -> tuple[float, float]:
         if node_id in bounds:
@@ -1080,7 +1107,7 @@ def _resolve_circuit_attachment_formulation(
             interval = (0.0, 0.0)
         elif node.node_type == "leaf_piecewise":
             values = tuple(float(value) for value in node.parameters["log_values"])
-            interval = (min(values), max(values))
+            interval = (_round_down(min(values)), _round_up(max(values)))
             segment_count = len(values) - 1
             representation = (
                 "fixed-equality"
@@ -1174,7 +1201,27 @@ def _resolve_circuit_attachment_formulation(
             else:
                 exponential_bounds: list[tuple[float, float]] = []
                 exponential_records: list[dict[str, object]] = []
+                solver_input_records: list[dict[str, object]] = []
                 for index, relative_interval in enumerate(relative_bounds):
+                    solver_input_interval = (
+                        max(
+                            0.0,
+                            _round_down(
+                                (
+                                    relative_interval[0]
+                                    + _GUARDED_INPUT_COORDINATE_OFFSET
+                                )
+                                / _GUARDED_INPUT_COORDINATE_SCALE
+                            ),
+                        ),
+                        1.0,
+                    )
+                    solver_input_records.append(
+                        {
+                            "branch_index": index,
+                            **_interval_fields(solver_input_interval),
+                        }
+                    )
                     lower_value = evaluate_guarded_exponential(
                         relative_interval[0],
                         configuration=encoding.sum_configuration,
@@ -1235,6 +1282,7 @@ def _resolve_circuit_attachment_formulation(
                 record.update(
                     {
                         "exponential_bounds": exponential_records,
+                        "solver_input_bounds": solver_input_records,
                         "total_bounds": _interval_fields(total_bounds),
                         "logarithm_bounds": _interval_fields(logarithm_bounds),
                         "output_bounds": _interval_fields(interval),
@@ -1255,7 +1303,7 @@ def _resolve_circuit_attachment_formulation(
 
     for node in circuit.nodes:
         resolve(node.node_id)
-    return {
+    result: dict[str, object] = {
         "root_id": circuit.root_id,
         "root_bounds": _interval_fields(bounds[circuit.root_id]),
         "node_output_bounds": [
@@ -1273,6 +1321,9 @@ def _resolve_circuit_attachment_formulation(
             if node.node_id in sum_records
         ],
     }
+    if guarded_coordinate is not None:
+        result["guarded_input_coordinate"] = guarded_coordinate
+    return result
 
 
 def _interval_fields(interval: tuple[float, float]) -> dict[str, float]:

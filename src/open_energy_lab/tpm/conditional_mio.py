@@ -315,6 +315,7 @@ def attach_conditional_mio_pair(
         circuit=pair.numerator.to_dict(),
         decision_variables=decision_variables,
         encoding=pair.encoding.to_dict(),
+        formulation=pair.attachment_formulation.numerator,
     )
     block.denominator = backend.Block(concrete=True)
     denominator_encoding = encode_conditioned_spflow_circuit(
@@ -323,6 +324,7 @@ def attach_conditional_mio_pair(
         circuit=pair.denominator.to_dict(),
         decision_variables=decision_variables,
         encoding=pair.encoding.to_dict(),
+        formulation=pair.attachment_formulation.denominator,
     )
     numerator_root = numerator_encoding["root"]
     denominator_root = denominator_encoding["root"]
@@ -385,6 +387,7 @@ def attach_conditional_mio_pair(
             "retained_decisions": list(expected),
             "validity": [value.to_dict() for value in pair.validity],
             "encoding": pair.encoding.to_dict(),
+            "attachment_formulation": pair.attachment_formulation.to_dict(),
             "numerical_policy": pair.numerical_policy.to_dict(),
         },
         diagnostic_components=diagnostic_components,

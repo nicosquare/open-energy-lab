@@ -218,6 +218,19 @@ def test_objective_free_highs_matches_direct_pair_at_predeclared_cases(
         diagnostics = _solve_and_inspect(model, attachment)
         case_results[str(case["case_name"])] = (direct, diagnostics)
 
+        for name, subblock in (
+            ("numerator", attachment.block.numerator),
+            ("denominator", attachment.block.denominator),
+        ):
+            formulation = getattr(pair.attachment_formulation, name)
+            for bound in formulation["node_output_bounds"]:
+                value = pyo.value(subblock.node_out[int(bound["node_id"])])
+                assert (
+                    float(bound["lower"]) - 1e-12
+                    <= value
+                    <= float(bound["upper"]) + 1e-12
+                )
+
         assert not tuple(
             attachment.block.component_objects(
                 pyo.Objective,

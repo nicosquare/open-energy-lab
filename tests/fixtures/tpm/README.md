@@ -27,9 +27,9 @@ purpose-labelled numerical tolerances. Those are source inputs rather than hand-
 evidence. The active feature evidence is:
 
 - `tpm_artifact_conditional_mio_v3.json` and its sidecar are the reviewed real-fit source artifact;
-- `conditional_pair_max_v1.json` and `conditional_pair_pwl_v1.json` are the immutable max and PWL
-  pairs compiled from that artifact after mixed symbolic continuous/binary/categorical support was
-  implemented; and
+- `conditional_pair_max_v2.json` and `conditional_pair_pwl_v2.json` are the active immutable max
+  and guarded-PWL pairs compiled from that artifact; the corresponding v1 files remain untouched
+  as historical evidence and explicit recompile-required rejection fixtures; and
 - `conditional_mio_evidence_v1.json` contains separate immutable direct/HiGHS parity and
   native/compiler fidelity records for both pairs.
 
@@ -41,24 +41,23 @@ mismatch.
 The reviewed source artifact was fitted offline on CPU with CPython `3.14.6`, current SPFlow
 `1.1.0`, Torch `2.13.0+cu130`, fit seed `16028`, and the options in the source JSON. Its compiler
 contracts are base MIO compiler `spflow-v1-mio-v2` and conditional-pair compiler
-`conditional-mio-v1`. Current exact byte digests and pair identities are:
+`conditional-mio-v2`. Current exact byte digests and pair identities are:
 
 - source JSON: `394f4ab76de48457f36ea03e451fbb608b66b8660ca1374b92f6260396b110bd`;
 - artifact manifest: `58e56e7adf850d604e41933479260cce22e90da4f40ac5838fab7578d88dac44`;
 - current-SPFlow sidecar: `2157d35ec4d18c230e8c01a074dae271c0cb161af1520582325420361bb7bc6f`;
-- max pair: SHA-256 `73a7cc0c4e6736e3f84c699ef9279fc88345b8349e92c3add630394e8811d8f7`,
-  pair ID `17e45b6b387b637a0444bf021c7ea3b2d3d2703635d8fd83b4250cdc6363dea9`;
-  and
-- PWL pair: SHA-256 `87eeaff775dfc3ec0f276cd5080d90e5d5dcce71e20e5ae1f82b5f03e19c1a3f`,
-  pair ID `f51291a32167baa744bbc7ba0232a50d2bc5f2be941c990c40a7c39b52774a83`;
+- max pair: SHA-256 `6258458339eaba5ba29e57ab09ed15768b0f9728815180452efb03e0c0896a0c`,
+  pair ID `b093c015cbd458090cbe1f46e91c5b19f1a1a17ec7ffb41ec85839333e71cd0e`;
+- PWL pair: SHA-256 `dd2722aaa4b963ac62bf0a29b0b6c34ff3b67146e99f4fa9bb58b4ec6b03eed6`,
+  pair ID `c06ad5ec1ec5c08281b182f8053522db7b3941bc75e3cc85085763c7bc5957b5`;
 - evidence bundle: SHA-256
-  `8a80c32139b25d8c97de2d654a131031c4df59cf91a96fbbfd012c78433f533b`;
+  `d600720b28402205f6c7c9ffc3da956acefdb5b9831ef1887fa9dcd0d902183c`;
 - max/PWL parity evidence IDs:
-  `830d50d24483d512fdc4952306186adb8eea6b77bbcbb3e96be8405353fa16e2` and
-  `547c580da250fbc593ec09e45ee97c5d017eb73dc3213a34c14235eed3ec44df`; and
+  `76d470edc7608e56f4644714dcb22898f702a7e2b13a5d5831db26d61444ec04` and
+  `6d03e6838907dcbfe67b01ac0cbbad6ee4db01214f431feb7d297f31a3d33e4f`; and
 - max/PWL fidelity evidence IDs:
-  `5792a07a8b5f6e7c1089d174cfb7c08225a3441e966e92233ed4246d95faaea9` and
-  `c61869f3a8dfda6f65eb73deb898f062b0148a1e77685cca943f491fc6c86f3b`.
+  `c1522e4a846725dc9a320e05bde55ee8d306b2b72f4a08757bb3e6ee1dbfa033` and
+  `58f42d1216dfeee85e2ea2e688a442cdeabad33589c38ddacc1e2917e2ef21b9`.
 
 Maintainers create candidate evidence only in a fresh directory:
 
@@ -104,10 +103,12 @@ sidecar and record a SHA-256 digest.
   conditional compilation.
 - `sidecars/tpm_artifact_conditional_mio_v3.spn_payload.pkl`: real current-SPFlow model sidecar
   referenced by the feature-016 source artifact.
-- `conditional_pair_max_v1.json`: immutable mixed-decision conditional pair using the declared max
-  sum encoding.
-- `conditional_pair_pwl_v1.json`: immutable mixed-decision conditional pair using the declared PWL
-  sum encoding.
+- `conditional_pair_max_v2.json`: active immutable mixed-decision conditional pair using the
+  declared max Sum encoding.
+- `conditional_pair_pwl_v2.json`: active immutable mixed-decision conditional pair using the
+  corrected guarded-PWL Sum encoding and persisted objective-free formulation.
+- `conditional_pair_max_v1.json` and `conditional_pair_pwl_v1.json`: untouched legacy rejection and
+  historical-evidence fixtures; loaders require recompilation instead of dual evaluation.
 - `conditional_mio_evidence_v1.json`: reviewed six-case evidence bundle containing independent
   max/PWL embedding-parity and compiler-fidelity records.
 - `declared_feature_domains_v1.json`: reviewable U-Bounds declarations,
@@ -239,7 +240,7 @@ by `open_energy_lab.tpm.load_tpm_artifact`. Query fixtures retain the
 
 - status: supported schema-v3 production source artifact
 - backend contract: current SPFlow `1.1.0`, Torch `2.13.0+cu130`, CPU, seed `16028`
-- compiler contracts: `spflow-v1-mio-v2` and `conditional-mio-v1`
+- compiler contracts: `spflow-v1-mio-v2` and `conditional-mio-v2`
 - source SHA-256: `394f4ab76de48457f36ea03e451fbb608b66b8660ca1374b92f6260396b110bd`
 - manifest SHA-256: `58e56e7adf850d604e41933479260cce22e90da4f40ac5838fab7578d88dac44`
 - sidecar: `sidecars/tpm_artifact_conditional_mio_v3.spn_payload.pkl`
@@ -252,16 +253,16 @@ by `open_energy_lab.tpm.load_tpm_artifact`. Query fixtures retain the
 - refresh policy: verify committed bytes in place; stage replacements only in a new directory for
   ordinary review
 
-`conditional_pair_max_v1.json` and `conditional_pair_pwl_v1.json`
+`conditional_pair_max_v2.json` and `conditional_pair_pwl_v2.json`
 
 - status: active immutable conditional-pair fixtures
 - source artifact: `tpm_artifact_conditional_mio_v3.json`, manifest SHA-256
   `58e56e7adf850d604e41933479260cce22e90da4f40ac5838fab7578d88dac44`
 - retained decisions: continuous `x`, binary `activation`, and ordered categorical `service_tier`
-- max pair ID: `17e45b6b387b637a0444bf021c7ea3b2d3d2703635d8fd83b4250cdc6363dea9`
-- max pair SHA-256: `73a7cc0c4e6736e3f84c699ef9279fc88345b8349e92c3add630394e8811d8f7`
-- PWL pair ID: `f51291a32167baa744bbc7ba0232a50d2bc5f2be941c990c40a7c39b52774a83`
-- PWL pair SHA-256: `87eeaff775dfc3ec0f276cd5080d90e5d5dcce71e20e5ae1f82b5f03e19c1a3f`
+- max pair ID: `b093c015cbd458090cbe1f46e91c5b19f1a1a17ec7ffb41ec85839333e71cd0e`
+- max pair SHA-256: `6258458339eaba5ba29e57ab09ed15768b0f9728815180452efb03e0c0896a0c`
+- PWL pair ID: `c06ad5ec1ec5c08281b182f8053522db7b3941bc75e3cc85085763c7bc5957b5`
+- PWL pair SHA-256: `dd2722aaa4b963ac62bf0a29b0b6c34ff3b67146e99f4fa9bb58b4ec6b03eed6`
 - staging command: `uv run --offline --locked --no-sync python examples/tpm_planning/run_conditional_mio_embedding.py --stage-pairs <fresh-directory>`
 - validation target: deterministic pair identity, explicit learned denominator, symbolic discrete
   leaves without Cartesian lookup, selected max/PWL semantics, direct representative evaluation,
@@ -273,15 +274,15 @@ by `open_energy_lab.tpm.load_tpm_artifact`. Query fixtures retain the
 
 - status: active generated validation evidence
 - evidence bundle SHA-256:
-  `8a80c32139b25d8c97de2d654a131031c4df59cf91a96fbbfd012c78433f533b`
+  `d600720b28402205f6c7c9ffc3da956acefdb5b9831ef1887fa9dcd0d902183c`
 - assignment coverage: lower boundary, interior, and upper boundary for both max and PWL; together
   the cases cover both binary states and all ordered categories without a Cartesian grid
 - parity record IDs:
-  `830d50d24483d512fdc4952306186adb8eea6b77bbcbb3e96be8405353fa16e2` and
-  `547c580da250fbc593ec09e45ee97c5d017eb73dc3213a34c14235eed3ec44df`
+  `76d470edc7608e56f4644714dcb22898f702a7e2b13a5d5831db26d61444ec04` and
+  `6d03e6838907dcbfe67b01ac0cbbad6ee4db01214f431feb7d297f31a3d33e4f`
 - fidelity record IDs:
-  `5792a07a8b5f6e7c1089d174cfb7c08225a3441e966e92233ed4246d95faaea9` and
-  `c61869f3a8dfda6f65eb73deb898f062b0148a1e77685cca943f491fc6c86f3b`
+  `c1522e4a846725dc9a320e05bde55ee8d306b2b72f4a08757bb3e6ee1dbfa033` and
+  `58f42d1216dfeee85e2ea2e688a442cdeabad33589c38ddacc1e2917e2ef21b9`
 - parity meaning: objective-free Pyomo/HiGHS roots and attachment-only violation magnitudes are
   compared with direct execution of the identical selected circuit and gated at absolute `1e-6`
 - fidelity meaning: compiled-minus-native numerator, denominator, conditional-log-risk, and

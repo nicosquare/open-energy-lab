@@ -186,6 +186,34 @@ bytes. Existing production schema-v3 fitted SPNs remain valid inputs and can be 
 distinguishable v2 max and PWL pairs. Historical v1 files remain useful as immutable rejection and
 diagnostic evidence only.
 
+## Objective-free attachment formulation in pair v2
+
+Pair v2 also persists an immutable attachment-formulation record. OEL derives finite reachable
+intervals bottom-up from persisted circuit values: leaves use their recorded log values, Products
+sum child intervals, weighted Sum terms add $\log w_i$, maxima combine term intervals, and PWL Sum
+records continue through relative inputs, guarded exponentials, totals, logarithms, and final node
+outputs. Every floating-point arithmetic bound is rounded outward. The record contains each node's
+output interval plus per-Sum term, maximum, relative, exponential, total, logarithm, output, and
+branch-specific big-$M$ data.
+
+The configured `sum_big_m=100` is a cap, not the coefficient placed on every branch. For branch
+$i$, OEL persists and uses the outward-rounded value $M_i=U_m-L_{t_i}$. Compilation fails before
+Pyomo mutation if a required value exceeds the cap. Attachment revalidates the pair identity and
+derived formulation before constructing its detached block, then applies the finite bounds to node
+outputs, maxima, relative inputs, exponential/logarithm auxiliaries, totals, and representation-owned
+convex weights.
+
+Five-point continuous leaf tables have four segments and use the persisted `DLOG` policy. Other
+continuous leaf tables and all Sum exponential/logarithm tables use `DCC`. These representation
+choices are identity-bearing and are never changed opportunistically during attachment.
+
+The guarded exponential Piecewise input uses the versioned solver coordinate
+$q=(r+500)/500$. The direct evaluator and persisted guarded curve remain in native log units; only
+the solver-facing breakpoints are transformed to the unit interval, with identical output values.
+This fallback was activated after the frozen scalar PWL cases were infeasible in native coordinates
+even though a direct-derived assignment satisfied every unscaled equation within $10^{-6}$ (the
+largest audited residual was $8.33\times10^{-16}$).
+
 ## Numerical policy
 
 Declared-domain membership retains Feature 014's closed, inclusive semantics. The persisted
