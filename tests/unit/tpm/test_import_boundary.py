@@ -105,6 +105,7 @@ def test_conditional_exports_resolve_without_loading_heavy_backends() -> None:
         package.build_compiler_fidelity_evidence,
         package.build_embedding_parity_evidence,
         package.evaluate_conditional_mio_pair,
+        package.initialize_conditional_mio_attachment,
         package.inspect_conditional_mio_attachment,
         package.evaluate_native_conditional_pair,
     )

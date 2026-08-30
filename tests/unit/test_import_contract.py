@@ -273,6 +273,7 @@ EXPECTED_TPM_EXPORTS = [
     "build_compiler_fidelity_evidence",
     "build_embedding_parity_evidence",
     "evaluate_conditional_mio_pair",
+    "initialize_conditional_mio_attachment",
     "inspect_conditional_mio_attachment",
     "evaluate_compiled_spflow_probability",
     "extract_spn_solution",

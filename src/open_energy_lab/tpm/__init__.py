@@ -56,6 +56,7 @@ if TYPE_CHECKING:
         build_embedding_parity_evidence,
         compile_conditional_mio_pair,
         evaluate_conditional_mio_pair,
+        initialize_conditional_mio_attachment,
         inspect_conditional_mio_attachment,
     )
     from .artifact import (
@@ -348,6 +349,10 @@ _EXPORT_MAP = {
         ".conditional_mio",
         "evaluate_conditional_mio_pair",
     ),
+    "initialize_conditional_mio_attachment": (
+        ".conditional_mio",
+        "initialize_conditional_mio_attachment",
+    ),
     "inspect_conditional_mio_attachment": (
         ".conditional_mio",
         "inspect_conditional_mio_attachment",
@@ -496,6 +501,7 @@ __all__ = [
     "build_compiler_fidelity_evidence",
     "build_embedding_parity_evidence",
     "evaluate_conditional_mio_pair",
+    "initialize_conditional_mio_attachment",
     "inspect_conditional_mio_attachment",
     "evaluate_compiled_spflow_probability",
     "extract_spn_solution",

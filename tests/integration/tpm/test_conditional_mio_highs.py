@@ -22,6 +22,7 @@ from open_energy_lab.tpm.conditional_mio import (
     build_embedding_parity_evidence,
     compile_conditional_mio_pair,
     evaluate_conditional_mio_pair,
+    initialize_conditional_mio_attachment,
     inspect_conditional_mio_attachment,
 )
 from open_energy_lab.tpm.query import evaluate_native_conditional_pair
@@ -251,6 +252,55 @@ def test_objective_free_highs_matches_direct_pair_at_predeclared_cases(
         for case in evidence.cases
     )
     assert pair_path.read_bytes() == pair_before
+
+
+def test_fixed_mixed_assignment_initializer_is_a_complete_constraint_witness() -> None:
+    pair = load_conditional_pair(CONDITIONAL_PWL_PAIR_PATH)
+    source = load_conditional_mio_source()
+    raw_case = source["representative_assignments"][1]
+    case = _mapping(raw_case, field_name="representative_assignment")
+    assignments = _mapping(case["values"], field_name="values")
+    model, attachment = _fixed_mixed_attachment(
+        pair, assignments, namespace="initialized_mixed_assignment"
+    )
+    fixed_states = {
+        variable.name: variable.fixed
+        for variable in (
+            model.x,
+            model.activation,
+            *tuple(model.service_tier.values()),
+        )
+    }
+
+    direct = initialize_conditional_mio_attachment(
+        pair,
+        attachment,
+        declared_domain_assignments=assignments,
+    )
+    diagnostics = inspect_conditional_mio_attachment(
+        attachment,
+        solver_metadata={
+            "solver_name": "not-solved",
+            "solver_version": "not-solved",
+            "status": "initialized",
+            "termination_condition": "not-solved",
+        },
+    )
+
+    assert {
+        variable.name: variable.fixed
+        for variable in (
+            model.x,
+            model.activation,
+            *tuple(model.service_tier.values()),
+        )
+    } == fixed_states
+    assert diagnostics.numerator_log == pytest.approx(direct.numerator_log)
+    assert diagnostics.denominator_log == pytest.approx(direct.denominator_log)
+    assert diagnostics.conditional_log_risk == pytest.approx(
+        direct.conditional_log_risk
+    )
+    assert diagnostics.maximum_constraint_residual <= 1e-12
 
 
 def test_uninterrupted_real_fit_to_highs_path_uses_the_same_persisted_pair(

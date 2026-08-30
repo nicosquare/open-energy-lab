@@ -67,9 +67,13 @@ The public TPM flow is deliberately staged:
    PWL semantics.
 5. Call `attach_conditional_mio_pair` with an existing Pyomo model, complete typed mappings, and a
    unique namespace. Attachment reuses the pair without recompiling it.
-6. After a caller-managed solve, call `inspect_conditional_mio_attachment` to read roots, raw risk,
+6. For a fixed-assignment parity solve, optionally call
+   `initialize_conditional_mio_attachment` after assigning the caller-owned decisions. It fills
+   only attachment-owned auxiliaries so a supporting solver can validate the complete graph as a
+   MIP start.
+7. After a caller-managed solve, call `inspect_conditional_mio_attachment` to read roots, raw risk,
    probability, solver metadata, and attachment-local residuals.
-7. Build and publish embedding-parity and compiler-fidelity evidence separately.
+8. Build and publish embedding-parity and compiler-fidelity evidence separately.
 
 Pair identity covers the source/model digests, event meaning, retained/marginalized features,
 declared domains and normalization, approximation validity, encoding configuration, compiler/schema
@@ -213,6 +217,28 @@ the solver-facing breakpoints are transformed to the unit interval, with identic
 This fallback was activated after the frozen scalar PWL cases were infeasible in native coordinates
 even though a direct-derived assignment satisfied every unscaled equation within $10^{-6}$ (the
 largest audited residual was $8.33\times10^{-16}$).
+
+## Fixed-assignment MIP-start validation
+
+Large objective-free attachments can make a MIP solver search blindly for thousands of deterministic
+PWL branch choices. In the frozen scalar case, Gurobi 13.0.2 solved the numerator and denominator
+circuits independently to machine precision, yet its default cut path declared their combined DCC
+model infeasible. Disabling cuts eventually found the unchanged feasible solution, and supplying the
+direct-derived values as a MIP start made Gurobi accept the full model without branch-and-bound.
+This isolates a solver search/cut failure; it does not make the denominator circuit optional.
+
+`initialize_conditional_mio_attachment` implements the deterministic fixed-assignment protocol. It
+validates the complete assignment through the same direct evaluator, initializes the normalized
+coordinate, node outputs, exact maximum choices, guarded-exponential/logarithm values, and persisted
+DLOG/DCC representation auxiliaries, and returns the direct evaluation. It does not fix or alter any
+caller-owned decision, change a bound, add an objective, remove either circuit, or deactivate a
+constraint. A supporting solver must still be invoked with warm-start handling enabled and remains
+responsible for accepting or rejecting every original equation.
+
+This initializer is a parity and feasibility aid for known fixed assignments, not a replacement for
+the caller's optimization objective or a proof that the unrestricted chance-constrained MIP will be
+easy to solve. Variable-decision optimization still requires an independently suitable formulation,
+solver configuration, and termination assessment.
 
 ## Numerical policy
 

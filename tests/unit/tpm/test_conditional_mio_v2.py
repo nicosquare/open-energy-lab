@@ -21,6 +21,7 @@ from open_energy_lab.tpm.conditional import (
 from open_energy_lab.tpm.conditional_mio import (
     attach_conditional_mio_pair,
     evaluate_conditional_mio_pair,
+    initialize_conditional_mio_attachment,
     inspect_conditional_mio_attachment,
 )
 from open_energy_lab.tpm.piecewise import (
@@ -312,6 +313,85 @@ def test_attachment_applies_finite_bounds_and_declared_dlog_dcc() -> None:
     assert any("piecewise_leaf_5.DCC" in name for name in component_names)
     assert any("sum_exp_piecewise_6_0.DCC" in name for name in component_names)
     assert any("sum_log_piecewise_6.DCC" in name for name in component_names)
+
+
+@pytest.mark.parametrize("mode", ("max", "piecewise"))
+def test_fixed_assignment_initializer_populates_unchanged_attachment(mode: str) -> None:
+    import pyomo.environ as pyo
+
+    numerator, denominator = _all_node_type_circuits()
+    pair = _pair_with_circuits(
+        mode=mode, numerator=numerator, denominator=denominator
+    )
+    model = pyo.ConcreteModel()
+    model.x = pyo.Var(bounds=(40.0, 160.0), initialize=100.0)
+    model.caller_constraint = pyo.Constraint(expr=model.x >= 50.0)
+    model.caller_objective = pyo.Objective(expr=model.x)
+    attachment = attach_conditional_mio_pair(
+        pair,
+        model,
+        mappings=(TPMContinuousDecisionMapping("x", model.x),),
+        namespace=f"initialized_{mode}",
+    )
+    caller_state = (model.x.value, model.x.fixed, model.x.bounds)
+
+    direct = initialize_conditional_mio_attachment(
+        pair,
+        attachment,
+        declared_domain_assignments={"x": 100.0},
+    )
+    diagnostics = inspect_conditional_mio_attachment(
+        attachment,
+        solver_metadata={
+            "solver_name": "not-solved",
+            "solver_version": "not-solved",
+            "status": "initialized",
+            "termination_condition": "not-solved",
+        },
+    )
+
+    assert (model.x.value, model.x.fixed, model.x.bounds) == caller_state
+    assert model.caller_constraint.active
+    assert model.caller_objective.active
+    assert diagnostics.numerator_log == pytest.approx(direct.numerator_log)
+    assert diagnostics.denominator_log == pytest.approx(direct.denominator_log)
+    assert diagnostics.conditional_log_risk == pytest.approx(
+        direct.conditional_log_risk
+    )
+    assert diagnostics.maximum_constraint_residual <= 1e-12
+    assert all(
+        variable.value is not None
+        for variable in attachment.block.component_data_objects(
+            pyo.Var, active=True, descend_into=True
+        )
+    )
+
+
+def test_fixed_assignment_initializer_rejects_an_attachment_from_another_pair() -> None:
+    import pyomo.environ as pyo
+
+    numerator, denominator = _all_node_type_circuits()
+    attached_pair = _pair_with_circuits(
+        mode="max", numerator=numerator, denominator=denominator
+    )
+    other_pair = _pair_with_circuits(
+        mode="piecewise", numerator=numerator, denominator=denominator
+    )
+    model = pyo.ConcreteModel()
+    model.x = pyo.Var(bounds=(40.0, 160.0), initialize=100.0)
+    attachment = attach_conditional_mio_pair(
+        attached_pair,
+        model,
+        mappings=(TPMContinuousDecisionMapping("x", model.x),),
+        namespace="attached_pair",
+    )
+
+    with pytest.raises(ValueError, match="does not belong"):
+        initialize_conditional_mio_attachment(
+            other_pair,
+            attachment,
+            declared_domain_assignments={"x": 100.0},
+        )
 
 
 def _guard_boundary_circuits(
