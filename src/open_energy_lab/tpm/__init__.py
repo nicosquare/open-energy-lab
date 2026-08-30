@@ -127,6 +127,7 @@ if TYPE_CHECKING:
         PiecewiseBreakpointPolicy,
         build_piecewise_metadata,
         load_piecewise_metadata,
+        resolve_guarded_exponential_spec,
     )
     from .query import (
         TPMQueryRequest,
@@ -413,6 +414,10 @@ _EXPORT_MAP = {
     "PiecewiseBreakpointPolicy": (".piecewise", "PiecewiseBreakpointPolicy"),
     "build_piecewise_metadata": (".piecewise", "build_piecewise_metadata"),
     "load_piecewise_metadata": (".piecewise", "load_piecewise_metadata"),
+    "resolve_guarded_exponential_spec": (
+        ".piecewise",
+        "resolve_guarded_exponential_spec",
+    ),
     "TPMQueryRequest": (".query", "TPMQueryRequest"),
     "evaluate_native_conditional_pair": (
         ".query",
@@ -522,6 +527,7 @@ __all__ = [
     "PiecewiseBreakpointPolicy",
     "build_piecewise_metadata",
     "load_piecewise_metadata",
+    "resolve_guarded_exponential_spec",
     "TPMQueryRequest",
     "evaluate_native_conditional_pair",
     "query_tpm_artifact",

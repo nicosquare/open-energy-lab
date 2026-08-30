@@ -107,6 +107,7 @@ EXPECTED_TPM_EXPORTS = [
     "PiecewiseBreakpointPolicy",
     "build_piecewise_metadata",
     "load_piecewise_metadata",
+    "resolve_guarded_exponential_spec",
     "TPMQueryRequest",
     "evaluate_native_conditional_pair",
     "query_tpm_artifact",
