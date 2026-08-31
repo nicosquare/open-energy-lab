@@ -98,6 +98,11 @@ def test_notebook_is_valid_v4_source_only_python_with_stable_cell_ids() -> None:
 
 def test_notebook_covers_bidding_audit_replay_and_evidence_limits() -> None:
     markdown = _source(cell_type="markdown").lower()
+    assert r"\(" not in markdown
+    assert r"\)" not in markdown
+    assert r"\[" not in markdown
+    assert r"\]" not in markdown
+    assert markdown.count("$$") == 18
     required = (
         "24-hour problem",
         "charge-positive",
