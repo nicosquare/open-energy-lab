@@ -14,8 +14,8 @@ has two complementary parts:
 
 1. an ACM e-Energy Full Paper about OEL as a real-data, multi-market research and evaluation
    environment; and
-2. a BS2027 research paper about operational control for climate-resilient district cooling, with
-   OEL serving as its enabling research infrastructure.
+2. a BS2027 research paper about efficient and flexible operation of district-cooling thermal
+   storage in a Gulf climate, with OEL serving as its enabling research infrastructure.
 
 Both contributions must remain distinct from *Tractable Probabilistic Models for Investment
 Planning*, which is currently under review, and from each other.
@@ -52,16 +52,17 @@ research question and principal contribution.
 
 | Dimension | ACM e-Energy 2027 Full Paper | BS2027 Research Paper |
 | --- | --- | --- |
-| Central question | How do market-participation strategies compare when evaluated with the same real data, information boundaries, battery physics, activation replay, and settlement rules? | Under which disturbance, forecast, and resource conditions does anticipatory control improve district-cooling resilience? |
-| Principal contribution | OEL's causal, producer-neutral, multi-market experiment and evaluation environment | Scientific findings about district-cooling resilience and operational control |
-| Demonstration | Real energy, FCR, aFRR, and mFRR data with heuristic, single-market, sequential, and jointly optimized strategies | New district/local cooling composition, thermal storage, service disturbances, and anticipatory control |
-| Evaluation | Physical delivery, settlement, information causality, strategy comparison, reproducibility, and cross-market trade-offs | Unserved cooling, autonomy, recovery, cost, and sensitivity to forecast and disturbance conditions |
+| Central question | How do market-participation strategies compare when evaluated with the same real data, information boundaries, battery physics, activation replay, and settlement rules? | Under which load, tariff, forecast, and storage conditions do predictive policies improve on threshold control of district-cooling thermal storage? |
+| Principal contribution | OEL's causal, producer-neutral, multi-market experiment and evaluation environment | Scientific findings about plant efficiency, operating cost, and demand flexibility from thermal-storage control in a Gulf climate |
+| Demonstration | Real energy, FCR, aFRR, and mFRR data with heuristic, single-market, sequential, and jointly optimized strategies | A plant-inspired chiller and chilled-water-storage system with threshold, perfect-forecast, MPC, and surrogate policies |
+| Evaluation | Physical delivery, settlement, information causality, strategy comparison, reproducibility, and cross-market trade-offs | kW/RT, $/RT-hour, peak demand, shifted load, response duration, rebound, unmet cooling, and controller runtime |
 | Deliberate exclusions | TPM, investment planning, claims that the benchmark robust bidder is novel, and substantive district-cooling results | OEL architecture as the paper's main novelty, TPM, investment planning, and market bidding |
 
 This separation changes the earlier BS-only synthesis. If both papers are pursued:
 
 1. OEL is the principal methodological and software contribution of the e-Energy Full Paper.
-2. District-cooling resilience is the principal scientific contribution of the BS2027 paper.
+2. District-cooling efficiency and flexibility are the principal scientific contributions of the
+   BS2027 paper.
 3. The BS paper uses and cites OEL as infrastructure without repeating the e-Energy platform claims
    or evaluation.
 
@@ -76,8 +77,8 @@ methods are new. Its thesis is:
 The existing robust FCR method is one strategy producer and benchmark, not an algorithmic novelty
 claim. The full demonstration should compare it with other single-market, sequential, heuristic,
 or jointly optimized strategies through the same evaluation environment. The separate
-district-cooling exercise must answer a domain question rather than serve as a post-hoc target used
-to justify the architecture.
+district-cooling exercise must answer a plant-operation question rather than serve as a post-hoc
+target used to justify the architecture.
 
 ## Candidate titles and venue categories
 
@@ -108,22 +109,23 @@ experimental platform to a new control method.
 
 Preferred working title:
 
-> **Anticipatory Control for Climate-Resilient District Cooling under Compound Service
-> Disruptions**
+> **From threshold control to predictive operation: Unlocking district-cooling flexibility with
+> thermal energy storage**
 
 Alternative title:
 
-> **When Does Anticipatory Control Improve District-Cooling Resilience? A Reproducible Scenario
-> Study**
+> **Predictive control of district-cooling thermal storage for efficient and flexible operation in
+> hot climates**
 
 Recommended submission:
 
 - **Paper type:** Research Paper
-- **Theme:** Climate Resilience & Adaptation
+- **Theme:** Building Systems, Controls & Smart Buildings
 
-Urban & District Scale or Building Systems, Controls & Smart Buildings are possible alternative
-themes. Simulation Methods & Emerging Tools is no longer preferred when the OEL platform paper is
-separated for e-Energy.
+Urban & District Scale and Energy Performance & Decarbonization are possible secondary themes.
+Climate Resilience & Adaptation is appropriate only if extreme heat or constrained plant/grid
+operation becomes a central experiment. Simulation Methods & Emerging Tools is no longer preferred
+when the OEL platform paper is separated for e-Energy.
 
 ## Motivation and relationship to existing platforms
 
@@ -264,75 +266,78 @@ claim that the robust FCR formulation itself is new.
 - exact replay from versioned data, commitments, configuration, and code; and
 - a public, redistribution-safe artifact or documented acquisition-and-reproduction workflow.
 
-## BS2027 district-cooling resilience study
+## BS2027 district-cooling thermal-storage study
 
 ### First submission abstract
 
-**Proposed title:** Anticipatory control for climate-resilient district cooling under compound
-service disruptions
+**Proposed title:** From threshold control to predictive operation: Unlocking district-cooling
+flexibility with thermal energy storage
 
 **Plain-text abstract:**
 
-Extreme heat increases cooling demand while also stressing electricity and district energy
-infrastructure. District cooling can reduce building-level equipment requirements, but dependence
-on networked cooling creates a service-resilience problem when district supply is constrained or
-interrupted. Local electric cooling, thermal energy storage, photovoltaic generation, and batteries
-can provide operational flexibility, although their value depends on disturbance timing, available
-forecasts, initial stored energy, and the condition of the electricity grid. Previous studies have
-developed optimal-control methods and virtual testbeds for district cooling, but there remains a need
-for reproducible comparisons that distinguish grid failures from district-cooling failures and test
-control strategies across compound disturbances and uncertain restoration.
+Cooling represents a major share of electricity demand in Gulf countries, particularly during the
+hottest months. District-cooling plants are widely used to serve this demand, but their chillers,
+pumps, and auxiliary equipment can consume substantial electricity. Plant operation is therefore
+commonly assessed through electricity use per unit of delivered cooling, expressed as kW/RT, and
+through electricity cost per delivered cooling energy. Many plants include large chilled-water
+storage tanks that behave as thermal batteries: cooling can be produced and stored in advance, then
+discharged later to reduce chiller demand. A visit to a district-cooling plant in the Gulf indicated
+that such storage may be operated through threshold-style logic, motivating a systematic comparison
+with predictive alternatives. Previous research has studied optimal control and virtual testbeds for
+district cooling, but the operating conditions under which advanced policies provide meaningful
+benefits over transparent industrial baselines remain important to establish.
 
-This study investigates the conditions under which anticipatory control improves cooling-service
-resilience in a hybrid district/building cooling system. The system uses district cooling during
-normal operation and combines constrained local electric cooling with thermal storage, photovoltaic
-generation, and battery storage as flexible resources. Physical capacities are fixed so that the
-study addresses operational control rather than investment planning.
+This study investigates when model predictive control and an optimization-derived surrogate policy
+improve upon threshold control of district-cooling thermal storage. A representative plant model
+will combine weather-driven cooling demand, chiller and auxiliary electricity consumption,
+part-load performance, chilled-water storage dynamics, electricity tariffs, and optional grid
+flexibility requests. Equipment capacities will remain fixed so that the study concerns operational
+control rather than plant design or investment planning.
 
-Using Open Energy Lab, we will construct reproducible weather-conditioned cooling-demand scenarios
-for ordinary hot periods and extreme heat. These will be combined with separate grid and
-district-cooling availability models representing individual, coincident, and sequential service
-interruptions. A conventional priority controller, a perfect-forecast optimization used as an upper
-reference, and a forecast-limited receding-horizon controller will be evaluated through the same
-physical replay and metric definitions. Sensitivity analysis will vary forecast error, interruption
-timing and duration, restoration uncertainty, disturbance severity, and initial electrical and
-thermal storage states.
+Using Open Energy Lab, threshold control, perfect-forecast optimization, forecast-limited
+receding-horizon control, and a computationally efficient surrogate policy will be evaluated through
+the same physical simulation and metric definitions. Scenarios will represent ordinary and extreme
+Gulf summer conditions. Sensitivity analysis will vary cooling-demand and price forecasts, initial
+tank state, storage losses, plant loading, tariff structure, and the timing and duration of
+demand-response events.
 
-The primary outcomes will be unserved cooling, electrical energy not served, storage depletion time,
-electrical autonomy, recovery time, peak demand, energy use, and operating cost. Expected findings
-will identify regimes in which anticipatory control materially improves resilience, regimes in which
-simple control is sufficient, and conditions under which forecast errors or depleted storage remove
-the benefit. The resulting scenario and evaluation protocol will support transparent comparison of
-building and district energy control strategies while keeping conclusions conditional on declared
-model and data assumptions.
+Primary outcomes will include kW/RT, electricity cost per RT-hour, peak electrical demand, shifted
+energy, demand-response capacity and duration, rebound demand, unmet cooling, storage cycling, and
+controller runtime. Expected findings will identify when predictive control provides material
+efficiency or flexibility gains, when threshold control is sufficient, and how forecast error and
+operating conditions affect those conclusions. The study will provide a reproducible basis for
+evaluating district-cooling thermal storage as both an efficiency resource and a source of grid
+flexibility in hot climates.
 
 ### Recommended form classification
 
-- **Submission type:** Climate Resilience & Adaptation (CRA) - Research Paper (Abstract)
+- **Submission type:** Building Systems, Controls & Smart Buildings (BSCS) - Research Paper
+  (Abstract)
 - **Presentation mode:** Oral presentation
 - **Specialization / Focus:**
-  - Overheating risk and thermal resilience
-  - Natural hazards and extreme weather events
-  - Model predictive control and advanced control strategies
-  - Energy storage in buildings
   - District energy systems and networks
-- **Keywords:** district cooling, climate resilience, model predictive control, compound
-  disruptions, energy storage
+  - Model predictive control and advanced control strategies
+  - Demand response and energy flexibility
+  - Energy storage in buildings
+  - Optimization algorithms and methods
+- **Keywords:** district cooling, thermal energy storage, model predictive control, demand
+  flexibility, hot climates
 - **Student contribution:** Select only if the contribution is mainly written by a student or
   doctoral candidate.
 
 The currently selected **Simulation Methods & Emerging Tools (SMET)** submission type is defensible
 only if OEL's simulation methodology is restored as the paper's principal contribution. Under the
-two-paper strategy, CRA is the cleaner classification because the BS paper's main question and
-findings concern climate resilience. Relevant secondary topic associations are Urban & District
-Scale, Building Systems, Controls & Smart Buildings, and SMET.
+two-paper strategy, BSCS is the cleaner classification because the BS paper's main question concerns
+plant and thermal-storage control. Relevant secondary topic associations are Urban & District Scale
+and Energy Performance & Decarbonization. Climate Resilience & Adaptation becomes appropriate only
+if extreme heat or constrained-service experiments are central rather than contextual.
 
 The **Select Priority Topics** and second **Specialization / Focus** fields appear under Reviewer
 Information and should describe the submitting author's reviewing expertise, not be copied
 automatically from the contribution classification. Suitable selections should be limited to areas
 in which the author is comfortable reviewing other papers.
 
-The optional references field can include the most relevant district-cooling control and resilience
+The optional references field can include the most relevant district-cooling control and flexibility
 work after the bibliographic details have been verified. It is preferable to omit it temporarily
 rather than enter incomplete citations.
 
@@ -340,85 +345,93 @@ rather than enter incomplete citations.
 
 The study should ask:
 
-> Under which disturbance, forecast, and resource conditions does anticipatory control improve
-> cooling-service resilience in a hybrid district/building cooling system?
+> Under which cooling-load, electricity-price, forecast, and storage conditions do predictive and
+> surrogate policies outperform threshold control of district-cooling thermal storage?
 
 This question does not presuppose that optimal control must help. Regimes in which it provides no
-benefit, increases ordinary-day cost, or fails because forecasts are inaccurate are valid results.
+material benefit, increases cost, or fails because forecasts are inaccurate are valid results.
 
 ### Candidate physical system
 
-The reference system could contain:
+The representative plant should contain:
 
-- district cooling as the normal cooling source;
-- constrained local electric cooling as backup;
-- chilled-water or ice thermal-energy storage;
-- a building or aggregate district cooling load;
-- PV generation and battery storage;
-- grid availability and district-cooling availability as separate services; and
-- fixed physical capacities so that the study remains operational control, not investment planning.
+- a weather-driven district cooling load expressed in RT;
+- one or more chillers with staged and part-load electricity-performance curves;
+- pumping and relevant auxiliary electricity consumption;
+- a large chilled-water tank represented as thermal energy storage;
+- explicit storage charge, discharge, loss, flow, and state bounds;
+- an electricity tariff and optional demand-response or grid-flexibility signal; and
+- fixed plant and storage capacities so that the study remains operational control, not investment
+  planning.
 
-If pre-cooling is treated as a control action, OEL will need a defensible zone thermal model and
-indoor-comfort state. Without that model, the paper must limit its thermal claim to delivered and
-unserved cooling service in RT-hours.
+The site visit motivates the configuration and threshold baseline but is not, by itself, field
+validation. Unless sufficient plant measurements and permissions become available, the paper should
+describe the case as a representative Gulf plant informed by operational practice rather than as a
+calibrated digital twin of the visited facility.
 
 ### Controllers
 
-The reference comparison should include:
+The policy comparison should include:
 
-- a conventional priority or rule-based controller;
+- a threshold controller representative of the observed operating logic;
 - a perfect-forecast optimization as an upper reference rather than a deployable policy;
 - a forecast-limited receding-horizon MPC controller; and
-- optionally, one reinforcement-learning controller using the same observation, action, replay,
-  and metric contracts.
+- a computationally efficient surrogate policy trained to approximate optimized operation.
 
-The controller set, information available to each controller, tuning budget, and failure behavior
-must be fixed before evaluating results.
+The surrogate must be defined precisely: it may approximate the optimizer's policy or value
+function, but it must not be described ambiguously as a surrogate of the physical plant. The policy
+set, information available to each policy, tuning or training budget, and failure behavior must be
+fixed before evaluating results.
 
 ### Scenario protocol
 
-Scenarios must be constructed independently of controller outcomes. A reasonable initial suite is:
+Scenarios must be constructed independently of policy outcomes. A reasonable initial suite is:
 
-1. ordinary hot-weather operation;
-2. an extreme-heat period with both services available;
-3. a grid outage while district cooling remains available;
-4. a district-cooling interruption while the grid remains available;
-5. coincident grid and district-cooling interruptions; and
-6. sequential failures and uncertain restoration durations.
+1. ordinary Gulf summer operation under a flat electricity tariff;
+2. ordinary operation under time-varying prices or demand charges;
+3. an extreme-heat or peak cooling-demand period;
+4. a declared demand-response event requiring temporary electrical-load reduction;
+5. repeated or extended flexibility requests that expose storage depletion and rebound; and
+6. imperfect cooling-demand and electricity-price forecasts.
 
-Sensitivity analysis should cover forecast error, event timing, event duration, initial storage
-state, and disturbance severity. Scenario identities and random seeds should be persisted before
-running controllers.
+Sensitivity analysis should cover cooling-load and price forecast error, plant loading, event timing
+and duration, initial tank state, storage losses, relevant chiller performance uncertainty, and
+tariff structure. Scenario identities and random seeds should be persisted before running policies.
 
 ### Primary metrics
 
-- unserved cooling in RT-hours;
-- electrical energy not served;
-- thermal-storage state and depletion time;
-- battery state of charge and electrical autonomy;
-- time to recovery after service restoration;
-- ordinary-day and disturbed-day energy use;
+- plant efficiency in kW/RT;
+- electricity cost per RT-hour;
+- total chiller, pumping, and auxiliary electricity use;
 - peak electrical demand;
-- operating cost; and
-- indoor discomfort only if a validated zone thermal model is included.
+- electrical energy shifted between periods;
+- demand-response capacity, sustained response duration, and rebound demand;
+- unmet cooling in RT-hours;
+- storage state, losses, throughput, and cycling; and
+- controller runtime and surrogate optimality or performance loss relative to MPC and the
+  perfect-forecast reference.
 
 The main results should report distributions and sensitivity ranges, not only one favorable
-trajectory.
+trajectory. Resilience should be claimed only if the study explicitly evaluates maintained cooling
+delivery during extreme heat, grid constraints, or plant-capacity limitations; ordinary demand
+shifting establishes flexibility rather than resilience.
 
 ## Required OEL extensions
 
-The current weather-demand feature deliberately supports exactly one cooling path per scenario and
-uses a deterministic kW-per-RT conversion for local electric cooling. The reference exercise will
-require deliberate reusable extensions rather than paper-specific scripts:
+The current weather-demand and simulator capabilities do not yet constitute a district-cooling
+plant model. The study will require deliberate reusable extensions rather than paper-specific
+scripts:
 
-- hybrid district and local cooling-service composition;
-- a thermal-storage component and state transition;
-- explicit district-cooling availability and capacity;
-- separate grid and district-service disturbance models;
-- forecast information and forecast-error contracts for controllers;
-- an MPC or optimal-control adapter;
-- a consistent control and replay interface for rule-based and advanced controllers; and
-- optionally, a simple validated zone thermal model.
+- a district-cooling plant and chiller-staging model with documented part-load performance;
+- a chilled-water storage component and thermal state transition;
+- pumping and relevant auxiliary electricity models;
+- explicit cooling-load, tariff, demand-charge, and flexibility-request inputs;
+- forecast information and forecast-error contracts for policies;
+- threshold, perfect-forecast, and MPC policy adapters;
+- a defined surrogate-policy training and inference workflow;
+- common physical replay for every policy; and
+- efficiency, cost-normalization, peak, shifting, response-duration, rebound, service, and runtime
+  metrics.
 
 These extensions should live in OEL's reusable library boundaries and be tested independently of
 the final case study.
@@ -483,9 +496,9 @@ The e-Energy paper should focus on:
 - visualization, reporting, failure records, and evidence identities; and
 - the experiment-composition and causality contracts connecting those areas.
 
-TPM investment planning and the district-cooling resilience results should be omitted from the
-paper's evaluation and contribution claims. TPM-generated market strategies can remain future
-consumers of the published evaluation environment.
+TPM investment planning and the district-cooling thermal-storage control results should be omitted
+from the paper's evaluation and contribution claims. TPM-generated market strategies can remain
+future consumers of the published evaluation environment.
 
 For the paper to provide meaningful visibility to OEL, its artifact should be a public,
 market-focused release containing:
@@ -505,9 +518,10 @@ market-focused release containing:
 ### BS2027 paper
 
 The BS manuscript may use the same public OEL release, but its contribution and evaluation should
-focus on the new district-cooling system, disturbance protocol, controllers, and resilience
-findings. General OEL architecture and platform comparisons should be limited to what is needed to
-make the study reproducible. TPM planning and market bidding remain outside its scope.
+focus on the representative plant model, chilled-water storage, policy comparison, efficiency, and
+grid-flexibility findings. General OEL architecture and platform comparisons should be limited to
+what is needed to make the study reproducible. TPM planning and market bidding remain outside its
+scope.
 
 ## Expected paper structures
 
@@ -529,15 +543,19 @@ make the study reproducible. TPM planning and market bidding remain outside its 
 
 ### BS2027 Research Paper
 
-1. **Problem:** cooling-service resilience under heat and compound infrastructure disruptions.
-2. **System and assumptions:** hybrid district/local cooling, storage, fixed capacities, and service
-   availability.
-3. **Controllers:** rule-based, perfect-forecast reference, and forecast-limited anticipatory
-   control.
-4. **Scenario protocol:** independent disturbances, restoration uncertainty, and forecast error.
-5. **Results:** resilience, recovery, energy, peak, and cost distributions.
-6. **Sensitivity and limitations:** regimes where anticipatory control helps, does not help, or
-   fails.
+1. **Problem:** electricity-intensive district cooling and underused operational value of existing
+   chilled-water storage in Gulf climates.
+2. **Plant and assumptions:** weather-driven cooling load, chiller and auxiliary performance,
+   storage dynamics, tariffs, fixed capacities, and plant-inspired rather than field-validated
+   status.
+3. **Policies:** threshold baseline, perfect-forecast reference, forecast-limited MPC, and an
+   optimization-derived surrogate.
+4. **Scenario protocol:** ordinary and extreme summer operation, tariffs, flexibility events,
+   forecast error, and storage-state sensitivity.
+5. **Results:** kW/RT, $/RT-hour, peak, shifted energy, response duration, rebound, service, storage,
+   and runtime distributions.
+6. **Sensitivity and limitations:** regimes where predictive control helps, threshold control is
+   sufficient, or forecast and model errors remove the benefit.
 7. **Reproducibility:** OEL experiment bundle and evidence, without re-arguing the platform paper.
 
 ## Immediate submission decisions
@@ -546,13 +564,17 @@ make the study reproducible. TPM planning and market bidding remain outside its 
 
 The abstract should commit to these boundaries:
 
-- District-cooling resilience is the principal contribution; OEL is enabling infrastructure.
+- District-cooling thermal-storage efficiency and flexibility are the principal contributions; OEL
+  is enabling infrastructure.
 - Physical capacities are fixed; there is no investment sizing.
-- Scenario definitions are independent of controller outcomes.
-- Rule-based and anticipatory controllers share one replay and metric contract.
-- Synthetic conclusions remain conditional on declared assumptions.
-- Expected findings concern when anticipatory control helps or fails, not a guaranteed resilience
-  improvement.
+- Scenario definitions are independent of policy outcomes.
+- Threshold, perfect-forecast, MPC, and surrogate policies share one physical replay and metric
+  contract.
+- The plant visit motivates the case and baseline but is not claimed as field validation without
+  sufficient operational measurements.
+- Expected findings concern when predictive policies help or fail, not a guaranteed improvement.
+- Flexibility is the primary grid claim; resilience is claimed only if constrained-service or
+  extreme-heat continuity is explicitly evaluated.
 
 ### ACM e-Energy Full Paper
 
@@ -564,22 +586,22 @@ The paper should commit to these boundaries:
 - The robust FCR method is a showcased benchmark strategy, not an algorithmic novelty claim.
 - The strategy comparison includes isolated, sequential, and joint participation under identical
   data and evaluation assumptions.
-- TPM investment planning and district-cooling resilience are outside the manuscript.
+- TPM investment planning and district-cooling thermal-storage control are outside the manuscript.
 - Any claim that comparable libraries do not exist must be supported by a structured review.
 
 ## Schedule and decision gates
 
 | Date | Deliverable or decision |
 | --- | --- |
-| 1 September 2026 | Submit a BS abstract centred on district-cooling resilience. |
+| 1 September 2026 | Submit a BS abstract centred on predictive control of district-cooling thermal storage for efficiency and flexibility. |
 | September 2026 | Do not rush an archival e-Energy Note; freeze the Full Paper's market, strategy, data, and evaluation scope. |
 | September-December 2026 | Complete the multi-market evaluator and comparison while independently implementing and running the BS district-cooling study. |
 | 15 January 2027 | Submit the BS full paper. |
 | January 2027 | Target the e-Energy Winter Full Paper if the multi-day strategy comparison and reproducible artifact are complete; exact deadline pending. |
 
 The e-Energy policy prohibits simultaneous submissions. The two manuscripts must therefore remain
-substantively distinct in question, evaluation, results, figures, and claims. If the platform and
-district-cooling work cannot be separated cleanly, one venue should be selected rather than
+substantively distinct in question, evaluation, results, figures, and claims. If the market-platform
+and district-cooling work cannot be separated cleanly, one venue should be selected rather than
 submitting overlapping work. The Winter paper should be attempted only if its evidence is complete;
 the deadline should not determine the results presented.
 
