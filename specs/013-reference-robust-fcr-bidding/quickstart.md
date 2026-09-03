@@ -100,14 +100,17 @@ uv run jupyter lab \
 ```
 
 The committed notebook has stable cell IDs, empty execution state, and no
-saved outputs. Its default path is offline and uses HiGHS to solve a
-presolve-friendly nonzero-FCR restriction and relaxation. It then audits the
-24/96/6 mapping, derives the 2.75-hour horizon budget, plots headroom and a
-hand-calculable stored-energy envelope, and sends only the eligible restriction
-plan to Feature 012 for authored post-acceptance replay and settlement.
+saved outputs. Its default path is offline and uses HiGHS to solve a compact
+joint arbitrage/FCR restriction and relaxation. The 20 kWh authored battery
+first uses converter and stored-energy headroom for a real day-ahead price
+spread, then selects only 3.636 kW of robust symmetric reserve in the remaining
+blocks. The notebook derives the 2.75-hour horizon budget, attributes the
+binding power and robust-energy limits block by block, and sends only the
+eligible restriction plan to Feature 012 for nominal, upward-pulse, and
+downward-pulse post-acceptance replay and settlement.
 
-The complete native 2023-06-18 benchmark, licensed Gurobi exact evidence,
-explicit external activation replay, and figure export each have a separate
+The complete native HiGHS 2023-06-18 benchmark, licensed Gurobi reference
+benchmark, explicit external activation replay, and figure export each have a separate
 switch that defaults to `False`. The notebook never searches for reference
 data. If enabled, figure export writes only beneath
 `tmp/robust-fcr-bidding-notebook/figures`.

@@ -58,11 +58,13 @@ The exact commands and interpretation rules are maintained in the
 
 For a guided review, open the
 [source-only robust-bidding walkthrough](robust_fcr_bidding_walkthrough.ipynb).
-Its default authored case produces a nonzero 10 kW symmetric-FCR plan in a
-presolve-friendly problem, plots every numerical result with explicit physical
-or monetary units, and replays the accepted restriction plan only through
-Feature 012. The complete native reference benchmark, licensed exact solve,
-external activation replay, and figure export are separately named switches
+Its default authored case makes a genuine joint arbitrage/FCR choice on a
+20 kWh battery. Six unit-labelled figures show the price spread, the shared
+baseline/reserve headroom, block-by-block binding constraints, the ex-ante
+objective, three unseen-activation replays, and scenario-dependent realized
+economics. Only the accepted restriction plan is replayed, and only through
+Feature 012. The complete native HiGHS reference benchmark, licensed Gurobi
+reference benchmark, external activation replay, and figure export are separately named switches
 that default to disabled. Figure export, when selected, is restricted to
 `tmp/robust-fcr-bidding-notebook/figures`.
 

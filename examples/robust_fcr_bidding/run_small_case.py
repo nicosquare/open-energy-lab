@@ -273,14 +273,15 @@ def build_small_problem():
 
 
 def build_walkthrough_problem():
-    """Build the presolve-friendly nonzero-FCR case used by the notebook.
+    """Build the joint arbitrage/FCR case used by the visual walkthrough.
 
     The existing CLI retains its unique zero-bid case.  This companion keeps
-    the same ordinary-day time contract, uncertainty sets, and deterministic
-    HiGHS policy while giving the visual walkthrough a nonzero reserve plan.
-    Wide stored-energy limits and unit efficiencies make the resulting
-    10 kW reserve schedule hand-calculable without weakening any public
-    24/96/6 validation.
+    the same ordinary-day time contract, distinct uncertainty sets, and
+    deterministic HiGHS policy, but gives the notebook a compact problem in
+    which energy arbitrage consumes power and stored-energy headroom before
+    robust FCR is selected.  Unit efficiencies are intentional: they keep the
+    binding limits hand-calculable while the governed reference fixture keeps
+    the source battery's lossy physics available for selected parity work.
     """
 
     base = build_small_problem()
@@ -288,31 +289,41 @@ def build_walkthrough_problem():
         maximum_charge_power_kw=10.0,
         maximum_discharge_power_kw=10.0,
         minimum_stored_energy_kwh=0.0,
-        maximum_stored_energy_kwh=100.0,
-        initial_stored_energy_kwh=50.0,
+        maximum_stored_energy_kwh=20.0,
+        initial_stored_energy_kwh=10.0,
         charge_efficiency=1.0,
         discharge_efficiency=1.0,
     )
     prices = RobustFCRPriceInputs(
-        day_ahead_energy_prices_eur_per_kwh=(0.0,) * 24,
+        day_ahead_energy_prices_eur_per_kwh=(
+            0.03,
+            0.02,
+            0.01,
+            0.04,
+            0.18,
+            0.16,
+            0.14,
+            0.12,
+            *(0.06 for _ in range(16)),
+        ),
         fcr_capacity_prices_eur_per_kw_block=(0.1,) * 6,
         energy_interval_refs=base.prices.energy_interval_refs,
         fcr_interval_refs=base.prices.fcr_interval_refs,
     )
     terminal = TerminalStoredEnergyRule(
-        minimum_terminal_stored_energy_kwh=0.0,
+        minimum_terminal_stored_energy_kwh=10.0,
         allow_penalized_shortfall=False,
         shortfall_penalty_eur_per_kwh=100.0,
         rule_id="feature-013-walkthrough-terminal-v1",
     )
     return replace(
         base,
-        problem_id="feature-013-walkthrough-case-v1",
+        problem_id="feature-013-walkthrough-case-v2",
         battery=battery,
         prices=prices,
         terminal_rule=terminal,
         producer_input_fingerprints={
-            "authored_case": _digest("feature-013-walkthrough-case-v1"),
+            "authored_case": _digest("feature-013-walkthrough-case-v2"),
             "market_prices": prices.price_input_fingerprint,
         },
         provenance={
