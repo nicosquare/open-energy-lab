@@ -218,6 +218,30 @@ This fallback was activated after the frozen scalar PWL cases were infeasible in
 even though a direct-derived assignment satisfied every unscaled equation within $10^{-6}$ (the
 largest audited residual was $8.33\times10^{-16}$).
 
+## Exact logarithm-table arity endpoint
+
+The inherited logarithmic breakpoint calculation ended with
+`exp(log(maximum_sum_arity))`. For exactly representable integer arities this round trip can land
+one or more binary64 steps below or above the integer. In particular, arities 64, 96, and 128
+previously resolved to `63.99999999999998`, `95.99999999999999`, and
+`127.99999999999997`. The first and third values made the otherwise correct pre-mutation coverage
+check reject a table whose intended closed domain reached the Sum arity.
+
+The versioned `arity-log-table-endpoint-exactification-v1` policy preserves every legacy interior
+breakpoint and replaces only the final logarithm input with the exact declared integer arity. The
+corresponding logarithm output remains binary64-identical: applying `log` to either the legacy
+round-trip endpoint or the exact integer produces the same stored value for the affected arities.
+New conditional PWL pairs persist both the policy label and resolved arity in their identity-bearing
+Sum configuration. Direct evaluation, formulation bounds, MIP initialization, and Pyomo attachment
+therefore consume the same closed table; no adapter-side monkey patch is needed.
+
+The correction changes no guarded-exponential point or value, no interior logarithm point, and no
+logarithm value. Existing pair bytes remain immutable and load under their recorded v2 semantics;
+newly compiled affected-arity pairs receive a distinguishable identity. Unit coverage exercises
+resolutions 5, 9, and 17 over small and large arities, including 64, 96, and 128, and a real
+conditional-pair construction test proves that a 64-child Sum persists and directly evaluates the
+exact endpoint policy.
+
 ## Fixed-assignment MIP-start validation
 
 Large objective-free attachments can make a MIP solver search blindly for thousands of deterministic

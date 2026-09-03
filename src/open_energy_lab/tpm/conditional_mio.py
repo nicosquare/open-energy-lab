@@ -34,6 +34,7 @@ from .piecewise import (
     CONDITIONAL_GUARD_DOMAIN_FLOOR,
     CONDITIONAL_GUARD_TRANSITION_WIDTH,
     DEFAULT_EXP_PROBABILITY_FLOOR,
+    LOGARITHM_ENDPOINT_POLICY_NAME,
     evaluate_guarded_exponential,
     guarded_exponential_points,
     resolve_guarded_exponential_spec,
@@ -1776,6 +1777,11 @@ def _resolve_encoding_policy(
             raise ValueError(
                 "piecewise logarithm curve does not cover the resolved Sum arity"
             )
+        if log_x[-1] == float(maximum_sum_arity):
+            sum_configuration["logarithm_endpoint_policy"] = (
+                LOGARITHM_ENDPOINT_POLICY_NAME
+            )
+            sum_configuration["logarithm_endpoint_arity"] = maximum_sum_arity
         if exp_x[-1] != 0.0:
             raise ValueError("piecewise exponential curve must end exactly at zero")
         if "guard_policy" not in sum_configuration:

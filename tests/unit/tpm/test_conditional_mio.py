@@ -28,8 +28,14 @@ from open_energy_lab.tpm.conditional_mio import (
 )
 from open_energy_lab.tpm.domains import TPMFeatureDomain, TPMNormalizationSpec
 from open_energy_lab.tpm.mio import condition_compiled_spflow_mio
-from open_energy_lab.tpm.query import evaluate_native_conditional_pair
 from open_energy_lab.tpm.optional_spflow import SPFlowDependencyUnavailableError
+from open_energy_lab.tpm.piecewise import (
+    LOGARITHM_ENDPOINT_POLICY_NAME,
+    PiecewiseBreakpointPolicy,
+    build_logsumexp_piecewise_spec,
+    resolve_guarded_exponential_spec,
+)
+from open_energy_lab.tpm.query import evaluate_native_conditional_pair
 from tests.unit.tpm.test_conditional_pair import _encoding, _pair
 
 
@@ -504,6 +510,70 @@ def test_compiler_resolves_max_and_pwl_without_fallback_and_changes_identity(
     assert max_pair.pair_id != pwl_pair.pair_id
     assert max_pair.pair_id != other_event.pair_id
     assert max_pair.pair_id != reordered_decisions.pair_id
+
+
+def test_compiler_accepts_and_persists_an_exact_64_child_logarithm_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    artifact = load_tpm_artifact(
+        TPM_FIXTURE_DIRECTORY / "tpm_artifact_domains_v3.json"
+    )
+    _install_compiler_stubs(monkeypatch, artifact)
+    compiled = _compiled_for_artifact(artifact)
+    root = compiled["nodes"][-1]
+    root["children"] = [3, 7] * 32
+    root["weights"] = [1.0 / 64.0] * 64
+    monkeypatch.setattr(
+        conditional_mio_module,
+        "compile_spflow_model_to_mio",
+        lambda *_args, **_kwargs: compiled,
+    )
+    policy = PiecewiseBreakpointPolicy(piecewise_breakpoint_count=9)
+    base = build_logsumexp_piecewise_spec(max_terms=64, breakpoint_policy=policy)
+    guarded = resolve_guarded_exponential_spec(
+        base_x_points=base["exp_x_points"],
+        base_y_points=base["exp_y_points"],
+    )
+    encoding = TPMConditionalEncodingPolicy(
+        mode="piecewise",
+        approximation_label="weighted-log-sum-exp-piecewise-linear-approximation",
+        certification_label="not-applicable",
+        leaf_configuration={
+            "policy_name": "physical-interval-relative-v2",
+            "relative_breakpoints": [0.0, 0.5, 1.0],
+            "mio_epsilon": 1e-6,
+            "discrete_probability_floor": 1e-12,
+        },
+        sum_configuration={
+            "sum_big_m": 100.0,
+            **guarded,
+            "log_x_points": base["log_x_points"],
+            "log_y_points": base["log_y_points"],
+        },
+    )
+
+    pair = compile_conditional_mio_pair(_compilation_request(encoding=encoding))
+    sum_configuration = pair.encoding.sum_configuration
+
+    assert sum_configuration["maximum_sum_arity"] == 64
+    assert sum_configuration["log_x_points"][-1] == 64.0
+    assert sum_configuration["log_y_points"][-1] == math.log(
+        math.exp(math.log(64.0))
+    )
+    assert (
+        sum_configuration["logarithm_endpoint_policy"]
+        == LOGARITHM_ENDPOINT_POLICY_NAME
+    )
+    assert sum_configuration["logarithm_endpoint_arity"] == 64
+    evaluation = evaluate_conditional_mio_pair(
+        pair,
+        declared_domain_assignments={
+            "x": 100.0,
+            "activation": "off",
+            "service_tier": "economy",
+        },
+    )
+    assert math.isfinite(evaluation.conditional_probability)
 
 
 def test_compiler_rejects_ineligible_legacy_or_omitted_semantics(

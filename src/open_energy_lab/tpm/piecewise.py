@@ -20,6 +20,7 @@ DEFAULT_EXP_BREAKPOINT_START = 0.3
 CONDITIONAL_GUARD_POLICY_NAME = "zero-plateau-linear-transition-v1"
 CONDITIONAL_GUARD_TRANSITION_WIDTH = 1e-3
 CONDITIONAL_GUARD_DOMAIN_FLOOR = -500.0
+LOGARITHM_ENDPOINT_POLICY_NAME = "arity-log-table-endpoint-exactification-v1"
 CANONICAL_PIECEWISE_LEGACY_REFERENCE_PATHS = (
     "legacy/old_tpm/src_py/tpm/spn/main.py",
     "legacy/old_tpm/src_py/tpm/spn/encoding.py",
@@ -121,11 +122,17 @@ class PiecewiseBreakpointPolicy:
         if max_terms < 1:
             raise ValueError("max_terms must be at least 1")
         upper = max(1.0, float(max_terms))
-        return _logspace(
+        legacy_points = _logspace(
             1.0,
             upper,
             num=self.piecewise_breakpoint_count,
         )
+        # ``exp(log(upper))`` may land one or more binary64 steps on either
+        # side of an exactly representable integer arity.  Preserve every
+        # legacy interior point and make only the closed solver-table endpoint
+        # exact.  ``log_values`` remains binary64-identical because log of the
+        # legacy endpoint rounds to the same value as log of ``upper``.
+        return legacy_points[:-1] + (upper,)
 
     def log_values(self, *, max_terms: int) -> tuple[float, ...]:
         """Return the matching `log(x)` values for the legacy breakpoint grid."""
@@ -631,6 +638,7 @@ __all__ = [
     "DEFAULT_PIECEWISE_BREAKPOINT_COUNT",
     "DEFAULT_QUERY_NUMERIC_TOLERANCE",
     "DEFAULT_SUM_ENCODING_MODE",
+    "LOGARITHM_ENDPOINT_POLICY_NAME",
     "PiecewiseApproximationMetadata",
     "PiecewiseBreakpointPolicy",
     "approximate_exponential",

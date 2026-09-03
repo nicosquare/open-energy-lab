@@ -75,6 +75,27 @@ def test_logsumexp_piecewise_spec_replays_legacy_logspace_breakpoint_policy() ->
     assert spec["log_y_points"][0] == pytest.approx(0.0)
 
 
+@pytest.mark.parametrize("resolution", (5, 9, 17))
+@pytest.mark.parametrize("max_terms", (3, 5, 8, 16, 64, 96, 128, 256))
+def test_logsumexp_table_exactifies_only_the_declared_arity_endpoint(
+    resolution: int,
+    max_terms: int,
+) -> None:
+    policy = PiecewiseBreakpointPolicy(piecewise_breakpoint_count=resolution)
+    legacy_step = math.log(float(max_terms)) / (resolution - 1)
+    legacy_points = tuple(
+        math.exp(legacy_step * index) for index in range(resolution)
+    )
+
+    points = policy.log_breakpoints(max_terms=max_terms)
+    values = policy.log_values(max_terms=max_terms)
+
+    assert points[:-1] == legacy_points[:-1]
+    assert points[-1] == float(max_terms)
+    assert values == tuple(math.log(value) for value in legacy_points)
+    assert all(right > left for left, right in zip(points, points[1:]))
+
+
 def test_piecewise_approximation_helpers_match_legacy_boundary_behavior() -> None:
     policy = PiecewiseBreakpointPolicy(piecewise_breakpoint_count=5, exp_probability_floor=1e-3)
 
