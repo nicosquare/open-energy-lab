@@ -19,10 +19,16 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, ClassVar
 
+from .piecewise import (
+    evaluate_guarded_exponential,
+    guarded_exponential_points,
+    piecewise_linear_interpolate,
+)
 
-CONDITIONAL_PAIR_RECORD_KIND = "conditional-pair-v1"
-CONDITIONAL_PAIR_SCHEMA_VERSION = "v1"
-CONDITIONAL_PAIR_COMPILER_VERSION = "conditional-mio-v1"
+
+CONDITIONAL_PAIR_RECORD_KIND = "conditional-pair-v2"
+CONDITIONAL_PAIR_SCHEMA_VERSION = "v2"
+CONDITIONAL_PAIR_COMPILER_VERSION = "conditional-mio-v2"
 CONDITIONAL_EMBEDDING_PARITY_RECORD_KIND = "conditional-embedding-parity-v1"
 CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND = "conditional-compiler-fidelity-v1"
 CONDITIONAL_EVIDENCE_SCHEMA_VERSION = "v1"
@@ -48,6 +54,20 @@ _REQUIRED_NUMERICAL_TOLERANCES = frozenset(
         "constraint_residual_absolute_tolerance",
         "positive_log_risk_limit",
         "domain_membership_tolerance",
+    }
+)
+_GUARDED_INPUT_COORDINATE_POLICY = "unit-affine-log-v1"
+_GUARDED_INPUT_COORDINATE_OFFSET = 500.0
+_GUARDED_INPUT_COORDINATE_SCALE = 500.0
+_ATTACHMENT_POLICY_LABELS = MappingProxyType(
+    {
+        "bounds": "outward-rounded-circuit-intervals-v1",
+        "maximum": "branch-specific-big-m-v1",
+        "continuous_leaf_four_segment": "DLOG",
+        "continuous_leaf_other": "DCC",
+        "sum_exponential": "DCC",
+        "sum_logarithm": "DCC",
+        "guarded_input_coordinate": _GUARDED_INPUT_COORDINATE_POLICY,
     }
 )
 
@@ -360,10 +380,16 @@ class TPMConditionalEncodingPolicy:
                     right <= left for left, right in zip(x_values, x_values[1:])
                 ):
                     raise ValueError(f"{x_name} must be strictly increasing")
+                if any(
+                    right < left for left, right in zip(y_values, y_values[1:])
+                ):
+                    raise ValueError(f"{y_name} must be monotone nondecreasing")
             _finite_float(
                 sum_configuration.get("exp_domain_floor"),
                 field_name="sum_configuration.exp_domain_floor",
             )
+            if "guard_policy" in sum_configuration:
+                guarded_exponential_points(sum_configuration)
         object.__setattr__(self, "mode", mode)
         object.__setattr__(self, "approximation_label", approximation_label)
         object.__setattr__(self, "certification_label", certification_label)
@@ -706,6 +732,64 @@ class TPMConditionalCircuit:
 
 
 @dataclass(frozen=True, slots=True)
+class TPMConditionalAttachmentFormulation:
+    """Immutable finite-bound and Piecewise policy for objective-free attachment."""
+
+    policy_labels: Mapping[str, object]
+    big_m_cap: float
+    numerator: Mapping[str, object]
+    denominator: Mapping[str, object]
+
+    def __post_init__(self) -> None:
+        labels = _freeze_json(self.policy_labels, field_name="attachment policy labels")
+        if not isinstance(labels, Mapping) or dict(labels) != dict(
+            _ATTACHMENT_POLICY_LABELS
+        ):
+            raise ValueError("attachment formulation policy labels are unsupported")
+        big_m_cap = _finite_float(self.big_m_cap, field_name="attachment big_m_cap")
+        if big_m_cap <= 0.0:
+            raise ValueError("attachment big_m_cap must be positive")
+        numerator = _freeze_json(
+            self.numerator, field_name="attachment numerator formulation"
+        )
+        denominator = _freeze_json(
+            self.denominator, field_name="attachment denominator formulation"
+        )
+        for name, value in (("numerator", numerator), ("denominator", denominator)):
+            if not isinstance(value, Mapping) or not value:
+                raise ValueError(f"attachment {name} formulation must be nonempty")
+        object.__setattr__(self, "policy_labels", labels)
+        object.__setattr__(self, "big_m_cap", big_m_cap)
+        object.__setattr__(self, "numerator", numerator)
+        object.__setattr__(self, "denominator", denominator)
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "policy_labels": _thaw_json(self.policy_labels),
+            "big_m_cap": self.big_m_cap,
+            "numerator": _thaw_json(self.numerator),
+            "denominator": _thaw_json(self.denominator),
+        }
+
+    @classmethod
+    def from_dict(
+        cls, payload: Mapping[str, object]
+    ) -> "TPMConditionalAttachmentFormulation":
+        return cls(
+            **_strict_mapping(
+                payload,
+                record_name="conditional attachment formulation",
+                required={
+                    "policy_labels",
+                    "big_m_cap",
+                    "numerator",
+                    "denominator",
+                },
+            )
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class TPMConditionalPair:
     """Immutable solver-neutral conditional numerator/denominator pair."""
 
@@ -719,6 +803,7 @@ class TPMConditionalPair:
     numerical_policy: TPMConditionalNumericalPolicy
     numerator: TPMConditionalCircuit
     denominator: TPMConditionalCircuit
+    attachment_formulation: TPMConditionalAttachmentFormulation | None = None
     provenance: Mapping[str, object] = field(default_factory=dict)
     pair_id: str = ""
     record_kind: str = CONDITIONAL_PAIR_RECORD_KIND
@@ -812,6 +897,28 @@ class TPMConditionalPair:
             raise ValueError(
                 "denominator circuit must declare marginalized event treatment"
             )
+        expected_formulation = resolve_conditional_attachment_formulation(
+            encoding=self.encoding,
+            numerator=self.numerator,
+            denominator=self.denominator,
+        )
+        attachment_formulation = self.attachment_formulation
+        if attachment_formulation is None:
+            attachment_formulation = expected_formulation
+        elif isinstance(attachment_formulation, Mapping):
+            attachment_formulation = TPMConditionalAttachmentFormulation.from_dict(
+                attachment_formulation
+            )
+        if not isinstance(
+            attachment_formulation, TPMConditionalAttachmentFormulation
+        ):
+            raise TypeError(
+                "attachment_formulation must be a TPMConditionalAttachmentFormulation"
+            )
+        if attachment_formulation.to_dict() != expected_formulation.to_dict():
+            raise ValueError(
+                "attachment_formulation differs from the pair's resolved circuits or policy"
+            )
         provenance = _freeze_json(self.provenance, field_name="provenance")
         if not isinstance(provenance, Mapping):
             raise TypeError("provenance must be a mapping")
@@ -819,6 +926,7 @@ class TPMConditionalPair:
         object.__setattr__(self, "retained_decisions", retained)
         object.__setattr__(self, "marginalized_features", marginalized)
         object.__setattr__(self, "validity", validity)
+        object.__setattr__(self, "attachment_formulation", attachment_formulation)
         object.__setattr__(self, "provenance", provenance)
         expected_id = hashlib.sha256(
             canonical_conditional_json_bytes(self.identity_payload())
@@ -852,6 +960,7 @@ class TPMConditionalPair:
             "numerical_policy": self.numerical_policy.to_dict(),
             "numerator": self.numerator.to_dict(),
             "denominator": self.denominator.to_dict(),
+            "attachment_formulation": self.attachment_formulation.to_dict(),
             "provenance": provenance,
         }
 
@@ -878,6 +987,7 @@ class TPMConditionalPair:
                 "numerical_policy",
                 "numerator",
                 "denominator",
+                "attachment_formulation",
                 "provenance",
             },
         )
@@ -905,12 +1015,329 @@ class TPMConditionalPair:
             ),
             numerator=TPMConditionalCircuit.from_dict(data["numerator"]),
             denominator=TPMConditionalCircuit.from_dict(data["denominator"]),
+            attachment_formulation=TPMConditionalAttachmentFormulation.from_dict(
+                data["attachment_formulation"]
+            ),
             provenance=data["provenance"],
             pair_id=data["pair_id"],
             record_kind=data["record_kind"],
             schema_version=data["schema_version"],
             compiler_version=data["compiler_version"],
         )
+
+
+def resolve_conditional_attachment_formulation(
+    *,
+    encoding: TPMConditionalEncodingPolicy,
+    numerator: TPMConditionalCircuit,
+    denominator: TPMConditionalCircuit,
+) -> TPMConditionalAttachmentFormulation:
+    """Derive the finite objective-free formulation persisted in pair v2."""
+
+    if not isinstance(encoding, TPMConditionalEncodingPolicy):
+        raise TypeError("encoding must be a TPMConditionalEncodingPolicy")
+    if not isinstance(numerator, TPMConditionalCircuit) or not isinstance(
+        denominator, TPMConditionalCircuit
+    ):
+        raise TypeError("attachment formulation requires conditional circuits")
+    big_m_cap = _positive_finite_mapping_value(
+        encoding.sum_configuration,
+        "sum_big_m",
+        field_name="sum_configuration.sum_big_m",
+    )
+    return TPMConditionalAttachmentFormulation(
+        policy_labels=_ATTACHMENT_POLICY_LABELS,
+        big_m_cap=big_m_cap,
+        numerator=_resolve_circuit_attachment_formulation(
+            numerator, encoding=encoding, big_m_cap=big_m_cap
+        ),
+        denominator=_resolve_circuit_attachment_formulation(
+            denominator, encoding=encoding, big_m_cap=big_m_cap
+        ),
+    )
+
+
+def _resolve_circuit_attachment_formulation(
+    circuit: TPMConditionalCircuit,
+    *,
+    encoding: TPMConditionalEncodingPolicy,
+    big_m_cap: float,
+) -> dict[str, object]:
+    nodes = {node.node_id: node for node in circuit.nodes}
+    bounds: dict[int, tuple[float, float]] = {}
+    sum_records: dict[int, dict[str, object]] = {}
+    leaf_representations: dict[int, dict[str, object]] = {}
+    active: set[int] = set()
+    probability_floor = float(
+        encoding.leaf_configuration["discrete_probability_floor"]
+    )
+    guarded_coordinate: dict[str, object] | None = None
+    if encoding.mode == "piecewise":
+        native_points, _ = guarded_exponential_points(encoding.sum_configuration)
+        expected_lower = -_GUARDED_INPUT_COORDINATE_OFFSET
+        if native_points[0] != expected_lower or native_points[-1] != 0.0:
+            raise ValueError(
+                "guarded exponential inputs must span the canonical [-500, 0] "
+                "native-log domain"
+            )
+        solver_points = tuple(
+            (value + _GUARDED_INPUT_COORDINATE_OFFSET)
+            / _GUARDED_INPUT_COORDINATE_SCALE
+            for value in native_points
+        )
+        if solver_points[0] != 0.0 or solver_points[-1] != 1.0:
+            raise ValueError("guarded solver coordinates must span the unit interval")
+        guarded_coordinate = {
+            "policy": _GUARDED_INPUT_COORDINATE_POLICY,
+            "native_offset": _GUARDED_INPUT_COORDINATE_OFFSET,
+            "native_scale": _GUARDED_INPUT_COORDINATE_SCALE,
+            "native_bounds": {"lower": expected_lower, "upper": 0.0},
+            "solver_bounds": {"lower": 0.0, "upper": 1.0},
+            "solver_breakpoints": list(solver_points),
+        }
+
+    def resolve(node_id: int) -> tuple[float, float]:
+        if node_id in bounds:
+            return bounds[node_id]
+        if node_id in active:
+            raise ValueError("attachment-bound circuit must be acyclic")
+        active.add(node_id)
+        node = nodes[node_id]
+        if node.node_type == "log_one":
+            interval = (0.0, 0.0)
+        elif node.node_type == "leaf_piecewise":
+            values = tuple(float(value) for value in node.parameters["log_values"])
+            interval = (_round_down(min(values)), _round_up(max(values)))
+            segment_count = len(values) - 1
+            representation = (
+                "fixed-equality"
+                if "fixed_value" in node.parameters
+                else "DLOG" if segment_count == 4 else "DCC"
+            )
+            leaf_representations[node_id] = {
+                "node_id": node_id,
+                "segment_count": segment_count,
+                "representation": representation,
+            }
+        elif node.node_type in {"leaf_binary", "leaf_categorical"}:
+            densities = tuple(
+                math.log(max(float(value), probability_floor))
+                for value in node.parameters["densities"]
+            )
+            if "fixed_value" in node.parameters:
+                selected = densities[int(node.parameters["fixed_value"])]
+                interval = (_round_down(selected), _round_up(selected))
+            else:
+                interval = (_round_down(min(densities)), _round_up(max(densities)))
+        elif node.node_type == "product":
+            child_bounds = tuple(resolve(child_id) for child_id in node.children)
+            interval = (
+                _round_down(math.fsum(value[0] for value in child_bounds)),
+                _round_up(math.fsum(value[1] for value in child_bounds)),
+            )
+        elif node.node_type == "sum":
+            child_bounds = tuple(resolve(child_id) for child_id in node.children)
+            weights = tuple(float(value) for value in node.parameters["weights"])
+            term_records: list[dict[str, object]] = []
+            term_bounds: list[tuple[float, float]] = []
+            for index, (child_id, child_interval, weight) in enumerate(
+                zip(node.children, child_bounds, weights, strict=True)
+            ):
+                log_weight = math.log(weight)
+                term_interval = (
+                    _round_down(child_interval[0] + log_weight),
+                    _round_up(child_interval[1] + log_weight),
+                )
+                term_bounds.append(term_interval)
+                term_records.append(
+                    {
+                        "branch_index": index,
+                        "child_id": child_id,
+                        "log_weight": log_weight,
+                        **_interval_fields(term_interval),
+                    }
+                )
+            maximum_bounds = (
+                max(value[0] for value in term_bounds),
+                max(value[1] for value in term_bounds),
+            )
+            relative_records: list[dict[str, object]] = []
+            big_m_records: list[dict[str, object]] = []
+            relative_bounds: list[tuple[float, float]] = []
+            for index, term_interval in enumerate(term_bounds):
+                relative_interval = (
+                    _round_down(term_interval[0] - maximum_bounds[1]),
+                    0.0,
+                )
+                resolved_big_m = _round_up(
+                    maximum_bounds[1] - term_interval[0]
+                )
+                if resolved_big_m > big_m_cap:
+                    raise ValueError(
+                        f"conditioned Sum {node_id} branch {index} requires "
+                        f"big-M {resolved_big_m!r}, exceeding configured cap "
+                        f"{big_m_cap!r}"
+                    )
+                relative_bounds.append(relative_interval)
+                relative_records.append(
+                    {
+                        "branch_index": index,
+                        **_interval_fields(relative_interval),
+                    }
+                )
+                big_m_records.append(
+                    {"branch_index": index, "value": resolved_big_m}
+                )
+            record: dict[str, object] = {
+                "node_id": node_id,
+                "term_bounds": term_records,
+                "maximum_bounds": _interval_fields(maximum_bounds),
+                "relative_bounds": relative_records,
+                "branch_big_m": big_m_records,
+            }
+            if encoding.mode == "max":
+                interval = maximum_bounds
+                record["output_bounds"] = _interval_fields(interval)
+            else:
+                exponential_bounds: list[tuple[float, float]] = []
+                exponential_records: list[dict[str, object]] = []
+                solver_input_records: list[dict[str, object]] = []
+                for index, relative_interval in enumerate(relative_bounds):
+                    solver_input_interval = (
+                        max(
+                            0.0,
+                            _round_down(
+                                (
+                                    relative_interval[0]
+                                    + _GUARDED_INPUT_COORDINATE_OFFSET
+                                )
+                                / _GUARDED_INPUT_COORDINATE_SCALE
+                            ),
+                        ),
+                        1.0,
+                    )
+                    solver_input_records.append(
+                        {
+                            "branch_index": index,
+                            **_interval_fields(solver_input_interval),
+                        }
+                    )
+                    lower_value = evaluate_guarded_exponential(
+                        relative_interval[0],
+                        configuration=encoding.sum_configuration,
+                    )
+                    upper_value = evaluate_guarded_exponential(
+                        0.0,
+                        configuration=encoding.sum_configuration,
+                    )
+                    exponential_interval = (
+                        max(0.0, _round_down(lower_value)),
+                        upper_value,
+                    )
+                    exponential_bounds.append(exponential_interval)
+                    exponential_records.append(
+                        {
+                            "branch_index": index,
+                            **_interval_fields(exponential_interval),
+                        }
+                    )
+                total_bounds = (
+                    max(
+                        1.0,
+                        _round_down(
+                            math.fsum(value[0] for value in exponential_bounds)
+                        ),
+                    ),
+                    math.fsum(value[1] for value in exponential_bounds),
+                )
+                log_x = tuple(
+                    float(value)
+                    for value in encoding.sum_configuration["log_x_points"]
+                )
+                log_y = tuple(
+                    float(value)
+                    for value in encoding.sum_configuration["log_y_points"]
+                )
+                if total_bounds[0] < log_x[0] or total_bounds[1] > log_x[-1]:
+                    raise ValueError(
+                        f"conditioned Sum {node_id} reachable exponential total "
+                        "lies outside the persisted logarithm table"
+                    )
+                logarithm_bounds = (
+                    _round_down(
+                        piecewise_linear_interpolate(
+                            total_bounds[0], x_points=log_x, y_points=log_y
+                        )
+                    ),
+                    _round_up(
+                        piecewise_linear_interpolate(
+                            total_bounds[1], x_points=log_x, y_points=log_y
+                        )
+                    ),
+                )
+                interval = (
+                    _round_down(maximum_bounds[0] + logarithm_bounds[0]),
+                    _round_up(maximum_bounds[1] + logarithm_bounds[1]),
+                )
+                record.update(
+                    {
+                        "exponential_bounds": exponential_records,
+                        "solver_input_bounds": solver_input_records,
+                        "total_bounds": _interval_fields(total_bounds),
+                        "logarithm_bounds": _interval_fields(logarithm_bounds),
+                        "output_bounds": _interval_fields(interval),
+                        "exponential_representation": "DCC",
+                        "logarithm_representation": "DCC",
+                    }
+                )
+            sum_records[node_id] = record
+        else:  # pragma: no cover - circuit validation owns the node type set
+            raise ValueError(f"unsupported conditional circuit node type {node.node_type!r}")
+        active.remove(node_id)
+        if not all(math.isfinite(value) for value in interval):
+            raise ValueError(f"conditioned node {node_id} has nonfinite reachable bounds")
+        if interval[0] > interval[1]:
+            raise ValueError(f"conditioned node {node_id} has inverted reachable bounds")
+        bounds[node_id] = interval
+        return interval
+
+    for node in circuit.nodes:
+        resolve(node.node_id)
+    result: dict[str, object] = {
+        "root_id": circuit.root_id,
+        "root_bounds": _interval_fields(bounds[circuit.root_id]),
+        "node_output_bounds": [
+            {"node_id": node.node_id, **_interval_fields(bounds[node.node_id])}
+            for node in circuit.nodes
+        ],
+        "leaf_piecewise_representations": [
+            leaf_representations[node.node_id]
+            for node in circuit.nodes
+            if node.node_id in leaf_representations
+        ],
+        "sum_nodes": [
+            sum_records[node.node_id]
+            for node in circuit.nodes
+            if node.node_id in sum_records
+        ],
+    }
+    if guarded_coordinate is not None:
+        result["guarded_input_coordinate"] = guarded_coordinate
+    return result
+
+
+def _interval_fields(interval: tuple[float, float]) -> dict[str, float]:
+    return {"lower": interval[0], "upper": interval[1]}
+
+
+def _round_down(value: float) -> float:
+    normalized = float(value)
+    return normalized if normalized == 0.0 else math.nextafter(normalized, -math.inf)
+
+
+def _round_up(value: float) -> float:
+    normalized = float(value)
+    return normalized if normalized == 0.0 else math.nextafter(normalized, math.inf)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1800,6 +2227,15 @@ def load_conditional_pair(path: str | Path) -> TPMConditionalPair:
         raise ValueError(f"conditional pair {source} is unreadable or corrupt") from exc
     if not isinstance(payload, Mapping):
         raise TypeError(f"conditional pair {source} must contain a JSON object")
+    if (
+        payload.get("record_kind") == "conditional-pair-v1"
+        or payload.get("schema_version") == "v1"
+        or payload.get("compiler_version") == "conditional-mio-v1"
+    ):
+        raise ValueError(
+            f"conditional pair {source} uses legacy conditional-pair-v1 semantics; "
+            "recompile the fitted artifact to create a conditional-pair-v2 record"
+        )
     return TPMConditionalPair.from_dict(payload)
 
 
@@ -2347,6 +2783,7 @@ __all__ = [
     "TPMConditionalCircuitNode",
     "TPMConditionalCompilationRequest",
     "TPMConditionalAttachment",
+    "TPMConditionalAttachmentFormulation",
     "TPMConditionalAttachmentDiagnostics",
     "TPMBinaryDecisionLink",
     "TPMBinaryDecisionMapping",
@@ -2370,4 +2807,5 @@ __all__ = [
     "load_conditional_pair",
     "publish_conditional_evidence",
     "publish_conditional_pair",
+    "resolve_conditional_attachment_formulation",
 ]

@@ -17,6 +17,10 @@ DEFAULT_EXP_PROBABILITY_FLOOR = 1e-3
 DEFAULT_MIO_EPSILON = 1e-6
 DEFAULT_QUERY_NUMERIC_TOLERANCE = 1e-9
 DEFAULT_EXP_BREAKPOINT_START = 0.3
+CONDITIONAL_GUARD_POLICY_NAME = "zero-plateau-linear-transition-v1"
+CONDITIONAL_GUARD_TRANSITION_WIDTH = 1e-3
+CONDITIONAL_GUARD_DOMAIN_FLOOR = -500.0
+LOGARITHM_ENDPOINT_POLICY_NAME = "arity-log-table-endpoint-exactification-v1"
 CANONICAL_PIECEWISE_LEGACY_REFERENCE_PATHS = (
     "legacy/old_tpm/src_py/tpm/spn/main.py",
     "legacy/old_tpm/src_py/tpm/spn/encoding.py",
@@ -118,11 +122,17 @@ class PiecewiseBreakpointPolicy:
         if max_terms < 1:
             raise ValueError("max_terms must be at least 1")
         upper = max(1.0, float(max_terms))
-        return _logspace(
+        legacy_points = _logspace(
             1.0,
             upper,
             num=self.piecewise_breakpoint_count,
         )
+        # ``exp(log(upper))`` may land one or more binary64 steps on either
+        # side of an exactly representable integer arity.  Preserve every
+        # legacy interior point and make only the closed solver-table endpoint
+        # exact.  ``log_values`` remains binary64-identical because log of the
+        # legacy endpoint rounds to the same value as log of ``upper``.
+        return legacy_points[:-1] + (upper,)
 
     def log_values(self, *, max_terms: int) -> tuple[float, ...]:
         """Return the matching `log(x)` values for the legacy breakpoint grid."""
@@ -352,6 +362,190 @@ def build_logsumexp_piecewise_spec(
     }
 
 
+def resolve_guarded_exponential_spec(
+    *,
+    base_x_points: Sequence[float],
+    base_y_points: Sequence[float],
+    domain_floor: float = CONDITIONAL_GUARD_DOMAIN_FLOOR,
+    probability_floor: float = DEFAULT_EXP_PROBABILITY_FLOOR,
+    transition_width: float = CONDITIONAL_GUARD_TRANSITION_WIDTH,
+) -> dict[str, object]:
+    """Resolve the single-valued conditional exponential guard.
+
+    The persisted base curve remains unchanged from the end of the transition
+    onward.  The guard is exactly zero through ``log(probability_floor)`` and
+    joins the base curve over one fixed-width linear segment.
+    """
+
+    base_x = _strictly_increasing_finite_points(
+        base_x_points, field_name="base exponential x points"
+    )
+    base_y = _finite_points(
+        base_y_points, field_name="base exponential y points"
+    )
+    if len(base_x) != len(base_y):
+        raise ValueError("base exponential points and values must align")
+    if any(right < left for left, right in zip(base_y, base_y[1:])):
+        raise ValueError("base exponential values must be monotone nondecreasing")
+    if base_x[-1] != 0.0 or base_y[-1] != 1.0:
+        raise ValueError("base exponential curve must end exactly at (0, 1)")
+    normalized_probability_floor = float(probability_floor)
+    if not math.isfinite(normalized_probability_floor) or not (
+        0.0 < normalized_probability_floor < 1.0
+    ):
+        raise ValueError("guard probability_floor must be finite and between zero and one")
+    cutoff = math.log(normalized_probability_floor)
+    width = float(transition_width)
+    if not math.isfinite(width) or width <= 0.0:
+        raise ValueError("guard transition_width must be positive and finite")
+    transition_end = cutoff + width
+    normalized_domain_floor = float(domain_floor)
+    if not math.isfinite(normalized_domain_floor) or normalized_domain_floor >= cutoff:
+        raise ValueError("guard domain_floor must be finite and below the cutoff")
+    if base_x[0] > transition_end or base_x[-1] < transition_end:
+        raise ValueError("base exponential curve must cover the guard transition")
+    transition_value = piecewise_linear_interpolate(
+        transition_end,
+        x_points=base_x,
+        y_points=base_y,
+    )
+    retained = tuple(
+        (x_value, y_value)
+        for x_value, y_value in zip(base_x, base_y, strict=True)
+        if x_value > transition_end
+    )
+    resolved_x = (
+        normalized_domain_floor,
+        cutoff,
+        transition_end,
+        *(value[0] for value in retained),
+    )
+    resolved_y = (
+        0.0,
+        0.0,
+        transition_value,
+        *(value[1] for value in retained),
+    )
+    _strictly_increasing_finite_points(
+        resolved_x, field_name="resolved guarded exponential x points"
+    )
+    if any(right < left for left, right in zip(resolved_y, resolved_y[1:])):
+        raise ValueError(
+            "resolved guarded exponential values must be monotone nondecreasing"
+        )
+    return {
+        "guard_policy": CONDITIONAL_GUARD_POLICY_NAME,
+        "guard_probability_floor": normalized_probability_floor,
+        "guard_cutoff_log": cutoff,
+        "guard_cutoff_boundary": "plateau-inclusive",
+        "guard_transition_width_log": width,
+        "guard_transition_end_log": transition_end,
+        "guard_post_transition": "base-pwl-unchanged",
+        "exp_domain_floor": normalized_domain_floor,
+        "base_exp_x_points": base_x,
+        "base_exp_y_points": base_y,
+        "exp_x_points": resolved_x,
+        "exp_y_points": resolved_y,
+    }
+
+
+def guarded_exponential_points(
+    configuration: Mapping[str, object],
+) -> tuple[tuple[float, ...], tuple[float, ...]]:
+    """Validate and return one persisted canonical guarded table."""
+
+    if not isinstance(configuration, Mapping):
+        raise TypeError("guarded exponential configuration must be a mapping")
+    required = {
+        "guard_policy",
+        "guard_probability_floor",
+        "guard_cutoff_log",
+        "guard_cutoff_boundary",
+        "guard_transition_width_log",
+        "guard_transition_end_log",
+        "guard_post_transition",
+        "exp_domain_floor",
+        "base_exp_x_points",
+        "base_exp_y_points",
+        "exp_x_points",
+        "exp_y_points",
+    }
+    missing = sorted(required - set(configuration))
+    if missing:
+        raise ValueError(
+            "guarded exponential configuration is missing: " + ", ".join(missing)
+        )
+    if configuration["guard_policy"] != CONDITIONAL_GUARD_POLICY_NAME:
+        raise ValueError(
+            "guarded exponential guard_policy must be "
+            f"{CONDITIONAL_GUARD_POLICY_NAME!r}"
+        )
+    if configuration["guard_cutoff_boundary"] != "plateau-inclusive":
+        raise ValueError("guarded exponential cutoff boundary must be plateau-inclusive")
+    if configuration["guard_post_transition"] != "base-pwl-unchanged":
+        raise ValueError("guarded exponential must preserve the base PWL after transition")
+    expected = resolve_guarded_exponential_spec(
+        base_x_points=configuration["base_exp_x_points"],
+        base_y_points=configuration["base_exp_y_points"],
+        domain_floor=float(configuration["exp_domain_floor"]),
+        probability_floor=float(configuration["guard_probability_floor"]),
+        transition_width=float(configuration["guard_transition_width_log"]),
+    )
+    for name in required:
+        actual = configuration[name]
+        expected_value = expected[name]
+        if isinstance(expected_value, tuple):
+            actual = tuple(float(value) for value in actual)
+        if actual != expected_value:
+            raise ValueError(
+                f"guarded exponential field {name} differs from its canonical resolution"
+            )
+    return expected["exp_x_points"], expected["exp_y_points"]
+
+
+def evaluate_guarded_exponential(
+    value: float,
+    *,
+    configuration: Mapping[str, object],
+) -> float:
+    """Evaluate the exact guarded table persisted by a conditional pair."""
+
+    x_points, y_points = guarded_exponential_points(configuration)
+    normalized = float(value)
+    if not math.isfinite(normalized):
+        raise ValueError("guarded exponential input must be finite")
+    if normalized < x_points[0] or normalized > x_points[-1]:
+        raise ValueError(
+            f"guarded exponential input {normalized} is outside "
+            f"[{x_points[0]}, {x_points[-1]}]"
+        )
+    return piecewise_linear_interpolate(
+        normalized,
+        x_points=x_points,
+        y_points=y_points,
+    )
+
+
+def _finite_points(
+    values: Sequence[float], *, field_name: str
+) -> tuple[float, ...]:
+    if isinstance(values, (str, bytes)):
+        raise TypeError(f"{field_name} must be a sequence")
+    normalized = tuple(float(value) for value in values)
+    if len(normalized) < 2 or any(not math.isfinite(value) for value in normalized):
+        raise ValueError(f"{field_name} must contain at least two finite values")
+    return normalized
+
+
+def _strictly_increasing_finite_points(
+    values: Sequence[float], *, field_name: str
+) -> tuple[float, ...]:
+    normalized = _finite_points(values, field_name=field_name)
+    if any(right <= left for left, right in zip(normalized, normalized[1:])):
+        raise ValueError(f"{field_name} must be strictly increasing")
+    return normalized
+
+
 def piecewise_linear_interpolate(
     x: float,
     *,
@@ -432,6 +626,9 @@ def approximate_log(
 
 __all__ = [
     "CANONICAL_PIECEWISE_LEGACY_REFERENCE_PATHS",
+    "CONDITIONAL_GUARD_DOMAIN_FLOOR",
+    "CONDITIONAL_GUARD_POLICY_NAME",
+    "CONDITIONAL_GUARD_TRANSITION_WIDTH",
     "DEFAULT_APPROXIMATION_KIND",
     "DEFAULT_BREAKPOINT_POLICY_NAME",
     "DEFAULT_EXP_BREAKPOINT_START",
@@ -441,6 +638,7 @@ __all__ = [
     "DEFAULT_PIECEWISE_BREAKPOINT_COUNT",
     "DEFAULT_QUERY_NUMERIC_TOLERANCE",
     "DEFAULT_SUM_ENCODING_MODE",
+    "LOGARITHM_ENDPOINT_POLICY_NAME",
     "PiecewiseApproximationMetadata",
     "PiecewiseBreakpointPolicy",
     "approximate_exponential",
@@ -448,8 +646,11 @@ __all__ = [
     "build_histogram_piecewise_points",
     "build_logsumexp_piecewise_spec",
     "build_piecewise_metadata",
+    "evaluate_guarded_exponential",
+    "guarded_exponential_points",
     "load_piecewise_metadata",
     "piecewise_linear_interpolate",
+    "resolve_guarded_exponential_spec",
     "resolve_query_numeric_tolerance",
     "SUPPORTED_SUM_ENCODING_MODES",
 ]

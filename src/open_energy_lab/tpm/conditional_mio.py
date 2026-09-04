@@ -30,6 +30,15 @@ from .conditional import (
     TPMEmbeddingParityEvidence,
     TPMNativeConditionalEvaluation,
 )
+from .piecewise import (
+    CONDITIONAL_GUARD_DOMAIN_FLOOR,
+    CONDITIONAL_GUARD_TRANSITION_WIDTH,
+    DEFAULT_EXP_PROBABILITY_FLOOR,
+    LOGARITHM_ENDPOINT_POLICY_NAME,
+    evaluate_guarded_exponential,
+    guarded_exponential_points,
+    resolve_guarded_exponential_spec,
+)
 from .domains import (
     TPMApproximationDomain,
     TPMCompiledValidityRecord,
@@ -307,6 +316,7 @@ def attach_conditional_mio_pair(
         circuit=pair.numerator.to_dict(),
         decision_variables=decision_variables,
         encoding=pair.encoding.to_dict(),
+        formulation=pair.attachment_formulation.numerator,
     )
     block.denominator = backend.Block(concrete=True)
     denominator_encoding = encode_conditioned_spflow_circuit(
@@ -315,6 +325,7 @@ def attach_conditional_mio_pair(
         circuit=pair.denominator.to_dict(),
         decision_variables=decision_variables,
         encoding=pair.encoding.to_dict(),
+        formulation=pair.attachment_formulation.denominator,
     )
     numerator_root = numerator_encoding["root"]
     denominator_root = denominator_encoding["root"]
@@ -377,6 +388,7 @@ def attach_conditional_mio_pair(
             "retained_decisions": list(expected),
             "validity": [value.to_dict() for value in pair.validity],
             "encoding": pair.encoding.to_dict(),
+            "attachment_formulation": pair.attachment_formulation.to_dict(),
             "numerical_policy": pair.numerical_policy.to_dict(),
         },
         diagnostic_components=diagnostic_components,
@@ -1311,6 +1323,288 @@ def evaluate_conditional_mio_pair(
     return evaluation
 
 
+def initialize_conditional_mio_attachment(
+    pair: TPMConditionalPair,
+    attachment: TPMConditionalAttachment,
+    *,
+    declared_domain_assignments: Mapping[str, object] | None = None,
+    model_coordinate_assignments: Mapping[str, object] | None = None,
+) -> TPMConditionalEvaluation:
+    """Populate an unchanged attachment with one deterministic feasible MIP start.
+
+    Only attachment-owned auxiliary values are initialized. Caller-owned decisions,
+    bounds, fixed states, objectives, and constraints are left unchanged. Solvers that
+    support MIP starts must still be invoked with their warm-start option enabled.
+    """
+
+    if not isinstance(pair, TPMConditionalPair):
+        raise TypeError("pair must be a TPMConditionalPair")
+    if not isinstance(attachment, TPMConditionalAttachment):
+        raise TypeError("attachment must be a TPMConditionalAttachment")
+    if attachment.pair_id != pair.pair_id:
+        raise ValueError("attachment does not belong to the supplied conditional pair")
+    if attachment.retained_decisions != pair.retained_decisions:
+        raise ValueError("attachment retained decisions do not match the supplied pair")
+
+    evaluation = evaluate_conditional_mio_pair(
+        pair,
+        declared_domain_assignments=declared_domain_assignments,
+        model_coordinate_assignments=model_coordinate_assignments,
+    )
+    assignments = evaluation.assignments
+    coordinates = _resolve_assignment_coordinates(
+        pair,
+        assignments=assignments,
+        assignment_mode=evaluation.assignment_mode,
+    )
+    backend = require_pyomo_backend()
+    validity_by_name = {value.feature_name: value for value in pair.validity}
+    for feature_name, coordinate in coordinates.items():
+        if validity_by_name[feature_name].feature_type == "continuous":
+            _set_initial_value(
+                attachment.block.model_coordinate[feature_name], coordinate
+            )
+
+    formulation = pair.attachment_formulation
+    if formulation is None:  # pragma: no cover - pair-v2 validation owns this
+        raise ValueError("conditional pair lacks an attachment formulation")
+    numerator = _initialize_attachment_circuit(
+        backend,
+        pair=pair,
+        circuit=pair.numerator,
+        block=attachment.block.numerator,
+        formulation=formulation.numerator,
+        coordinates=coordinates,
+    )
+    denominator = _initialize_attachment_circuit(
+        backend,
+        pair=pair,
+        circuit=pair.denominator,
+        block=attachment.block.denominator,
+        formulation=formulation.denominator,
+        coordinates=coordinates,
+    )
+    if (
+        numerator != evaluation.numerator_log
+        or denominator != evaluation.denominator_log
+    ):  # pragma: no cover - shared evaluator/initializer conformance invariant
+        raise RuntimeError(
+            "conditional attachment initialization diverged from direct semantics"
+        )
+    return evaluation
+
+
+def _initialize_attachment_circuit(
+    backend: object,
+    *,
+    pair: TPMConditionalPair,
+    circuit: TPMConditionalCircuit,
+    block: object,
+    formulation: Mapping[str, object],
+    coordinates: Mapping[str, float],
+) -> float:
+    nodes = {node.node_id: node for node in circuit.nodes}
+    cache: dict[int, float] = {}
+    active: set[int] = set()
+    probability_floor = float(
+        pair.encoding.leaf_configuration["discrete_probability_floor"]
+    )
+
+    def initialize(node_id: int) -> float:
+        if node_id in cache:
+            return cache[node_id]
+        if node_id in active:
+            raise ValueError("conditional circuit must be acyclic")
+        active.add(node_id)
+        node = nodes[node_id]
+        if node.node_type == "log_one":
+            value = 0.0
+        elif node.node_type == "leaf_piecewise":
+            coordinate = (
+                float(node.parameters["fixed_value"])
+                if "fixed_value" in node.parameters
+                else coordinates[node.feature_name]
+            )
+            points = tuple(float(item) for item in node.parameters["breakpoints"])
+            value = _strict_linear_interpolate(
+                coordinate,
+                x_values=points,
+                y_values=node.parameters["log_values"],
+                field_name=f"leaf {node.node_id}",
+            )
+            component = block.component(f"piecewise_leaf_{node_id}")
+            if component is not None:
+                _initialize_piecewise_component(
+                    backend,
+                    component,
+                    points=points,
+                    input_value=coordinate,
+                )
+        elif node.node_type in {"leaf_binary", "leaf_categorical"}:
+            densities = tuple(float(item) for item in node.parameters["densities"])
+            raw_index = (
+                float(node.parameters["fixed_value"])
+                if "fixed_value" in node.parameters
+                else coordinates[node.feature_name]
+            )
+            index = int(raw_index)
+            if raw_index != float(index) or not 0 <= index < len(densities):
+                raise ValueError(
+                    f"conditional discrete coordinate for {node.feature_name!r} is invalid"
+                )
+            value = math.log(max(densities[index], probability_floor))
+        elif node.node_type == "product":
+            value = math.fsum(initialize(child_id) for child_id in node.children)
+        elif node.node_type == "sum":
+            weights = tuple(float(item) for item in node.parameters["weights"])
+            terms = tuple(
+                initialize(child_id) + math.log(weight)
+                for child_id, weight in zip(node.children, weights, strict=True)
+            )
+            maximum = max(terms)
+            selected = terms.index(maximum)
+            choices = block.component(f"sum_choice_var_{node_id}")
+            for index in choices:
+                _set_initial_value(choices[index], float(index == selected))
+            _set_initial_value(block.component(f"sum_max_var_{node_id}"), maximum)
+            if pair.encoding.mode == "max":
+                value = maximum
+            else:
+                sum_configuration = pair.encoding.sum_configuration
+                coordinate_record = formulation["guarded_input_coordinate"]
+                native_offset = float(coordinate_record["native_offset"])
+                native_scale = float(coordinate_record["native_scale"])
+                solver_points = tuple(
+                    float(item) for item in coordinate_record["solver_breakpoints"]
+                )
+                relative_var = block.component(f"sum_relative_var_{node_id}")
+                solver_input_var = block.component(
+                    f"sum_exp_input_var_{node_id}"
+                )
+                exponential_var = block.component(f"sum_exp_var_{node_id}")
+                exponentials: list[float] = []
+                for index, term in enumerate(terms):
+                    relative = term - maximum
+                    solver_input = (relative + native_offset) / native_scale
+                    exponential = evaluate_guarded_exponential(
+                        relative,
+                        configuration=sum_configuration,
+                    )
+                    _set_initial_value(relative_var[index], relative)
+                    _set_initial_value(solver_input_var[index], solver_input)
+                    _set_initial_value(exponential_var[index], exponential)
+                    _initialize_piecewise_component(
+                        backend,
+                        block.component(f"sum_exp_piecewise_{node_id}_{index}"),
+                        points=solver_points,
+                        input_value=solver_input,
+                    )
+                    exponentials.append(exponential)
+                total = math.fsum(exponentials)
+                _set_initial_value(
+                    block.component(f"sum_exp_total_{node_id}"), total
+                )
+                log_points = tuple(
+                    float(item) for item in sum_configuration["log_x_points"]
+                )
+                logarithm = _strict_linear_interpolate(
+                    total,
+                    x_values=log_points,
+                    y_values=sum_configuration["log_y_points"],
+                    field_name=f"PWL logarithm at Sum {node_id}",
+                )
+                _set_initial_value(
+                    block.component(f"sum_log_var_{node_id}"), logarithm
+                )
+                _initialize_piecewise_component(
+                    backend,
+                    block.component(f"sum_log_piecewise_{node_id}"),
+                    points=log_points,
+                    input_value=total,
+                )
+                value = maximum + logarithm
+        else:  # pragma: no cover - record validation owns this invariant
+            raise ValueError(f"unsupported conditional node {node.node_type!r}")
+        active.remove(node_id)
+        if not math.isfinite(value):
+            raise ValueError(
+                f"conditional circuit node {node.node_id} produced a nonfinite value"
+            )
+        _set_initial_value(block.node_out[node_id], value)
+        cache[node_id] = value
+        return value
+
+    return initialize(circuit.root_id)
+
+
+def _initialize_piecewise_component(
+    backend: object,
+    component: object,
+    *,
+    points: Sequence[float],
+    input_value: float,
+) -> None:
+    variables = tuple(
+        component.component_data_objects(
+            backend.Var, active=True, descend_into=True
+        )
+    )
+    for variable in variables:
+        _set_initial_value(variable, 0.0)
+    if not variables:
+        return
+    segment, left_weight, right_weight = _piecewise_segment_weights(
+        points, input_value
+    )
+    if hasattr(component, "DCC_lambda"):
+        row = segment + 1
+        _set_initial_value(component.DCC_lambda[row, row], left_weight)
+        _set_initial_value(component.DCC_lambda[row, row + 1], right_weight)
+        _set_initial_value(component.DCC_bin_y[row], 1.0)
+        return
+    if hasattr(component, "DLOG_lambda"):
+        row = segment + 1
+        _set_initial_value(component.DLOG_lambda[row, row], left_weight)
+        _set_initial_value(component.DLOG_lambda[row, row + 1], right_weight)
+        reversed_segment = len(points) - 2 - segment
+        bit_indices = tuple(component.DLOG_bin_y)
+        for position, index in enumerate(bit_indices):
+            shift = len(bit_indices) - position - 1
+            _set_initial_value(
+                component.DLOG_bin_y[index],
+                float((reversed_segment >> shift) & 1),
+            )
+        return
+    raise ValueError(
+        f"conditional Piecewise component {component.name!r} has an unsupported "
+        "persisted representation"
+    )
+
+
+def _piecewise_segment_weights(
+    points: Sequence[float], input_value: float
+) -> tuple[int, float, float]:
+    if (
+        len(points) < 2
+        or input_value < float(points[0])
+        or input_value > float(points[-1])
+    ):
+        raise ValueError("conditional Piecewise start is outside its closed domain")
+    segment = len(points) - 2
+    for index, (left, right) in enumerate(zip(points, points[1:], strict=True)):
+        if left <= input_value <= right:
+            segment = index
+            break
+    left = float(points[segment])
+    right = float(points[segment + 1])
+    right_weight = (input_value - left) / (right - left)
+    return segment, 1.0 - right_weight, right_weight
+
+
+def _set_initial_value(variable: object, value: float) -> None:
+    variable.set_value(float(value), skip_validation=True)
+
+
 def _validate_eligible_artifact(artifact: TPMArtifact) -> None:
     if not isinstance(artifact, TPMArtifact):
         raise TypeError("conditional compilation source must load as a TPMArtifact")
@@ -1478,16 +1772,43 @@ def _resolve_encoding_policy(
     if requested.mode == "piecewise":
         log_x = tuple(float(value) for value in sum_configuration["log_x_points"])
         exp_x = tuple(float(value) for value in sum_configuration["exp_x_points"])
+        exp_y = tuple(float(value) for value in sum_configuration["exp_y_points"])
         if log_x[0] > 1.0 or log_x[-1] < float(maximum_sum_arity):
             raise ValueError(
                 "piecewise logarithm curve does not cover the resolved Sum arity"
             )
+        if log_x[-1] == float(maximum_sum_arity):
+            sum_configuration["logarithm_endpoint_policy"] = (
+                LOGARITHM_ENDPOINT_POLICY_NAME
+            )
+            sum_configuration["logarithm_endpoint_arity"] = maximum_sum_arity
         if exp_x[-1] != 0.0:
             raise ValueError("piecewise exponential curve must end exactly at zero")
-        if float(sum_configuration["exp_domain_floor"]) != exp_x[0]:
-            raise ValueError(
-                "piecewise exp_domain_floor must match the first exponential point"
+        if "guard_policy" not in sum_configuration:
+            cutoff = math.log(DEFAULT_EXP_PROBABILITY_FLOOR)
+            base_pairs = tuple(
+                (x_value, y_value)
+                for x_value, y_value in zip(exp_x, exp_y, strict=True)
+                if x_value >= cutoff and y_value > 0.0
             )
+            if len(base_pairs) < 2:
+                raise ValueError(
+                    "piecewise exponential curve does not retain a base curve "
+                    "covering the guarded transition"
+                )
+            guarded = resolve_guarded_exponential_spec(
+                base_x_points=tuple(value[0] for value in base_pairs),
+                base_y_points=tuple(value[1] for value in base_pairs),
+                domain_floor=float(
+                    sum_configuration.get(
+                        "exp_domain_floor", CONDITIONAL_GUARD_DOMAIN_FLOOR
+                    )
+                ),
+                probability_floor=DEFAULT_EXP_PROBABILITY_FLOOR,
+                transition_width=CONDITIONAL_GUARD_TRANSITION_WIDTH,
+            )
+            sum_configuration.update(guarded)
+        guarded_exponential_points(sum_configuration)
     return TPMConditionalEncodingPolicy(
         mode=requested.mode,
         approximation_label=requested.approximation_label,
@@ -1630,12 +1951,16 @@ def _evaluate_circuit(
         if node.node_type == "log_one":
             value = 0.0
         elif node.node_type == "leaf_piecewise":
-            if node.feature_name not in coordinates:
-                raise ValueError(
-                    f"conditional circuit has unresolved feature {node.feature_name!r}"
-                )
+            if "fixed_value" in node.parameters:
+                coordinate = float(node.parameters["fixed_value"])
+            else:
+                if node.feature_name not in coordinates:
+                    raise ValueError(
+                        f"conditional circuit has unresolved feature {node.feature_name!r}"
+                    )
+                coordinate = coordinates[node.feature_name]
             value = _strict_linear_interpolate(
-                coordinates[node.feature_name],
+                coordinate,
                 x_values=node.parameters["breakpoints"],
                 y_values=node.parameters["log_values"],
                 field_name=f"leaf {node.node_id}",
@@ -1670,11 +1995,9 @@ def _evaluate_circuit(
             else:
                 sum_configuration = encoding.sum_configuration
                 exp_values = tuple(
-                    _strict_linear_interpolate(
+                    evaluate_guarded_exponential(
                         term - maximum,
-                        x_values=sum_configuration["exp_x_points"],
-                        y_values=sum_configuration["exp_y_points"],
-                        field_name=f"PWL exponential at Sum {node.node_id}",
+                        configuration=sum_configuration,
                     )
                     for term in terms
                 )
@@ -1751,5 +2074,6 @@ __all__ = [
     "build_embedding_parity_evidence",
     "compile_conditional_mio_pair",
     "evaluate_conditional_mio_pair",
+    "initialize_conditional_mio_attachment",
     "inspect_conditional_mio_attachment",
 ]

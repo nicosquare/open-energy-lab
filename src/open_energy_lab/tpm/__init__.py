@@ -24,6 +24,7 @@ if TYPE_CHECKING:
         TPMCategoricalDecisionMapping,
         TPMConditionalAttachment,
         TPMConditionalAttachmentDiagnostics,
+        TPMConditionalAttachmentFormulation,
         TPMConditionalCircuit,
         TPMConditionalCircuitNode,
         TPMConditionalCompilationRequest,
@@ -45,6 +46,7 @@ if TYPE_CHECKING:
         load_conditional_pair,
         publish_conditional_evidence,
         publish_conditional_pair,
+        resolve_conditional_attachment_formulation,
     )
     from .conditional_mio import (
         TPMConditionalDiagnosticsError,
@@ -54,6 +56,7 @@ if TYPE_CHECKING:
         build_embedding_parity_evidence,
         compile_conditional_mio_pair,
         evaluate_conditional_mio_pair,
+        initialize_conditional_mio_attachment,
         inspect_conditional_mio_attachment,
     )
     from .artifact import (
@@ -124,6 +127,7 @@ if TYPE_CHECKING:
         PiecewiseBreakpointPolicy,
         build_piecewise_metadata,
         load_piecewise_metadata,
+        resolve_guarded_exponential_spec,
     )
     from .query import (
         TPMQueryRequest,
@@ -191,6 +195,10 @@ _EXPORT_MAP = {
     "TPMConditionalAttachmentDiagnostics": (
         ".conditional",
         "TPMConditionalAttachmentDiagnostics",
+    ),
+    "TPMConditionalAttachmentFormulation": (
+        ".conditional",
+        "TPMConditionalAttachmentFormulation",
     ),
     "TPMConditionalCircuit": (".conditional", "TPMConditionalCircuit"),
     "TPMConditionalCircuitNode": (
@@ -285,6 +293,10 @@ _EXPORT_MAP = {
         "publish_conditional_evidence",
     ),
     "publish_conditional_pair": (".conditional", "publish_conditional_pair"),
+    "resolve_conditional_attachment_formulation": (
+        ".conditional",
+        "resolve_conditional_attachment_formulation",
+    ),
     "TPMFitConfig": (".fit", "TPMFitConfig"),
     "TPMFitMemoryError": (".fit", "TPMFitMemoryError"),
     "TPMArtifactBuildRequest": (".fit", "TPMArtifactBuildRequest"),
@@ -337,6 +349,10 @@ _EXPORT_MAP = {
     "evaluate_conditional_mio_pair": (
         ".conditional_mio",
         "evaluate_conditional_mio_pair",
+    ),
+    "initialize_conditional_mio_attachment": (
+        ".conditional_mio",
+        "initialize_conditional_mio_attachment",
     ),
     "inspect_conditional_mio_attachment": (
         ".conditional_mio",
@@ -398,6 +414,10 @@ _EXPORT_MAP = {
     "PiecewiseBreakpointPolicy": (".piecewise", "PiecewiseBreakpointPolicy"),
     "build_piecewise_metadata": (".piecewise", "build_piecewise_metadata"),
     "load_piecewise_metadata": (".piecewise", "load_piecewise_metadata"),
+    "resolve_guarded_exponential_spec": (
+        ".piecewise",
+        "resolve_guarded_exponential_spec",
+    ),
     "TPMQueryRequest": (".query", "TPMQueryRequest"),
     "evaluate_native_conditional_pair": (
         ".query",
@@ -425,6 +445,7 @@ __all__ = [
     "TPMCategoricalDecisionMapping",
     "TPMConditionalAttachment",
     "TPMConditionalAttachmentDiagnostics",
+    "TPMConditionalAttachmentFormulation",
     "TPMConditionalCircuit",
     "TPMConditionalCircuitNode",
     "TPMConditionalCompilationRequest",
@@ -461,6 +482,7 @@ __all__ = [
     "load_conditional_pair",
     "publish_conditional_evidence",
     "publish_conditional_pair",
+    "resolve_conditional_attachment_formulation",
     "TPMFitConfig",
     "TPMFitMemoryError",
     "TPMArtifactBuildRequest",
@@ -484,6 +506,7 @@ __all__ = [
     "build_compiler_fidelity_evidence",
     "build_embedding_parity_evidence",
     "evaluate_conditional_mio_pair",
+    "initialize_conditional_mio_attachment",
     "inspect_conditional_mio_attachment",
     "evaluate_compiled_spflow_probability",
     "extract_spn_solution",
@@ -504,6 +527,7 @@ __all__ = [
     "PiecewiseBreakpointPolicy",
     "build_piecewise_metadata",
     "load_piecewise_metadata",
+    "resolve_guarded_exponential_spec",
     "TPMQueryRequest",
     "evaluate_native_conditional_pair",
     "query_tpm_artifact",

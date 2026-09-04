@@ -33,6 +33,7 @@ from open_energy_lab.tpm.fit import (
 from open_energy_lab.tpm.piecewise import (
     PiecewiseBreakpointPolicy,
     build_logsumexp_piecewise_spec,
+    resolve_guarded_exponential_spec,
 )
 from open_energy_lab.tpm.query import evaluate_native_conditional_pair
 from tests.integration.tpm.conditional_mio_test_support import (
@@ -118,10 +119,17 @@ def _encoding(source: dict[str, object], *, mode: str) -> TPMConditionalEncoding
         exp_floor = float(selected["exp_domain_floor"])
         exp_x = tuple(float(value) for value in curves["exp_x_points"])
         exp_y = tuple(float(value) for value in curves["exp_y_points"])
-        sum_configuration.update(curves)
-        if exp_floor < exp_x[0]:
-            sum_configuration["exp_x_points"] = (exp_floor, *exp_x)
-            sum_configuration["exp_y_points"] = (0.0, *exp_y)
+        sum_configuration.update(
+            {
+                "log_x_points": curves["log_x_points"],
+                "log_y_points": curves["log_y_points"],
+                **resolve_guarded_exponential_spec(
+                    base_x_points=exp_x,
+                    base_y_points=exp_y,
+                    domain_floor=exp_floor,
+                ),
+            }
+        )
         sum_configuration.pop("breakpoint_policy", None)
         normalized_mode = "piecewise"
     else:

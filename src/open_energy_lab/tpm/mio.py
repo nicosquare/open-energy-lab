@@ -25,6 +25,7 @@ from .optional_spflow import (
     require_spflow_backend,
 )
 from .piecewise import build_histogram_piecewise_points
+from .piecewise import guarded_exponential_points
 from .piecewise import load_piecewise_metadata
 
 
@@ -2575,6 +2576,7 @@ def encode_conditioned_spflow_circuit(
     circuit: Mapping[str, object],
     decision_variables: Mapping[str, Mapping[str, object]],
     encoding: Mapping[str, object],
+    formulation: Mapping[str, object],
 ) -> Mapping[str, object]:
     """Encode one conditioned circuit against shared caller-supplied coordinates."""
 
@@ -2600,8 +2602,47 @@ def encode_conditioned_spflow_circuit(
     if not math.isfinite(probability_floor) or probability_floor <= 0.0:
         raise ValueError("conditional discrete probability floor must be positive and finite")
 
+    formulation_payload = _mapping(
+        formulation, field_name="conditional attachment formulation"
+    )
+    node_bound_records = _sequence_of_mappings(
+        formulation_payload.get("node_output_bounds"),
+        field_name="conditional node output bounds",
+    )
+    node_bounds = {
+        int(record["node_id"]): (
+            float(record["lower"]),
+            float(record["upper"]),
+        )
+        for record in node_bound_records
+    }
+    if set(node_bounds) != set(node_ids) or any(
+        not math.isfinite(value) or node_bounds[node_id][0] > node_bounds[node_id][1]
+        for node_id in node_ids
+        for value in node_bounds[node_id]
+    ):
+        raise ValueError("conditional attachment node bounds are incomplete or invalid")
+    leaf_representation_records = _sequence_of_mappings(
+        formulation_payload.get("leaf_piecewise_representations", ()),
+        field_name="conditional leaf Piecewise representations",
+    )
+    leaf_representations = {
+        int(record["node_id"]): str(record["representation"])
+        for record in leaf_representation_records
+    }
+    sum_records = _sequence_of_mappings(
+        formulation_payload.get("sum_nodes", ()),
+        field_name="conditional Sum formulation records",
+    )
+    sum_formulations = {int(record["node_id"]): record for record in sum_records}
+    guarded_input_coordinate = formulation_payload.get("guarded_input_coordinate")
+
     block.NODE_IDS = backend.Set(initialize=node_ids, ordered=True)
-    block.node_out = backend.Var(block.NODE_IDS, within=backend.Reals)
+    block.node_out = backend.Var(
+        block.NODE_IDS,
+        within=backend.Reals,
+        bounds=lambda _block, node_id: node_bounds[int(node_id)],
+    )
     node_by_id = {int(node["id"]): node for node in nodes}
     for node_id in node_ids:
         node = node_by_id[node_id]
@@ -2619,6 +2660,7 @@ def encode_conditioned_spflow_circuit(
                 node_id=node_id,
                 node=node,
                 decision_variables=decision_variables,
+                representation=leaf_representations.get(node_id),
             )
             continue
         if node_type in {"leaf_binary", "leaf_categorical"}:
@@ -2697,6 +2739,8 @@ def encode_conditioned_spflow_circuit(
                 node=node,
                 mode=encoding_mode,
                 sum_configuration=sum_configuration,
+                formulation=sum_formulations.get(node_id),
+                guarded_input_coordinate=guarded_input_coordinate,
             )
             continue
         raise ValueError(f"unsupported conditioned circuit node type {node_type!r}")
@@ -2721,6 +2765,7 @@ def _encode_conditioned_piecewise_leaf(
     node_id: int,
     node: Mapping[str, object],
     decision_variables: Mapping[str, Mapping[str, object]],
+    representation: str | None,
 ) -> None:
     feature_name = str(node["feature_name"])
     breakpoints = _float_sequence(node["breakpoints"])
@@ -2735,17 +2780,22 @@ def _encode_conditioned_piecewise_leaf(
             raise ValueError(
                 f"conditioned piecewise leaf {node_id} requires a continuous mapping"
             )
-        block.add_component(
-            f"piecewise_leaf_{node_id}",
-            backend.Piecewise(
-                block.node_out[node_id],
-                payload["normalized_var"],
-                pw_pts=list(breakpoints),
-                pw_constr_type="EQ",
-                pw_repn="DCC",
-                f_rule=list(log_values),
-            ),
+        expected_representation = "DLOG" if len(breakpoints) - 1 == 4 else "DCC"
+        if representation != expected_representation:
+            raise ValueError(
+                f"conditioned piecewise leaf {node_id} representation must be "
+                f"{expected_representation}"
+            )
+        piecewise = backend.Piecewise(
+            block.node_out[node_id],
+            payload["normalized_var"],
+            pw_pts=list(breakpoints),
+            pw_constr_type="EQ",
+            pw_repn=representation,
+            f_rule=list(log_values),
         )
+        block.add_component(f"piecewise_leaf_{node_id}", piecewise)
+        _bound_piecewise_auxiliaries(backend, piecewise)
         return
     if "fixed_value" not in node:
         raise ValueError(
@@ -2770,6 +2820,8 @@ def _encode_conditioned_sum_node(
     node: Mapping[str, object],
     mode: str,
     sum_configuration: Mapping[str, object],
+    formulation: Mapping[str, object] | None,
+    guarded_input_coordinate: object,
 ) -> None:
     child_ids = tuple(int(value) for value in node["children"])
     weights = _float_sequence(node["weights"])
@@ -2781,9 +2833,38 @@ def _encode_conditioned_sum_node(
         block.node_out[child_id] + math.log(weight)
         for child_id, weight in zip(child_ids, weights, strict=True)
     )
-    sum_big_m = float(sum_configuration["sum_big_m"])
-    if not math.isfinite(sum_big_m) or sum_big_m <= 0.0:
-        raise ValueError("conditional sum_big_m must be positive and finite")
+    if not isinstance(formulation, Mapping):
+        raise ValueError(f"conditioned Sum {node_id} lacks persisted formulation")
+    term_records = _sequence_of_mappings(
+        formulation.get("term_bounds"),
+        field_name=f"conditioned Sum {node_id} term bounds",
+    )
+    relative_records = _sequence_of_mappings(
+        formulation.get("relative_bounds"),
+        field_name=f"conditioned Sum {node_id} relative bounds",
+    )
+    big_m_records = _sequence_of_mappings(
+        formulation.get("branch_big_m"),
+        field_name=f"conditioned Sum {node_id} branch big-M",
+    )
+    if not (
+        len(term_records) == len(relative_records) == len(big_m_records) == len(child_ids)
+    ):
+        raise ValueError(f"conditioned Sum {node_id} formulation branches must align")
+    maximum_bounds = _formulation_interval(
+        formulation.get("maximum_bounds"),
+        field_name=f"conditioned Sum {node_id} maximum bounds",
+    )
+    relative_bounds = tuple(
+        _formulation_interval(
+            record,
+            field_name=f"conditioned Sum {node_id} relative branch {index}",
+        )
+        for index, record in enumerate(relative_records)
+    )
+    branch_big_m = tuple(float(record["value"]) for record in big_m_records)
+    if any(not math.isfinite(value) or value < 0.0 for value in branch_big_m):
+        raise ValueError(f"conditioned Sum {node_id} branch big-M values are invalid")
     indices = tuple(range(len(child_ids)))
     choice_index = backend.Set(initialize=indices, ordered=True)
     block.add_component(f"sum_choice_index_{node_id}", choice_index)
@@ -2793,7 +2874,7 @@ def _encode_conditioned_sum_node(
         f"sum_choice_one_hot_{node_id}",
         backend.Constraint(expr=sum(active[index] for index in indices) == 1),
     )
-    maximum = backend.Var(within=backend.Reals)
+    maximum = backend.Var(within=backend.Reals, bounds=maximum_bounds)
     block.add_component(f"sum_max_var_{node_id}", maximum)
     block.add_component(
         f"sum_max_lb_{node_id}",
@@ -2807,7 +2888,7 @@ def _encode_conditioned_sum_node(
         backend.Constraint(
             choice_index,
             rule=lambda _block, index: maximum
-            <= weighted_terms[index] + sum_big_m * (1 - active[index]),
+            <= weighted_terms[index] + branch_big_m[index] * (1 - active[index]),
         ),
     )
     if mode == "max":
@@ -2817,16 +2898,76 @@ def _encode_conditioned_sum_node(
         )
         return
 
-    exp_x = _float_sequence(sum_configuration["exp_x_points"])
-    exp_y = _float_sequence(sum_configuration["exp_y_points"])
+    exp_x, exp_y = guarded_exponential_points(sum_configuration)
+    coordinate = _mapping(
+        guarded_input_coordinate,
+        field_name=f"conditioned Sum {node_id} guarded input coordinate",
+    )
+    if coordinate.get("policy") != "unit-affine-log-v1":
+        raise ValueError(
+            f"conditioned Sum {node_id} guarded input coordinate policy is unsupported"
+        )
+    native_offset = float(coordinate.get("native_offset"))
+    native_scale = float(coordinate.get("native_scale"))
+    if native_offset != 500.0 or native_scale != 500.0:
+        raise ValueError(
+            f"conditioned Sum {node_id} guarded input coordinate must be "
+            "q=(r+500)/500"
+        )
+    solver_x = _float_sequence(coordinate.get("solver_breakpoints"))
+    expected_solver_x = tuple(
+        (value + native_offset) / native_scale for value in exp_x
+    )
+    if solver_x != expected_solver_x or solver_x[0] != 0.0 or solver_x[-1] != 1.0:
+        raise ValueError(
+            f"conditioned Sum {node_id} guarded solver breakpoints are inconsistent"
+        )
     log_x = _float_sequence(sum_configuration["log_x_points"])
     log_y = _float_sequence(sum_configuration["log_y_points"])
-    relative = backend.Var(choice_index, bounds=(exp_x[0], exp_x[-1]))
+    exponential_records = _sequence_of_mappings(
+        formulation.get("exponential_bounds"),
+        field_name=f"conditioned Sum {node_id} exponential bounds",
+    )
+    exponential_bounds = tuple(
+        _formulation_interval(
+            record,
+            field_name=f"conditioned Sum {node_id} exponential branch {index}",
+        )
+        for index, record in enumerate(exponential_records)
+    )
+    solver_input_records = _sequence_of_mappings(
+        formulation.get("solver_input_bounds"),
+        field_name=f"conditioned Sum {node_id} solver input bounds",
+    )
+    solver_input_bounds = tuple(
+        _formulation_interval(
+            record,
+            field_name=f"conditioned Sum {node_id} solver input branch {index}",
+        )
+        for index, record in enumerate(solver_input_records)
+    )
+    if not (
+        len(exponential_bounds) == len(solver_input_bounds) == len(indices)
+    ):
+        raise ValueError(
+            f"conditioned Sum {node_id} exponential and solver input bounds must align"
+        )
+    if formulation.get("exponential_representation") != "DCC":
+        raise ValueError(f"conditioned Sum {node_id} exponential representation must be DCC")
+    if formulation.get("logarithm_representation") != "DCC":
+        raise ValueError(f"conditioned Sum {node_id} logarithm representation must be DCC")
+    relative = backend.Var(
+        choice_index, bounds=lambda _block, index: relative_bounds[index]
+    )
     block.add_component(f"sum_relative_var_{node_id}", relative)
     exponentials = backend.Var(
-        choice_index, bounds=(min(exp_y), max(exp_y))
+        choice_index, bounds=lambda _block, index: exponential_bounds[index]
     )
     block.add_component(f"sum_exp_var_{node_id}", exponentials)
+    solver_input = backend.Var(
+        choice_index, bounds=lambda _block, index: solver_input_bounds[index]
+    )
+    block.add_component(f"sum_exp_input_var_{node_id}", solver_input)
     block.add_component(
         f"sum_relative_constraint_{node_id}",
         backend.Constraint(
@@ -2835,19 +2976,30 @@ def _encode_conditioned_sum_node(
             == weighted_terms[index] - maximum,
         ),
     )
+    block.add_component(
+        f"sum_exp_input_constraint_{node_id}",
+        backend.Constraint(
+            choice_index,
+            rule=lambda _block, index: solver_input[index]
+            == (relative[index] + native_offset) / native_scale,
+        ),
+    )
     for index in indices:
-        block.add_component(
-            f"sum_exp_piecewise_{node_id}_{index}",
-            backend.Piecewise(
-                exponentials[index],
-                relative[index],
-                pw_pts=list(exp_x),
-                pw_constr_type="EQ",
-                pw_repn="DCC",
-                f_rule=list(exp_y),
-            ),
+        piecewise = backend.Piecewise(
+            exponentials[index],
+            solver_input[index],
+            pw_pts=list(solver_x),
+            pw_constr_type="EQ",
+            pw_repn="DCC",
+            f_rule=list(exp_y),
         )
-    total = backend.Var(bounds=(log_x[0], log_x[-1]))
+        block.add_component(f"sum_exp_piecewise_{node_id}_{index}", piecewise)
+        _bound_piecewise_auxiliaries(backend, piecewise)
+    total_bounds = _formulation_interval(
+        formulation.get("total_bounds"),
+        field_name=f"conditioned Sum {node_id} total bounds",
+    )
+    total = backend.Var(bounds=total_bounds)
     block.add_component(f"sum_exp_total_{node_id}", total)
     block.add_component(
         f"sum_exp_total_constraint_{node_id}",
@@ -2855,23 +3007,53 @@ def _encode_conditioned_sum_node(
             expr=total == sum(exponentials[index] for index in indices)
         ),
     )
-    logarithm = backend.Var(bounds=(min(log_y), max(log_y)))
-    block.add_component(f"sum_log_var_{node_id}", logarithm)
-    block.add_component(
-        f"sum_log_piecewise_{node_id}",
-        backend.Piecewise(
-            logarithm,
-            total,
-            pw_pts=list(log_x),
-            pw_constr_type="EQ",
-            pw_repn="DCC",
-            f_rule=list(log_y),
-        ),
+    logarithm_bounds = _formulation_interval(
+        formulation.get("logarithm_bounds"),
+        field_name=f"conditioned Sum {node_id} logarithm bounds",
     )
+    logarithm = backend.Var(bounds=logarithm_bounds)
+    block.add_component(f"sum_log_var_{node_id}", logarithm)
+    log_piecewise = backend.Piecewise(
+        logarithm,
+        total,
+        pw_pts=list(log_x),
+        pw_constr_type="EQ",
+        pw_repn="DCC",
+        f_rule=list(log_y),
+    )
+    block.add_component(f"sum_log_piecewise_{node_id}", log_piecewise)
+    _bound_piecewise_auxiliaries(backend, log_piecewise)
     block.add_component(
         f"sum_output_{node_id}",
         backend.Constraint(expr=block.node_out[node_id] == maximum + logarithm),
     )
+
+
+def _formulation_interval(
+    value: object,
+    *,
+    field_name: str,
+) -> tuple[float, float]:
+    payload = _mapping(value, field_name=field_name)
+    if not {"lower", "upper"}.issubset(payload):
+        raise ValueError(f"{field_name} must contain lower and upper")
+    lower = float(payload["lower"])
+    upper = float(payload["upper"])
+    if not math.isfinite(lower) or not math.isfinite(upper) or lower > upper:
+        raise ValueError(f"{field_name} must be a finite ordered interval")
+    return lower, upper
+
+
+def _bound_piecewise_auxiliaries(backend: Any, piecewise: object) -> None:
+    """Apply explicit unit bounds to representation-owned convex weights."""
+
+    for variable in piecewise.component_data_objects(
+        backend.Var, active=True, descend_into=True
+    ):
+        if variable.lb is None:
+            variable.setlb(0.0)
+        if variable.ub is None:
+            variable.setub(1.0)
 
 
 def _encode_serialized_spn(

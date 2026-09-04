@@ -19,8 +19,8 @@ FIXTURE_PATHS = (
         "tests/fixtures/tpm/sidecars/"
         "tpm_artifact_conditional_mio_v3.spn_payload.pkl"
     ),
-    Path("tests/fixtures/tpm/conditional_pair_max_v1.json"),
-    Path("tests/fixtures/tpm/conditional_pair_pwl_v1.json"),
+    Path("tests/fixtures/tpm/conditional_pair_max_v2.json"),
+    Path("tests/fixtures/tpm/conditional_pair_pwl_v2.json"),
     Path("tests/fixtures/tpm/conditional_mio_evidence_v1.json"),
 )
 

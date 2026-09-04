@@ -394,7 +394,7 @@ def test_feature_016_core_and_direct_evaluation_work_without_backend_or_notebook
         import open_energy_lab.tpm as tpm
 
         pair = tpm.load_conditional_pair(
-            "tests/fixtures/tpm/conditional_pair_max_v1.json"
+            "tests/fixtures/tpm/conditional_pair_max_v2.json"
         )
         evaluation = tpm.evaluate_conditional_mio_pair(
             pair,
@@ -438,7 +438,7 @@ def test_feature_016_spflow_boundaries_fail_clearly_without_fallback() -> None:
 
         artifact_path = "tests/fixtures/tpm/tpm_artifact_conditional_mio_v3.json"
         pair = load_conditional_pair(
-            "tests/fixtures/tpm/conditional_pair_max_v1.json"
+            "tests/fixtures/tpm/conditional_pair_max_v2.json"
         )
         request = TPMConditionalCompilationRequest(
             source_artifact=artifact_path,
@@ -500,7 +500,7 @@ def test_feature_016_attachment_fails_clearly_without_pyomo() -> None:
         )
 
         pair = load_conditional_pair(
-            "tests/fixtures/tpm/conditional_pair_max_v1.json"
+            "tests/fixtures/tpm/conditional_pair_max_v2.json"
         )
         try:
             attach_conditional_mio_pair(
