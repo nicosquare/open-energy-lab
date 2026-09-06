@@ -102,6 +102,9 @@ def test_notebook_uses_standard_plotting_libraries_and_explains_organization() -
     assert "sns.heatmap(" in source
     assert "sns.scatterplot(" in source
     assert "plt.subplots(" in source
+    assert "width_ratios=(1.0, 1.0, 1.0, 0.045)" in source
+    assert "ScalarMappable(norm=Normalize(vmin=0.0, vmax=1.0)" in source
+    assert "cax=colorbar_axis" in source
     assert "class InlineSVG" not in source
     assert "def line_chart(" not in source
     assert "def heatmap_chart(" not in source
