@@ -37,6 +37,6 @@ bash examples/epita_research_plan/stage_notebook_figures.sh
 The staging script converts the two Matplotlib SVG planning figures to PDF and
 copies the two PNG FCR figures into `thesis/img/epita`. The outputs illustrate
 existing library capabilities; they are not results from the proposed EPITA
-community-control experiment. The French API demonstrations are described in
-text because their recorded real-data plots have separate access and
-redistribution restrictions.
+community-control experiment. Recorded real-data plots from the ENTSO-E and
+RTE notebooks are excluded from the proposal because they have separate access
+and redistribution restrictions.
