@@ -112,6 +112,13 @@ EXPECTED_TPM_EXPORTS = [
     "evaluate_native_conditional_pair",
     "query_tpm_artifact",
     "unregister_spflow_backend_adapter",
+    "TPMNativeMixtureConfig",
+    "initialize_native_mixture",
+    "native_joint_conditional_log_values",
+    "native_full_gradient_step",
+    "capture_native_training_state",
+    "restore_native_training_state",
+    "materialize_native_mixture",
 ]
 METADATA_EXPORTS = {
     "CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND",

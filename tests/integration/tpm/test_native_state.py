@@ -176,8 +176,11 @@ def test_plain_spflow_export_reload_preserves_density_and_conditional_logs(layou
         api.restore_native_training_state(reloaded, config=config, device="cpu")
 
 
-@pytest.mark.parametrize("corruption", ["missing_model", "nonfinite_model", "missing_rng", "wrong_kind"])
+@pytest.mark.parametrize("corruption", ["missing_model", "nonfinite_model", "missing_rng", "wrong_kind",
+                                       "floor", "shape", "dtype", "rng_backend", "rng_bytes"])
 def test_corrupt_or_incomplete_native_state_is_rejected(corruption):
+    import torch
+
     api = native_api()
     config, rows = make_config(api), fitting_rows()
     model, _ = initialize(api, rows, config)
@@ -188,7 +191,69 @@ def test_corrupt_or_incomplete_native_state_is_rejected(corruption):
         next(iter(state["model_state"].values())).fill_(float("nan"))
     elif corruption == "missing_rng":
         del state["rng_state"]
-    else:
+    elif corruption == "wrong_kind":
         state["kind"] = "plain-inference-export"
+    elif corruption == "floor":
+        key = next(key for key in state["model_state"] if key.endswith(".floor"))
+        state["model_state"][key].mul_(0.5)
+    elif corruption in ("shape", "dtype"):
+        key = next(iter(state["model_state"]))
+        value = state["model_state"][key]
+        state["model_state"][key] = value.flatten() if corruption == "shape" else value.float()
+    elif corruption == "rng_backend":
+        state["rng_state"]["torch_device_type"] = "cuda"
+    else:
+        state["rng_state"]["torch"] = torch.zeros(3, dtype=torch.uint8)
     with pytest.raises((ValueError, FloatingPointError)):
         api.restore_native_training_state(state, config=config, device="cpu")
+
+
+@pytest.mark.parametrize("corruption", ["missing_moment", "moment_shape", "negative_square", "step", "settings"])
+def test_corrupt_adam_state_is_rejected_before_continuation(corruption):
+    api = native_api()
+    config, rows = make_config(api), fitting_rows()
+    model, _ = initialize(api, rows, config)
+    optimizer = optimizer_for(model)
+    update(api, model, optimizer, rows, config)
+    state = api.capture_native_training_state(model, optimizer, config=config)
+    moment = next(iter(state["optimizer_state"]["state"].values()))
+    if corruption == "missing_moment":
+        del moment["exp_avg"]
+    elif corruption == "moment_shape":
+        moment["exp_avg"] = moment["exp_avg"].flatten()
+    elif corruption == "negative_square":
+        moment["exp_avg_sq"].fill_(-1)
+    elif corruption == "step":
+        moment["step"].fill_(0.5)
+    else:
+        state["optimizer_state"]["param_groups"][0]["eps"] = 1e-7
+    with pytest.raises(ValueError):
+        api.restore_native_training_state(state, config=config, device="cpu")
+
+
+@pytest.mark.parametrize("layout", ["gaussian", "binary"])
+def test_plain_export_preserves_extreme_logits_without_probability_roundtrips(layout):
+    import torch
+
+    api = native_api()
+    config, rows = make_config(api, layout), fitting_rows(layout)
+    model, _ = initialize(api, rows, config)
+    with torch.no_grad():
+        model.logits.reshape(-1).copy_(torch.tensor([-1000.0, 0.0]))
+        for index in config.bernoulli_indices:
+            leaves_by_index(model)[index].logits.reshape(-1).copy_(torch.tensor([-1000.0, 1000.0]))
+    expected = native_values(api, model, rows, config)
+    exported = pickle.loads(pickle.dumps(api.materialize_native_mixture(model)))
+    assert torch.equal(exported.logits, model.logits)
+    for index in config.bernoulli_indices:
+        assert torch.equal(leaves_by_index(exported)[index].logits, leaves_by_index(model)[index].logits)
+    np.testing.assert_allclose(as_numpy(exported.log_likelihood(torch.as_tensor(rows))),
+                               as_numpy(expected["joint_log"]), atol=1e-10, rtol=1e-10)
+    zero = torch.full_like(torch.as_tensor(rows), torch.nan)
+    zero[:, list(config.conditioning_indices)] = torch.as_tensor(rows[:, list(config.conditioning_indices)])
+    zero[:, config.target_index] = 0
+    one = zero.clone()
+    one[:, config.target_index] = 1
+    l0, l1 = exported.log_likelihood(zero).reshape(-1), exported.log_likelihood(one).reshape(-1)
+    np.testing.assert_allclose(as_numpy(l1 - torch.logaddexp(l0, l1)),
+                               as_numpy(expected["log_probability_one"]), atol=1e-10, rtol=1e-10)

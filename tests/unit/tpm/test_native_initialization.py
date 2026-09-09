@@ -8,6 +8,11 @@ from __future__ import annotations
 
 from dataclasses import FrozenInstanceError, replace
 from importlib import import_module
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
 
 import numpy as np
 import pytest
@@ -178,6 +183,30 @@ def test_config_is_immutable_and_records_fixed_initialization_defaults():
     assert config.initialization_chunk_size == 10_000
     with pytest.raises((FrozenInstanceError, AttributeError)):
         config.components = 3
+
+
+def test_config_round_trip_and_import_do_not_load_training_backends():
+    api = native_api()
+    config = make_config(api)
+    assert api.TPMNativeMixtureConfig.from_dict(json.loads(json.dumps(config.to_dict()))) == config
+    with pytest.raises(ValueError):
+        api.TPMNativeMixtureConfig.from_dict({**config.to_dict(), "unknown": True})
+    code = """
+import json, sys
+import open_energy_lab.tpm as tpm
+for name in ('TPMNativeMixtureConfig', 'initialize_native_mixture',
+             'native_joint_conditional_log_values', 'native_full_gradient_step',
+             'capture_native_training_state', 'restore_native_training_state',
+             'materialize_native_mixture'):
+    assert getattr(tpm, name).__module__ == 'open_energy_lab.tpm.native'
+print(json.dumps([name for name in ('torch', 'spflow') if name in sys.modules]))
+"""
+    # The parent environment intentionally retains the old installed dependency until
+    # the separate pin update. Test this upstream source tree, like pytest's pythonpath.
+    env = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[3] / "src")}
+    completed = subprocess.run([sys.executable, "-c", code], env=env, text=True, capture_output=True,
+                               timeout=30, check=True)
+    assert json.loads(completed.stdout) == []
 
 
 @pytest.mark.parametrize("change", [

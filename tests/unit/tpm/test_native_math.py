@@ -100,6 +100,45 @@ def test_analytic_oracle_matches_hand_calculated_single_component():
 
 
 @pytest.mark.parametrize("layout", ["gaussian", "binary"])
+def test_declared_graph_construction_uses_real_typed_leaves_and_owned_parameters(layout):
+    import torch
+    from spflow.modules.leaves import Bernoulli, Normal
+    from spflow.modules.products import Product
+    from spflow.modules.sums import Sum
+
+    api = native_api()
+    config = make_config(api, layout)
+    g, b = len(config.gaussian_indices), len(config.bernoulli_indices)
+    means = np.arange(2 * g, dtype=np.float64).reshape(2, g)
+    scales = np.full((2, g), 0.2)
+    probabilities = np.tile([[0.2], [0.7]], (1, b))
+    weights = np.array([0.3, 0.7])
+    model = api._build_mixture(config, means=means, scales=scales,
+                               probabilities=probabilities, weights=weights, device="cpu")
+    assert isinstance(model, Sum) and isinstance(model.inputs, Product)
+    assert model.inputs.out_shape.channels == 2
+    assert list(model.scope.query) == list(range(g + b))
+    leaves = leaves_by_index(model)
+    assert len(leaves) == g + b
+    for index in config.gaussian_indices:
+        assert isinstance(leaves[index], Normal)
+        assert leaves[index].parametrizations.log_scale.original.numel() == 2
+    for index in config.bernoulli_indices:
+        assert isinstance(leaves[index], Bernoulli)
+    assert all(value.dtype == torch.float64 for value in model.parameters())
+    rows = fitting_rows(layout)
+    expected = analytic_values(model, rows, config)[0]
+    np.testing.assert_allclose(as_numpy(model.log_likelihood(torch.as_tensor(rows))),
+                               as_numpy(expected), atol=1e-10, rtol=1e-10)
+    before = [parameter.detach().clone() for parameter in model.parameters()]
+    means[:] = 900
+    scales[:] = 800
+    probabilities[:] = 0.01
+    weights[:] = 0.5
+    assert all(torch.equal(a, b) for a, b in zip(before, model.parameters(), strict=True))
+
+
+@pytest.mark.parametrize("layout", ["gaussian", "binary"])
 def test_joint_and_conditional_logs_match_independent_mixture_equations(layout):
     api = native_api()
     rows, config = fitting_rows(layout), make_config(api, layout)
@@ -166,6 +205,11 @@ def test_chunked_full_gradient_and_adam_match_analytic_row_mean(layout, weight, 
 
     api = native_api()
     rows, config = fitting_rows(layout), make_config(api, layout)
+    if layout == "binary":
+        # Break the exactly stationary mixture-weight symmetry for Adam parity.
+        # At zero gradient, eps=1e-8 amplifies ~1e-16 reduction roundoff; the
+        # unperturbed fixture retains a separate loss/gradient check below.
+        rows[0, 2] += 0.37
     actual, _ = initialize(api, rows, config)
     reference, _ = initialize(api, rows, config)
     optimizer, expected_optimizer = optimizer_for(actual), optimizer_for(reference)
@@ -190,6 +234,30 @@ def test_chunked_full_gradient_and_adam_match_analytic_row_mean(layout, weight, 
         if b.grad is not None:
             np.testing.assert_allclose(as_numpy(a.grad), as_numpy(b.grad), atol=1e-10, rtol=1e-10)
     assert all(int(state["step"]) == 1 for state in optimizer.state.values())
+
+
+@pytest.mark.parametrize("weight", [10.0, 20.0])
+def test_stationary_binary_fixture_retains_loss_and_gradient_parity(weight):
+    import torch
+
+    api = native_api()
+    rows, config = fitting_rows("binary"), make_config(api, "binary")
+    actual, _ = initialize(api, rows, config)
+    reference, _ = initialize(api, rows, config)
+    joint, conditional, _, _ = analytic_values(reference, rows, config)
+    loss = -joint.mean() + weight * (-conditional.mean())
+    loss.backward()
+    norm = torch.nn.utils.clip_grad_norm_(reference.parameters(), 10, error_if_nonfinite=True)
+    result = api.native_full_gradient_step(
+        actual, optimizer_for(actual), [rows[:1], rows[1:5], rows[5:]],
+        config=config, total_rows=len(rows), conditional_weight=weight, learning_rate=0.005,
+    )
+    assert result["loss"] == pytest.approx(float(loss.detach()), abs=1e-10, rel=1e-10)
+    assert result["gradient_norm"] == pytest.approx(float(norm), abs=1e-10, rel=1e-10)
+    for a, b in zip(actual.parameters(), reference.parameters(), strict=True):
+        np.testing.assert_allclose(as_numpy(a.grad), as_numpy(b.grad), atol=1e-10, rtol=1e-10)
+    assert float(actual.logits.grad.abs().max()) < 1e-14
+    assert float(reference.logits.grad.abs().max()) < 1e-14
 
 
 def test_global_gradient_is_clipped_once_after_all_chunks():
@@ -303,5 +371,30 @@ def test_invalid_or_cancelled_update_does_not_mutate_parameters(kind):
             learning_rate=-0.01 if kind == "lr" else 0.005,
             bounded_work=cancel if kind == "cancel" else None,
         )
+    assert all(torch.equal(a, b) for a, b in zip(before, model.parameters(), strict=True))
+    assert not optimizer.state
+
+
+def test_nonfinite_aggregate_loss_fails_before_adam_mutation(monkeypatch):
+    import torch
+
+    api = native_api()
+    config, rows = make_config(api), fitting_rows()
+    model, _ = initialize(api, rows, config)
+    optimizer = optimizer_for(model)
+    before = [p.detach().clone() for p in model.parameters()]
+
+    def extreme_logs(model, data, config):
+        # Each weighted chunk loss is finite; their aggregate overflows. Keep
+        # gradients finite to isolate the aggregate diagnostic check.
+        log_value = model.logits.sum() * 0 - 1e308
+        return {"joint_log": log_value.expand(len(data)),
+                "conditional_log": log_value.expand(len(data))}
+
+    monkeypatch.setattr(api, "_log_values", extreme_logs)
+    with pytest.raises(FloatingPointError):
+        api.native_full_gradient_step(model, optimizer, [rows[:1], rows[1:2]],
+                                      config=config, total_rows=2,
+                                      conditional_weight=2, learning_rate=0.005)
     assert all(torch.equal(a, b) for a, b in zip(before, model.parameters(), strict=True))
     assert not optimizer.state

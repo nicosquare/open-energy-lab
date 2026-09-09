@@ -134,8 +134,24 @@ if TYPE_CHECKING:
         evaluate_native_conditional_pair,
         query_tpm_artifact,
     )
+    from .native import (
+        TPMNativeMixtureConfig,
+        initialize_native_mixture,
+        native_joint_conditional_log_values,
+        native_full_gradient_step,
+        capture_native_training_state,
+        restore_native_training_state,
+        materialize_native_mixture,
+    )
 
 _EXPORT_MAP = {
+    "TPMNativeMixtureConfig": (".native", "TPMNativeMixtureConfig"),
+    "initialize_native_mixture": (".native", "initialize_native_mixture"),
+    "native_joint_conditional_log_values": (".native", "native_joint_conditional_log_values"),
+    "native_full_gradient_step": (".native", "native_full_gradient_step"),
+    "capture_native_training_state": (".native", "capture_native_training_state"),
+    "restore_native_training_state": (".native", "restore_native_training_state"),
+    "materialize_native_mixture": (".native", "materialize_native_mixture"),
     "CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND": (
         ".conditional",
         "CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND",
@@ -532,6 +548,13 @@ __all__ = [
     "evaluate_native_conditional_pair",
     "query_tpm_artifact",
     "unregister_spflow_backend_adapter",
+    "TPMNativeMixtureConfig",
+    "initialize_native_mixture",
+    "native_joint_conditional_log_values",
+    "native_full_gradient_step",
+    "capture_native_training_state",
+    "restore_native_training_state",
+    "materialize_native_mixture",
 ]
 
 
