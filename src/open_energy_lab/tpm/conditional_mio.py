@@ -1021,11 +1021,26 @@ def _inspect_structural_affine_expression(
                 f"continuous mapping for {feature_name!r} references a foreign "
                 "variable outside the caller model"
             )
-        if not variable.is_continuous():
+        if variable.is_binary() or not (variable.is_continuous() or variable.is_integer()):
             raise ValueError(
-                f"continuous mapping for {feature_name!r} contains an integer or "
-                "binary variable"
+                f"continuous mapping for {feature_name!r} contains a binary or "
+                "unsupported variable"
             )
+        if variable.is_integer():
+            # Fixed values must not hide an unbounded declared integer domain.
+            # Preserve the caller's domain and the existing normalization link.
+            try:
+                lower, upper = variable.bounds
+                valid = (lower is not None and upper is not None
+                         and math.isfinite(float(lower)) and math.isfinite(float(upper))
+                         and lower <= upper)
+            except (ArithmeticError, TypeError, ValueError):
+                valid = False
+            if not valid:
+                raise ValueError(
+                    f"integer variable in continuous mapping for {feature_name!r} "
+                    "requires finite ordered bounds"
+                )
     for parameter in identify_mutable_parameters(expression):
         try:
             value = float(backend.value(parameter))

@@ -433,7 +433,7 @@ def test_constant_only_and_non_scalar_continuous_mappings_fail_before_mutation()
 
 
 @pytest.mark.parametrize("variable_kind", ["integer", "binary"])
-def test_integer_or_binary_variables_hidden_in_affine_expressions_are_rejected(
+def test_unbounded_integer_or_binary_variables_hidden_in_affine_expressions_are_rejected(
     variable_kind: str,
 ) -> None:
     import pyomo.environ as pyo
@@ -730,3 +730,73 @@ def test_discrete_mapping_rejects_duplicate_nonbinary_and_foreign_indicators(
         )
 
     assert _component_names(model) == before
+
+
+@pytest.mark.parametrize("fixed", [False, True])
+def test_bounded_integer_mapping_preserves_identity_state_and_normalization(fixed):
+    import pyomo.environ as pyo
+
+    model = pyo.ConcreteModel()
+    model.q = pyo.Var(domain=pyo.Integers, bounds=(40, 160), initialize=100)
+    if fixed:
+        model.q.fix()
+    before = (model.q.domain, model.q.bounds, model.q.value, model.q.fixed)
+    attachment = attach_conditional_mio_pair(
+        _pair(), model, mappings=(TPMContinuousDecisionMapping("x", model.q),),
+        namespace="integer_risk",
+    )
+    link = attachment.decision_links["x"]
+    assert link.physical_expression is model.q
+    assert len(link.caller_variables) == 1 and link.caller_variables[0] is model.q
+    assert (model.q.domain, model.q.bounds, model.q.value, model.q.fixed) == before
+    for q, coordinate in ((40, 0), (100, 0.5), (160, 1)):
+        model.q.set_value(q)
+        link.model_coordinate.set_value(coordinate)
+        assert pyo.value(link.coordinate_link.body) == pytest.approx(0, abs=1e-12)
+
+
+@pytest.mark.parametrize("bounds", [(None, 160), (40, None), (160, 40), (-math.inf, 160), (40, math.inf)])
+@pytest.mark.parametrize("fixed", [False, True])
+def test_integer_mapping_requires_finite_ordered_bounds_even_when_fixed(bounds, fixed):
+    import pyomo.environ as pyo
+
+    model = pyo.ConcreteModel()
+    model.q = pyo.Var(domain=pyo.Integers, bounds=bounds, initialize=100)
+    if fixed:
+        model.q.fix()
+    before = _component_snapshot(model)
+    with pytest.raises(ValueError, match="finite.*bounds|ordered.*bounds"):
+        attach_conditional_mio_pair(
+            _pair(), model, mappings=(TPMContinuousDecisionMapping("x", model.q),),
+            namespace="invalid_bounds",
+        )
+    assert _component_snapshot(model) == before
+    assert model.q.fixed is fixed
+
+
+def test_mixed_integer_continuous_affine_expression_and_invalid_structural_inputs():
+    import pyomo.environ as pyo
+
+    model = pyo.ConcreteModel()
+    model.q = pyo.Var(domain=pyo.Integers, bounds=(0, 60), initialize=30)
+    model.offset = pyo.Var(bounds=(0, 10), initialize=0)
+    model.offset.fix()
+    expression = 2 * model.q + model.offset + 40
+    link = attach_conditional_mio_pair(
+        _pair(), model, mappings=(TPMContinuousDecisionMapping("x", expression),),
+        namespace="mixed_affine",
+    ).decision_links["x"]
+    assert link.physical_expression is expression
+    assert {id(v) for v in link.caller_variables} == {id(model.q), id(model.offset)}
+    foreign = pyo.ConcreteModel()
+    foreign.q = pyo.Var(domain=pyo.Integers, bounds=(0, 60))
+    model.q.fix()
+    for expression, reason in ((model.q * model.offset, "structurally affine"),
+                               (model.q + foreign.q, "foreign"),
+                               (math.inf * model.q, "finite")):
+        with pytest.raises(ValueError, match=reason):
+            attach_conditional_mio_pair(
+                _pair(), model, mappings=(TPMContinuousDecisionMapping("x", expression),),
+                namespace="rejected",
+            )
+    assert model.q.fixed and model.offset.fixed

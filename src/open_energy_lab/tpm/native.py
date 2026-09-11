@@ -663,3 +663,40 @@ def materialize_native_mixture(model):
         result.logits.copy_(model.logits)
     _finite(*result.parameters(), *result.buffers())
     return result
+
+
+def export_native_mixture_scalar(model):
+    """Export a fitted native mixture as independent scalar compiler branches.
+
+    The density and feature order are unchanged. Effective Gaussian widths and
+    raw Bernoulli/root logits are copied directly, avoiding probability rounding
+    at extreme logits. Native training/materialization defaults remain vectorized.
+    """
+    config = getattr(model, "_native_config", None)
+    parameters = _model_parameters(model, config)
+    torch, Bernoulli, Normal, Product, Sum = _backend()
+    source_leaves = {int(node.scope.query[0]): node for node in model.modules()
+                     if isinstance(node, (Normal, Bernoulli))}
+    branches = []
+    with torch.no_grad():
+        for component in range(config.components):
+            leaves = []
+            for index in range(config.feature_count):
+                source = source_leaves[index]
+
+                def scalar(value):
+                    return value[:, component:component + 1, :].detach().clone()
+
+                if index in config.gaussian_indices:
+                    leaf = Normal(scope=[index], loc=scalar(source.loc), scale=scalar(source.scale))
+                    leaf.log_scale.copy_(scalar(source.log_scale))
+                else:
+                    leaf = Bernoulli(scope=[index], logits=scalar(source.logits))
+                leaves.append(leaf)
+            branches.append(Product(leaves))
+        result = Sum(inputs=branches, weights=torch.full_like(model.logits.reshape(-1),
+                                                              1 / config.components))
+        result = result.to(dtype=torch.float64, device=parameters[0].device)
+        result.logits.copy_(model.logits.reshape(result.logits.shape))
+    _finite(*result.parameters(), *result.buffers())
+    return result

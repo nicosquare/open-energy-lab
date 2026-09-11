@@ -349,3 +349,71 @@ def test_uninterrupted_real_fit_to_highs_path_uses_the_same_persisted_pair(
     assert native.backend_generation == "current-spflow"
     assert parity.accepted is True
     assert pair_path.read_bytes() == pair_before
+
+
+def test_exported_native_mixture_compiles_and_attaches_to_integer_orders(tmp_path):
+    """Real scalar export, persisted compiler input and objective-free HiGHS solve."""
+    import json
+    from dataclasses import replace
+
+    import pyomo.environ as pyo
+    from open_energy_lab.tpm.artifact import TPMArtifact, write_tpm_model_sidecar
+    from open_energy_lab.tpm.native import TPMNativeMixtureConfig, _build_mixture, export_native_mixture_scalar
+    from tests.unit.tpm.test_conditional_mio import _compilation_request, _encoding, TPM_FIXTURE_DIRECTORY
+
+    template = load_tpm_artifact(TPM_FIXTURE_DIRECTORY / "tpm_artifact_domains_v3.json")
+    names = ("x", "demand", "demand_above_100")
+    schema = tuple(next(spec for spec in template.feature_schema if spec["feature_name"] == name)
+                   for name in names)
+    config = TPMNativeMixtureConfig(
+        components=2, gaussian_indices=(0, 1), bernoulli_indices=(2,), target_index=2,
+        conditioning_indices=(0,), gaussian_floors=(0.01, 0.01), coordinate_id="scalar-attachment-fixture",
+    )
+    native = _build_mixture(config, means=[[0.2, 80], [0.7, 110]], scales=[[0.3, 15], [0.4, 20]],
+                            probabilities=[[0.2], [0.6]], weights=[0.4, 0.6], device="cpu")
+    scalar = export_native_mixture_scalar(native)
+    sidecar, digest = write_tpm_model_sidecar(tmp_path / "model.pkl", {
+        "payload_kind": "current-spflow-model-sidecar", "backend_generation": "current-spflow",
+        "artifact_schema_version": "v3",
+        "backend_api_version": "1.1.0", "query_strategy": "spflow", "model": scalar,
+        "column_order": list(names), "feature_schema": list(schema),
+    })
+    artifact = TPMArtifact(
+        artifact_id="tiny-exported-native-mixture", schema_version="v3",
+        dataset_reference="synthetic-library-fixture", feature_schema=schema,
+        target_definition=dict(template.target_definition),
+        fit_configuration={"backend_name": "spflow", "training_random_seed": 0,
+                           "input_column_order": list(names), "input_row_count": 0},
+        backend_generation="current-spflow", backend_api_version="1.1.0",
+        spn_payload={"locator": sidecar.name, "serialization": "spflow-model-sidecar", "backend": "spflow"},
+        spn_payload_format="spflow-model-sidecar", payload_hash=digest,
+        query_configuration={"supported_output_modes": ["conditional_probability"],
+                             "required_decision_features": ["x"]},
+        approximation_metadata=dict(template.approximation_metadata),
+    )
+    path = tmp_path / "artifact.json"
+    path.write_text(json.dumps(artifact.to_dict()))
+    encoding = _encoding("piecewise")
+    encoding = replace(encoding, leaf_configuration={**dict(encoding.leaf_configuration),
+                       "breakpoint_count": 5, "relative_breakpoints": [0, 0.25, 0.5, 0.75, 1]})
+    request = replace(_compilation_request(retained_decisions=("x",), encoding=encoding),
+                      source_artifact=str(path))
+    pair = compile_conditional_mio_pair(request)
+    assert pair.marginalized_features == ("demand",)
+    cases = {}
+    for quantity in (40, 100, 160):
+        model = pyo.ConcreteModel()
+        model.q = pyo.Var(domain=pyo.Integers, bounds=(40, 160))
+        model.q.fix(quantity)
+        attachment = attach_conditional_mio_pair(
+            pair, model, mappings=(TPMContinuousDecisionMapping("x", model.q),), namespace="risk",
+        )
+        assert attachment.decision_links["x"].physical_expression is model.q
+        assert model.q.is_integer()
+        assert not tuple(model.component_objects(pyo.Objective))
+        direct = evaluate_conditional_mio_pair(pair, declared_domain_assignments={"x": quantity})
+        inspected = _solve_and_inspect(model, attachment)
+        cases[str(quantity)] = (direct, inspected)
+    evidence = build_embedding_parity_evidence(pair, case_results=cases,
+                                             provenance={"purpose": "scalar export integer regression"})
+    assert evidence.accepted
