@@ -27,17 +27,23 @@ EXPECTED_CELL_IDS = (
     "plot-optimized-schedules",
     "robust-feasibility-equations",
     "robust-feasibility-tables",
+    "explain-pointwise-power-only",
     "plot-robust-feasibility",
     "objective-heading",
     "objective-tables",
     "plot-objective-evidence",
     "feature-012-replay-heading",
+    "replay-step-build-requests",
     "build-feature-012-request",
+    "replay-step-evaluate",
     "evaluate-feature-012",
+    "replay-step-summarize",
     "replay-tables",
+    "replay-figure-guide",
     "plot-physical-replay",
     "settlement-heading",
     "settlement-table",
+    "explain-realized-settlement-figure",
     "plot-realized-settlement",
     "fingerprint-heading",
     "fingerprint-table",
@@ -47,8 +53,8 @@ EXPECTED_CELL_IDS = (
     "plot-reference-precision",
     "optional-reference-heading",
     "optional-reference-benchmark",
-    "optional-gurobi-heading",
-    "optional-gurobi-exact",
+    "optional-gurobi-reference-heading",
+    "optional-gurobi-reference-benchmark",
     "optional-external-heading",
     "optional-external-replay",
     "optional-figure-export",
@@ -98,6 +104,11 @@ def test_notebook_is_valid_v4_source_only_python_with_stable_cell_ids() -> None:
 
 def test_notebook_covers_bidding_audit_replay_and_evidence_limits() -> None:
     markdown = _source(cell_type="markdown").lower()
+    assert r"\(" not in markdown
+    assert r"\)" not in markdown
+    assert r"\[" not in markdown
+    assert r"\]" not in markdown
+    assert markdown.count("$$") == 36
     required = (
         "24-hour problem",
         "charge-positive",
@@ -110,6 +121,10 @@ def test_notebook_covers_bidding_audit_replay_and_evidence_limits() -> None:
         "2.75",
         "power headroom",
         "stored-energy protection",
+        "joint decision",
+        "constraint-attribution plot",
+        "unseen upward-pulse",
+        "unseen downward-pulse",
         "ex-ante optimization objective",
         "post-acceptance handoff",
         "feature 012",
@@ -131,14 +146,19 @@ def test_notebook_covers_bidding_audit_replay_and_evidence_limits() -> None:
         "fcr_schedule_table",
         "audit_table",
         "headroom_table",
-        "stored_energy_envelope_table",
+        "reserve_attribution_table",
+        "robust_energy_capacity_kw",
         "objective_table",
         "build_walkthrough_evaluation_request",
         "evaluate_fixed_fcr_bid",
         "replay_trace_table",
+        "activation_stress_table",
+        "physical_summary_table",
         "settlement_table",
+        "economics_separation_table",
         "fingerprint_table",
         "reference_decision_table",
+        "reference_precision_resolution_table",
         "notebook_display_fingerprint",
         "generated_figures",
     )
@@ -173,20 +193,27 @@ def test_notebook_uses_only_supported_source_boundaries() -> None:
 def test_research_paths_and_figure_export_are_explicit_and_disabled() -> None:
     config = _cell_source("offline-configuration")
     benchmark = _cell_source("optional-reference-benchmark")
-    exact = _cell_source("optional-gurobi-exact")
+    gurobi_reference = _cell_source("optional-gurobi-reference-benchmark")
     external = _cell_source("optional-external-replay")
     export = _cell_source("optional-figure-export")
 
     assert "RUN_NATIVE_REFERENCE_BENCHMARK = False" in config
-    assert "RUN_OPTIONAL_GUROBI_EXACT = False" in config
+    assert "RUN_OPTIONAL_GUROBI_REFERENCE_BENCHMARK = False" in config
     assert "RUN_EXTERNAL_ACTIVATION_REPLAY = False" in config
     assert "EXPORT_FIGURES = False" in config
     assert "artifacts/reference/robust_storage_bidding/regulation_signal.csv" in config
     assert 'Path("tmp/robust-fcr-bidding-notebook/figures")' in config
     assert "if RUN_NATIVE_REFERENCE_BENCHMARK:" in benchmark
     assert "compare_robust_fcr_reference" in benchmark
-    assert "if RUN_OPTIONAL_GUROBI_EXACT:" in exact
-    assert 'solver_name="gurobi"' in exact
+    assert "if RUN_OPTIONAL_GUROBI_REFERENCE_BENCHMARK:" in gurobi_reference
+    assert 'solver_name="gurobi"' in gurobi_reference
+    assert "build_robust_fcr_reference_problem" in gurobi_reference
+    assert 'formulation="restriction"' in gurobi_reference
+    assert 'formulation="exact"' not in gurobi_reference
+    assert "compare_robust_fcr_reference" in gurobi_reference
+    assert "gurobi_reference_backend_comparison" in gurobi_reference
+    assert "OEL/HiGHS minus recorded" in gurobi_reference
+    assert "OEL/Gurobi minus recorded" in gurobi_reference
     assert "if RUN_EXTERNAL_ACTIVATION_REPLAY:" in external
     assert "if not EXTERNAL_ACTIVATION_PATH.is_file():" in external
     assert "if EXPORT_FIGURES:" in export

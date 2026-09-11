@@ -7,3 +7,6 @@
 [submodule "baselines/robust_storage_bidding"]
 	path = baselines/robust_storage_bidding
 	url = git@github.com:lauinger/robust-storage-bidding.git
+[submodule "thesis"]
+	path = thesis
+	url = https://git@git.overleaf.com/6829eb51f68dafafc47e3136

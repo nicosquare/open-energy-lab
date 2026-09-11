@@ -157,9 +157,9 @@ formal termination, optimality, an exact gap, or unrounded feasibility.
 
 Routine validation consists of hand-calculable equation oracles, bounded
 Pyomo/HiGHS solves, public 96-step assembly, normalized-fixture checks, and one
-Feature 012 replay of an authored accepted plan. The complete 2023-06-18 solve
-is an explicitly selected `reference_benchmark`; optional Gurobi exact evidence
-and optional external-activation replay cannot weaken the routine gate.
+Feature 012 replay of an authored accepted plan. The complete 2023-06-18 HiGHS
+solve and licensed Gurobi solve of the same reference restriction are explicitly
+selected benchmarks; optional external-activation replay cannot weaken the routine gate.
 
 Source-rounded decisions are compared through one joint interval feasibility
 and objective certificate. A different native schedule is called an
@@ -361,29 +361,32 @@ replays different accepted schedules. It demonstrates one common evaluator and
 activation input; it does not establish schedule equality or Julia optimization
 parity.
 
-### Source-only walkthrough follow-up (2026-08-29)
+### Source-only walkthrough follow-up (updated 2026-08-31)
 
 The guided notebook at
-`examples/robust_fcr_bidding/robust_fcr_bidding_walkthrough.ipynb` uses a
-presolve-friendly authored 24/96/6 problem with a nonzero 10 kW symmetric-FCR
-schedule. Default execution remains offline: HiGHS solves the restriction and
-relaxation, the complete independent audit governs restriction deployability,
-and only the emitted fixed plan enters Feature 012 with a later-authored
-activation trace. The notebook does not introduce another replay, battery
-transition, settlement, or profit implementation.
+`examples/robust_fcr_bidding/robust_fcr_bidding_walkthrough.ipynb` uses an
+authored 24/96/6 problem in which a 20 kWh battery jointly selects day-ahead
+arbitrage and symmetric FCR. It earns 2.8 EUR of ex-ante arbitrage value and
+1.454545 EUR of ex-ante FCR value, with no reserve in the first two blocks and
+3.636364 kW in the final four. Default execution remains offline: HiGHS solves
+the restriction and relaxation, the independent audit governs restriction
+deployability, and only the emitted fixed plan enters Feature 012 after three
+evaluation-only activation traces have been authored. The notebook does not
+introduce another replay, battery transition, settlement, or profit model.
 
-Seven figures keep energy, power, stored energy, SOC, price, objective, and
-settlement units explicit. The normalized Julia/Gurobi fixture is displayed in
-the source positive-discharge frame with closed three-decimal precision
-intervals in kW; it is not shown as a unitless multiple or relative deviation.
-The complete historical native solve, optional Gurobi exact route, external
-activation replay, and figure export are disabled by default. The committed
+Six unit-labelled figures now focus on the decision: input prices, shared
+baseline/reserve power headroom, block-by-block constraint attribution,
+ex-ante objective components, nominal/upward/downward physical replay, and
+scenario-dependent realized economics. The normalized Julia/Gurobi source
+precision is reported as a table; a residual plot with explicit kW units and
+the closed +/-0.0005 kW envelope appears only when the identical historical
+native benchmark is enabled.
+The complete historical HiGHS solve, licensed Gurobi reference benchmark,
+external activation replay, and figure export are disabled by default. The committed
 notebook retains stable cell IDs, empty outputs, and no execution counts.
 
-The follow-up validation passed six focused notebook source/execution tests,
-the existing 137-test Feature 013 routine gate, and 130 documentation,
-source-boundary, lazy-import, and no-legacy contracts. The execution test
-blocked network calls and credential reads, verified seven in-memory figures,
-confirmed the pinned display fingerprint
-`a8de959baccdeda692f29b6edfc6c1e164ae73070758b7c9d759931cc04e0ce4`,
-and observed no exported files or changes to the committed notebook.
+The execution contract blocks network calls and credential reads, checks all
+three settled Feature 012 scenarios, verifies six in-memory figures, pins the
+display fingerprint
+`a49277c072f2e45803614a3c9766625b4baf63c6e165986aba0c4fa52fc05395`,
+and requires no exported files or changes to the committed notebook.

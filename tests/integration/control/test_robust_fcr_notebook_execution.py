@@ -13,7 +13,7 @@ NOTEBOOK_PATH = Path(
 )
 FIGURE_EXPORT_DIR = Path("tmp/robust-fcr-bidding-notebook/figures")
 EXPECTED_DISPLAY_FINGERPRINT = (
-    "a8de959baccdeda692f29b6edfc6c1e164ae73070758b7c9d759931cc04e0ce4"
+    "a49277c072f2e45803614a3c9766625b4baf63c6e165986aba0c4fa52fc05395"
 )
 
 
@@ -92,7 +92,7 @@ def test_notebook_executes_default_workflow_offline(
         nbformat,
         f"""
 assert RUN_NATIVE_REFERENCE_BENCHMARK is False
-assert RUN_OPTIONAL_GUROBI_EXACT is False
+assert RUN_OPTIONAL_GUROBI_REFERENCE_BENCHMARK is False
 assert RUN_EXTERNAL_ACTIVATION_REPLAY is False
 assert EXPORT_FIGURES is False
 assert len(time_contract.planning_intervals) == 96
@@ -107,54 +107,70 @@ assert restriction_result.deployable_plan is not None
 assert relaxation_result.solver.solve_status == "optimal"
 assert relaxation_result.deployability_status == "not_applicable"
 assert relaxation_result.deployable_plan is None
-assert restriction_result.solver.objective_value_eur == 6.0
-assert relaxation_result.solver.objective_value_eur == 6.0
+assert abs(restriction_result.solver.objective_value_eur - 4.254545454545456) < 1e-12
+assert abs(relaxation_result.solver.objective_value_eur - 4.254545454545454) < 1e-12
 assert bound_comparison.restriction_le_relaxation.satisfied
 assert len(energy_schedule_table) == 24
 assert len(fcr_schedule_table) == 6
-assert set(energy_schedule_table["restriction baseline (kW, charge-positive)"]) == {{0.0}}
-assert set(fcr_schedule_table["restriction symmetric FCR (kW)"]) == {{10.0}}
+assert energy_schedule_table["restriction baseline (kW, charge-positive)"].tolist() == [
+    -10.0, 10.0, 10.0, 0.0, -10.0, -10.0, 0.0, 0.0,
+    3.636363636, 6.363636364, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+]
+assert fcr_schedule_table["restriction symmetric FCR (kW)"].tolist() == [
+    0.0, 0.0, 3.636363636, 3.636363636, 3.636363636, 3.636363636,
+]
 assert audit.passes_deployability_audit
 assert max(audit.modeled_slacks.values()) == 0.0
-assert audit_table["maximum positive violation"].max() == 0.0
+assert audit_table["maximum positive violation"].max() < 1e-9
 assert len(headroom_table) == 96
-assert len(stored_energy_envelope_table) == 96
-assert stored_energy_envelope_table["lower horizon-budget envelope (kWh)"].min() == 22.5
-assert stored_energy_envelope_table["upper horizon-budget envelope (kWh)"].max() == 77.5
+assert len(reserve_attribution_table) == 6
+assert reserve_attribution_table["pointwise power-only capacity (kW)"].tolist()[:2] == [0.0, 0.0]
+assert reserve_attribution_table["pointwise power-only capacity (kW)"].tolist()[3:] == [10.0, 10.0, 10.0]
+assert abs(robust_energy_capacity_kw - 3.6363636363636362) < 1e-12
 assert len(objective_table) == 10
 assert walkthrough_evaluation_report.status == "settled"
 assert walkthrough_evaluation_request.plan is restriction_result.deployable_plan
-assert len(replay_trace_table) == 96
+assert set(walkthrough_evaluation_reports) == {{"nominal", "upward pulses", "downward pulses"}}
+assert all(report.status == "settled" for report in walkthrough_evaluation_reports.values())
+assert all(
+    request.plan is restriction_result.deployable_plan
+    for request in walkthrough_evaluation_requests.values()
+)
+assert len(replay_trace_table) == 288
+assert activation_stress_table["absolute activated hours"].tolist() == [0.0, 2.0, 2.0]
 assert physical_metrics["saturation_sample_count"] == 0
 assert physical_metrics["absolute_tracking_error_kw_sum"] == 0.0
-assert physical_metrics["stored_energy_kwh"] == {{
-    "initial": 50.0,
-    "minimum": 47.5,
-    "maximum": 50.0,
-    "terminal": 50.0,
-}}
-assert physical_metrics["throughput_kwh"] == 120.0
-assert len(settlement_table) == 8
-assert settlement_payload["total_profit_eur"] == 6.0
-assert settlement_payload["reconciliation_error_eur"] == 0.0
-assert len(fingerprint_table) == 12
+assert physical_metrics["stored_energy_kwh"]["initial"] == 10.0
+assert physical_metrics["stored_energy_kwh"]["minimum"] == 0.0
+assert physical_metrics["stored_energy_kwh"]["maximum"] == 20.0
+assert abs(physical_metrics["stored_energy_kwh"]["terminal"] - 2.727272728) < 1e-9
+assert abs(physical_metrics["throughput_kwh"] - 65.454545454) < 1e-9
+assert set(physical_summary_table["saturation samples"]) == {{0}}
+assert set(physical_summary_table["tracking-error sum (kW-samples)"]) == {{0.0}}
+assert len(settlement_table) == 24
+assert abs(settlement_payload["total_profit_eur"] - 4.690909090720001) < 1e-12
+assert settlement_payload["reconciliation_error_eur"] < 1e-12
+assert economics_separation_table["Feature 012 realized profit (EUR)"].tolist()[0] < economics_separation_table["Feature 012 realized profit (EUR)"].tolist()[1]
+assert economics_separation_table["Feature 012 realized profit (EUR)"].tolist()[2] < economics_separation_table["Feature 012 realized profit (EUR)"].tolist()[0]
+assert len(fingerprint_table) == 20
 assert len(reference_provenance_table) == 8
 assert len(reference_precision_table) == 5
 assert len(reference_decision_table) == 30
+assert len(reference_precision_resolution_table) == 2
 assert reference_fixture.precision_policy.decision_half_unit_kw == 0.0005
-assert len(generated_figures) == 7
+assert len(generated_figures) == 6
 assert set(generated_figures) == {{
     "input_prices",
-    "optimized_schedules",
-    "robust_feasibility",
-    "objective_evidence",
-    "physical_replay",
-    "realized_settlement",
-    "reference_source_precision",
+    "joint_bid_and_headroom",
+    "reserve_constraint_attribution",
+    "ex_ante_objective_components",
+    "post_acceptance_stress_replay",
+    "realized_economics_by_scenario",
 }}
 assert all(figure.axes for figure in generated_figures.values())
 assert native_reference_benchmark["status"] == "not_requested"
-assert optional_exact_result["status"] == "not_requested"
+assert gurobi_reference_benchmark["status"] == "not_requested"
 assert external_activation_result["status"] == "not_requested"
 assert exported_figure_paths == []
 assert notebook_display_fingerprint == {EXPECTED_DISPLAY_FINGERPRINT!r}
