@@ -2980,8 +2980,8 @@ def _encode_conditioned_sum_node(
         f"sum_exp_input_constraint_{node_id}",
         backend.Constraint(
             choice_index,
-            rule=lambda _block, index: solver_input[index]
-            == (relative[index] + native_offset) / native_scale,
+            rule=lambda _block, index: native_scale * solver_input[index]
+            == relative[index] + native_offset,
         ),
     )
     for index in indices:
@@ -2994,6 +2994,17 @@ def _encode_conditioned_sum_node(
             f_rule=list(exp_y),
         )
         block.add_component(f"sum_exp_piecewise_{node_id}_{index}", piecewise)
+        # Keep the bounded unit coordinate, but enforce its interpolation
+        # equality in native log units. Otherwise a 1e-8 solver residual in
+        # this coordinate permits 5e-6 error after the factor-500 conversion.
+        # Replace the active row rather than adding a redundant equality;
+        # DCC variables, breakpoints and initialization remain unchanged.
+        input_row = piecewise.DCC_constraint1
+        piecewise.add_component(
+            "native_input_constraint",
+            backend.Constraint(expr=native_scale * input_row.body == 0),
+        )
+        input_row.deactivate()
         _bound_piecewise_auxiliaries(backend, piecewise)
     total_bounds = _formulation_interval(
         formulation.get("total_bounds"),

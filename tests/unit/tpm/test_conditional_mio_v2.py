@@ -367,6 +367,28 @@ def test_fixed_assignment_initializer_populates_unchanged_attachment(mode: str) 
     )
 
 
+def test_guarded_pwl_input_equality_measures_residual_in_native_log_units() -> None:
+    import pyomo.environ as pyo
+
+    numerator, denominator = _all_node_type_circuits()
+    pair = _pair_with_circuits(mode="piecewise", numerator=numerator, denominator=denominator)
+    model = pyo.ConcreteModel()
+    model.x = pyo.Var(bounds=(40.0, 160.0), initialize=100.0)
+    attachment = attach_conditional_mio_pair(
+        pair, model, mappings=(TPMContinuousDecisionMapping("x", model.x),), namespace="native_residual"
+    )
+    initialize_conditional_mio_attachment(pair, attachment, declared_domain_assignments={"x": 100.0})
+    variable = attachment.block.numerator.sum_exp_input_var_6[0]
+    variable.set_value(variable.value + 3e-9, skip_validation=True)
+    diagnostics = inspect_conditional_mio_attachment(
+        attachment, solver_metadata=dict(solver_name="not-solved", solver_version="fixture",
+                                         status="perturbed", termination_condition="not-solved")
+    )
+    # The coordinate is (relative_log + 500) / 500. A normalized residual
+    # below a solver's 1e-8 tolerance still exceeds 1e-6 in native log units.
+    assert diagnostics.maximum_constraint_residual == pytest.approx(1.5e-6, abs=1e-12)
+
+
 def test_fixed_assignment_initializer_rejects_an_attachment_from_another_pair() -> None:
     import pyomo.environ as pyo
 
