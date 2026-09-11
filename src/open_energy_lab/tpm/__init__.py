@@ -141,6 +141,7 @@ if TYPE_CHECKING:
         native_full_gradient_step,
         capture_native_training_state,
         restore_native_training_state,
+        restore_native_mixture_for_inference,
         materialize_native_mixture,
         export_native_mixture_scalar,
     )
@@ -152,6 +153,7 @@ _EXPORT_MAP = {
     "native_full_gradient_step": (".native", "native_full_gradient_step"),
     "capture_native_training_state": (".native", "capture_native_training_state"),
     "restore_native_training_state": (".native", "restore_native_training_state"),
+    "restore_native_mixture_for_inference": (".native", "restore_native_mixture_for_inference"),
     "materialize_native_mixture": (".native", "materialize_native_mixture"),
     "export_native_mixture_scalar": (".native", "export_native_mixture_scalar"),
     "CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND": (
@@ -556,6 +558,7 @@ __all__ = [
     "native_full_gradient_step",
     "capture_native_training_state",
     "restore_native_training_state",
+    "restore_native_mixture_for_inference",
     "materialize_native_mixture",
     "export_native_mixture_scalar",
 ]

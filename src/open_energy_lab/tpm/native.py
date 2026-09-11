@@ -569,17 +569,8 @@ def capture_native_training_state(model, optimizer, *, config):
     })
 
 
-def restore_native_training_state(state, *, config, device):
-    """Rebuild the declared parametrizations and load state without initialization.
-
-    A checkpoint may move between devices of the same backend type. CPU and CUDA
-    generators have different algorithms/state formats; changing backend is not
-    equivalent continuation and is rejected rather than reseeded.
-    """
+def _validate_native_state_contract(state, config):
     _require_config(config)
-    torch, *_ = _backend()
-    import numpy as np
-
     expected_keys = {"kind", "version", "config", "model_state", "optimizer_state", "rng_state"}
     if (type(state) is not dict or state.keys() != expected_keys
             or state["kind"] != "native-mixture-training-state"
@@ -587,6 +578,55 @@ def restore_native_training_state(state, *, config, device):
         raise ValueError("not a supported native training state")
     if TPMNativeMixtureConfig.from_dict(state["config"]) != config:
         raise ValueError("native training state belongs to another model contract")
+
+
+def _restore_native_model(model_state, config, device):
+    torch, *_ = _backend()
+    k, g, b = config.components, len(config.gaussian_indices), len(config.bernoulli_indices)
+    # These placeholders only establish shape and parametrizations. No random
+    # draw, fitting row, clustering operation or budget decision occurs here.
+    floors = torch.tensor(config.gaussian_floors, dtype=torch.float64, device=device)
+    model = _build_mixture(
+        config, means=torch.zeros((k, g), dtype=torch.float64, device=device),
+        scales=(floors + torch.maximum(floors * 1e-6, torch.ones_like(floors))).expand(k, g),
+        probabilities=torch.full((k, b), 0.5, dtype=torch.float64, device=device),
+        weights=torch.full((k,), 1 / k, dtype=torch.float64, device=device), device=device,
+    )
+    expected = model.state_dict()
+    if type(model_state) is not dict or model_state.keys() != expected.keys():
+        raise ValueError("native model state has missing or unexpected entries")
+    for key, value in model_state.items():
+        if (not isinstance(value, torch.Tensor) or value.shape != expected[key].shape
+                or value.dtype != expected[key].dtype):
+            raise ValueError("native model state has an incompatible tensor")
+    model.load_state_dict(model_state, strict=True)
+    return model
+
+
+def restore_native_mixture_for_inference(state, *, config, device="cpu"):
+    """Load saved density parameters on the requested inference device.
+
+    This is not a training continuation: Adam and local training RNG state are
+    neither restored nor changed. No fitting, random draws or parameter-space
+    conversion occurs. Caller-owned checkpoint tensors remain independent.
+    """
+    _validate_native_state_contract(state, config)
+    model = _restore_native_model(state["model_state"], config, device)
+    _model_parameters(model, config)
+    return model.eval().requires_grad_(False)
+
+
+def restore_native_training_state(state, *, config, device):
+    """Rebuild the declared parametrizations and load state without initialization.
+
+    A checkpoint may move between devices of the same backend type. CPU and CUDA
+    generators have different algorithms/state formats; changing backend is not
+    equivalent continuation and is rejected rather than reseeded.
+    """
+    _validate_native_state_contract(state, config)
+    torch, *_ = _backend()
+    import numpy as np
+
     state = _copy_native_state(state)
     rng = state["rng_state"]
     device = torch.device(device)
@@ -604,24 +644,7 @@ def restore_native_training_state(state, *, config, device):
         torch_rng.set_state(rng["torch"])
     except (KeyError, TypeError, ValueError, RuntimeError) as error:
         raise ValueError("native RNG state cannot be restored") from error
-    k, g, b = config.components, len(config.gaussian_indices), len(config.bernoulli_indices)
-    # These placeholders only establish shape and parametrizations. No random
-    # draw, fitting row, clustering operation or budget decision occurs here.
-    floors = torch.tensor(config.gaussian_floors, dtype=torch.float64, device=device)
-    model = _build_mixture(
-        config, means=torch.zeros((k, g), dtype=torch.float64, device=device),
-        scales=(floors + torch.maximum(floors * 1e-6, torch.ones_like(floors))).expand(k, g),
-        probabilities=torch.full((k, b), 0.5, dtype=torch.float64, device=device),
-        weights=torch.full((k,), 1 / k, dtype=torch.float64, device=device), device=device,
-    )
-    model_state, expected = state["model_state"], model.state_dict()
-    if type(model_state) is not dict or model_state.keys() != expected.keys():
-        raise ValueError("native model state has missing or unexpected entries")
-    for key, value in model_state.items():
-        if (not isinstance(value, torch.Tensor) or value.shape != expected[key].shape
-                or value.dtype != expected[key].dtype):
-            raise ValueError("native model state has an incompatible tensor")
-    model.load_state_dict(model_state, strict=True)
+    model = _restore_native_model(state["model_state"], config, device)
     model._native_numpy_rng, model._native_torch_generator = numpy_rng, torch_rng
     optimizer_state = state["optimizer_state"]
     if (type(optimizer_state) is not dict or optimizer_state.keys() != {"state", "param_groups"}
