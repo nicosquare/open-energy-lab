@@ -401,7 +401,20 @@ def load_spflow_payload(artifact: TPMArtifact) -> dict[str, object] | None:
     payload_path = resolve_spflow_payload_path(artifact)
     if payload_path is None or not payload_path.is_file():
         return None
-    payload = pickle.loads(payload_path.read_bytes())
+    serialization = artifact.spn_payload.get('serialization') if isinstance(artifact.spn_payload, Mapping) else None
+    if serialization == 'torch-weights-only-v1':
+        payload = load_supported_spflow_checkpoint(payload_path)
+        required = {'payload_kind', 'artifact_schema_version', 'backend_generation', 'backend_api_version',
+                    'query_strategy', 'feature_schema', 'model'}
+        if (not isinstance(payload, dict) or set(payload) != required
+                or payload['payload_kind'] != 'current-spflow-model-sidecar'
+                or payload['backend_generation'] != CURRENT_SPFLOW_BACKEND_GENERATION
+                or payload['backend_api_version'] != REQUIRED_SPFLOW_VERSION or payload['query_strategy'] != 'spflow'):
+            raise ValueError('unsupported restricted SPFlow sidecar schema')
+        from .refinement import validate_refinement_spn
+        validate_refinement_spn(payload['model'], feature_count=len(artifact.feature_specs))
+    else:
+        payload = pickle.loads(payload_path.read_bytes())
     if not isinstance(payload, Mapping):
         raise TypeError("persisted SPFlow payload must deserialize to a mapping")
     normalized = {str(key): value for key, value in payload.items()}
@@ -571,6 +584,35 @@ def supports_spn_mip(artifact: TPMArtifact) -> bool:
 
     runtime_payload = load_spflow_payload(artifact)
     return runtime_payload is not None and _runtime_payload_supports_spn_mip(runtime_payload)
+
+
+def load_supported_spflow_checkpoint(path):
+    """Load only the declared supported Torch/SPFlow checkpoint classes on CPU.
+
+    This is separate from legacy artifact sidecar loading. There is deliberately
+    no unrestricted pickle fallback; refinement validates the returned schema.
+    """
+    import pickle
+    import threading
+    import torch
+    from .refinement import _supported_types
+
+    modules, records = _supported_types()
+    allowed = (*modules, *records)
+    if threading.current_thread() is not threading.main_thread():
+        raise RuntimeError('restricted checkpoint loading belongs in the fitting worker main thread')
+    previous = torch.serialization.get_safe_globals()
+    try:
+        # Torch and imported libraries may register unrelated tensor classes.
+        # This isolated worker boundary admits only this operation's exact list.
+        torch.serialization.clear_safe_globals()
+        with torch.serialization.safe_globals(allowed):
+            return torch.load(path, map_location='cpu', weights_only=True)
+    except (pickle.UnpicklingError, RuntimeError, EOFError, TypeError, AttributeError) as exc:
+        raise ValueError('restricted supported-SPN checkpoint loading failed') from exc
+    finally:
+        torch.serialization.clear_safe_globals()
+        torch.serialization.add_safe_globals(previous)
 
 
 def stabilize_spflow_leaf_parameters(

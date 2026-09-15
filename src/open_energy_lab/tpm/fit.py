@@ -70,6 +70,91 @@ _LEGACY_LEARN_SPN_ARGUMENTS = (
 )
 
 
+def learn_bounded_prometheus(rows, *, feature_schema, settings, gaussian_floors,
+                             seed, maximum_seconds, maximum_modules, maximum_scalar_outputs):
+    """Learn a supported topology on prepared coordinates under explicit work/size limits.
+
+    The caller selects rows (including any balancing), owns resource admission and
+    enforces a hard worker deadline if a native call delays Python signal handling.
+    No fit retry or replacement learner is used. Finite degenerate probabilities
+    are regularized; nonfinite learned values are reported as failures.
+    """
+    import math
+    import signal
+    import threading
+    import time
+    began = time.monotonic()
+    if (isinstance(maximum_seconds, bool) or not math.isfinite(maximum_seconds) or maximum_seconds <= 0
+            or any(type(v) is not int or v < 1 for v in (maximum_modules, maximum_scalar_outputs))):
+        raise ValueError('Prometheus work and size budget must be positive and finite')
+    if type(seed) is not int or seed < 0 or seed >= 2**32:
+        raise ValueError('Prometheus seed must be a public uint32 value')
+    allowed = {'out_channels', 'min_features_slice', 'min_instances_slice', 'n_clusters', 'similarity', 'affinity_mode'}
+    if not isinstance(settings, Mapping) or set(settings) - allowed:
+        raise ValueError('unsupported bounded Prometheus settings')
+    if threading.current_thread() is not threading.main_thread() or not hasattr(signal, 'setitimer'):
+        raise RuntimeError('bounded Prometheus must run in its own main-thread POSIX worker')
+    if signal.getitimer(signal.ITIMER_REAL)[0]:
+        raise RuntimeError('bounded Prometheus requires an unowned worker timer')
+
+    import numpy as np
+    import torch
+    from spflow.learn import learn_prometheus
+    from spflow.modules.leaves import Normal, Bernoulli, Categorical
+    from .refinement import project_spn_gaussian_widths, validate_refinement_spn, _finite_metadata
+    settings = _finite_metadata(dict(settings))
+    require_spflow_backend()
+    schema = tuple(feature_schema)
+    dump_feature_schema(schema, schema_version='v3')
+    tensor = torch.as_tensor(rows)
+    if (tensor.ndim != 2 or tensor.shape[0] < 2 or tensor.shape[1] != len(schema)
+            or tensor.device.type != 'cpu' or tensor.dtype != torch.float64 or not torch.isfinite(tensor).all()):
+        raise ValueError('Prometheus requires finite float64 CPU rows in declared model coordinates')
+    observed = {}
+    missing = False
+    for i, spec in enumerate(schema):
+        if spec.feature_type in ('binary', 'categorical'):
+            values = torch.unique(tensor[:, i]).tolist()
+            count = 2 if spec.feature_type == 'binary' else len(spec.ordering or spec.discrete_values)
+            if any(not float(v).is_integer() or not 0 <= v < count for v in values):
+                raise ValueError('discrete structure coordinates must follow declared model indices')
+            observed[spec.feature_name] = [int(v) for v in values]
+            missing |= len(values) < count
+    remaining = maximum_seconds - (time.monotonic() - began)
+    if remaining <= 0: raise TimeoutError('Prometheus work budget exhausted during preparation')
+    old_handler = signal.getsignal(signal.SIGALRM)
+    old_dtype = torch.get_default_dtype()
+    def expired(_number, _frame): raise TimeoutError('Prometheus work budget exhausted')
+    signal.signal(signal.SIGALRM, expired)
+    signal.setitimer(signal.ITIMER_REAL, remaining)
+    try:
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.use_deterministic_algorithms(True)
+        torch.set_default_dtype(torch.float64)
+        model = learn_prometheus(tensor, leaf_modules=list(build_spflow_leaf_modules(schema)), **settings)
+        for leaf in model.modules():
+            values = (leaf.loc, leaf.scale) if type(leaf) is Normal else ((leaf.probs,) if type(leaf) in (Bernoulli, Categorical) else ())
+            if any(not torch.isfinite(value).all() for value in values):
+                raise ValueError('Prometheus returned nonfinite learned leaf parameters')
+        _stabilize_leaf_parameters(model)
+        project_spn_gaussian_widths(model, gaussian_floors)
+        evidence = validate_refinement_spn(model, feature_count=len(schema))
+        if evidence['modules'] > maximum_modules or evidence['scalar_outputs'] > maximum_scalar_outputs:
+            raise ValueError('Prometheus learned structure exceeds its size budget')
+        elapsed = time.monotonic() - began
+        if elapsed > maximum_seconds: raise TimeoutError('Prometheus work budget exhausted')
+        return model, dict(evidence, settings=settings, seed=seed, structure_rows=len(tensor),
+            elapsed_seconds=elapsed, observed_discrete_values=observed, incomplete_discrete_support=missing,
+            torch_threads=torch.get_num_threads(), maximum_seconds=maximum_seconds,
+            maximum_modules=maximum_modules, maximum_scalar_outputs=maximum_scalar_outputs)
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, old_handler)
+        torch.set_default_dtype(old_dtype)
+
+
 @dataclass(frozen=True, slots=True)
 class TPMFitConfig:
     """SPFlow-backed TPM fit configuration captured in persisted artifacts."""
