@@ -6,7 +6,7 @@ import hashlib
 import json
 import math
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from importlib import import_module
 from itertools import product as cartesian_product
 from pathlib import Path
@@ -408,6 +408,7 @@ def compile_spflow_model_to_mio(
     breakpoint_count: int = _CANONICAL_BREAKPOINT_COUNT,
     breakpoints: Sequence[float] | None = None,
     breakpoint_overrides: Mapping[str | int, Sequence[float]] | None = None,
+    integer_grids: Mapping[str, Sequence[int]] | None = None,
     breakpoint_policy: Mapping[str, object] | None = None,
     mio_epsilon: float = _DEFAULT_MIO_EPSILON,
 ) -> dict[str, object]:
@@ -419,6 +420,11 @@ def compile_spflow_model_to_mio(
     emitted as MIO nodes. Normal log densities are sampled on deterministic
     normalized-domain breakpoints; discrete leaves and graph composition remain
     exact.
+
+    ``integer_grids`` optionally maps retained continuous feature names to every
+    consecutive physical integer in their declared approximation interval. These
+    anchors are normalized once and use the same ``mio_epsilon`` density floor;
+    they do not turn the fitted density into a categorical probability mass.
     """
 
     require_spflow_backend()
@@ -458,6 +464,8 @@ def compile_spflow_model_to_mio(
         mio_epsilon=mio_epsilon,
     )
     validity_records: dict[int, TPMCompiledValidityRecord] = {}
+    if integer_grids is not None and (not compiled_v2 or not isinstance(integer_grids, Mapping)):
+        raise ValueError('integer grids require a declared-domain compiled-v2 artifact')
     if compiled_v2:
         validity_records = _resolve_compiled_v2_validity(
             model=model,
@@ -465,6 +473,23 @@ def compile_spflow_model_to_mio(
             approximation_domains=approximation_domains,
             relative_breakpoints=feature_breakpoints,
         )
+        by_name = {record.feature_name: index for index, record in validity_records.items()}
+        for name, raw_values in (integer_grids or {}).items():
+            values = tuple(raw_values)
+            if (name not in by_name or len(values) < 2
+                    or any(type(v) is not int for v in values)
+                    or any(b != a + 1 for a, b in zip(values, values[1:]))):
+                raise ValueError('integer grids require retained continuous features and consecutive integer values')
+            index = by_name[name]
+            record = validity_records[index]
+            if (values[0], values[-1]) != (record.physical_lower, record.physical_upper):
+                raise ValueError('integer grid must cover the physical approximation interval')
+            # Do not reconstruct integers by multiplying fractional anchors by U:
+            # e.g. (29/100)*100 can miss 29. Normalize each physical integer once.
+            validity_records[index] = replace(record, physical_breakpoints=values,
+                model_breakpoints=tuple(float(record.normalization.normalize_value(k)) for k in values))
+        if integer_grids:
+            resolved_policy['integer_grids'] = {name: list(values) for name, values in integer_grids.items()}
         feature_breakpoints = {
             index: validity.model_breakpoints
             for index, validity in validity_records.items()
@@ -2776,6 +2801,18 @@ def _encode_conditioned_piecewise_leaf(
         )
     if feature_name in decision_variables:
         payload = decision_variables[feature_name]
+        if str(payload.get("kind")) == "integer_lookup":
+            indicators = tuple(payload['indicators'])
+            if (representation != 'integer-lookup'
+                    or tuple(breakpoints) != tuple(payload['grid_coordinates'])
+                    or len(indicators) != len(log_values)):
+                raise ValueError('integer lookup leaf differs from the persisted shared grid')
+            block.add_component(
+                f'integer_leaf_{node_id}',
+                backend.Constraint(expr=block.node_out[node_id]
+                    == sum(value * z for value, z in zip(log_values, indicators, strict=True))),
+            )
+            return
         if str(payload.get("kind")) != "continuous":
             raise ValueError(
                 f"conditioned piecewise leaf {node_id} requires a continuous mapping"

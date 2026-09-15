@@ -27,6 +27,8 @@ from .conditional import (
     TPMConditionalSourceReference,
     TPMCompilerFidelityEvidence,
     TPMContinuousDecisionMapping,
+    TPMIntegerDecisionMapping,
+    _integer_grid_coordinates,
     TPMEmbeddingParityEvidence,
     TPMNativeConditionalEvaluation,
 )
@@ -95,7 +97,14 @@ def attach_conditional_mio_pair(
     ],
     namespace: str,
 ) -> TPMConditionalAttachment:
-    """Attach one unchanged pair to supported caller-owned Pyomo decisions."""
+    """Attach one unchanged pair to supported caller-owned Pyomo decisions.
+
+    A persisted ``leaf_configuration.integer_grids`` feature requires a
+    ``TPMIntegerDecisionMapping`` with the physical integer variable and the
+    complete ordered caller selectors. Attachment adds exact one-hot/quantity
+    linking rows and reuses those selectors for every leaf in both circuits.
+    No caller bounds, fixed states, objectives or chance constraints are changed.
+    """
 
     if not isinstance(pair, TPMConditionalPair):
         raise TypeError("pair must be a TPMConditionalPair")
@@ -148,6 +157,9 @@ def attach_conditional_mio_pair(
         )
     continuous_variables: dict[str, tuple[object, ...]] = {}
     discrete_ordering: dict[str, tuple[object, ...]] = {}
+    integer_grids = pair.encoding.leaf_configuration.get("integer_grids", {})
+    integer_selectors: dict[str, tuple[tuple[int, object], ...]] = {}
+    seen_integer_selectors: set[int] = set()
     for feature_name in expected:
         validity = validity_by_name[feature_name]
         mapping = mapping_by_name[feature_name]
@@ -167,6 +179,29 @@ def attach_conditional_mio_pair(
                 mapping.physical_expression,
                 feature_name=feature_name,
             )
+            if feature_name in integer_grids:
+                if not isinstance(mapping, TPMIntegerDecisionMapping):
+                    raise TypeError("integer grid requires a TPMIntegerDecisionMapping")
+                physical = mapping.physical_expression
+                if (not getattr(physical, 'is_variable_type', lambda: False)()
+                        or not physical.is_integer()):
+                    raise ValueError("integer lookup requires a scalar physical integer variable")
+                values = tuple(integer_grids[feature_name])
+                if tuple(k for k, _ in mapping.ordered_indicators) != values:
+                    raise ValueError("integer selectors must exactly follow the persisted grid")
+                if (physical.lb is None or physical.ub is None
+                        or not all(math.isfinite(float(v)) and float(v).is_integer()
+                                   for v in (physical.lb, physical.ub))
+                        or physical.lb < values[0] or physical.ub > values[-1]):
+                    raise ValueError("integer caller bounds must be finite and within the grid")
+                for _, indicator in mapping.ordered_indicators:
+                    _validate_scalar_binary_variable(model, indicator, feature_name=feature_name)
+                    if id(indicator) in seen_integer_selectors:
+                        raise ValueError("integer selectors cannot be shared across distinct features")
+                    seen_integer_selectors.add(id(indicator))
+                integer_selectors[feature_name] = mapping.ordered_indicators
+            elif isinstance(mapping, TPMIntegerDecisionMapping):
+                raise ValueError("integer mapping requires a persisted integer grid")
             continue
         domain = domain_by_name[feature_name]
         ordering = tuple(domain.ordering)
@@ -277,6 +312,22 @@ def attach_conditional_mio_pair(
         }
         for name in continuous_names
     }
+    block.integer_features = backend.Set(initialize=tuple(integer_selectors), ordered=True)
+    block.integer_exactly_one = backend.Constraint(
+        block.integer_features,
+        rule=lambda _b, name: sum(z for _, z in integer_selectors[name]) == 1,
+    )
+    block.integer_physical_link = backend.Constraint(
+        block.integer_features,
+        rule=lambda _b, name: physical_expression_by_name[name]
+        == sum(k * z for k, z in integer_selectors[name]),
+    )
+    for name, entries in integer_selectors.items():
+        decision_variables[name].update(
+            kind='integer_lookup', indicators=tuple(z for _, z in entries),
+            grid_coordinates=_integer_grid_coordinates(integer_grids[name],
+                validity_by_name[name].normalization, approximation_by_name[name]),
+        )
     categorical_names = tuple(
         name
         for name in expected
@@ -350,6 +401,7 @@ def attach_conditional_mio_pair(
             model_upper=block.model_validity_upper[name],
             normalization=validity_by_name[name].normalization,
             approximation_domain=approximation_by_name[name],
+            ordered_integer_indicators=integer_selectors.get(name, ()),
         )
         for name in continuous_names
     }
@@ -1097,7 +1149,12 @@ def _inspect_structural_affine_expression(
 def compile_conditional_mio_pair(
     request: TPMConditionalCompilationRequest,
 ) -> TPMConditionalPair:
-    """Compile one eligible persisted current-SPFlow artifact into a pair."""
+    """Compile one eligible persisted current-SPFlow artifact into a pair.
+
+    Optional ``encoding.leaf_configuration.integer_grids`` binds feature names
+    to consecutive physical integers. Gaussian anchors use the declared density
+    floor; Sum approximation and native unfloored probabilities stay distinct.
+    """
 
     if not isinstance(request, TPMConditionalCompilationRequest):
         raise TypeError("request must be a TPMConditionalCompilationRequest")
@@ -1162,6 +1219,7 @@ def compile_conditional_mio_pair(
     relative_breakpoints = leaf_configuration.get(
         "relative_breakpoints", leaf_configuration.get("breakpoints")
     )
+    integer_grids = leaf_configuration.get('integer_grids', {})
     compiled = compile_spflow_model_to_mio(
         retained_model,
         fitted_artifact=artifact,
@@ -1173,6 +1231,7 @@ def compile_conditional_mio_pair(
             else None
         ),
         mio_epsilon=float(leaf_configuration["mio_epsilon"]),
+        **({'integer_grids': integer_grids} if integer_grids else {}),
     )
     _validate_compiled_origin(compiled, artifact=artifact)
     numerator_payload = condition_compiled_spflow_mio(
@@ -1373,6 +1432,18 @@ def initialize_conditional_mio_attachment(
         assignment_mode=evaluation.assignment_mode,
     )
     backend = require_pyomo_backend()
+    # Caller-owned decisions/selectors must already describe the proposed order.
+    # Validate before mutating auxiliaries; the caller owns setting its Start.
+    for name, link in attachment.decision_links.items():
+        entries = getattr(link, 'ordered_integer_indicators', ())
+        if entries:
+            values = pair.encoding.leaf_configuration['integer_grids'][name]
+            record = next(v for v in pair.validity if v.feature_name == name)
+            points = _integer_grid_coordinates(values, record.normalization, record.approximation_domain)
+            selected = values[points.index(coordinates[name])]
+            if (backend.value(link.physical_expression, exception=False) != selected
+                    or any(backend.value(z, exception=False) != int(k == selected) for k, z in entries)):
+                raise ValueError('caller integer decision/selectors do not match the initialization assignment')
     validity_by_name = {value.feature_name: value for value in pair.validity}
     for feature_name, coordinate in coordinates.items():
         if validity_by_name[feature_name].feature_type == "continuous":
@@ -1939,6 +2010,13 @@ def _resolve_assignment_coordinates(
             else:
                 physical = normalization.denormalize_value(coordinate)
                 domain.validate_value(physical)
+        values = pair.encoding.leaf_configuration.get('integer_grids', {}).get(feature_name)
+        if values is not None:
+            points = _integer_grid_coordinates(values, validity.normalization, validity.approximation_domain)
+            if assignment_mode == 'declared-domain' and (isinstance(supplied, bool) or supplied not in values):
+                raise ValueError(f'{feature_name} assignment is outside its integer grid')
+            if coordinate not in points:
+                raise ValueError(f'{feature_name} model coordinate is outside its integer grid')
         coordinates[feature_name] = coordinate
     return coordinates
 

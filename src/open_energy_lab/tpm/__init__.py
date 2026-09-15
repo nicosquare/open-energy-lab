@@ -39,6 +39,7 @@ if TYPE_CHECKING:
         TPMConditionalSourceReference,
         TPMCompilerFidelityEvidence,
         TPMContinuousDecisionMapping,
+        TPMIntegerDecisionMapping,
         TPMEmbeddingParityEvidence,
         TPMNativeConditionalEvaluation,
         canonical_conditional_json_bytes,
@@ -275,6 +276,7 @@ _EXPORT_MAP = {
         ".conditional",
         "TPMContinuousDecisionMapping",
     ),
+    "TPMIntegerDecisionMapping": (".conditional", "TPMIntegerDecisionMapping"),
     "TPMEmbeddingParityEvidence": (
         ".conditional",
         "TPMEmbeddingParityEvidence",
@@ -482,6 +484,7 @@ __all__ = [
     "TPMConditionalSourceReference",
     "TPMCompilerFidelityEvidence",
     "TPMContinuousDecisionMapping",
+    "TPMIntegerDecisionMapping",
     "TPMEmbeddingParityEvidence",
     "TPMNativeConditionalEvaluation",
     "UnsupportedTPMArtifactVersionError",

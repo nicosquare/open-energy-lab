@@ -35,6 +35,34 @@ from tests.integration.tpm.conditional_mio_test_support import (
 from tests.unit.tpm.test_conditional_pair import _pair
 
 
+def test_integer_gaussian_lookup_fixed_orders_and_complete_sum_witness(monkeypatch):
+    import pyomo.environ as pyo
+    from tests.unit.tpm.test_integer_lookup import compile_gaussian_lookup, lookup_caller, assign
+
+    pair, _ = compile_gaussian_lookup(monkeypatch)
+    for q in (40, 88, 112, 160):
+        model, attachment = lookup_caller(pair)
+        assign(model, q)
+        model.q.fix()
+        expected = initialize_conditional_mio_attachment(
+            pair, attachment, declared_domain_assignments={'x': q})
+        assert all(v.value is not None and math.isfinite(v.value)
+                   for v in model.component_data_objects(pyo.Var))
+        # Inspect the supplied complete witness before solving can repair it.
+        for row in model.component_data_objects(pyo.Constraint, active=True):
+            value = pyo.value(row.body)
+            assert row.lower is None or value >= pyo.value(row.lower) - 1e-6
+            assert row.upper is None or value <= pyo.value(row.upper) + 1e-6
+        solver = pyo.SolverFactory('highs')
+        solver.options['threads'] = 1
+        result = solver.solve(model)
+        assert result.solver.termination_condition == pyo.TerminationCondition.optimal
+        assert pyo.value(attachment.numerator_root) == pytest.approx(expected.numerator_log, abs=1e-6)
+        assert pyo.value(attachment.denominator_root) == pytest.approx(expected.denominator_log, abs=1e-6)
+        assert pyo.value(attachment.conditional_log_risk) == pytest.approx(expected.conditional_log_risk, abs=1e-6)
+        assert not tuple(model.component_objects(pyo.Objective))
+
+
 def _mapping(value: object, *, field_name: str) -> dict[str, object]:
     if not isinstance(value, dict):
         raise TypeError(f"{field_name} must be a mapping")

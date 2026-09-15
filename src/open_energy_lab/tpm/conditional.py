@@ -358,6 +358,15 @@ class TPMConditionalEncodingPolicy:
             raise ValueError(
                 "leaf_configuration must resolve breakpoints or breakpoint_count"
             )
+        grids = leaf_configuration.get("integer_grids", {})
+        if not isinstance(grids, Mapping):
+            raise TypeError("integer_grids must map feature names to physical integer values")
+        for name, values in grids.items():
+            _non_empty_string(name, "integer grid feature")
+            if (not _is_sequence(values) or len(values) < 2
+                    or any(type(v) is not int for v in values)
+                    or any(b != a + 1 for a, b in zip(values, values[1:]))):
+                raise ValueError("integer grids must contain consecutive ordered integers")
         _positive_finite_mapping_value(
             sum_configuration,
             "sum_big_m",
@@ -897,6 +906,18 @@ class TPMConditionalPair:
             raise ValueError(
                 "denominator circuit must declare marginalized event treatment"
             )
+        grids = self.encoding.leaf_configuration.get("integer_grids", {})
+        validity_by_name = {v.feature_name: v for v in validity}
+        for name, values in grids.items():
+            record = validity_by_name.get(name)
+            if record is None or record.feature_type != "continuous":
+                raise ValueError("integer grid requires a retained continuous-density feature")
+            points = _integer_grid_coordinates(values, record.normalization, record.approximation_domain)
+            for circuit in (self.numerator, self.denominator):
+                for node in circuit.nodes:
+                    if node.feature_name == name and node.node_type == "leaf_piecewise":
+                        if tuple(node.parameters["breakpoints"]) != points:
+                            raise ValueError("integer grid differs from compiled leaf coordinates")
         expected_formulation = resolve_conditional_attachment_formulation(
             encoding=self.encoding,
             numerator=self.numerator,
@@ -1112,6 +1133,7 @@ def _resolve_circuit_attachment_formulation(
             representation = (
                 "fixed-equality"
                 if "fixed_value" in node.parameters
+                else "integer-lookup" if node.feature_name in encoding.leaf_configuration.get("integer_grids", {})
                 else "DLOG" if segment_count == 4 else "DCC"
             )
             leaf_representations[node_id] = {
@@ -1358,6 +1380,40 @@ class TPMContinuousDecisionMapping:
 
 
 @dataclass(frozen=True, slots=True)
+class TPMIntegerDecisionMapping(TPMContinuousDecisionMapping):
+    """Integer physical variable and caller-owned one-hot selectors for a density grid.
+
+    The fitted feature stays continuous. This mapping selects its Gaussian density
+    at legal integer coordinates; it does not refit the leaf as a categorical PMF.
+    """
+
+    ordered_indicators: tuple[tuple[int, object], ...]
+
+    def __post_init__(self) -> None:
+        TPMContinuousDecisionMapping.__post_init__(self)
+        entries = tuple(self.ordered_indicators)
+        if (len(entries) < 2 or any(not _is_sequence(e) or len(e) != 2
+                                   or type(e[0]) is not int or e[1] is None for e in entries)
+                or any(b[0] != a[0] + 1 for a, b in zip(entries, entries[1:]))
+                or len({id(e[1]) for e in entries}) != len(entries)):
+            raise ValueError("integer indicators must be distinct and follow consecutive physical integers")
+        object.__setattr__(self, "ordered_indicators", entries)
+
+
+def _integer_grid_coordinates(values, normalization, approximation):
+    """Resolve a complete physical grid through the persisted transform exactly once."""
+    from .domains import TPMNormalizationSpec
+
+    if approximation is None or tuple(approximation['physical_interval']) != (values[0], values[-1]):
+        raise ValueError("integer grid must cover the complete physical approximation interval")
+    transform = TPMNormalizationSpec.from_dict(normalization)
+    points = tuple(float(transform.normalize_value(v)) for v in values)
+    if tuple(approximation['model_interval']) != (points[0], points[-1]):
+        raise ValueError("integer grid normalization differs from the model interval")
+    return points
+
+
+@dataclass(frozen=True, slots=True)
 class TPMBinaryDecisionMapping:
     """Import-light association from one binary feature to a caller variable."""
 
@@ -1428,6 +1484,7 @@ class TPMConditionalDecisionLink:
     model_upper: object
     normalization: Mapping[str, object]
     approximation_domain: Mapping[str, object]
+    ordered_integer_indicators: tuple[tuple[int, object], ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(
