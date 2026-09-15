@@ -177,7 +177,8 @@ def _shared_subgraph():
     from spflow.modules.products import Product
     from spflow.modules.sums import Sum
 
-    shared = Product([Normal(0)])
+    shared = Product([Normal(0, loc=torch.tensor([[[.5]]], dtype=torch.float64),
+                             scale=torch.tensor([[[.5]]], dtype=torch.float64))])
     return Sum([shared, shared], weights=torch.tensor([0.5, 0.5]))
 
 
@@ -200,7 +201,6 @@ def _legacy_histogram():
         (_custom_leaf, "CustomNormal", (0,)),
         (_extra_channels, "Normal", (0,)),
         (_extra_repetitions, "Normal", (0,)),
-        (_shared_subgraph, "Product", (0,)),
         (_legacy_histogram, "Histogram", (0,)),
     ),
 )
@@ -219,6 +219,26 @@ def test_unsupported_modules_report_type_and_scope(
     assert error.scope == expected_scope
     assert expected_type in str(error)
     assert "scope" in str(error).lower()
+
+
+def test_shared_subgraph_reuses_one_node_and_preserves_native_probability():
+    import torch
+    model = _shared_subgraph().double()
+    compiled = _compile(model)
+    assert len(compiled['nodes']) == 3
+    assert compiled['nodes'][-1]['children'] == [1, 1]
+    rows = torch.tensor([[x, 0., 0.] for x in (0., .25, .5, .75, 1.)], dtype=torch.float64)
+    native = model.log_likelihood(rows).exp().detach().reshape(-1).tolist()
+    actual = [mio_module.evaluate_compiled_spflow_probability(compiled, normalized_evidence=row.tolist()) for row in rows]
+    assert actual == pytest.approx(native, abs=1e-10, rel=1e-10)
+
+
+def test_cyclic_subgraph_is_rejected_before_recursive_compilation():
+    model = _shared_subgraph()
+    # Preserve valid cached scope/shape but introduce a back edge in the graph.
+    model.inputs.inputs[0] = model
+    with pytest.raises(mio_module.UnsupportedSPFlowModuleError, match='cyclic subgraphs'):
+        _compile(model)
 
 
 def test_compiled_v2_persists_physical_and_derived_model_breakpoints() -> None:

@@ -419,7 +419,7 @@ def compile_spflow_model_to_mio(
     SPFlow's internal ``Cat`` adapters are unwrapped as graph edges and are not
     emitted as MIO nodes. Normal log densities are sampled on deterministic
     normalized-domain breakpoints; discrete leaves and graph composition remain
-    exact.
+    exact. Shared acyclic subgraphs reuse their compiled node; cycles are rejected.
 
     ``integer_grids`` optionally maps retained continuous feature names to every
     consecutive physical integer in their declared approximation interval. These
@@ -501,19 +501,22 @@ def compile_spflow_model_to_mio(
         }
 
     nodes: list[dict[str, object]] = []
-    seen_modules: set[int] = set()
+    compiled_modules: dict[int, int] = {}
+    active_modules: set[int] = set()
 
     def compile_module(module: object) -> int:
         module_scope = _spflow_module_scope(module)
         module_type = type(module).__name__
         identity = id(module)
-        if identity in seen_modules:
+        if identity in compiled_modules:
+            return compiled_modules[identity]
+        if identity in active_modules:
             raise UnsupportedSPFlowModuleError(
                 module_type=module_type,
                 scope=module_scope,
-                reason="shared subgraphs cannot be represented by the first-release compiler",
+                reason="cyclic subgraphs cannot be represented by the compiler",
             )
-        seen_modules.add(identity)
+        active_modules.add(identity)
 
         exact_type = type(module)
         if exact_type is bindings["sum"]:
@@ -586,6 +589,8 @@ def compile_spflow_model_to_mio(
 
         node_id = int(node["id"])
         nodes.append(node)
+        compiled_modules[identity] = node_id
+        active_modules.remove(identity)
         return node_id
 
     root_id = compile_module(model)
