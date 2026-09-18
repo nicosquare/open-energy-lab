@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 
@@ -16,10 +17,14 @@ PLANNED_TPM_MODULE_PATHS = (
     TPM_SOURCE_DIR / "piecewise.py",
     TPM_SOURCE_DIR / "optional_spflow.py",
 )
-LEGACY_IMPORT_PATTERNS = (
-    "from " "legacy",
-    "import " "legacy",
-)
+def _imports_legacy(path):
+    for node in ast.walk(ast.parse(path.read_text(), filename=str(path))):
+        names = ([alias.name for alias in node.names] if isinstance(node, ast.Import)
+                 else [node.module] if isinstance(node, ast.ImportFrom) and not node.level and node.module
+                 else [])
+        if any(name == "legacy" or name.startswith("legacy.") for name in names):
+            return True
+    return False
 
 
 def test_tpm_package_modules_do_not_import_legacy_packages() -> None:
@@ -29,8 +34,7 @@ def test_tpm_package_modules_do_not_import_legacy_packages() -> None:
 
     offending_files: list[str] = []
     for path in sorted(TPM_SOURCE_DIR.rglob("*.py")):
-        contents = path.read_text()
-        if any(pattern in contents for pattern in LEGACY_IMPORT_PATTERNS):
+        if _imports_legacy(path):
             offending_files.append(path.as_posix())
 
     assert offending_files == []
@@ -45,8 +49,7 @@ def test_planned_tpm_modules_stay_legacy_free_when_present() -> None:
             continue
 
         checked_files += 1
-        contents = path.read_text()
-        if any(pattern in contents for pattern in LEGACY_IMPORT_PATTERNS):
+        if _imports_legacy(path):
             offending_files.append(path.as_posix())
 
     if checked_files == 0:

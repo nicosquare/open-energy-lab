@@ -140,8 +140,7 @@ def test_target_package_does_not_import_legacy_modules():
 
     for path in TARGET_PACKAGE.rglob("*.py"):
         checked_files += 1
-        contents = path.read_text(encoding="utf-8")
-        if LEGACY_IMPORT_PATTERN.search(contents):
+        if any(name == "legacy" or name.startswith("legacy.") for name in _imported_modules(path)):
             offending_files.append(path.as_posix())
 
     assert checked_files > 0
@@ -156,8 +155,7 @@ def test_control_package_modules_do_not_import_legacy_modules() -> None:
 
     for path in sorted(CONTROL_PACKAGE.glob("*.py")):
         checked_files += 1
-        contents = path.read_text(encoding="utf-8")
-        if LEGACY_IMPORT_PATTERN.search(contents):
+        if any(name == "legacy" or name.startswith("legacy.") for name in _imported_modules(path)):
             offending_files.append(path.as_posix())
 
     assert checked_files > 0
