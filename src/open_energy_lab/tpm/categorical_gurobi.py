@@ -7,6 +7,7 @@ No benchmark dimension, storage, objective, solver settings or data access lives
 here. Clipping a graph preserves its original interpolation, not a refitted PWL.
 """
 import math
+import itertools
 import numpy as np
 
 def curves(k,points=9):
@@ -302,3 +303,150 @@ def categorical_attachment_witness(attachment, order):
             local.update({f'{curve["name"]}_lambda{k}':float(w) for k,w in enumerate(weights)})
         values.update({graph['variables'][name].VarName:value for name,value in local.items()})
     return values
+
+
+def _integer_order(order, domains):
+    values = np.asarray(order)
+    if (values.shape != (len(domains),) or not np.isfinite(values).all()
+            or np.any(values != np.rint(values))):
+        raise ValueError('one integer order is required')
+    result = tuple(map(int, values))
+    if any(q not in domain for q, domain in zip(result, domains)):
+        raise ValueError('Query is outside the certified domains')
+    return result
+
+
+class CategoricalGroupSeparator:
+    """Bounded local certificates for categorical no-good group inequalities.
+
+    Promotes tpm_for_sp/src/tpm_for_sp/newsvendor_tpm/categorical_group_cuts.py.
+    `feasible` declares the caller's business-feasible domain, independently of
+    the compiled risk oracle. It must return one boolean per order and be fixed
+    for the lifetime of the separator. The cut excludes the Cartesian product
+    only because every caller-feasible completion violates the frozen oracle.
+    """
+    def __init__(self, oracle, domains, feasible, log_limit, *, margin=1e-8,
+                 evaluation_budget=2048, dimension_order=None):
+        self.domains = tuple(tuple(row) for row in domains)
+        if (not self.domains or any(not row or len(set(row)) != len(row)
+                or any(not isinstance(q, (int, np.integer)) or isinstance(q, bool) or q < 0
+                       for q in row) for row in self.domains)):
+            raise ValueError('nonempty unique integer domains required')
+        self.oracle, self.feasible = oracle, feasible
+        self.limit, self.margin = float(log_limit), float(margin)
+        if (not math.isfinite(self.limit) or not math.isfinite(self.margin) or self.margin <= 0
+                or not isinstance(evaluation_budget, (int, np.integer)) or evaluation_budget < 1):
+            raise ValueError('Invalid certification controls')
+        self.budget = int(evaluation_budget)
+        self.order = tuple(range(len(self.domains))) if dimension_order is None else tuple(dimension_order)
+        if sorted(self.order) != list(range(len(self.domains))):
+            raise ValueError('Invalid dimensions')
+        self.evaluated = 0
+
+    def _legal(self, orders):
+        values = np.asarray(self.feasible(orders))
+        if values.dtype != np.bool_ or values.shape != (len(orders),):
+            raise ValueError('feasibility predicate must return a boolean per order')
+        return values
+
+    def _scores(self, orders):
+        scores = np.asarray(self.oracle(orders), dtype=float)
+        if scores.shape != (len(orders),) or not np.isfinite(scores).all():
+            raise ValueError('Nonfinite or malformed oracle scores')
+        return scores
+
+    def certify(self, decision):
+        origin = _integer_order(decision, self.domains)
+        if len(origin) != len(self.domains) or any(q not in row for q, row in zip(origin, self.domains)):
+            raise ValueError('Query is outside the certified domains')
+        if not self._legal(np.asarray([origin]))[0]:
+            return None
+        value = float(self._scores(np.asarray([origin]))[0])
+        self.evaluated += 1
+        if not math.isfinite(value):
+            raise ValueError('Nonfinite oracle score')
+        if value <= self.limit+self.margin:
+            return None
+        groups = [[q] for q in origin]
+        used = 1
+        minimum = value
+        for i in self.order:
+            others = math.prod(len(g) for j, g in enumerate(groups) if j != i)
+            available = (self.budget-used)//others
+            if available <= 0:
+                continue
+            # Nearby categories first, deterministic and independent of objective.
+            options = sorted((q for q in self.domains[i] if q not in groups[i]),
+                             key=lambda q: (abs(q-origin[i]), q))[:available]
+            if not options:
+                continue
+            trial = list(groups)
+            trial[i] = options
+            orders = np.array(list(itertools.product(*trial)), dtype=np.int64)
+            legal = self._legal(orders)
+            scores = np.full(len(orders), math.inf)
+            if legal.any():
+                scores[legal] = self._scores(orders[legal])
+                if not np.isfinite(scores[legal]).all():
+                    raise ValueError('Nonfinite group oracle score')
+            used += int(legal.sum())
+            self.evaluated += int(legal.sum())
+            for q in options:
+                selected = orders[:, i] == q
+                low = float(scores[selected].min())
+                if low > self.limit+self.margin:
+                    groups[i].append(q)
+                    minimum = min(minimum, low)
+            groups[i].sort()
+        return dict(groups=groups, origin=list(origin), minimum_log_risk=minimum,
+                    evaluated=used, cartesian_size=math.prod(map(len, groups)),
+                    scope='All caller-feasible orders in the Cartesian group violate the frozen PWL constraint')
+
+    def audit(self, certificate):
+        """Exhaustive audit for small fixtures, never a production callback step."""
+        groups = certificate['groups']
+        if (len(groups) != len(self.domains) or any(not row or len(set(row)) != len(row)
+                or any(not isinstance(q, (int, np.integer)) or q not in domain for q in row)
+                for row, domain in zip(groups, self.domains))):
+            raise ValueError('Invalid group certificate domains')
+        orders = np.asarray(list(itertools.product(*groups)), dtype=np.int64)
+        orders = orders[self._legal(orders)]
+        if not len(orders):
+            raise ValueError('Invalid group certificate: no feasible completions')
+        scores = self._scores(orders)
+        if not np.all(scores > self.limit + self.margin):
+            raise ValueError('Invalid group certificate')
+        return dict(orders=len(orders), minimum_log_risk=float(scores.min()), passed=True)
+
+
+def restrict_categorical_domains(profits, incumbent, oracle, feasible, log_limit, *, guard=1e-7):
+    """Safe separable objective bounds supported by an actual feasible incumbent.
+
+    Coefficients include all caller-owned activation costs. The returned floor
+    must be imposed on the same objective when rebuilding. No start means full
+    domains and no floor. This does not evaluate Truth or search for a start.
+    """
+    profits = [np.asarray(row, dtype=float) for row in profits]
+    if (not profits or any(row.ndim != 1 or not len(row) or not np.isfinite(row).all() for row in profits)
+            or not math.isfinite(guard) or guard <= 0 or not math.isfinite(log_limit)):
+        raise ValueError('finite separable objective and restriction controls required')
+    domains = [list(range(len(row))) for row in profits]
+    if incumbent is None:
+        return dict(allowed=domains, floor=None, incumbent=None, incumbent_objective=None)
+    order = _integer_order(incumbent, domains)
+    q = np.asarray([order]); legal = np.asarray(feasible(q)); score = np.asarray(oracle(q), dtype=float)
+    if (legal.shape != (1,) or legal.dtype != np.bool_ or not legal[0]
+            or score.shape != (1,) or not np.isfinite(score).all() or score[0] > log_limit):
+        raise ValueError('restriction requires a feasible incumbent under the frozen oracle')
+    value = math.fsum(float(row[k]) for row, k in zip(profits, order))
+    floor = value - guard
+    maxima = [float(row.max()) for row in profits]
+    allowed = []
+    for i, row in enumerate(profits):
+        other_maximum = math.fsum(v for j, v in enumerate(maxima) if j != i)
+        allowed.append([k for k, coefficient in enumerate(row) if coefficient + other_maximum >= floor - guard])
+    if any(k not in row for k, row in zip(order, allowed)):
+        raise ValueError('numerical restriction lost its supporting incumbent')
+    return dict(allowed=allowed, floor=floor, incumbent=list(order), incumbent_objective=value,
+                incumbent_log_risk=float(score[0]), guard=guard,
+                proof='Each retained category can attain the incumbent floor under a separable objective upper bound')
