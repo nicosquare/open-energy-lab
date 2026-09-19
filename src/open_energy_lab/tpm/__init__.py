@@ -10,6 +10,22 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from .categorical_native import (
+        CategoricalMixtureConfig,
+        build_categorical_mixture,
+        initialize_categorical_mixture,
+        categorical_mixture_step,
+        save_categorical_mixture_state,
+        load_categorical_mixture_state,
+    )
+    from .categorical_gurobi import (
+        compile_categorical_log_ratio,
+        evaluate_categorical_log_ratio,
+        attach_categorical_log_ratio,
+        categorical_attachment_witness,
+        CategoricalGroupSeparator,
+        restrict_categorical_domains,
+    )
     from .conditional import (
         CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND,
         CONDITIONAL_EMBEDDING_PARITY_RECORD_KIND,
@@ -148,6 +164,18 @@ if TYPE_CHECKING:
     )
 
 _EXPORT_MAP = {
+    "CategoricalMixtureConfig": (".categorical_native", "CategoricalMixtureConfig"),
+    "build_categorical_mixture": (".categorical_native", "build_categorical_mixture"),
+    "initialize_categorical_mixture": (".categorical_native", "initialize_categorical_mixture"),
+    "categorical_mixture_step": (".categorical_native", "categorical_mixture_step"),
+    "save_categorical_mixture_state": (".categorical_native", "save_categorical_mixture_state"),
+    "load_categorical_mixture_state": (".categorical_native", "load_categorical_mixture_state"),
+    "compile_categorical_log_ratio": (".categorical_gurobi", "compile_categorical_log_ratio"),
+    "evaluate_categorical_log_ratio": (".categorical_gurobi", "evaluate_categorical_log_ratio"),
+    "attach_categorical_log_ratio": (".categorical_gurobi", "attach_categorical_log_ratio"),
+    "categorical_attachment_witness": (".categorical_gurobi", "categorical_attachment_witness"),
+    "CategoricalGroupSeparator": (".categorical_gurobi", "CategoricalGroupSeparator"),
+    "restrict_categorical_domains": (".categorical_gurobi", "restrict_categorical_domains"),
     "TPMNativeMixtureConfig": (".native", "TPMNativeMixtureConfig"),
     "initialize_native_mixture": (".native", "initialize_native_mixture"),
     "native_joint_conditional_log_values": (".native", "native_joint_conditional_log_values"),
@@ -582,6 +610,18 @@ __all__ = [
     "restore_native_mixture_for_inference",
     "materialize_native_mixture",
     "export_native_mixture_scalar",
+    "CategoricalMixtureConfig",
+    "build_categorical_mixture",
+    "initialize_categorical_mixture",
+    "categorical_mixture_step",
+    "save_categorical_mixture_state",
+    "load_categorical_mixture_state",
+    "compile_categorical_log_ratio",
+    "evaluate_categorical_log_ratio",
+    "attach_categorical_log_ratio",
+    "categorical_attachment_witness",
+    "CategoricalGroupSeparator",
+    "restrict_categorical_domains",
 ]
 
 

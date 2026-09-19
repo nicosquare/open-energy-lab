@@ -318,6 +318,18 @@ EXPECTED_TPM_EXPORTS = [
     "restore_native_mixture_for_inference",
     "materialize_native_mixture",
     "export_native_mixture_scalar",
+    "CategoricalMixtureConfig",
+    "build_categorical_mixture",
+    "initialize_categorical_mixture",
+    "categorical_mixture_step",
+    "save_categorical_mixture_state",
+    "load_categorical_mixture_state",
+    "compile_categorical_log_ratio",
+    "evaluate_categorical_log_ratio",
+    "attach_categorical_log_ratio",
+    "categorical_attachment_witness",
+    "CategoricalGroupSeparator",
+    "restrict_categorical_domains",
 ]
 
 
