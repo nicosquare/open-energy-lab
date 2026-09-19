@@ -685,7 +685,7 @@ def test_categorical_public_operations_do_not_eagerly_load_training_or_solver_st
         from open_energy_lab.tpm import (
             CategoricalMixtureConfig, build_categorical_mixture,
             initialize_categorical_mixture, categorical_mixture_step,
-            save_categorical_mixture_state, load_categorical_mixture_state,
+            save_categorical_mixture_state, load_categorical_mixture_state, load_categorical_mixture_for_inference,
             compile_categorical_log_ratio, evaluate_categorical_log_ratio,
             attach_categorical_log_ratio, categorical_attachment_witness,
             CategoricalGroupSeparator, restrict_categorical_domains,

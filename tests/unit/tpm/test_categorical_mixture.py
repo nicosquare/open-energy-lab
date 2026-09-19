@@ -137,3 +137,25 @@ def test_constant_columns_and_empty_components_keep_normalized_support():
     assert torch.isfinite(model.log_prob(rows)).all()
     torch.testing.assert_close(model.log_prob(rows,observed=()),torch.zeros(10,dtype=torch.float64))
     assert all(torch.softmax(p,1).min()>0 for p in model.category_logits)
+
+
+def test_selected_inference_reload_is_separate_from_training_backend_resume(tmp_path):
+    from open_energy_lab.tpm import load_categorical_mixture_for_inference
+    cfg,rows,model=fixture();optimizer=torch.optim.Adam(model.parameters(),lr=.003)
+    generator=torch.Generator().manual_seed(0);epoch=generator.get_state()
+    torch.randperm(len(rows),generator=generator)
+    best={k:v.detach().clone() for k,v in model.state_dict().items()}
+    with torch.no_grad():model.mix[0]+=1  # last iterate differs from the selected checkpoint
+    path=tmp_path/'state.pt'
+    progress=dict(epoch=0,row_position=0,epoch_rows=len(rows),permutation_seed=0,updates=0,
+        consumed_rows=0,elapsed_seconds=0.,schedule_step=0)
+    save_categorical_mixture_state(path,model=model,optimizer=optimizer,generator=generator,
+        epoch_generator_state=epoch,progress=progress,best_state=best,context={'source':'fixture'})
+    payload=torch.load(path,weights_only=True);payload['device_type']='cuda';torch.save(payload,path)
+    result=load_categorical_mixture_for_inference(path,expected_config=cfg,expected_context={'source':'fixture'})
+    assert result['source_device_type']=='cuda' and result['model'].mix.device.type=='cpu'
+    assert torch.equal(result['model'].mix,best['mix'])
+    with pytest.raises(ValueError,match='backend'):
+        load_categorical_mixture_state(path,expected_config=cfg,expected_context={'source':'fixture'})
+    with pytest.raises(ValueError,match='context'):
+        load_categorical_mixture_for_inference(path,expected_config=cfg,expected_context={'source':'wrong'})

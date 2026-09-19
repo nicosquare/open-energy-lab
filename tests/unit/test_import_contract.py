@@ -324,6 +324,7 @@ EXPECTED_TPM_EXPORTS = [
     "categorical_mixture_step",
     "save_categorical_mixture_state",
     "load_categorical_mixture_state",
+    "load_categorical_mixture_for_inference",
     "compile_categorical_log_ratio",
     "evaluate_categorical_log_ratio",
     "attach_categorical_log_ratio",

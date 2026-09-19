@@ -215,12 +215,10 @@ def save_categorical_mixture_state(path, *, model, optimizer, generator, epoch_g
         if temporary is not None:temporary.unlink(missing_ok=True)
 
 
-def load_categorical_mixture_state(path, *, expected_config, expected_context, device='cpu'):
-    """Restore Adam, selected state and the current permutation without a budget reset."""
+def _read_categorical_mixture_state(path, expected_config, expected_context):
     import torch
     from .native import _copy_native_state
-    from .refinement import (_finite_metadata, _validate_progress, _validate_optimizer,
-                             _validate_best, _validate_optimizer_cursor)
+    from .refinement import _finite_metadata
     payload=torch.load(path,map_location='cpu',weights_only=True)
     required={'schema','config','model_state','optimizer_state','optimizer_defaults','progress','best_state',
               'context','generator_state','epoch_generator_state','device_type','torch_version'}
@@ -229,6 +227,15 @@ def load_categorical_mixture_state(path, *, expected_config, expected_context, d
     payload=_copy_native_state(payload)
     if payload['config']!=asdict(expected_config):raise ValueError('checkpoint feature configuration differs')
     if payload['context']!=_finite_metadata(expected_context):raise ValueError('checkpoint context differs')
+    return payload
+
+
+def load_categorical_mixture_state(path, *, expected_config, expected_context, device='cpu'):
+    """Restore Adam, selected state and the current permutation without a budget reset."""
+    import torch
+    from .refinement import (_validate_progress, _validate_optimizer,
+                             _validate_best, _validate_optimizer_cursor)
+    payload=_read_categorical_mixture_state(path,expected_config,expected_context)
     target=torch.device(device)
     if target.type!=payload['device_type'] or payload['torch_version']!=str(torch.__version__):
         raise ValueError('checkpoint backend or dependency version differs')
@@ -248,3 +255,23 @@ def load_categorical_mixture_state(path, *, expected_config, expected_context, d
     return dict(model=model,optimizer=optimizer,generator=generator,permutation=permutation,
                 epoch_generator_state=payload['epoch_generator_state'],progress=progress,
                 best_state=payload['best_state'],context=payload['context'])
+
+
+def load_categorical_mixture_for_inference(path, *, expected_config, expected_context, device='cpu'):
+    """Load only the selected state for inference, allowing a different device.
+
+    This cannot resume an optimizer or migrate a fitting backend. Training
+    continuation remains strict through load_categorical_mixture_state.
+    """
+    import torch
+    from .refinement import _validate_best, _validate_progress
+    payload=_read_categorical_mixture_state(path,expected_config,expected_context)
+    if payload['torch_version']!=str(torch.__version__):
+        raise ValueError('checkpoint dependency version differs')
+    progress=_validate_progress(payload['progress'])
+    if progress.get('schedule_step')!=progress['updates'] or payload['best_state'] is None:
+        raise ValueError('checkpoint lacks a consistent selected state')
+    model=build_categorical_mixture(expected_config,device=device)
+    _validate_best(model,payload['best_state'])
+    model.load_state_dict(payload['best_state'],strict=True);model.eval()
+    return dict(model=model,progress=progress,context=payload['context'],source_device_type=payload['device_type'])

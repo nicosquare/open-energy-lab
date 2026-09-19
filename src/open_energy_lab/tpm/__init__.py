@@ -17,6 +17,7 @@ if TYPE_CHECKING:
         categorical_mixture_step,
         save_categorical_mixture_state,
         load_categorical_mixture_state,
+        load_categorical_mixture_for_inference,
     )
     from .categorical_gurobi import (
         compile_categorical_log_ratio,
@@ -164,6 +165,7 @@ if TYPE_CHECKING:
     )
 
 _EXPORT_MAP = {
+    "load_categorical_mixture_for_inference": (".categorical_native", "load_categorical_mixture_for_inference"),
     "CategoricalMixtureConfig": (".categorical_native", "CategoricalMixtureConfig"),
     "build_categorical_mixture": (".categorical_native", "build_categorical_mixture"),
     "initialize_categorical_mixture": (".categorical_native", "initialize_categorical_mixture"),
@@ -616,6 +618,7 @@ __all__ = [
     "categorical_mixture_step",
     "save_categorical_mixture_state",
     "load_categorical_mixture_state",
+    "load_categorical_mixture_for_inference",
     "compile_categorical_log_ratio",
     "evaluate_categorical_log_ratio",
     "attach_categorical_log_ratio",
