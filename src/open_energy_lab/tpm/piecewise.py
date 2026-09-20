@@ -503,6 +503,32 @@ def guarded_exponential_points(
     return expected["exp_x_points"], expected["exp_y_points"]
 
 
+def _guarded_exponential_evaluator(configuration):
+    """Validate a persisted curve once for repeated scalar evaluations.
+
+    Compilation evaluates one fixed curve for every Sum edge. Revalidating the
+    complete serialized policy per edge is unnecessary; the returned closure
+    owns immutable points and preserves the public evaluator's arithmetic.
+    """
+    from bisect import bisect_right
+    points, values = guarded_exponential_points(configuration)
+    slopes = tuple((b - a) / (right - left)
+                   for left, right, a, b in zip(points, points[1:], values, values[1:]))
+    def evaluate(value):
+        normalized = float(value)
+        if not math.isfinite(normalized):
+            raise ValueError('guarded exponential input must be finite')
+        if normalized < points[0] or normalized > points[-1]:
+            raise ValueError(f'guarded exponential input {normalized} is outside [{points[0]}, {points[-1]}]')
+        if normalized == points[-1]:
+            return values[-1]
+        if normalized == points[0]:
+            return values[0]
+        index = bisect_right(points, normalized) - 1
+        return values[index] + slopes[index] * (normalized - points[index])
+    return evaluate
+
+
 def evaluate_guarded_exponential(
     value: float,
     *,

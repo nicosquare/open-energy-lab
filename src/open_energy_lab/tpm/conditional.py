@@ -20,7 +20,7 @@ from types import MappingProxyType
 from typing import Any, ClassVar
 
 from .piecewise import (
-    evaluate_guarded_exponential,
+    _guarded_exponential_evaluator,
     guarded_exponential_points,
     piecewise_linear_interpolate,
 )
@@ -57,8 +57,6 @@ _REQUIRED_NUMERICAL_TOLERANCES = frozenset(
     }
 )
 _GUARDED_INPUT_COORDINATE_POLICY = "unit-affine-log-v1"
-_GUARDED_INPUT_COORDINATE_OFFSET = 500.0
-_GUARDED_INPUT_COORDINATE_SCALE = 500.0
 _ATTACHMENT_POLICY_LABELS = MappingProxyType(
     {
         "bounds": "outward-rounded-circuit-intervals-v1",
@@ -1095,23 +1093,24 @@ def _resolve_circuit_attachment_formulation(
     guarded_coordinate: dict[str, object] | None = None
     if encoding.mode == "piecewise":
         native_points, _ = guarded_exponential_points(encoding.sum_configuration)
-        expected_lower = -_GUARDED_INPUT_COORDINATE_OFFSET
-        if native_points[0] != expected_lower or native_points[-1] != 0.0:
+        evaluate_exponential = _guarded_exponential_evaluator(encoding.sum_configuration)
+        maximum_exponential = evaluate_exponential(0.0)
+        expected_lower = native_points[0]
+        native_scale = native_offset = -expected_lower
+        if not math.isfinite(native_scale) or native_scale <= 0 or native_points[-1] != 0.0:
             raise ValueError(
-                "guarded exponential inputs must span the canonical [-500, 0] "
-                "native-log domain"
+                "guarded exponential inputs must span a finite negative lower bound to zero"
             )
         solver_points = tuple(
-            (value + _GUARDED_INPUT_COORDINATE_OFFSET)
-            / _GUARDED_INPUT_COORDINATE_SCALE
+            (value + native_offset) / native_scale
             for value in native_points
         )
         if solver_points[0] != 0.0 or solver_points[-1] != 1.0:
             raise ValueError("guarded solver coordinates must span the unit interval")
         guarded_coordinate = {
             "policy": _GUARDED_INPUT_COORDINATE_POLICY,
-            "native_offset": _GUARDED_INPUT_COORDINATE_OFFSET,
-            "native_scale": _GUARDED_INPUT_COORDINATE_SCALE,
+            "native_offset": native_offset,
+            "native_scale": native_scale,
             "native_bounds": {"lower": expected_lower, "upper": 0.0},
             "solver_bounds": {"lower": 0.0, "upper": 1.0},
             "solver_breakpoints": list(solver_points),
@@ -1231,9 +1230,9 @@ def _resolve_circuit_attachment_formulation(
                             _round_down(
                                 (
                                     relative_interval[0]
-                                    + _GUARDED_INPUT_COORDINATE_OFFSET
+                                    + native_offset
                                 )
-                                / _GUARDED_INPUT_COORDINATE_SCALE
+                                / native_scale
                             ),
                         ),
                         1.0,
@@ -1244,14 +1243,8 @@ def _resolve_circuit_attachment_formulation(
                             **_interval_fields(solver_input_interval),
                         }
                     )
-                    lower_value = evaluate_guarded_exponential(
-                        relative_interval[0],
-                        configuration=encoding.sum_configuration,
-                    )
-                    upper_value = evaluate_guarded_exponential(
-                        0.0,
-                        configuration=encoding.sum_configuration,
-                    )
+                    lower_value = evaluate_exponential(relative_interval[0])
+                    upper_value = maximum_exponential
                     exponential_interval = (
                         max(0.0, _round_down(lower_value)),
                         upper_value,

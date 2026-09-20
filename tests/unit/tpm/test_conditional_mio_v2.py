@@ -44,6 +44,88 @@ LEGACY_PAIR_PATHS = (
 )
 
 
+def test_prevalidated_guard_evaluator_is_bitwise_equal_at_knots_and_interiors():
+    import random
+    from open_energy_lab.tpm.piecewise import _guarded_exponential_evaluator
+    configuration=_encoding('piecewise').sum_configuration
+    fast=_guarded_exponential_evaluator(configuration)
+    points=configuration['exp_x_points'];rng=random.Random(0)
+    values=[rng.uniform(points[0],points[-1]) for _ in range(1000)]
+    for x in points:
+        values.extend(v for v in (x,math.nextafter(x,-math.inf),math.nextafter(x,math.inf)) if points[0]<=v<=points[-1])
+    for value in values:
+        assert fast(value)==evaluate_guarded_exponential(value,configuration=configuration)
+    for value in (float('nan'),float('inf'),points[0]-1,1):
+        with pytest.raises(ValueError):fast(value)
+
+
+def test_sparse_dcc_preserves_every_active_linear_row_without_unused_columns():
+    import pyomo.environ as pyo
+    from pyomo.repn import generate_standard_repn
+    from open_energy_lab.tpm.mio import _sparse_dcc_piecewise
+
+    points=[i/16 for i in range(17)]
+    values=[math.sin(4*x) for x in points]
+    m=pyo.ConcreteModel();m.x=pyo.Var(bounds=(0,1));m.y=pyo.Var(bounds=(-1,1))
+    m.dense=pyo.Piecewise(m.y,m.x,pw_pts=points,f_rule=values,pw_repn='DCC',pw_constr_type='EQ')
+    m.sparse=_sparse_dcc_piecewise(pyo,m.y,m.x,x_points=points,y_points=values)
+    assert len(m.dense.DCC_lambda)==16*17
+    assert len(m.sparse.DCC_lambda)==2*16
+    def rows(block):
+        result={}
+        for row in block.component_data_objects(pyo.Constraint,active=True):
+            rep=generate_standard_repn(row.body)
+            normalize=lambda name:name.replace(block.name+'.','PWL.')
+            result[normalize(row.name)]=(rep.constant,
+                {normalize(v.name):c for v,c in zip(rep.linear_vars,rep.linear_coefs)},
+                None if row.lower is None else pyo.value(row.lower),
+                None if row.upper is None else pyo.value(row.upper))
+        return result
+    assert rows(m.dense)==rows(m.sparse)
+
+
+def test_declared_wider_zero_tail_preserves_native_unit_coordinate_and_solver_parity(tmp_path):
+    from dataclasses import replace
+    import pyomo.environ as pyo
+    from tests.unit.tpm.test_conditional_mio import _constant_curve
+
+    base=_pair(encoding=_encoding('piecewise'))
+    old=base.encoding.sum_configuration
+    guard=resolve_guarded_exponential_spec(base_x_points=old['base_exp_x_points'],
+        base_y_points=old['base_exp_y_points'],domain_floor=-5000.)
+    configuration=dict(old,**guard);configuration['sum_big_m']=5000.
+    encoding=replace(base.encoding,sum_configuration=configuration)
+    numerator=TPMConditionalCircuit(root_id=2,nodes=(
+        TPMConditionalCircuitNode.from_dict(dict(id=0,type='leaf_piecewise',feature_name='x',
+            breakpoints=[0.,1.],log_values=[-1.,-1.])),
+        TPMConditionalCircuitNode.from_dict(dict(id=1,type='leaf_piecewise',feature_name='x',
+            breakpoints=[0.,1.],log_values=[-1000.,-1000.])),
+        TPMConditionalCircuitNode.from_dict(dict(id=2,type='sum',children=[0,1],weights=[.5,.5])),
+    ),metadata={'event_treatment':'fixed'})
+    pair=replace(base,numerator=numerator,denominator=_constant_curve(0.,treatment='marginalized'),
+        encoding=encoding,attachment_formulation=None,pair_id='')
+    for x in [-500.,-20.,math.log(.001),-3.,-.1,0.]:
+        assert evaluate_guarded_exponential(x,configuration=configuration)==evaluate_guarded_exponential(x,configuration=old)
+    assert evaluate_guarded_exponential(-1000.,configuration=configuration)==0.
+    coordinate=pair.attachment_formulation.numerator['guarded_input_coordinate']
+    assert coordinate['native_scale']==coordinate['native_offset']==5000.
+    publish_conditional_pair(pair,tmp_path/'pair.json')
+    restored=load_conditional_pair(tmp_path/'pair.json');assert restored.pair_id==pair.pair_id
+    m=pyo.ConcreteModel();m.x=pyo.Var(bounds=(40.,160.));m.x.fix(100.)
+    a=attach_conditional_mio_pair(restored,m,mappings=(TPMContinuousDecisionMapping('x',m.x),),namespace='risk')
+    direct=initialize_conditional_mio_attachment(restored,a,declared_domain_assignments={'x':100.})
+    assert direct.conditional_log_risk==pytest.approx(-1.+math.log(.5))
+    for row in m.component_data_objects(pyo.Constraint,active=True):
+        value=pyo.value(row.body)
+        assert row.lower is None or value>=pyo.value(row.lower)-1e-6
+        assert row.upper is None or value<=pyo.value(row.upper)+1e-6
+    m.objective=pyo.Objective(expr=a.conditional_log_risk)
+    solver=pyo.SolverFactory('appsi_highs');solver.options['threads']=1
+    result=solver.solve(m)
+    assert result.solver.termination_condition==pyo.TerminationCondition.optimal
+    assert pyo.value(a.conditional_log_risk)==pytest.approx(direct.conditional_log_risk,abs=1e-6)
+
+
 @pytest.mark.parametrize("resolution", (5, 9, 17))
 def test_guarded_exponential_resolves_plateau_transition_and_base_curve(
     resolution: int,

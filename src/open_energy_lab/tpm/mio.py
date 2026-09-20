@@ -2856,6 +2856,34 @@ def _encode_conditioned_piecewise_leaf(
     )
 
 
+def _sparse_dcc_piecewise(backend, output, input_value, *, x_points, y_points):
+    """Exact DCC interpolation with only the two vertices used by each segment.
+
+    Pyomo's generic DCC builder declares a dense segment-by-vertex product;
+    only adjacent vertices occur in its equations. Preserve the same active
+    equations and component names without allocating the unused columns.
+    """
+    if len(x_points) != len(y_points) or len(x_points) < 2:
+        raise ValueError('DCC interpolation points must align')
+    if any(not math.isfinite(float(v)) for v in (*x_points, *y_points)):
+        raise ValueError('DCC interpolation points must be finite')
+    if any(b <= a for a, b in zip(x_points, x_points[1:])):
+        raise ValueError('DCC input points must increase strictly')
+    block = backend.Block(concrete=True)
+    segments = tuple(range(1, len(x_points)))
+    vertices = tuple((p, v) for p in segments for v in (p, p + 1))
+    block.DCC_lambda = backend.Var(vertices, domain=backend.NonNegativeReals, bounds=(0, 1))
+    block.DCC_bin_y = backend.Var(segments, domain=backend.Binary)
+    block.DCC_constraint1 = backend.Constraint(expr=input_value == sum(
+        x_points[v - 1] * block.DCC_lambda[p, v] for p, v in vertices))
+    block.DCC_constraint2 = backend.Constraint(expr=output == sum(
+        y_points[v - 1] * block.DCC_lambda[p, v] for p, v in vertices))
+    block.DCC_constraint3 = backend.Constraint(segments, rule=lambda _, p:
+        block.DCC_bin_y[p] == block.DCC_lambda[p, p] + block.DCC_lambda[p, p + 1])
+    block.DCC_constraint4 = backend.Constraint(expr=sum(block.DCC_bin_y[p] for p in segments) == 1)
+    return block
+
+
 def _encode_conditioned_sum_node(
     backend: Any,
     block: object,
@@ -2953,10 +2981,9 @@ def _encode_conditioned_sum_node(
         )
     native_offset = float(coordinate.get("native_offset"))
     native_scale = float(coordinate.get("native_scale"))
-    if native_offset != 500.0 or native_scale != 500.0:
+    if native_offset != -exp_x[0] or native_scale != native_offset or native_scale <= 0.0:
         raise ValueError(
-            f"conditioned Sum {node_id} guarded input coordinate must be "
-            "q=(r+500)/500"
+            f"conditioned Sum {node_id} guarded input coordinate must match its declared domain"
         )
     solver_x = _float_sequence(coordinate.get("solver_breakpoints"))
     expected_solver_x = tuple(
@@ -3029,18 +3056,17 @@ def _encode_conditioned_sum_node(
         ),
     )
     for index in indices:
-        piecewise = backend.Piecewise(
+        piecewise = _sparse_dcc_piecewise(
+            backend,
             exponentials[index],
             solver_input[index],
-            pw_pts=list(solver_x),
-            pw_constr_type="EQ",
-            pw_repn="DCC",
-            f_rule=list(exp_y),
+            x_points=solver_x,
+            y_points=exp_y,
         )
         block.add_component(f"sum_exp_piecewise_{node_id}_{index}", piecewise)
         # Keep the bounded unit coordinate, but enforce its interpolation
         # equality in native log units. Otherwise a 1e-8 solver residual in
-        # this coordinate permits 5e-6 error after the factor-500 conversion.
+        # this coordinate is amplified by native_scale in native log units.
         # Replace the active row rather than adding a redundant equality;
         # DCC variables, breakpoints and initialization remain unchanged.
         input_row = piecewise.DCC_constraint1
@@ -3068,13 +3094,12 @@ def _encode_conditioned_sum_node(
     )
     logarithm = backend.Var(bounds=logarithm_bounds)
     block.add_component(f"sum_log_var_{node_id}", logarithm)
-    log_piecewise = backend.Piecewise(
+    log_piecewise = _sparse_dcc_piecewise(
+        backend,
         logarithm,
         total,
-        pw_pts=list(log_x),
-        pw_constr_type="EQ",
-        pw_repn="DCC",
-        f_rule=list(log_y),
+        x_points=log_x,
+        y_points=log_y,
     )
     block.add_component(f"sum_log_piecewise_{node_id}", log_piecewise)
     _bound_piecewise_auxiliaries(backend, log_piecewise)
