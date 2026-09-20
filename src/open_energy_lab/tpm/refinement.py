@@ -208,6 +208,15 @@ def _validate_optimizer_cursor(optimizer, progress):
         raise ValueError('optimizer steps differ from the saved update cursor')
 
 
+def _move_modules_once(model, device):
+    """Move admitted SPFlow DAG parameters without revisiting shared branches."""
+    # All admitted module types inherit Torch's _apply; none has a device hook.
+    # Reversing the unique traversal retains child-before-parent conversion.
+    for module in reversed(tuple(model.modules())):
+        module._apply(lambda value: value.to(device), recurse=False)
+    return model
+
+
 def save_spn_refinement_state(path, *, model, optimizer, feature_schema, progress, best_state, context):
     """Atomically save a CPU snapshot without mutating the live model/optimizer."""
     import numpy as np
@@ -223,7 +232,7 @@ def save_spn_refinement_state(path, *, model, optimizer, feature_schema, progres
     np_state = np.random.get_state()
     device = next(model.parameters()).device
     payload = dict(schema='supported-spn-refinement-v1', feature_schema=schema,
-        model=copy.deepcopy(model).cpu(), optimizer_state=_cpu_tree(optimizer.state_dict()),
+        model=_move_modules_once(copy.deepcopy(model), 'cpu'), optimizer_state=_cpu_tree(optimizer.state_dict()),
         optimizer_defaults=_cpu_tree(optimizer.defaults), progress=cursor, best_state=_cpu_tree(best_state),
         context=context, admission=admission, torch_version=str(torch.__version__), spflow_version='1.1.0',
         torch_rng_state=torch.get_rng_state().clone(),
@@ -259,7 +268,7 @@ def save_supported_spn_model(path, *, model, feature_schema):
     validate_refinement_spn(model, feature_count=len(schema))
     payload = dict(payload_kind='current-spflow-model-sidecar', artifact_schema_version='v3',
         backend_generation='current-spflow', backend_api_version='1.1.0', query_strategy='spflow',
-        feature_schema=schema, model=copy.deepcopy(model).cpu())
+        feature_schema=schema, model=_move_modules_once(copy.deepcopy(model), 'cpu'))
     buffer = io.BytesIO()
     torch.save(payload, buffer)
     return write_tpm_sidecar(path, buffer.getvalue())
@@ -290,7 +299,7 @@ def load_spn_refinement_state(path, *, expected_feature_schema, expected_context
     validate_refinement_spn(model, feature_count=len(expected))
     progress = _validate_progress(payload['progress'])
     _validate_best(model, payload['best_state'])
-    model.to(target)
+    _move_modules_once(model, target)
     optimizer = torch.optim.Adam(model.parameters(), **payload['optimizer_defaults'])
     optimizer.load_state_dict(payload['optimizer_state'])
     _validate_optimizer(model, optimizer)

@@ -61,6 +61,38 @@ def test_lloyd_matches_readable_full_matrix_reference():
     torch.testing.assert_close(model.loc[:,0],torch.stack([rows[assignment==k,1].mean() for k in range(cfg.components)]))
 
 
+@pytest.mark.parametrize('chunk_size',[1,5,32])
+def test_streaming_lloyd_matches_full_matrix_initialization(tmp_path,chunk_size):
+    from open_energy_lab.tpm import initialize_categorical_mixture_streaming
+    cfg,rows,expected=fixture()
+    path=tmp_path/'rows.npy';np.save(path,rows.numpy())
+    actual=build_categorical_mixture(cfg)
+    record=initialize_categorical_mixture_streaming(actual,np.load(path,mmap_mode='r'),
+        seed=0,iterations=2,chunk_size=chunk_size)
+    assert sum(record['counts'])==len(rows)
+    for a,b in zip(expected.parameters(),actual.parameters()):
+        torch.testing.assert_close(a,b,atol=1e-11,rtol=1e-11)
+
+
+def test_streaming_initialization_preserves_empty_cluster_fallback():
+    from open_energy_lab.tpm import initialize_categorical_mixture_streaming
+    cfg,rows,_=fixture()
+    rows[:]=torch.tensor([0.,.4,1.],dtype=torch.float64)
+    expected=build_categorical_mixture(cfg);actual=build_categorical_mixture(cfg)
+    initialize_categorical_mixture(expected,rows,seed=0,iterations=2)
+    result=initialize_categorical_mixture_streaming(actual,rows.numpy(),seed=0,iterations=2,chunk_size=5)
+    assert result['empty_components']==cfg.components-1
+    for a,b in zip(expected.parameters(),actual.parameters()):
+        torch.testing.assert_close(a,b,atol=1e-10,rtol=1e-10)
+
+
+def test_streaming_initialization_rejects_invalid_last_chunk():
+    from open_energy_lab.tpm import initialize_categorical_mixture_streaming
+    cfg,rows,_=fixture();rows[-1,0]=.5
+    with pytest.raises(ValueError,match='categorical'):
+        initialize_categorical_mixture_streaming(build_categorical_mixture(cfg),rows.numpy(),seed=0,chunk_size=5)
+
+
 def test_microbatch_gradient_update_matches_whole_batch():
     cfg, rows, a=fixture();b=build_categorical_mixture(cfg);b.load_state_dict(a.state_dict())
     oa=torch.optim.Adam(a.parameters(),lr=.003);ob=torch.optim.Adam(b.parameters(),lr=.003)

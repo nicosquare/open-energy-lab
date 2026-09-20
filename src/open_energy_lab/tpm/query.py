@@ -456,10 +456,78 @@ def marginalize_spflow_model(
         raise ValueError("feature_indices must not contain duplicates")
     if any(index < 0 for index in normalized_indices):
         raise ValueError("feature_indices must be non-negative")
+    scalar_result = _marginalize_scalar_dag(model, normalized_indices)
+    if scalar_result is not NotImplemented:
+        return scalar_result
     marginalize = getattr(model, "marginalize", None)
     if not callable(marginalize):
         raise TypeError("current SPFlow model must provide marginalize()")
     return marginalize(list(normalized_indices))
+
+
+def _marginalize_scalar_dag(model, feature_indices):
+    """Preserve scalar Sum/Product DAG sharing during exact marginalization.
+
+    SPFlow 1.1's module marginalize methods recursively copy each incoming path.
+    Tensorized exports can share a subgraph across hundreds of parents. Keep a
+    per-node transformation cache instead. Other supported vectorized layouts
+    continue through their native marginalizer.
+    """
+    import copy
+    import torch
+    from spflow.modules.leaves import Normal, Bernoulli, Categorical
+    from spflow.modules.products import Product
+    from spflow.modules.sums import Sum
+    from spflow.modules.ops.cat import Cat
+    leaves = (Normal, Bernoulli, Categorical)
+    if type(model) not in (*leaves, Product, Sum):
+        return NotImplemented
+    for node in model.modules():
+        if type(node) in (*leaves, Product, Sum):
+            shape = node.out_shape
+            if (shape.features, shape.channels, shape.repetitions) != (1,1,1):
+                return NotImplemented
+        elif type(node) not in (Cat, torch.nn.ModuleList):
+            return NotImplemented
+    excluded = set(feature_indices)
+    memo, clone_memo = {}, {}
+
+    def children(node):
+        inputs = node.inputs
+        if type(inputs) is Cat:
+            return list(inputs.inputs)
+        if isinstance(inputs,(list,tuple,torch.nn.ModuleList)):
+            return list(inputs)
+        return [inputs]
+
+    def visit(node):
+        key = id(node)
+        if key in memo:
+            return memo[key]
+        scope = set(node.scope.query)
+        if scope <= excluded:
+            result = None
+        elif type(node) in leaves:
+            result = copy.deepcopy(node,clone_memo)
+        elif type(node) is Product:
+            kept = [value for child in children(node) if (value := visit(child)) is not None]
+            result = kept[0] if len(kept) == 1 else Product(kept)
+        elif type(node) is Sum:
+            kept = [visit(child) for child in children(node)]
+            if any(value is None for value in kept):
+                raise ValueError('a smooth scalar Sum cannot be partly marginalized to identity')
+            weights = node.weights.detach().reshape(-1).clone()
+            if len(kept) != len(weights):
+                raise ValueError('scalar Sum children differ from its weight arity')
+            result = Sum(kept, weights=weights)
+            with torch.no_grad():
+                result.logits.copy_(node.logits.detach())
+        else:
+            raise TypeError('unsupported scalar marginalization node')
+        memo[key] = result
+        return result
+
+    return visit(model)
 
 
 def _evaluate_current_spflow_query(

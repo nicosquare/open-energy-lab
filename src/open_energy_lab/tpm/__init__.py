@@ -10,10 +10,12 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from .tensorized import lower_linsum_einet, enable_linsum_contraction
     from .categorical_native import (
         CategoricalMixtureConfig,
         build_categorical_mixture,
         initialize_categorical_mixture,
+        initialize_categorical_mixture_streaming,
         categorical_mixture_step,
         save_categorical_mixture_state,
         load_categorical_mixture_state,
@@ -165,10 +167,13 @@ if TYPE_CHECKING:
     )
 
 _EXPORT_MAP = {
+    "lower_linsum_einet": (".tensorized", "lower_linsum_einet"),
+    "enable_linsum_contraction": (".tensorized", "enable_linsum_contraction"),
     "load_categorical_mixture_for_inference": (".categorical_native", "load_categorical_mixture_for_inference"),
     "CategoricalMixtureConfig": (".categorical_native", "CategoricalMixtureConfig"),
     "build_categorical_mixture": (".categorical_native", "build_categorical_mixture"),
     "initialize_categorical_mixture": (".categorical_native", "initialize_categorical_mixture"),
+    "initialize_categorical_mixture_streaming": (".categorical_native", "initialize_categorical_mixture_streaming"),
     "categorical_mixture_step": (".categorical_native", "categorical_mixture_step"),
     "save_categorical_mixture_state": (".categorical_native", "save_categorical_mixture_state"),
     "load_categorical_mixture_state": (".categorical_native", "load_categorical_mixture_state"),
@@ -613,8 +618,11 @@ __all__ = [
     "materialize_native_mixture",
     "export_native_mixture_scalar",
     "CategoricalMixtureConfig",
+    "lower_linsum_einet",
+    "enable_linsum_contraction",
     "build_categorical_mixture",
     "initialize_categorical_mixture",
+    "initialize_categorical_mixture_streaming",
     "categorical_mixture_step",
     "save_categorical_mixture_state",
     "load_categorical_mixture_state",

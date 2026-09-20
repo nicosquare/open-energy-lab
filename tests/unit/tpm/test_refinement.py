@@ -75,6 +75,21 @@ def test_width_projection_uses_explicit_feature_indices():
         with pytest.raises(ValueError): project_spn_gaussian_widths(model, floors)
 
 
+def test_export_reload_preserves_shared_subgraphs(tmp_path):
+    import torch
+    from spflow.modules.sums import Sum
+    from open_energy_lab.tpm.refinement import save_supported_spn_model
+    from open_energy_lab.tpm.optional_spflow import load_supported_spflow_checkpoint
+    branch, rows = model_and_rows()
+    model = Sum([branch,branch],weights=torch.tensor([.3,.7],dtype=torch.float64))
+    expected = model.log_likelihood(rows).detach()
+    path,_ = save_supported_spn_model(tmp_path/'shared.pt',model=model,feature_schema=schema())
+    restored = load_supported_spflow_checkpoint(path)['model']
+    assert restored.inputs.inputs[0] is restored.inputs.inputs[1]
+    assert len(tuple(restored.modules())) == len(tuple(model.modules()))
+    torch.testing.assert_close(restored.log_likelihood(rows),expected,rtol=0,atol=0)
+
+
 def test_safe_cpu_checkpoint_resume_preserves_optimizer_cursor_and_next_update(tmp_path):
     import torch
     from open_energy_lab.tpm.refinement import save_spn_refinement_state, load_spn_refinement_state

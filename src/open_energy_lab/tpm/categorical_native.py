@@ -155,6 +155,94 @@ def initialize_categorical_mixture(model, rows, *, seed, iterations=20, chunk_si
     return dict(rows=n,iterations=iterations,components=k,empty_components=int(empty.sum()))
 
 
+def initialize_categorical_mixture_streaming(model, rows, *, seed, iterations=20,
+                                             chunk_size=32768, pseudocount=.5, progress=None):
+    """Full-data Lloyd initialization from a float64 NumPy array or memory map.
+
+    Match the full-matrix initializer's standardized distances, PCG64 center
+    selection, empty-cluster fallback and smoothed categorical counts. Only one
+    input chunk and its distance matrix reside on the model's device. Population
+    moments are accumulated with parallel Welford updates for numerical stability.
+    """
+    import numpy as np
+    import torch
+    cfg = model.config
+    if (not isinstance(rows,np.ndarray) or rows.dtype != np.float64 or rows.ndim != 2
+            or rows.shape[1] != cfg.feature_count or len(rows) < max(2,cfg.components)
+            or type(iterations) is not int or iterations < 1
+            or type(chunk_size) is not int or chunk_size < 1
+            or not math.isfinite(pseudocount) or pseudocount <= 0):
+        raise ValueError('invalid streaming initialization rows or settings')
+    n,k,device = len(rows),cfg.components,model.mix.device
+
+    def block_at(start, stop):
+        # Explicit copy also admits read-only memory maps without writable-view warnings.
+        return torch.as_tensor(np.array(rows[start:stop],copy=True),dtype=torch.float64,device=device)
+
+    with torch.no_grad():
+        mean = torch.zeros(cfg.feature_count,dtype=torch.float64,device=device)
+        m2 = torch.zeros_like(mean)
+        seen = 0
+        cardinalities = torch.tensor(cfg.cardinalities,device=device)
+        for start in range(0,n,chunk_size):
+            block = block_at(start,min(n,start+chunk_size))
+            categorical = block[:,list(cfg.categorical_indices)]
+            if (not bool(torch.isfinite(block).all()) or
+                    not bool(((categorical >= 0) & (categorical < cardinalities) &
+                              (categorical == categorical.round())).all())):
+                raise ValueError('invalid finite rows or categorical initialization values')
+            count = len(block)
+            local_mean = block.mean(0)
+            delta = local_mean-mean
+            m2 += ((block-local_mean)**2).sum(0)+delta.square()*(seen*count/(seen+count))
+            mean += delta*(count/(seen+count))
+            seen += count
+        std = (m2/(n-1)).sqrt().clamp_min(1e-8)
+        ids = np.random.default_rng(seed).permutation(n)[:k]
+        centers = (torch.as_tensor(np.array(rows[ids],copy=True),device=device)-mean)/std
+        for iteration in range(iterations+1):
+            counts = torch.zeros(k,dtype=torch.int64,device=device)
+            sums = torch.zeros_like(centers)
+            final = iteration == iterations
+            if final:
+                tables = [torch.zeros(k,c,dtype=torch.int64,device=device) for c in cfg.cardinalities]
+                demand_sums = torch.zeros_like(model.loc)
+                demand_squares = torch.zeros_like(model.loc)
+            for start in range(0,n,chunk_size):
+                block = block_at(start,min(n,start+chunk_size))
+                z = (block-mean)/std
+                distance = z.square().sum(1,keepdim=True)+centers.square().sum(1)[None,:]-2*z@centers.T
+                labels = distance.argmin(1)
+                counts += torch.bincount(labels,minlength=k)
+                if not final:
+                    sums.index_add_(0,labels,z)
+                else:
+                    for table,index,c in zip(tables,cfg.categorical_indices,cfg.cardinalities):
+                        table += torch.bincount(labels*c+block[:,index].long(),minlength=k*c).reshape(k,c)
+                    demand = block[:,list(cfg.gaussian_indices)]
+                    demand_sums.index_add_(0,labels,demand)
+                    demand_squares.index_add_(0,labels,demand.square())
+            if not final:
+                centers = torch.where((counts>0)[:,None],sums/counts.clamp_min(1)[:,None],centers)
+            if progress is not None:
+                progress(dict(phase='lloyd' if not final else 'final_assignment',
+                              completed_passes=iteration+1,total_passes=iterations+1,rows=n))
+        for parameter,table in zip(model.category_logits,tables):
+            parameter.copy_((table.to(torch.float64)+pseudocount).log())
+        means = demand_sums/counts.clamp_min(1)[:,None]
+        variance = (demand_squares/counts.clamp_min(1)[:,None]-means.square()).clamp_min(0)
+        empty = counts == 0
+        means[empty] = mean[list(cfg.gaussian_indices)]
+        variance[empty] = m2[list(cfg.gaussian_indices)]/n
+        model.loc.copy_(means)
+        model.log_scale.copy_(variance.sqrt().clamp_min(1e-12).log())
+        model.mix.copy_((counts.to(torch.float64)+pseudocount).log())
+        model.project()
+    return dict(rows=n,iterations=iterations,components=k,empty_components=int(empty.sum()),
+        chunk_size=chunk_size,center_indices=ids.tolist(),counts=counts.cpu().tolist(),
+        standardization_mean=mean.cpu().tolist(),standardization_std=std.cpu().tolist())
+
+
 def categorical_mixture_step(model, optimizer, rows, *, microbatch, gradient_clip_norm,
                              minimum_microbatch=2048, on_oom=None):
     """One joint-MLE update; retry only an uncompleted OOM gradient accumulation."""

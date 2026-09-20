@@ -361,9 +361,10 @@ def _compact_conditioned_graph(
     node_by_id = {int(node["id"]): node for node in nodes}
     active: set[int] = set()
     order: list[int] = []
+    visited: set[int] = set()
 
     def visit(node_id: int) -> None:
-        if node_id in order:
+        if node_id in visited:
             return
         if node_id in active:
             raise ValueError("conditioned circuit nodes must form an acyclic graph")
@@ -377,6 +378,7 @@ def _compact_conditioned_graph(
             visit(int(child))
         active.remove(node_id)
         order.append(node_id)
+        visited.add(node_id)
 
     visit(root_id)
     remap = {old_id: new_id for new_id, old_id in enumerate(order)}
