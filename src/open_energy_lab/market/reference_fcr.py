@@ -10,8 +10,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 import csv
 from dataclasses import dataclass, field
-from functools import partial
 from datetime import UTC, date, datetime
+from functools import partial
 import hashlib
 import json
 import math

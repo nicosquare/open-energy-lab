@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from functools import partial
 from datetime import UTC, datetime, timedelta
 from enum import Enum
+from functools import partial
 import hashlib
 from typing import Any
 

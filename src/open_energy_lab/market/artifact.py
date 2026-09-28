@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from functools import partial
 from datetime import datetime
+from functools import partial
 import hashlib
 import json
 import os

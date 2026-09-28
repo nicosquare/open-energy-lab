@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from functools import partial
 from datetime import datetime
 from enum import Enum
+from functools import partial
 import hashlib
 import json
 import os

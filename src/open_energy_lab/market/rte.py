@@ -9,9 +9,9 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 import base64
 from dataclasses import dataclass, field
-from functools import partial
 from datetime import UTC, datetime, timedelta
 from enum import Enum
+from functools import partial
 import hashlib
 import json
 import math

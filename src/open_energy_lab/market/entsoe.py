@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
-from functools import partial
 from datetime import UTC, datetime, timedelta
+from functools import partial
 import hashlib
 import io
 import math
