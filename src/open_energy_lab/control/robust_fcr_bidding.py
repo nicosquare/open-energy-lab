@@ -8,15 +8,24 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, fields, is_dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal, ROUND_HALF_EVEN
+from functools import partial
 import hashlib
 import json
 import math
-import re
 from types import MappingProxyType
 from typing import Any, TypeVar
 
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.time import format_utc, utc_datetime
+from open_energy_lab.core.validation import (
+    finite,
+    integer,
+    non_empty_str,
+    non_negative,
+    sha256_digest,
+)
 from open_energy_lab.market.time import (
     CanonicalInterval,
     MarketTimeValidationError,
@@ -41,11 +50,10 @@ HORIZON_BUDGET_DERIVATION_RULE = "covering-window-budget-v1"
 DECISION_CANONICALIZATION_ID = "solver-output-kw-1e-9-half-even-v1"
 DEPLOYABILITY_THRESHOLD = 1e-6
 
-_SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 _T = TypeVar("_T")
 
 
-class RobustFCRValidationError(ValueError):
+class RobustFCRValidationError(ValidationError):
     """Raised before model assembly when a public contract is invalid."""
 
 
@@ -57,19 +65,8 @@ class RobustFCRSolverUnavailableError(RuntimeError):
     """Raised when an installed required solver cannot execute."""
 
 
-def _non_empty(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise RobustFCRValidationError(f"{field_name} must be a non-empty string")
-    return value
-
-
-def _finite(value: object, *, field_name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise RobustFCRValidationError(f"{field_name} must be finite")
-    normalized = float(value)
-    if not math.isfinite(normalized):
-        raise RobustFCRValidationError(f"{field_name} must be finite")
-    return 0.0 if normalized == 0.0 else normalized
+_non_empty = partial(non_empty_str, error=RobustFCRValidationError, strip=True)
+_finite = partial(finite, error=RobustFCRValidationError, normalize_zero=True)
 
 
 def _positive(value: object, *, field_name: str) -> float:
@@ -79,42 +76,14 @@ def _positive(value: object, *, field_name: str) -> float:
     return normalized
 
 
-def _non_negative(value: object, *, field_name: str) -> float:
-    normalized = _finite(value, field_name=field_name)
-    if normalized < 0.0:
-        raise RobustFCRValidationError(f"{field_name} must be non-negative")
-    return normalized
-
-
-def _integer(value: object, *, field_name: str, minimum: int | None = None) -> int:
-    if isinstance(value, bool) or not isinstance(value, int):
-        raise RobustFCRValidationError(f"{field_name} must be an integer")
-    if minimum is not None and value < minimum:
-        raise RobustFCRValidationError(
-            f"{field_name} must be greater than or equal to {minimum}"
-        )
-    return value
-
-
-def _sha256(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or _SHA256_PATTERN.fullmatch(value) is None:
-        raise RobustFCRValidationError(
-            f"{field_name} must be a lowercase SHA-256 fingerprint"
-        )
-    return value
-
-
-def _utc(value: object, *, field_name: str) -> datetime:
-    if not isinstance(value, datetime):
-        raise RobustFCRValidationError(f"{field_name} must be an aware UTC datetime")
-    if value.tzinfo is None or value.utcoffset() != timedelta(0):
-        raise RobustFCRValidationError(f"{field_name} must be an aware UTC datetime")
-    return value.astimezone(UTC)
+_non_negative = partial(non_negative, error=RobustFCRValidationError, normalize_zero=True)
+_integer = partial(integer, error=RobustFCRValidationError)
+_sha256 = partial(sha256_digest, error=RobustFCRValidationError)
+_utc = partial(utc_datetime, error=RobustFCRValidationError)
 
 
 def _utc_text(value: datetime) -> str:
-    normalized = _utc(value, field_name="datetime")
-    return normalized.isoformat().replace("+00:00", "Z")
+    return format_utc(_utc(value, field_name="datetime"))
 
 
 def _deep_freeze(value: _T, *, field_name: str = "value") -> _T:
