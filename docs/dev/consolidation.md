@@ -80,13 +80,16 @@ in TPM and were already failing at `3a5307e`:
 
 Regenerate with `uv run python tools/consolidation_metrics.py`.
 
-| After | src lines | market | simulator | core | `_finite` | `_non_empty*` | sha/fingerprint | freeze/thaw |
-|---|---|---|---|---|---|---|---|---|
-| baseline `3a5307e` | 77,900 | 12,981 | 13,289 | 328 | 17 | 21 | 26 | 22 |
-| A1 core + market | 77,838 | 12,517 | 13,289 | 730 | 14 | 14 | 21 | 15 |
-| A1 simulator | 77,492 | 12,510 | 12,914 | 766 | 8 | 8 | 12 | 8 |
+| After | src lines | market | simulator | control | core | `_finite` | `_non_empty*` | sha/fingerprint | freeze/thaw |
+|---|---|---|---|---|---|---|---|---|---|
+| baseline `3a5307e` | 77,900 | 12,981 | 13,289 | 20,983 | 328 | 17 | 21 | 26 | 22 |
+| A1 core + market | 77,838 | 12,517 | 13,289 | 20,983 | 730 | 14 | 14 | 21 | 15 |
+| A1 simulator | 77,492 | 12,510 | 12,914 | 20,983 | 766 | 8 | 8 | 12 | 8 |
+| A1 control | 77,250 | 12,504 | 12,914 | 20,728 | 785 | 1 | 2 | 4 | 6 |
 
 A1 simulator full suite: **2230 passed, 4 failed (the v1 `spn_mip` TPM tests still in the baseline; the two surface tests were fixed by #18), 2 skipped**.
+
+A1 control full suite **plus `tests/parity`**: **2235 passed, same 4 v1 `spn_mip` TPM failures, 3 skipped** (1h35m).
 
 A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 baseline TPM failures, 2 skipped**.
 
@@ -117,7 +120,22 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     (differs per module). One difference: the old `_thaw` in three FCR
     modules left Enum members as-is, while `core.thaw` returns their values.
     Canonical bytes are identical and those modules hold no Enums.
-  - [ ] control
+  - [x] control (branch `consolidation/a1-control`). Proven equivalent first
+    (40/40 cases at `0e3ff69`). core gained `integer(minimum=)` and
+    `normalize_zero` on `positive` / `non_negative`. The last two
+    `_battery_payload` copies now use `BatteryComponent.to_dict()`. Two known
+    differences are asserted in the proof rather than skipped:
+    `fcr_bid_plan._thaw` (Enum values; bytes identical) and
+    `stacked_service._canonical_json`, which never thawed: same bytes for
+    everything it accepted, and it now also accepts read-only mappings and
+    non-string keys. Kept local: `robust_fcr_bidding._positive` (a test pins
+    its message); the robust-FCR canonical form `_deep_freeze` / `_thaw` /
+    `_canonical_json` / `_fingerprint` (a provenance-format decision for A5);
+    `restoration_service._plain` (converts only product/direction enums in
+    the persisted `parameters`); the `_finite_tuple` variants; the
+    tuple-returning `_sequence` in the reference modules; `_utc_from_text`;
+    `fcr_rolling_reference._enum`. Line savings are small here because
+    control's bulk is evidence and provenance code (A3/A5).
   - [ ] weather, demand, planning
 - [ ] **A2 shared schedule types.** Move `FixedFCRBidPlan`, the energy and
   capacity schedules, and `RestorationCapability` to `core/schedules.py`.
