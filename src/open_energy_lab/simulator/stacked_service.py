@@ -9,13 +9,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
-import hashlib
-import json
-import math
-from types import MappingProxyType
+from datetime import datetime
+from functools import partial
 from typing import Any
 
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.serialization import canonical_json_bytes, fingerprint, freeze, thaw
+from open_energy_lab.core.time import utc_datetime
+from open_energy_lab.core.validation import finite, mapping, non_empty_str, sequence
 from open_energy_lab.market.activation import RegulationActivationTrace
 from open_energy_lab.market.artifact import MarketDataArtifact
 from open_energy_lab.market.time import (
@@ -29,78 +30,19 @@ from .battery import apply_power_request, build_initial_state
 from .scenario import BatteryComponent
 
 
-class StackedServiceValidationError(ValueError):
+class StackedServiceValidationError(ValidationError):
     """Raised when fixed schedules or replay inputs violate their contract."""
 
 
-def _finite(value: object, *, field_name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise StackedServiceValidationError(f"{field_name} must be finite")
-    normalized = float(value)
-    if not math.isfinite(normalized):
-        raise StackedServiceValidationError(f"{field_name} must be finite")
-    return normalized
-
-
-def _non_empty(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise StackedServiceValidationError(f"{field_name} must be a non-empty string")
-    return value
-
-
-def _utc(value: object, *, field_name: str) -> datetime:
-    if not isinstance(value, datetime):
-        raise StackedServiceValidationError(f"{field_name} must be an aware UTC datetime")
-    if value.tzinfo is None or value.utcoffset() != timedelta(0):
-        raise StackedServiceValidationError(f"{field_name} must be an aware UTC datetime")
-    return value.astimezone(UTC)
-
-
-def _mapping(value: object, *, field_name: str) -> dict[str, Any]:
-    if not isinstance(value, Mapping):
-        raise StackedServiceValidationError(f"{field_name} must be a mapping")
-    return {str(key): inner for key, inner in value.items()}
-
-
-def _sequence(value: object, *, field_name: str) -> list[Any]:
-    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
-        raise StackedServiceValidationError(f"{field_name} must be a sequence")
-    return list(value)
-
-
-def _freeze(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        return MappingProxyType({str(key): _freeze(inner) for key, inner in value.items()})
-    if isinstance(value, (list, tuple)):
-        return tuple(_freeze(inner) for inner in value)
-    return value
-
-
-def _thaw(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        return {str(key): _thaw(inner) for key, inner in value.items()}
-    if isinstance(value, tuple):
-        return [_thaw(inner) for inner in value]
-    return value
-
-
-def _canonical_json(value: object) -> bytes:
-    try:
-        return json.dumps(
-            _thaw(value),
-            allow_nan=False,
-            ensure_ascii=False,
-            separators=(",", ":"),
-            sort_keys=True,
-        ).encode("utf-8")
-    except (TypeError, ValueError) as exc:
-        raise StackedServiceValidationError(
-            f"schedule data must be finite canonical JSON: {exc}"
-        ) from exc
-
-
-def _fingerprint(value: object) -> str:
-    return hashlib.sha256(_canonical_json(value)).hexdigest()
+_finite = partial(finite, error=StackedServiceValidationError)
+_non_empty = partial(non_empty_str, error=StackedServiceValidationError, strip=True)
+_utc = partial(utc_datetime, error=StackedServiceValidationError)
+_mapping = partial(mapping, error=StackedServiceValidationError)
+_sequence = partial(sequence, error=StackedServiceValidationError)
+_freeze = freeze
+_thaw = thaw
+_canonical_json = partial(canonical_json_bytes, error=StackedServiceValidationError)
+_fingerprint = partial(fingerprint, error=StackedServiceValidationError)
 
 
 @dataclass(frozen=True, slots=True)
