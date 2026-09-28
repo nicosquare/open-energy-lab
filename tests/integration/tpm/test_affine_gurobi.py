@@ -9,7 +9,7 @@ from open_energy_lab.tpm.affine_gurobi import attach_affine_log_ratio,check_affi
 
 
 def test_generic_attachment_shares_decisions_preserves_objective_and_all_assignments():
-    import gurobipy as gp
+    gp=pytest.importorskip('gurobipy')
     rng=np.random.default_rng(9)
     records=compile_binary_mixture_log_ratio(rng.normal(size=(4,3)),rng.normal(size=4),np.array([1.,-2.,0.,3.]))
     env=gp.Env(empty=True);env.setParam('OutputFlag',0);env.start()
