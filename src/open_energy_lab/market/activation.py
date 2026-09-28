@@ -4,17 +4,27 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from functools import partial
 from datetime import UTC, datetime, timedelta
 import hashlib
 import json
-import math
 import os
 from pathlib import Path
 import re
-import tempfile
 from types import MappingProxyType
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.serialization import (
+    canonical_json_bytes,
+    freeze,
+    json_document_bytes,
+    thaw,
+    write_bytes_atomically,
+)
+from open_energy_lab.core.time import format_utc
+from open_energy_lab.core.validation import finite, mapping, non_empty_str, sequence
 
 from .time import CanonicalInterval, parse_iso8601_duration
 
@@ -27,7 +37,7 @@ ACTIVATION_SIGN_SEMANTICS = "positive is upward/discharge"
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
-class ActivationValidationError(ValueError):
+class ActivationValidationError(ValidationError):
     """Raised when activation inputs or artifacts violate the v1 contract."""
 
 
@@ -43,47 +53,14 @@ class ActivationPublicationError(OSError):
     """Raised when an activation trace cannot be published atomically."""
 
 
-def _freeze(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        return MappingProxyType({str(key): _freeze(inner) for key, inner in value.items()})
-    if isinstance(value, (list, tuple)):
-        return tuple(_freeze(inner) for inner in value)
-    return value
-
-
-def _thaw(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        return {str(key): _thaw(inner) for key, inner in value.items()}
-    if isinstance(value, tuple):
-        return [_thaw(inner) for inner in value]
-    return value
-
-
-def _mapping(value: object, *, field_name: str) -> dict[str, Any]:
-    if not isinstance(value, Mapping):
-        raise ActivationValidationError(f"{field_name} must be a mapping")
-    return {str(key): inner for key, inner in value.items()}
-
-
-def _sequence(value: object, *, field_name: str) -> list[Any]:
-    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
-        raise ActivationValidationError(f"{field_name} must be a sequence")
-    return list(value)
-
-
-def _non_empty(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise ActivationValidationError(f"{field_name} must be a non-empty string")
-    return value
-
-
-def _finite(value: object, *, field_name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ActivationValidationError(f"{field_name} must be finite")
-    normalized = float(value)
-    if not math.isfinite(normalized):
-        raise ActivationValidationError(f"{field_name} must be finite")
-    return normalized
+_freeze = freeze
+_thaw = thaw
+_mapping = partial(mapping, error=ActivationValidationError)
+_sequence = partial(sequence, error=ActivationValidationError)
+_non_empty = partial(non_empty_str, error=ActivationValidationError, strip=True)
+_finite = partial(finite, error=ActivationValidationError)
+_format_utc = format_utc
+_canonical_json = partial(canonical_json_bytes, error=ActivationValidationError)
 
 
 def _utc(value: object, *, field_name: str) -> datetime:
@@ -99,25 +76,6 @@ def _utc(value: object, *, field_name: str) -> datetime:
     if value.tzinfo is None or value.utcoffset() != timedelta(0):
         raise ActivationValidationError(f"{field_name} must be an aware UTC datetime")
     return value.astimezone(UTC)
-
-
-def _format_utc(value: datetime) -> str:
-    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
-
-
-def _canonical_json(value: object) -> bytes:
-    try:
-        return json.dumps(
-            _thaw(value),
-            allow_nan=False,
-            ensure_ascii=False,
-            separators=(",", ":"),
-            sort_keys=True,
-        ).encode("utf-8")
-    except (TypeError, ValueError) as exc:
-        raise ActivationValidationError(
-            f"activation artifact must contain finite canonical JSON: {exc}"
-        ) from exc
 
 
 @dataclass(frozen=True, slots=True)
@@ -783,19 +741,7 @@ def _trace_from_payload(payload: Mapping[str, Any]) -> RegulationActivationTrace
 
 
 def _manifest_bytes(trace: RegulationActivationTrace) -> bytes:
-    try:
-        return (
-            json.dumps(
-                trace.to_dict(),
-                allow_nan=False,
-                ensure_ascii=False,
-                indent=2,
-                sort_keys=True,
-            )
-            + "\n"
-        ).encode("utf-8")
-    except (TypeError, ValueError) as exc:
-        raise ActivationValidationError("activation trace is not finite JSON") from exc
+    return json_document_bytes(trace.to_dict(), error=ActivationValidationError)
 
 
 def _filename(trace: RegulationActivationTrace) -> str:
@@ -835,33 +781,11 @@ def write_regulation_activation_trace(
                 "existing immutable activation trace differs from requested bytes"
             )
         return path
-    file_descriptor = -1
-    temporary_path: Path | None = None
     try:
-        file_descriptor, temporary_name = tempfile.mkstemp(
-            prefix=f".{path.name}.",
-            suffix=".tmp",
-            dir=destination,
-        )
-        temporary_path = Path(temporary_name)
-        with os.fdopen(file_descriptor, "wb") as handle:
-            file_descriptor = -1
-            handle.write(desired)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary_path, path)
-        temporary_path = None
-        return path
+        write_bytes_atomically(path, desired)
     except OSError as exc:
         raise ActivationPublicationError("cannot atomically publish activation trace") from exc
-    finally:
-        if file_descriptor >= 0:
-            os.close(file_descriptor)
-        if temporary_path is not None:
-            try:
-                temporary_path.unlink(missing_ok=True)
-            except OSError:
-                pass
+    return path
 
 
 def load_regulation_activation_trace(
