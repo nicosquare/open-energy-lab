@@ -76,12 +76,34 @@ in TPM and were already failing at `3a5307e`:
   It loads a `schema_version 'v1'` fixture, which is now rejected as
   `LegacyTPMArtifactVersionError`.
 
+## Progress
+
+Regenerate with `uv run python tools/consolidation_metrics.py`.
+
+| After | src lines | market | core | `_finite` | `_non_empty*` | sha/fingerprint | freeze/thaw |
+|---|---|---|---|---|---|---|---|
+| baseline `3a5307e` | 77,900 | 12,981 | 328 | 17 | 21 | 26 | 22 |
+| A1 core + market | 77,838 | 12,517 | 730 | 14 | 14 | 21 | 15 |
+
+A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 baseline TPM failures, 2 skipped**.
+
 ## Track A — energy library
 
 - [ ] **A1 core foundation.** Add `core/validation.py`, `core/serialization.py`
   (canonical JSON, fingerprint, atomic write-once), `core/time.py`, and
   `core/errors.py`. Move `market` onto them first, then the other packages.
   Behavior-preserving.
+  - [x] core + market (branch `consolidation/a1-core-market`). Every market
+    copy was proven equivalent to its core replacement before deletion
+    (87/87 cases at `1319b4e`). Kept local because behavior differs:
+    `market.artifact._positive_int` / `_non_negative_int` (accept `2.0`),
+    `market.reference_fcr._freeze` (sorts keys) and `_integer(minimum=)`,
+    `market.activation._utc` (also parses strings), `market.time._require_utc`
+    (offset in message). Standardized: error message wording only; no test
+    pinned it.
+  - [ ] simulator
+  - [ ] control
+  - [ ] weather, demand, planning
 - [ ] **A2 shared schedule types.** Move `FixedFCRBidPlan`, the energy and
   capacity schedules, and `RestorationCapability` to `core/schedules.py`.
   Breaks control ↔ simulator.
