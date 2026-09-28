@@ -80,10 +80,13 @@ in TPM and were already failing at `3a5307e`:
 
 Regenerate with `uv run python tools/consolidation_metrics.py`.
 
-| After | src lines | market | core | `_finite` | `_non_empty*` | sha/fingerprint | freeze/thaw |
-|---|---|---|---|---|---|---|---|
-| baseline `3a5307e` | 77,900 | 12,981 | 328 | 17 | 21 | 26 | 22 |
-| A1 core + market | 77,838 | 12,517 | 730 | 14 | 14 | 21 | 15 |
+| After | src lines | market | simulator | core | `_finite` | `_non_empty*` | sha/fingerprint | freeze/thaw |
+|---|---|---|---|---|---|---|---|---|
+| baseline `3a5307e` | 77,900 | 12,981 | 13,289 | 328 | 17 | 21 | 26 | 22 |
+| A1 core + market | 77,838 | 12,517 | 13,289 | 730 | 14 | 14 | 21 | 15 |
+| A1 simulator | 77,492 | 12,510 | 12,914 | 766 | 8 | 8 | 12 | 8 |
+
+A1 simulator full suite: **2230 passed, 4 failed (the v1 `spn_mip` TPM tests still in the baseline; the two surface tests were fixed by #18), 2 skipped**.
 
 A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 baseline TPM failures, 2 skipped**.
 
@@ -101,7 +104,19 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     `market.activation._utc` (also parses strings), `market.time._require_utc`
     (offset in message). Standardized: error message wording only; no test
     pinned it.
-  - [ ] simulator
+  - [x] simulator (branch `consolidation/a1-simulator`). Proven equivalent
+    first (42/42 cases at `28d7d8c`). core gained `positive`, `non_negative`,
+    and `freeze(sort_keys=)`; `market.reference_fcr._freeze` moved onto it.
+    Also: `BatteryComponent.to_dict()` replaces three identical
+    `_battery_payload` copies (two more remain in control), and the eight
+    helpers duplicated in `stochastic_weather` / `stochastic_demand` now live
+    in `simulator/_family_summary.py`. `validated_summary_fields` takes
+    `supported=` explicitly because the two modules allow different fields.
+    Kept local: the product-specific enum parsers in `restoration_*`
+    (`_input_kind`, `_direction`, ...) and `_blackout_grid_availability`
+    (differs per module). One difference: the old `_thaw` in three FCR
+    modules left Enum members as-is, while `core.thaw` returns their values.
+    Canonical bytes are identical and those modules hold no Enums.
   - [ ] control
   - [ ] weather, demand, planning
 - [ ] **A2 shared schedule types.** Move `FixedFCRBidPlan`, the energy and
