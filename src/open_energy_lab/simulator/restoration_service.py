@@ -121,20 +121,6 @@ def _ordered_causes(causes: Sequence[str]) -> tuple[str, ...]:
     return tuple(sorted(set(causes), key=_CAUSE_INDEX.__getitem__))
 
 
-def _battery_payload(battery: BatteryComponent) -> dict[str, object]:
-    return {
-        "name": battery.name,
-        "capacity_kwh": battery.capacity_kwh,
-        "max_charge_kw": battery.max_charge_kw,
-        "max_discharge_kw": battery.max_discharge_kw,
-        "charge_efficiency": battery.charge_efficiency,
-        "discharge_efficiency": battery.discharge_efficiency,
-        "initial_soc": battery.initial_soc,
-        "min_soc": battery.min_soc,
-        "max_soc": battery.max_soc,
-    }
-
-
 def _state_payload(state: BatteryState) -> dict[str, object]:
     return {
         "step_index": state.step_index,
@@ -339,7 +325,7 @@ def build_restoration_replay_request_core(
         ),
         "product": normalized_product.value,
         "activation_input_kind": kind.value,
-        "battery": _battery_payload(battery),
+        "battery": battery.to_dict(),
         "initial_state": _state_payload(initial_state),
         "capability_fingerprint": capability.capability_fingerprint,
         "commitments_fingerprint": commitments.schedule_fingerprint,

@@ -82,20 +82,6 @@ def _same_interval(left: CanonicalInterval, right: CanonicalInterval) -> bool:
     )
 
 
-def _battery_payload(battery: BatteryComponent) -> dict[str, object]:
-    return {
-        "name": battery.name,
-        "capacity_kwh": battery.capacity_kwh,
-        "max_charge_kw": battery.max_charge_kw,
-        "max_discharge_kw": battery.max_discharge_kw,
-        "charge_efficiency": battery.charge_efficiency,
-        "discharge_efficiency": battery.discharge_efficiency,
-        "initial_soc": battery.initial_soc,
-        "min_soc": battery.min_soc,
-        "max_soc": battery.max_soc,
-    }
-
-
 @dataclass(frozen=True, slots=True)
 class EvaluationPriceObservation:
     interval: CanonicalInterval
@@ -923,7 +909,7 @@ class FCRBidEvaluationRequest:
             raise FCRBidEvaluationValidationError(
                 "numeric_tolerance must be positive"
             )
-        battery_fingerprint = _fingerprint(_battery_payload(self.battery))
+        battery_fingerprint = _fingerprint(self.battery.to_dict())
         penalty_payload = (
             None
             if self.penalty_rule is None
@@ -989,7 +975,7 @@ class FCRBidEvaluationRequest:
         return self.plan.fcr_schedule
 
     def assert_battery_unchanged(self) -> None:
-        if _fingerprint(_battery_payload(self.battery)) != self._battery_fingerprint_at_binding:
+        if _fingerprint(self.battery.to_dict()) != self._battery_fingerprint_at_binding:
             raise FCRBidEvaluationValidationError(
                 "battery mutated after evaluation request binding"
             )

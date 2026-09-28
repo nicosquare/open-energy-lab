@@ -738,20 +738,6 @@ class _PhysicalReplayKernelResult:
     terminal_soc_report: TerminalSOCReport | None
 
 
-def _battery_payload(battery: BatteryComponent) -> dict[str, object]:
-    return {
-        "name": battery.name,
-        "capacity_kwh": battery.capacity_kwh,
-        "max_charge_kw": battery.max_charge_kw,
-        "max_discharge_kw": battery.max_discharge_kw,
-        "charge_efficiency": battery.charge_efficiency,
-        "discharge_efficiency": battery.discharge_efficiency,
-        "initial_soc": battery.initial_soc,
-        "min_soc": battery.min_soc,
-        "max_soc": battery.max_soc,
-    }
-
-
 def _input_fingerprints(request: StackedServiceReplayRequest) -> Mapping[str, object]:
     penalty_payload = (
         None
@@ -770,7 +756,7 @@ def _input_fingerprints(request: StackedServiceReplayRequest) -> Mapping[str, ob
         "activation_trace": request.activation_trace.artifact_fingerprint,
         "energy_schedule": request.energy_schedule.schedule_fingerprint,
         "fcr_schedule": request.fcr_schedule.schedule_fingerprint,
-        "battery": _fingerprint(_battery_payload(request.battery)),
+        "battery": _fingerprint(request.battery.to_dict()),
         "time_contract": _fingerprint(request.time_contract.to_dict()),
         "penalty_rule": None if penalty_payload is None else _fingerprint(penalty_payload),
         "terminal_soc_target": (

@@ -247,6 +247,19 @@ class BatteryComponent:
         if self.min_soc > self.initial_soc or self.initial_soc > self.max_soc:
             raise ValueError("min_soc <= initial_soc <= max_soc must hold")
 
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "name": self.name,
+            "capacity_kwh": self.capacity_kwh,
+            "max_charge_kw": self.max_charge_kw,
+            "max_discharge_kw": self.max_discharge_kw,
+            "charge_efficiency": self.charge_efficiency,
+            "discharge_efficiency": self.discharge_efficiency,
+            "initial_soc": self.initial_soc,
+            "min_soc": self.min_soc,
+            "max_soc": self.max_soc,
+        }
+
 
 @dataclass(slots=True)
 class DispatchRequestSeries:

@@ -191,3 +191,24 @@ def test_valid_rule_policy_scenario_builds_required_component_graph() -> None:
 def test_connection_rejects_unknown_relation() -> None:
     with pytest.raises(ValueError, match="'unknown' is not a valid Relation"):
         Connection(source="time_grid", target="price_signal", relation="unknown")
+
+
+def test_battery_component_to_dict_lists_every_field_in_declaration_order() -> None:
+    from dataclasses import asdict
+
+    from open_energy_lab.simulator.scenario import BatteryComponent
+
+    battery = BatteryComponent(
+        name="bess",
+        capacity_kwh=10.0,
+        max_charge_kw=5.0,
+        max_discharge_kw=4.0,
+        charge_efficiency=0.95,
+        discharge_efficiency=0.9,
+        initial_soc=0.5,
+        min_soc=0.1,
+        max_soc=0.9,
+    )
+
+    assert battery.to_dict() == asdict(battery)
+    assert list(battery.to_dict()) == list(asdict(battery))
