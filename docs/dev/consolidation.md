@@ -61,7 +61,20 @@ Import cycles, each hidden by lazy imports:
 - simulator ↔ market: `market/reference_fcr.py` golden fixture.
 - tpm ↔ planning: `tpm/fit.py` and `tpm/query.py` load planning datasets.
 
-Baseline test run: _pending_.
+Baseline test run (`uv run pytest tests/unit tests/integration`, 24m53s):
+**2209 passed, 6 failed, 2 skipped**. Parity suite not run. All 6 failures are
+in TPM and were already failing at `3a5307e`:
+
+- `tests/unit/tpm/test_package_surface.py`, 2 tests. The root exports 16 names
+  the test doesn't expect (e.g. `CategoricalMixtureConfig`).
+- `tests/integration/tpm/test_backend_adapter_workflow.py`,
+  `test_generic_rows_workflow.py`, `test_real_spflow_backend.py`. These fail in
+  the v1 serialized `spn_mip` payload path used for direct chance-model solves
+  ("requires a valid current-SPFlow model payload", "does not expose a
+  serialized SPN MIO payload"). This path is retired in B3.
+- `tests/integration/tpm/test_mio_solver.py::test_solve_spn_chance_model_from_artifact_solves_with_gurobi`.
+  It loads a `schema_version 'v1'` fixture, which is now rejected as
+  `LegacyTPMArtifactVersionError`.
 
 ## Track A — energy library
 
