@@ -10,12 +10,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-import hashlib
+from functools import partial
 import math
-import re
-from types import MappingProxyType
-from typing import Any
 
+from open_energy_lab.core.serialization import fingerprint, freeze, thaw
+from open_energy_lab.core.validation import finite, non_empty_str, sha256_digest
 from open_energy_lab.control.fcr_bid_plan import (
     FixedFCRBidPlan,
     build_fixed_fcr_bid_plan,
@@ -31,7 +30,6 @@ from .fcr_bid_evaluation import (
     EvaluationMarketContext,
     FCRBidEvaluationRequest,
     FCRBidEvaluationValidationError,
-    canonical_json_bytes,
     evaluate_fixed_fcr_bid,
 )
 from .scenario import BatteryComponent
@@ -45,54 +43,14 @@ from .stacked_service import (
 FCR_SEGMENTED_EVALUATION_SEMANTICS_VERSION = (
     "oel.fcr-segmented-evaluation.v1"
 )
-_SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
-def _non_empty(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise FCRBidEvaluationValidationError(
-            f"{field_name} must be a non-empty string"
-        )
-    return value
-
-
-def _finite(value: object, *, field_name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise FCRBidEvaluationValidationError(f"{field_name} must be finite")
-    result = float(value)
-    if not math.isfinite(result):
-        raise FCRBidEvaluationValidationError(f"{field_name} must be finite")
-    return 0.0 if result == 0.0 else result
-
-
-def _fingerprint(value: object) -> str:
-    return hashlib.sha256(canonical_json_bytes(value)).hexdigest()
-
-
-def _sha256(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or _SHA256.fullmatch(value) is None:
-        raise FCRBidEvaluationValidationError(
-            f"{field_name} must be a lowercase SHA-256 fingerprint"
-        )
-    return value
-
-
-def _freeze(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        return MappingProxyType(
-            {str(key): _freeze(inner) for key, inner in sorted(value.items())}
-        )
-    if isinstance(value, (list, tuple)):
-        return tuple(_freeze(inner) for inner in value)
-    return value
-
-
-def _thaw(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        return {str(key): _thaw(inner) for key, inner in value.items()}
-    if isinstance(value, tuple):
-        return [_thaw(inner) for inner in value]
-    return value
+_non_empty = partial(non_empty_str, error=FCRBidEvaluationValidationError, strip=True)
+_finite = partial(finite, error=FCRBidEvaluationValidationError, normalize_zero=True)
+_fingerprint = partial(fingerprint, error=FCRBidEvaluationValidationError)
+_sha256 = partial(sha256_digest, error=FCRBidEvaluationValidationError)
+_freeze = partial(freeze, sort_keys=True)
+_thaw = thaw
 
 
 def _interval_payload(period: CanonicalInterval) -> dict[str, object]:
