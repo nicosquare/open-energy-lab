@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 import base64
 from dataclasses import dataclass, field
+from functools import partial
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 import hashlib
@@ -17,10 +18,13 @@ import math
 from pathlib import Path
 import time
 from types import MappingProxyType
-from typing import Any
 import urllib.error
 from urllib.parse import urlencode, urlsplit
 import urllib.request
+
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.time import utc_datetime
+from open_energy_lab.core.validation import enum_member, non_empty_str
 
 from .restoration_artifact import (
     ObservationValueState,
@@ -85,7 +89,7 @@ class RTEAcquisitionMode(str, Enum):
     REFRESH = "REFRESH"
 
 
-class RTERequestValidationError(ValueError):
+class RTERequestValidationError(ValidationError):
     """Raised before credentials are used when an RTE request is invalid."""
 
 
@@ -202,24 +206,8 @@ RTE_PROFILES = MappingProxyType(
 )
 
 
-def _utc(value: object, *, field_name: str) -> datetime:
-    if not isinstance(value, datetime):
-        raise RTERequestValidationError(
-            f"{field_name} must be an aware UTC datetime"
-        )
-    if value.tzinfo is None or value.utcoffset() != timedelta(0):
-        raise RTERequestValidationError(
-            f"{field_name} must be an aware UTC datetime"
-        )
-    return value.astimezone(UTC)
-
-
-def _non_empty(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value:
-        raise RTERequestValidationError(
-            f"{field_name} must be a non-empty string"
-        )
-    return value
+_utc = partial(utc_datetime, error=RTERequestValidationError)
+_non_empty = partial(non_empty_str, error=RTERequestValidationError)
 
 
 def _quarter_aligned(value: datetime) -> bool:
@@ -247,11 +235,7 @@ def _safe_endpoint(endpoint: object, *, profile: RTERestorationProfile) -> str:
     return normalized
 
 
-def _enum_value(enum_type: type[Enum], value: object, *, field_name: str) -> Any:
-    try:
-        return enum_type(value)
-    except (TypeError, ValueError) as exc:
-        raise RTERequestValidationError(f"unsupported {field_name}") from exc
+_enum_value = partial(enum_member, error=RTERequestValidationError)
 
 
 def _request_payload(

@@ -9,13 +9,13 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
+from functools import partial
 from datetime import UTC, datetime, timedelta
 import hashlib
 import io
 import math
 import os
 from pathlib import Path, PurePosixPath
-import tempfile
 import time
 from types import MappingProxyType
 from typing import Any, Protocol, runtime_checkable
@@ -25,6 +25,11 @@ import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 from zoneinfo import ZoneInfo
+
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.serialization import write_bytes_atomically
+from open_energy_lab.core.time import format_utc, utc_datetime
+from open_energy_lab.core.validation import non_empty_str
 
 from .artifact import (
     FRANCE_AREA_EIC,
@@ -63,27 +68,15 @@ _DOCUMENT_SERIES = {
 }
 
 
-def _format_utc(value: datetime) -> str:
-    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+_format_utc = format_utc
 
 
-def _require_utc_datetime(value: object, *, field_name: str) -> datetime:
-    if not isinstance(value, datetime):
-        raise EntsoeRequestValidationError(f"{field_name} must be an aware UTC datetime")
-    offset = value.utcoffset()
-    if value.tzinfo is None or offset is None or offset != timedelta(0):
-        raise EntsoeRequestValidationError(f"{field_name} must be an aware UTC datetime")
-    return value.astimezone(UTC)
-
-
-def _non_empty(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise EntsoeRequestValidationError(f"{field_name} must be a non-empty string")
-    return value
-
-
-class EntsoeRequestValidationError(ValueError):
+class EntsoeRequestValidationError(ValidationError):
     """Raised when a token-free request or query window is invalid."""
+
+
+_require_utc_datetime = partial(utc_datetime, error=EntsoeRequestValidationError)
+_non_empty = partial(non_empty_str, error=EntsoeRequestValidationError, strip=True)
 
 
 @dataclass(frozen=True, slots=True)
@@ -3102,35 +3095,13 @@ def _publish_sidecar(path: Path, body: bytes) -> bool:
             )
         return False
     path.parent.mkdir(parents=True, exist_ok=True)
-    file_descriptor = -1
-    temporary_path: Path | None = None
     try:
-        file_descriptor, temporary_name = tempfile.mkstemp(
-            prefix=f".{path.name}.",
-            suffix=".tmp",
-            dir=path.parent,
-        )
-        temporary_path = Path(temporary_name)
-        with os.fdopen(file_descriptor, "wb") as handle:
-            file_descriptor = -1
-            handle.write(body)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary_path, path)
-        temporary_path = None
-        return True
+        write_bytes_atomically(path, body)
     except OSError as exc:
         raise MarketArtifactPublicationError(
             "cannot atomically publish a retained raw sidecar"
         ) from exc
-    finally:
-        if file_descriptor >= 0:
-            os.close(file_descriptor)
-        if temporary_path is not None:
-            try:
-                temporary_path.unlink(missing_ok=True)
-            except OSError:
-                pass
+    return True
 
 
 def _publication_diagnostic(
