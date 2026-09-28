@@ -21,7 +21,7 @@ from types import MappingProxyType
 from typing import Any
 
 from open_energy_lab.core.errors import ValidationError
-from open_energy_lab.core.serialization import canonical_json_bytes, fingerprint, thaw
+from open_energy_lab.core.serialization import canonical_json_bytes, fingerprint, freeze, thaw
 from open_energy_lab.core.validation import finite, mapping, non_empty_str, sequence, sha256_digest
 from open_energy_lab.market.activation import (
     ActivationImportRequest,
@@ -91,14 +91,7 @@ _mapping = partial(mapping, error=ReferenceFCRValidationError)
 _sequence = partial(sequence, error=ReferenceFCRValidationError)
 
 
-def _freeze(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        return MappingProxyType(
-            {str(key): _freeze(inner) for key, inner in sorted(value.items())}
-        )
-    if isinstance(value, (list, tuple)):
-        return tuple(_freeze(inner) for inner in value)
-    return value
+_freeze = partial(freeze, sort_keys=True)
 
 
 _thaw = thaw
