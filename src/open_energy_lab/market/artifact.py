@@ -2,18 +2,36 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
+from functools import partial
 import hashlib
 import json
-import math
 import os
 from pathlib import Path, PurePosixPath
 import re
-import tempfile
 from types import MappingProxyType
 from typing import Any
+
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.serialization import (
+    canonical_json_bytes as _canonical_json_bytes,
+    freeze,
+    json_document_bytes,
+    thaw,
+    write_bytes_atomically,
+)
+from open_energy_lab.core.time import utc_timestamp_text
+from open_energy_lab.core.validation import (
+    finite,
+    mapping,
+    non_empty_str,
+    optional_str,
+    require_fields,
+    sequence,
+    sha256_digest,
+)
 
 from .time import CanonicalInterval, MarketTimeValidationError, parse_iso8601_duration
 
@@ -57,10 +75,7 @@ _SERIES_PROFILE = {
     },
 }
 
-_SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
-
-
-class MarketArtifactValidationError(ValueError):
+class MarketArtifactValidationError(ValidationError):
     """Raised when a canonical artifact violates its schema or semantics."""
 
 
@@ -76,61 +91,16 @@ class MarketArtifactPublicationError(OSError):
     """Raised when an artifact cannot be published atomically."""
 
 
-def _freeze(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        return MappingProxyType({str(key): _freeze(inner) for key, inner in value.items()})
-    if isinstance(value, (list, tuple)):
-        return tuple(_freeze(inner) for inner in value)
-    return value
-
-
-def _thaw(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        return {str(key): _thaw(inner) for key, inner in value.items()}
-    if isinstance(value, tuple):
-        return [_thaw(inner) for inner in value]
-    return value
-
-
-def _mapping(value: object, *, field_name: str) -> dict[str, Any]:
-    if not isinstance(value, Mapping):
-        raise MarketArtifactValidationError(f"{field_name} must be a mapping")
-    return {str(key): inner for key, inner in value.items()}
-
-
-def _sequence(value: object, *, field_name: str) -> list[Any]:
-    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
-        raise MarketArtifactValidationError(f"{field_name} must be a sequence")
-    return list(value)
-
-
-def _required(payload: Mapping[str, Any], names: Sequence[str], *, field_name: str) -> None:
-    missing = [name for name in names if name not in payload]
-    if missing:
-        raise MarketArtifactValidationError(
-            f"{field_name} is missing required fields: {', '.join(missing)}"
-        )
-
-
-def _non_empty_string(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value:
-        raise MarketArtifactValidationError(f"{field_name} must be a non-empty string")
-    return value
-
-
-def _optional_string(value: object, *, field_name: str) -> str | None:
-    if value is None:
-        return None
-    return _non_empty_string(value, field_name=field_name)
-
-
-def _finite_number(value: object, *, field_name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise MarketArtifactValidationError(f"{field_name} must be a finite number")
-    normalized = float(value)
-    if not math.isfinite(normalized):
-        raise MarketArtifactValidationError(f"{field_name} must be finite")
-    return normalized
+_freeze = freeze
+_thaw = thaw
+_mapping = partial(mapping, error=MarketArtifactValidationError)
+_sequence = partial(sequence, error=MarketArtifactValidationError)
+_required = partial(require_fields, error=MarketArtifactValidationError)
+_non_empty_string = partial(non_empty_str, error=MarketArtifactValidationError)
+_optional_string = partial(optional_str, error=MarketArtifactValidationError)
+_finite_number = partial(finite, error=MarketArtifactValidationError)
+_sha256 = partial(sha256_digest, error=MarketArtifactValidationError)
+_utc_timestamp = partial(utc_timestamp_text, error=MarketArtifactValidationError)
 
 
 def _positive_int(value: object, *, field_name: str) -> int:
@@ -165,28 +135,6 @@ def _non_negative_int(value: object, *, field_name: str) -> int:
     return normalized
 
 
-def _sha256(value: object, *, field_name: str) -> str:
-    normalized = _non_empty_string(value, field_name=field_name)
-    if _SHA256_PATTERN.fullmatch(normalized) is None:
-        raise MarketArtifactValidationError(
-            f"{field_name} must be a lowercase SHA-256 hexadecimal digest"
-        )
-    return normalized
-
-
-def _utc_timestamp(value: object, *, field_name: str) -> str:
-    normalized = _non_empty_string(value, field_name=field_name)
-    try:
-        parsed = datetime.fromisoformat(normalized.replace("Z", "+00:00"))
-    except ValueError as exc:
-        raise MarketArtifactValidationError(
-            f"{field_name} must be an ISO 8601 timestamp"
-        ) from exc
-    if parsed.tzinfo is None or parsed.utcoffset() is None or parsed.utcoffset().total_seconds() != 0:
-        raise MarketArtifactValidationError(f"{field_name} must be an aware UTC timestamp")
-    return parsed.astimezone(UTC).isoformat().replace("+00:00", "Z")
-
-
 def _interval(value: object, *, field_name: str) -> CanonicalInterval:
     try:
         return CanonicalInterval.from_dict(_mapping(value, field_name=field_name))
@@ -197,18 +145,7 @@ def _interval(value: object, *, field_name: str) -> CanonicalInterval:
 def canonical_json_bytes(value: object) -> bytes:
     """Serialize JSON deterministically for hashing, rejecting NaN and infinity."""
 
-    try:
-        return json.dumps(
-            _thaw(value),
-            allow_nan=False,
-            ensure_ascii=False,
-            separators=(",", ":"),
-            sort_keys=True,
-        ).encode("utf-8")
-    except (TypeError, ValueError) as exc:
-        raise MarketArtifactValidationError(
-            f"value is not canonical finite JSON: {exc}"
-        ) from exc
+    return _canonical_json_bytes(value, error=MarketArtifactValidationError)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1272,21 +1209,7 @@ def load_market_data_artifact(
 
 
 def _manifest_bytes(artifact: MarketDataArtifact) -> bytes:
-    try:
-        return (
-            json.dumps(
-                artifact.to_dict(),
-                allow_nan=False,
-                ensure_ascii=False,
-                indent=2,
-                sort_keys=True,
-            )
-            + "\n"
-        ).encode("utf-8")
-    except (TypeError, ValueError) as exc:
-        raise MarketArtifactValidationError(
-            f"market artifact cannot be serialized as finite JSON: {exc}"
-        ) from exc
+    return json_document_bytes(artifact.to_dict(), error=MarketArtifactValidationError)
 
 
 def write_market_data_artifact(
@@ -1330,40 +1253,16 @@ def write_market_data_artifact(
             )
         return output_path
 
-    file_descriptor = -1
-    temporary_path: Path | None = None
     try:
-        file_descriptor, temporary_name = tempfile.mkstemp(
-            prefix=f".{output_path.name}.",
-            suffix=".tmp",
-            dir=destination,
-        )
-        temporary_path = Path(temporary_name)
-        with os.fdopen(file_descriptor, "wb") as stream:
-            file_descriptor = -1
-            stream.write(desired_bytes)
-            stream.flush()
-            os.fsync(stream.fileno())
-        if output_path.exists():
-            raise MarketArtifactIntegrityError(
-                "immutable market artifact appeared during publication"
-            )
-        os.replace(temporary_path, output_path)
-        temporary_path = None
-    except MarketArtifactIntegrityError:
-        raise
+        write_bytes_atomically(output_path, desired_bytes, fail_if_exists=True)
+    except FileExistsError as exc:
+        raise MarketArtifactIntegrityError(
+            "immutable market artifact appeared during publication"
+        ) from exc
     except OSError as exc:
         raise MarketArtifactPublicationError(
             f"atomic market artifact publication failed during replace: {output_path}"
         ) from exc
-    finally:
-        if file_descriptor >= 0:
-            os.close(file_descriptor)
-        if temporary_path is not None:
-            try:
-                temporary_path.unlink(missing_ok=True)
-            except OSError:
-                pass
     return output_path
 
 

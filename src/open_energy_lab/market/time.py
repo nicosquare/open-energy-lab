@@ -9,6 +9,8 @@ import re
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from open_energy_lab.core.time import format_utc
+
 
 FRANCE_MARKET_TIMEZONE = "Europe/Paris"
 HALF_OPEN_INTERVAL_CONVENTION = "start-inclusive/end-exclusive"
@@ -56,8 +58,7 @@ def _parse_datetime(value: object, *, field_name: str) -> datetime:
         ) from exc
 
 
-def _format_utc(value: datetime) -> str:
-    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+_format_utc = format_utc
 
 
 def _offset_seconds(value: datetime) -> int:

@@ -7,10 +7,11 @@ imports the reference implementation.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 import csv
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
+from functools import partial
 import hashlib
 import json
 import math
@@ -19,6 +20,9 @@ import re
 from types import MappingProxyType
 from typing import Any
 
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.serialization import canonical_json_bytes, fingerprint, thaw
+from open_energy_lab.core.validation import finite, mapping, non_empty_str, sequence, sha256_digest
 from open_energy_lab.market.activation import (
     ActivationImportRequest,
     RegulationActivationTrace,
@@ -41,7 +45,6 @@ REFERENCE_RESULT_SHA256 = (
 REFERENCE_ACTIVATION_ARTIFACT_CREATED_AT_UTC = datetime(2026, 8, 26, tzinfo=UTC)
 
 _SHA1_PATTERN = re.compile(r"[0-9a-f]{40}")
-_SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 _REQUIRED_FIXTURE_SECTIONS = {
     "schema_version",
     "fixture_id",
@@ -60,7 +63,7 @@ _REQUIRED_FIXTURE_SECTIONS = {
 }
 
 
-class ReferenceFCRValidationError(ValueError):
+class ReferenceFCRValidationError(ValidationError):
     """Raised when reference declarations are incomplete or inconsistent."""
 
 
@@ -72,19 +75,8 @@ class ExternalReferenceDataError(ReferenceFCRValidationError):
     """Raised with installation guidance for absent or invalid external bytes."""
 
 
-def _non_empty(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise ReferenceFCRValidationError(f"{field_name} must be a non-empty string")
-    return value
-
-
-def _finite(value: object, *, field_name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ReferenceFCRValidationError(f"{field_name} must be finite")
-    result = float(value)
-    if not math.isfinite(result):
-        raise ReferenceFCRValidationError(f"{field_name} must be finite")
-    return result
+_non_empty = partial(non_empty_str, error=ReferenceFCRValidationError, strip=True)
+_finite = partial(finite, error=ReferenceFCRValidationError)
 
 
 def _integer(value: object, *, field_name: str, minimum: int = 0) -> int:
@@ -95,16 +87,8 @@ def _integer(value: object, *, field_name: str, minimum: int = 0) -> int:
     return value
 
 
-def _mapping(value: object, *, field_name: str) -> dict[str, Any]:
-    if not isinstance(value, Mapping):
-        raise ReferenceFCRValidationError(f"{field_name} must be a mapping")
-    return {str(key): inner for key, inner in value.items()}
-
-
-def _sequence(value: object, *, field_name: str) -> list[Any]:
-    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
-        raise ReferenceFCRValidationError(f"{field_name} must be a sequence")
-    return list(value)
+_mapping = partial(mapping, error=ReferenceFCRValidationError)
+_sequence = partial(sequence, error=ReferenceFCRValidationError)
 
 
 def _freeze(value: Any) -> Any:
@@ -117,41 +101,17 @@ def _freeze(value: Any) -> Any:
     return value
 
 
-def _thaw(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        return {str(key): _thaw(inner) for key, inner in value.items()}
-    if isinstance(value, tuple):
-        return [_thaw(inner) for inner in value]
-    return value
+_thaw = thaw
 
 
 def canonical_reference_json_bytes(value: object) -> bytes:
     """Serialize finite reference evidence for stable digests."""
 
-    try:
-        return json.dumps(
-            _thaw(value),
-            allow_nan=False,
-            ensure_ascii=False,
-            separators=(",", ":"),
-            sort_keys=True,
-        ).encode("utf-8")
-    except (TypeError, ValueError) as exc:
-        raise ReferenceFCRValidationError(
-            f"reference evidence must be finite canonical JSON: {exc}"
-        ) from exc
+    return canonical_json_bytes(value, error=ReferenceFCRValidationError)
 
 
-def _fingerprint(value: object) -> str:
-    return hashlib.sha256(canonical_reference_json_bytes(value)).hexdigest()
-
-
-def _sha256(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or _SHA256_PATTERN.fullmatch(value) is None:
-        raise ReferenceFCRValidationError(
-            f"{field_name} must be a lowercase SHA-256 digest"
-        )
-    return value
+_fingerprint = partial(fingerprint, error=ReferenceFCRValidationError)
+_sha256 = partial(sha256_digest, error=ReferenceFCRValidationError)
 
 
 def _json_pointer(value: object, *, field_name: str) -> str:

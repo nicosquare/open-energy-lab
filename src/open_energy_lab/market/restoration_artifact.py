@@ -9,17 +9,38 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import Enum
+from functools import partial
 import hashlib
 import json
-import math
 import os
 from pathlib import Path, PurePosixPath
 import re
-import tempfile
-from types import MappingProxyType
 from typing import Any
+
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.serialization import (
+    canonical_json_bytes,
+    freeze,
+    json_document_bytes,
+    thaw,
+    write_bytes_atomically,
+)
+from open_energy_lab.core.time import utc_timestamp_text
+from open_energy_lab.core.validation import (
+    boolean,
+    enum_member,
+    finite,
+    mapping,
+    non_empty_str,
+    non_negative_int,
+    optional_str,
+    positive_int,
+    require_fields,
+    sequence,
+    sha256_digest,
+)
 
 from .time import CanonicalInterval, MarketTimeValidationError, parse_iso8601_duration
 
@@ -33,7 +54,6 @@ SUPPORTED_RESTORATION_STUDY_BUNDLE_SCHEMA_VERSIONS = (
     RESTORATION_STUDY_BUNDLE_SCHEMA_VERSION,
 )
 
-_SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 _RESTRICTED_POLICY_FIELDS = (
     "repository_storage",
     "repository_publication",
@@ -77,7 +97,7 @@ class RawRetentionPolicy(str, Enum):
     PERMITTED_SIDECAR = "PERMITTED_SIDECAR"
 
 
-class RestorationArtifactValidationError(ValueError):
+class RestorationArtifactValidationError(ValidationError):
     """Raised when a restoration artifact violates its semantic contract."""
 
 
@@ -95,122 +115,20 @@ class RestorationArtifactPublicationError(OSError):
     """Raised when an immutable manifest cannot be published atomically."""
 
 
-def _freeze(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        return MappingProxyType(
-            {str(key): _freeze(inner) for key, inner in value.items()}
-        )
-    if isinstance(value, (list, tuple)):
-        return tuple(_freeze(inner) for inner in value)
-    return value
-
-
-def _thaw(value: Any) -> Any:
-    if isinstance(value, Enum):
-        return value.value
-    if isinstance(value, Mapping):
-        return {str(key): _thaw(inner) for key, inner in value.items()}
-    if isinstance(value, tuple):
-        return [_thaw(inner) for inner in value]
-    return value
-
-
-def _mapping(value: object, *, field_name: str) -> dict[str, Any]:
-    if not isinstance(value, Mapping):
-        raise RestorationArtifactValidationError(f"{field_name} must be a mapping")
-    return {str(key): inner for key, inner in value.items()}
-
-
-def _sequence(value: object, *, field_name: str) -> list[Any]:
-    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
-        raise RestorationArtifactValidationError(f"{field_name} must be a sequence")
-    return list(value)
-
-
-def _required(
-    payload: Mapping[str, Any], names: Sequence[str], *, field_name: str
-) -> None:
-    missing = [name for name in names if name not in payload]
-    if missing:
-        raise RestorationArtifactValidationError(
-            f"{field_name} is missing required fields: {', '.join(missing)}"
-        )
-
-
-def _non_empty_string(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value:
-        raise RestorationArtifactValidationError(
-            f"{field_name} must be a non-empty string"
-        )
-    return value
-
-
-def _optional_string(value: object, *, field_name: str) -> str | None:
-    if value is None:
-        return None
-    return _non_empty_string(value, field_name=field_name)
-
-
-def _finite_number(value: object, *, field_name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise RestorationArtifactValidationError(
-            f"{field_name} must be a finite number"
-        )
-    normalized = float(value)
-    if not math.isfinite(normalized):
-        raise RestorationArtifactValidationError(f"{field_name} must be finite")
-    return normalized
-
-
-def _non_negative_int(value: object, *, field_name: str) -> int:
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-        raise RestorationArtifactValidationError(
-            f"{field_name} must be a non-negative integer"
-        )
-    return value
-
-
-def _positive_int(value: object, *, field_name: str) -> int:
-    normalized = _non_negative_int(value, field_name=field_name)
-    if normalized == 0:
-        raise RestorationArtifactValidationError(
-            f"{field_name} must be a positive integer"
-        )
-    return normalized
-
-
-def _boolean(value: object, *, field_name: str) -> bool:
-    if not isinstance(value, bool):
-        raise RestorationArtifactValidationError(f"{field_name} must be boolean")
-    return value
-
-
-def _sha256(value: object, *, field_name: str) -> str:
-    normalized = _non_empty_string(value, field_name=field_name)
-    if _SHA256_PATTERN.fullmatch(normalized) is None:
-        raise RestorationArtifactValidationError(
-            f"{field_name} must be a lowercase SHA-256 hexadecimal digest"
-        )
-    return normalized
-
-
-def _utc_timestamp(value: object, *, field_name: str) -> str:
-    normalized = _non_empty_string(value, field_name=field_name)
-    try:
-        parsed = datetime.fromisoformat(normalized.replace("Z", "+00:00"))
-    except ValueError as exc:
-        raise RestorationArtifactValidationError(
-            f"{field_name} must be an ISO 8601 timestamp"
-        ) from exc
-    if (
-        parsed.tzinfo is None
-        or parsed.utcoffset() is None
-        or parsed.utcoffset().total_seconds() != 0
-    ):
-        raise RestorationArtifactValidationError(
-            f"{field_name} must be an aware UTC timestamp"
-        )
-    return parsed.astimezone(UTC).isoformat().replace("+00:00", "Z")
+_freeze = freeze
+_thaw = thaw
+_mapping = partial(mapping, error=RestorationArtifactValidationError)
+_sequence = partial(sequence, error=RestorationArtifactValidationError)
+_required = partial(require_fields, error=RestorationArtifactValidationError)
+_non_empty_string = partial(non_empty_str, error=RestorationArtifactValidationError)
+_optional_string = partial(optional_str, error=RestorationArtifactValidationError)
+_finite_number = partial(finite, error=RestorationArtifactValidationError)
+_non_negative_int = partial(non_negative_int, error=RestorationArtifactValidationError)
+_positive_int = partial(positive_int, error=RestorationArtifactValidationError)
+_boolean = partial(boolean, error=RestorationArtifactValidationError)
+_sha256 = partial(sha256_digest, error=RestorationArtifactValidationError)
+_utc_timestamp = partial(utc_timestamp_text, error=RestorationArtifactValidationError)
+_enum_value = partial(enum_member, error=RestorationArtifactValidationError)
 
 
 def _interval(value: object, *, field_name: str) -> CanonicalInterval:
@@ -220,31 +138,10 @@ def _interval(value: object, *, field_name: str) -> CanonicalInterval:
         raise RestorationArtifactValidationError(f"{field_name}: {exc}") from exc
 
 
-def _enum_value(enum_type: type[Enum], value: object, *, field_name: str) -> Any:
-    try:
-        return enum_type(value)
-    except (TypeError, ValueError) as exc:
-        allowed = ", ".join(str(member.value) for member in enum_type)
-        raise RestorationArtifactValidationError(
-            f"{field_name} must be one of: {allowed}"
-        ) from exc
-
-
 def canonical_restoration_json_bytes(value: object) -> bytes:
     """Encode canonical finite JSON for restoration identities."""
 
-    try:
-        return json.dumps(
-            _thaw(value),
-            allow_nan=False,
-            ensure_ascii=False,
-            separators=(",", ":"),
-            sort_keys=True,
-        ).encode("utf-8")
-    except (TypeError, ValueError) as exc:
-        raise RestorationArtifactValidationError(
-            f"value is not canonical finite JSON: {exc}"
-        ) from exc
+    return canonical_json_bytes(value, error=RestorationArtifactValidationError)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1227,21 +1124,7 @@ def load_restoration_market_artifact(
 
 
 def _manifest_bytes(artifact: RestorationMarketArtifact) -> bytes:
-    try:
-        return (
-            json.dumps(
-                artifact.to_dict(),
-                allow_nan=False,
-                ensure_ascii=False,
-                indent=2,
-                sort_keys=True,
-            )
-            + "\n"
-        ).encode("utf-8")
-    except (TypeError, ValueError) as exc:
-        raise RestorationArtifactValidationError(
-            f"restoration artifact cannot be serialized as finite JSON: {exc}"
-        ) from exc
+    return json_document_bytes(artifact.to_dict(), error=RestorationArtifactValidationError)
 
 
 def write_restoration_market_artifact(
@@ -1282,38 +1165,16 @@ def write_restoration_market_artifact(
                 "immutable existing restoration artifact differs from requested bytes"
             )
         return output_path
-    descriptor = -1
-    temporary_path: Path | None = None
     try:
-        descriptor, temporary_name = tempfile.mkstemp(
-            prefix=f".{output_path.name}.", suffix=".tmp", dir=destination
-        )
-        temporary_path = Path(temporary_name)
-        with os.fdopen(descriptor, "wb") as stream:
-            descriptor = -1
-            stream.write(desired_bytes)
-            stream.flush()
-            os.fsync(stream.fileno())
-        if output_path.exists():
-            raise RestorationArtifactIntegrityError(
-                "immutable restoration artifact appeared during publication"
-            )
-        os.replace(temporary_path, output_path)
-        temporary_path = None
-    except RestorationArtifactIntegrityError:
-        raise
+        write_bytes_atomically(output_path, desired_bytes, fail_if_exists=True)
+    except FileExistsError as exc:
+        raise RestorationArtifactIntegrityError(
+            "immutable restoration artifact appeared during publication"
+        ) from exc
     except OSError as exc:
         raise RestorationArtifactPublicationError(
             f"atomic restoration artifact publication failed: {output_path}"
         ) from exc
-    finally:
-        if descriptor >= 0:
-            os.close(descriptor)
-        if temporary_path is not None:
-            try:
-                temporary_path.unlink(missing_ok=True)
-            except OSError:
-                pass
     return output_path
 
 
