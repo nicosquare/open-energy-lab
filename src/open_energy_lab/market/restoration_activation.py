@@ -4,12 +4,23 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from functools import partial
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 import hashlib
-import math
-import re
 from typing import Any
+
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.time import format_utc, utc_timestamp_text
+from open_energy_lab.core.validation import (
+    enum_member,
+    finite,
+    mapping,
+    non_empty_str,
+    require_fields,
+    sequence,
+    sha256_digest,
+)
 
 from .restoration_artifact import canonical_restoration_json_bytes
 from .time import (
@@ -30,7 +41,6 @@ RESTORATION_SIGN_CONVENTION = "positive_charge_negative_discharge"
 MFRR_EVENTS_SCHEMA_VERSION = "oel.restoration.mfrr-events.v1"
 SUPPORTED_MFRR_EVENTS_SCHEMA_VERSIONS = (MFRR_EVENTS_SCHEMA_VERSION,)
 MFRR_EVENT_SHAPE_SEMANTICS = "delay_linear_ramp_hold_linear_ramp"
-_SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 _TOLERANCE = 1e-6
 
 
@@ -63,7 +73,7 @@ class RestorationSourceKind(str, Enum):
     DERIVED_SIMULATION = "DERIVED_SIMULATION"
 
 
-class RestorationActivationValidationError(ValueError):
+class RestorationActivationValidationError(ValidationError):
     """Raised when a restoration activation or mapping contract is invalid."""
 
 
@@ -71,87 +81,14 @@ class RestorationActivationIntegrityError(RestorationActivationValidationError):
     """Raised when a persisted activation identity does not verify."""
 
 
-def _mapping(value: object, *, field_name: str) -> dict[str, Any]:
-    if not isinstance(value, Mapping):
-        raise RestorationActivationValidationError(
-            f"{field_name} must be a mapping"
-        )
-    return {str(key): inner for key, inner in value.items()}
-
-
-def _sequence(value: object, *, field_name: str) -> list[Any]:
-    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
-        raise RestorationActivationValidationError(
-            f"{field_name} must be a sequence"
-        )
-    return list(value)
-
-
-def _required(
-    payload: Mapping[str, Any], names: Sequence[str], *, field_name: str
-) -> None:
-    missing = [name for name in names if name not in payload]
-    if missing:
-        raise RestorationActivationValidationError(
-            f"{field_name} is missing required fields: {', '.join(missing)}"
-        )
-
-
-def _non_empty(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value:
-        raise RestorationActivationValidationError(
-            f"{field_name} must be a non-empty string"
-        )
-    return value
-
-
-def _finite(value: object, *, field_name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise RestorationActivationValidationError(
-            f"{field_name} must be a finite fixed number"
-        )
-    normalized = float(value)
-    if not math.isfinite(normalized):
-        raise RestorationActivationValidationError(f"{field_name} must be finite")
-    return normalized
-
-
-def _sha256(value: object, *, field_name: str) -> str:
-    normalized = _non_empty(value, field_name=field_name)
-    if _SHA256_PATTERN.fullmatch(normalized) is None:
-        raise RestorationActivationValidationError(
-            f"{field_name} must be a lowercase SHA-256 digest"
-        )
-    return normalized
-
-
-def _utc_timestamp(value: object, *, field_name: str) -> str:
-    normalized = _non_empty(value, field_name=field_name)
-    try:
-        parsed = datetime.fromisoformat(normalized.replace("Z", "+00:00"))
-    except ValueError as exc:
-        raise RestorationActivationValidationError(
-            f"{field_name} must be an ISO 8601 UTC timestamp"
-        ) from exc
-    if (
-        parsed.tzinfo is None
-        or parsed.utcoffset() is None
-        or parsed.utcoffset().total_seconds() != 0
-    ):
-        raise RestorationActivationValidationError(
-            f"{field_name} must be an aware UTC timestamp"
-        )
-    return parsed.astimezone(UTC).isoformat().replace("+00:00", "Z")
-
-
-def _enum(enum_type: type[Enum], value: object, *, field_name: str) -> Any:
-    try:
-        return enum_type(value)
-    except (TypeError, ValueError) as exc:
-        allowed = ", ".join(str(item.value) for item in enum_type)
-        raise RestorationActivationValidationError(
-            f"{field_name} must be one of: {allowed}"
-        ) from exc
+_mapping = partial(mapping, error=RestorationActivationValidationError)
+_sequence = partial(sequence, error=RestorationActivationValidationError)
+_required = partial(require_fields, error=RestorationActivationValidationError)
+_non_empty = partial(non_empty_str, error=RestorationActivationValidationError)
+_finite = partial(finite, error=RestorationActivationValidationError)
+_sha256 = partial(sha256_digest, error=RestorationActivationValidationError)
+_utc_timestamp = partial(utc_timestamp_text, error=RestorationActivationValidationError)
+_enum = partial(enum_member, error=RestorationActivationValidationError)
 
 
 def _unique_digests(value: object, *, field_name: str, required: bool) -> tuple[str, ...]:
@@ -866,8 +803,7 @@ def _utc_datetime(value: object, *, field_name: str) -> datetime:
     return datetime.fromisoformat(normalized.replace("Z", "+00:00")).astimezone(UTC)
 
 
-def _format_utc(value: datetime) -> str:
-    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+_format_utc = format_utc
 
 
 @dataclass(frozen=True, slots=True)
