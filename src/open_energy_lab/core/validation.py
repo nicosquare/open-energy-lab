@@ -43,6 +43,34 @@ def finite(
     return normalized
 
 
+def positive(
+    value: object,
+    *,
+    field_name: str,
+    error: type[Exception] = ValidationError,
+) -> float:
+    """Return ``value`` as a finite float greater than zero."""
+
+    normalized = finite(value, field_name=field_name, error=error)
+    if normalized <= 0.0:
+        raise error(f"{field_name} must be positive")
+    return normalized
+
+
+def non_negative(
+    value: object,
+    *,
+    field_name: str,
+    error: type[Exception] = ValidationError,
+) -> float:
+    """Return ``value`` as a finite float greater than or equal to zero."""
+
+    normalized = finite(value, field_name=field_name, error=error)
+    if normalized < 0.0:
+        raise error(f"{field_name} must be non-negative")
+    return normalized
+
+
 def non_empty_str(
     value: object,
     *,
@@ -187,8 +215,10 @@ __all__ = [
     "finite",
     "mapping",
     "non_empty_str",
+    "non_negative",
     "non_negative_int",
     "optional_str",
+    "positive",
     "positive_int",
     "require_fields",
     "sequence",

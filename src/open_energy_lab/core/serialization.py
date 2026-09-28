@@ -15,13 +15,19 @@ from typing import Any
 from .errors import ValidationError
 
 
-def freeze(value: Any) -> Any:
-    """Recursively turn mappings into read-only proxies and lists into tuples."""
+def freeze(value: Any, *, sort_keys: bool = False) -> Any:
+    """Recursively turn mappings into read-only proxies and lists into tuples.
+
+    With ``sort_keys`` every mapping is rebuilt in sorted key order.
+    """
 
     if isinstance(value, Mapping):
-        return MappingProxyType({str(key): freeze(inner) for key, inner in value.items()})
+        items = sorted(value.items()) if sort_keys else value.items()
+        return MappingProxyType(
+            {str(key): freeze(inner, sort_keys=sort_keys) for key, inner in items}
+        )
     if isinstance(value, (list, tuple)):
-        return tuple(freeze(inner) for inner in value)
+        return tuple(freeze(inner, sort_keys=sort_keys) for inner in value)
     return value
 
 
