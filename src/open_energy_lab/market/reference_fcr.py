@@ -22,7 +22,14 @@ from typing import Any
 
 from open_energy_lab.core.errors import ValidationError
 from open_energy_lab.core.serialization import canonical_json_bytes, fingerprint, freeze, thaw
-from open_energy_lab.core.validation import finite, mapping, non_empty_str, sequence, sha256_digest
+from open_energy_lab.core.validation import (
+    finite,
+    integer,
+    mapping,
+    non_empty_str,
+    sequence,
+    sha256_digest,
+)
 from open_energy_lab.market.activation import (
     ActivationImportRequest,
     RegulationActivationTrace,
@@ -77,23 +84,10 @@ class ExternalReferenceDataError(ReferenceFCRValidationError):
 
 _non_empty = partial(non_empty_str, error=ReferenceFCRValidationError, strip=True)
 _finite = partial(finite, error=ReferenceFCRValidationError)
-
-
-def _integer(value: object, *, field_name: str, minimum: int = 0) -> int:
-    if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
-        raise ReferenceFCRValidationError(
-            f"{field_name} must be an integer greater than or equal to {minimum}"
-        )
-    return value
-
-
+_integer = partial(integer, error=ReferenceFCRValidationError, minimum=0)
 _mapping = partial(mapping, error=ReferenceFCRValidationError)
 _sequence = partial(sequence, error=ReferenceFCRValidationError)
-
-
 _freeze = partial(freeze, sort_keys=True)
-
-
 _thaw = thaw
 
 
