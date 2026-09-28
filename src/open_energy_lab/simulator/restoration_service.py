@@ -6,12 +6,21 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import Enum
-import hashlib
+from functools import partial
 import math
-import re
 from types import MappingProxyType
-from typing import Any
 
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.serialization import fingerprint, thaw
+from open_energy_lab.core.validation import (
+    enum_member,
+    finite,
+    mapping,
+    non_empty_str,
+    non_negative,
+    positive,
+    sha256_digest,
+)
 from open_energy_lab.control.restoration_service import (
     DirectionalCapacitySchedule,
     RestorationCapability,
@@ -24,9 +33,6 @@ from open_energy_lab.market.restoration_activation import (
     MFRRActivationSequence,
     RestorationDirection,
     RestorationProduct,
-)
-from open_energy_lab.market.restoration_artifact import (
-    canonical_restoration_json_bytes,
 )
 from open_energy_lab.market.time import (
     CanonicalInterval,
@@ -54,7 +60,6 @@ MFRR_AGGREGATE_PERFORMANCE_SCHEMA_VERSION = (
     "oel.restoration.mfrr-aggregate-performance.v1"
 )
 DEFAULT_RESTORATION_REPLAY_TOLERANCE = 1e-6
-_SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 RESTORATION_CAUSE_ORDER = (
     "commitment_limit",
@@ -79,50 +84,17 @@ class RestorationReplayInputKind(str, Enum):
     MFRR_EVENT_SEQUENCE = "MFRR_EVENT_SEQUENCE"
 
 
-class RestorationReplayValidationError(ValueError):
+class RestorationReplayValidationError(ValidationError):
     """Raised before replay when shared product or physics inputs are invalid."""
 
 
-def _non_empty(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value:
-        raise RestorationReplayValidationError(
-            f"{field_name} must be a non-empty string"
-        )
-    return value
-
-
-def _finite(value: object, *, field_name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise RestorationReplayValidationError(f"{field_name} must be finite")
-    normalized = float(value)
-    if not math.isfinite(normalized):
-        raise RestorationReplayValidationError(f"{field_name} must be finite")
-    return normalized
-
-
-def _positive(value: object, *, field_name: str) -> float:
-    normalized = _finite(value, field_name=field_name)
-    if normalized <= 0:
-        raise RestorationReplayValidationError(f"{field_name} must be positive")
-    return normalized
-
-
-def _non_negative(value: object, *, field_name: str) -> float:
-    normalized = _finite(value, field_name=field_name)
-    if normalized < 0:
-        raise RestorationReplayValidationError(
-            f"{field_name} must be non-negative"
-        )
-    return normalized
-
-
-def _product(value: object) -> RestorationProduct:
-    try:
-        return RestorationProduct(value)
-    except (TypeError, ValueError) as exc:
-        raise RestorationReplayValidationError(
-            "product must be exactly AFRR or MFRR"
-        ) from exc
+_non_empty = partial(non_empty_str, error=RestorationReplayValidationError)
+_finite = partial(finite, error=RestorationReplayValidationError)
+_positive = partial(positive, error=RestorationReplayValidationError)
+_non_negative = partial(non_negative, error=RestorationReplayValidationError)
+_product = partial(
+    enum_member, RestorationProduct, field_name="product", error=RestorationReplayValidationError
+)
 
 
 def _input_kind(value: object) -> RestorationReplayInputKind:
@@ -134,38 +106,10 @@ def _input_kind(value: object) -> RestorationReplayInputKind:
         ) from exc
 
 
-def _sha256(value: object, *, field_name: str) -> str:
-    normalized = _non_empty(value, field_name=field_name)
-    if _SHA256_PATTERN.fullmatch(normalized) is None:
-        raise RestorationReplayValidationError(
-            f"{field_name} must be a lowercase SHA-256 digest"
-        )
-    return normalized
-
-
-def _mapping(value: object, *, field_name: str) -> dict[str, Any]:
-    if not isinstance(value, Mapping):
-        raise RestorationReplayValidationError(f"{field_name} must be a mapping")
-    return {str(key): inner for key, inner in value.items()}
-
-
-def _plain(value: Any) -> Any:
-    if isinstance(value, Enum):
-        return value.value
-    if isinstance(value, Mapping):
-        return {str(key): _plain(inner) for key, inner in value.items()}
-    if isinstance(value, tuple):
-        return [_plain(inner) for inner in value]
-    return value
-
-
-def _fingerprint(payload: object) -> str:
-    try:
-        return hashlib.sha256(
-            canonical_restoration_json_bytes(_plain(payload))
-        ).hexdigest()
-    except ValueError as exc:
-        raise RestorationReplayValidationError(str(exc)) from exc
+_sha256 = partial(sha256_digest, error=RestorationReplayValidationError)
+_mapping = partial(mapping, error=RestorationReplayValidationError)
+_plain = thaw
+_fingerprint = partial(fingerprint, error=RestorationReplayValidationError)
 
 
 def _ordered_causes(causes: Sequence[str]) -> tuple[str, ...]:
@@ -175,20 +119,6 @@ def _ordered_causes(causes: Sequence[str]) -> tuple[str, ...]:
             f"unknown restoration cause: {unknown[0]}"
         )
     return tuple(sorted(set(causes), key=_CAUSE_INDEX.__getitem__))
-
-
-def _battery_payload(battery: BatteryComponent) -> dict[str, object]:
-    return {
-        "name": battery.name,
-        "capacity_kwh": battery.capacity_kwh,
-        "max_charge_kw": battery.max_charge_kw,
-        "max_discharge_kw": battery.max_discharge_kw,
-        "charge_efficiency": battery.charge_efficiency,
-        "discharge_efficiency": battery.discharge_efficiency,
-        "initial_soc": battery.initial_soc,
-        "min_soc": battery.min_soc,
-        "max_soc": battery.max_soc,
-    }
 
 
 def _state_payload(state: BatteryState) -> dict[str, object]:
@@ -395,7 +325,7 @@ def build_restoration_replay_request_core(
         ),
         "product": normalized_product.value,
         "activation_input_kind": kind.value,
-        "battery": _battery_payload(battery),
+        "battery": battery.to_dict(),
         "initial_state": _state_payload(initial_state),
         "capability_fingerprint": capability.capability_fingerprint,
         "commitments_fingerprint": commitments.schedule_fingerprint,

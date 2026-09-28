@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 
+from ._family_summary import (
+    bool_series,
+    lookup,
+    lookup_optional,
+    string_series,
+    summary_bucket,
+    validated_summary_fields,
+)
 from .demand import CoolingServiceConfiguration, derive_local_cooling_electric_kw
 from .load import CoolingServiceBalance, LoadComponent
 from .objective import evaluate_district_cooling_settlement
@@ -81,7 +89,9 @@ def evaluate_demand_family(
 ) -> DemandFamilyEvaluationResult:
     """Evaluate one sampled weather-and-demand family against a deterministic simulator base."""
 
-    summary_fields = _validated_summary_fields(request.summary_output_fields)
+    summary_fields = validated_summary_fields(
+        request.summary_output_fields, supported=SUPPORTED_SUMMARY_OUTPUT_FIELDS
+    )
     _validate_request(request)
 
     weather_family = request.weather_family
@@ -110,7 +120,7 @@ def evaluate_demand_family(
         ),
         scenario_results=scenario_results,
         summary_statistics={
-            field_name: _summary_bucket(scenario_results, field_name)
+            field_name: summary_bucket(scenario_results, field_name)
             for field_name in summary_fields
         },
         supported_summary_fields=SUPPORTED_SUMMARY_OUTPUT_FIELDS,
@@ -206,21 +216,6 @@ def _validate_request(request: DemandFamilyEvaluationRequest) -> None:
     blackout_traces = getattr(weather_family, "blackout_traces", ())
     if blackout_traces and len(blackout_traces) != weather_count:
         raise ValueError("weather family blackout_traces length must match scenario_count")
-
-
-def _validated_summary_fields(summary_output_fields: Sequence[str]) -> tuple[str, ...]:
-    if not summary_output_fields:
-        return SUPPORTED_SUMMARY_OUTPUT_FIELDS
-    normalized = tuple(dict.fromkeys(str(field_name) for field_name in summary_output_fields))
-    unsupported = [
-        field_name for field_name in normalized if field_name not in SUPPORTED_SUMMARY_OUTPUT_FIELDS
-    ]
-    if unsupported:
-        raise ValueError(
-            "summary_output_fields must be limited to the supported simulator fields: "
-            + ", ".join(unsupported)
-        )
-    return normalized
 
 
 def _evaluate_sampled_trace(
@@ -397,118 +392,19 @@ def _blackout_grid_availability(family: object) -> dict[int, tuple[bool, ...]]:
     family_num_steps = int(getattr(family, "num_steps"))
     blackout_by_scenario: dict[int, tuple[bool, ...]] = {}
     for blackout_trace in blackout_traces:
-        scenario_index = int(_lookup(blackout_trace, "scenario_index"))
+        scenario_index = int(lookup(blackout_trace, "scenario_index"))
         if scenario_index in blackout_by_scenario:
             raise ValueError("weather family blackout trace scenario_index values must be unique")
-        blackout_by_scenario[scenario_index] = _bool_series(
-            _lookup(blackout_trace, "grid_available"),
+        blackout_by_scenario[scenario_index] = bool_series(
+            lookup(blackout_trace, "grid_available"),
             field_name="grid_available",
             expected_length=family_num_steps,
         )
-        interval_annotations = _lookup_optional(blackout_trace, "interval_annotations")
+        interval_annotations = lookup_optional(blackout_trace, "interval_annotations")
         if interval_annotations is not None:
-            _string_series(
+            string_series(
                 interval_annotations,
                 field_name="interval_annotations",
                 expected_length=family_num_steps,
             )
     return blackout_by_scenario
-
-
-def _summary_bucket(
-    scenario_results: Sequence[DemandScenarioEvaluationResult],
-    field_name: str,
-) -> dict[str, tuple[float, ...]]:
-    series_by_scenario = [getattr(result, field_name) for result in scenario_results]
-    if not series_by_scenario:
-        raise ValueError("scenario_results must not be empty")
-
-    per_step_values = [
-        [float(values[step_index]) for values in series_by_scenario]
-        for step_index in range(len(series_by_scenario[0]))
-    ]
-    return {
-        "min": _reduce_per_step(per_step_values, "min"),
-        "mean": _reduce_per_step(per_step_values, "mean"),
-        "max": _reduce_per_step(per_step_values, "max"),
-        "p05": _reduce_per_step(per_step_values, "5"),
-        "p50": _reduce_per_step(per_step_values, "50"),
-        "p95": _reduce_per_step(per_step_values, "95"),
-    }
-
-
-def _reduce_per_step(
-    per_step_values: Sequence[Sequence[float]],
-    statistic: str,
-) -> tuple[float, ...]:
-    reduced: list[float] = []
-    for step_values in per_step_values:
-        ordered = sorted(float(value) for value in step_values)
-        if statistic == "min":
-            reduced.append(ordered[0])
-        elif statistic == "mean":
-            reduced.append(sum(ordered) / len(ordered))
-        elif statistic == "max":
-            reduced.append(ordered[-1])
-        else:
-            reduced.append(_percentile(ordered, float(statistic)))
-    return tuple(reduced)
-
-
-def _percentile(sorted_values: Sequence[float], percentile: float) -> float:
-    if len(sorted_values) == 1:
-        return float(sorted_values[0])
-
-    rank = (len(sorted_values) - 1) * (percentile / 100.0)
-    lower_index = int(rank)
-    upper_index = min(lower_index + 1, len(sorted_values) - 1)
-    fraction = rank - lower_index
-    lower_value = float(sorted_values[lower_index])
-    upper_value = float(sorted_values[upper_index])
-    return lower_value + ((upper_value - lower_value) * fraction)
-
-
-def _lookup(source: object, field_name: str) -> object:
-    if isinstance(source, Mapping):
-        if field_name not in source:
-            raise ValueError(f"blackout trace is missing {field_name!r}")
-        return source[field_name]
-    if not hasattr(source, field_name):
-        raise ValueError(f"blackout trace is missing {field_name!r}")
-    return getattr(source, field_name)
-
-
-def _lookup_optional(source: object, field_name: str) -> object | None:
-    if isinstance(source, Mapping):
-        return source.get(field_name)
-    return getattr(source, field_name, None)
-
-
-def _bool_series(
-    value: object,
-    *,
-    field_name: str,
-    expected_length: int,
-) -> tuple[bool, ...]:
-    if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)):
-        raise TypeError(f"{field_name} must be a boolean sequence")
-    if any(not isinstance(item, bool) for item in value):
-        raise TypeError(f"{field_name} values must be booleans")
-    series = tuple(value)
-    if len(series) != expected_length:
-        raise ValueError(f"{field_name} length must match the weather family horizon")
-    return series
-
-
-def _string_series(
-    value: object,
-    *,
-    field_name: str,
-    expected_length: int,
-) -> tuple[str, ...]:
-    if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)):
-        raise TypeError(f"{field_name} must be a string sequence")
-    series = tuple(str(item) for item in value)
-    if len(series) != expected_length:
-        raise ValueError(f"{field_name} length must match the weather family horizon")
-    return series

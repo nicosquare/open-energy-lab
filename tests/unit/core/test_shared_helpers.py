@@ -26,7 +26,9 @@ from open_energy_lab.core.validation import (
     finite,
     mapping,
     non_empty_str,
+    non_negative,
     non_negative_int,
+    positive,
     positive_int,
     require_fields,
     sequence,
@@ -59,6 +61,14 @@ def test_finite_normalizes_negative_zero_only_on_request() -> None:
     assert math.copysign(1.0, finite(-0.0, field_name="x")) == -1.0
     assert math.copysign(1.0, finite(-0.0, field_name="x", normalize_zero=True)) == 1.0
     assert finite(3, field_name="x") == 3.0
+
+
+def test_signed_float_checks() -> None:
+    assert positive(2, field_name="x") == 2.0
+    assert non_negative(0, field_name="x") == 0.0
+    for check, value in ((positive, 0.0), (positive, -1), (non_negative, -0.5), (non_negative, True)):
+        with pytest.raises(ValidationError):
+            check(value, field_name="x")
 
 
 def test_non_empty_str_strip_option() -> None:
@@ -103,6 +113,9 @@ def test_freeze_thaw_round_trip() -> None:
     assert frozen["a"][1]["b"] == (2, 3)
     assert thaw(frozen) == {"a": [1, {"b": [2, 3]}]}
     assert thaw({"c": Color.RED}) == {"c": "red"}
+    assert list(freeze({"b": 1, "a": {"d": 2, "c": 3}}, sort_keys=True)) == ["a", "b"]
+    assert list(freeze({"b": 1, "a": {"d": 2, "c": 3}}, sort_keys=True)["a"]) == ["c", "d"]
+    assert list(freeze({"b": 1, "a": 2})) == ["b", "a"]
 
 
 def test_canonical_json_is_compact_sorted_and_finite() -> None:

@@ -5,19 +5,23 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
-import hashlib
-import math
-import re
+from functools import partial
 from types import MappingProxyType
-from typing import Any
 
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.serialization import fingerprint, thaw
+from open_energy_lab.core.validation import (
+    enum_member,
+    finite,
+    non_empty_str,
+    non_negative,
+    positive,
+    sha256_digest,
+)
 from open_energy_lab.market.restoration_activation import (
     MFRRActivationKind,
     RestorationDirection,
     RestorationProduct,
-)
-from open_energy_lab.market.restoration_artifact import (
-    canonical_restoration_json_bytes,
 )
 from open_energy_lab.market.time import CanonicalInterval
 
@@ -35,10 +39,9 @@ THROUGHPUT_DEGRADATION_RULE_SCHEMA_VERSION = (
     "oel.restoration.throughput-degradation-rule.v1"
 )
 DEFAULT_RESTORATION_SETTLEMENT_TOLERANCE = 1e-6
-_SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
-class RestorationSettlementValidationError(ValueError):
+class RestorationSettlementValidationError(ValidationError):
     """Raised when a settlement entity itself is malformed."""
 
 
@@ -61,37 +64,10 @@ class SettlementPriceState(str, Enum):
     AMBIGUOUS = "AMBIGUOUS"
 
 
-def _non_empty(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise RestorationSettlementValidationError(
-            f"{field_name} must be a non-empty string"
-        )
-    return value
-
-
-def _finite(value: object, *, field_name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise RestorationSettlementValidationError(f"{field_name} must be finite")
-    normalized = float(value)
-    if not math.isfinite(normalized):
-        raise RestorationSettlementValidationError(f"{field_name} must be finite")
-    return normalized
-
-
-def _positive(value: object, *, field_name: str) -> float:
-    normalized = _finite(value, field_name=field_name)
-    if normalized <= 0.0:
-        raise RestorationSettlementValidationError(f"{field_name} must be positive")
-    return normalized
-
-
-def _non_negative(value: object, *, field_name: str) -> float:
-    normalized = _finite(value, field_name=field_name)
-    if normalized < 0.0:
-        raise RestorationSettlementValidationError(
-            f"{field_name} must be non-negative"
-        )
-    return normalized
+_non_empty = partial(non_empty_str, error=RestorationSettlementValidationError, strip=True)
+_finite = partial(finite, error=RestorationSettlementValidationError)
+_positive = partial(positive, error=RestorationSettlementValidationError)
+_non_negative = partial(non_negative, error=RestorationSettlementValidationError)
 
 
 def _interval(value: object, *, field_name: str) -> CanonicalInterval:
@@ -102,13 +78,9 @@ def _interval(value: object, *, field_name: str) -> CanonicalInterval:
     return value
 
 
-def _product(value: object) -> RestorationProduct:
-    try:
-        return RestorationProduct(value)
-    except (TypeError, ValueError) as exc:
-        raise RestorationSettlementValidationError(
-            "product must be exactly AFRR or MFRR"
-        ) from exc
+_product = partial(
+    enum_member, RestorationProduct, field_name="product", error=RestorationSettlementValidationError
+)
 
 
 def _direction(value: object) -> RestorationDirection:
@@ -159,32 +131,9 @@ def _normalized_price(
     return None
 
 
-def _sha256(value: object, *, field_name: str) -> str:
-    normalized = _non_empty(value, field_name=field_name)
-    if _SHA256_PATTERN.fullmatch(normalized) is None:
-        raise RestorationSettlementValidationError(
-            f"{field_name} must be a lowercase SHA-256 digest"
-        )
-    return normalized
-
-
-def _plain(value: Any) -> Any:
-    if isinstance(value, Enum):
-        return value.value
-    if isinstance(value, Mapping):
-        return {str(key): _plain(inner) for key, inner in value.items()}
-    if isinstance(value, tuple):
-        return [_plain(inner) for inner in value]
-    return value
-
-
-def _fingerprint(payload: object) -> str:
-    try:
-        return hashlib.sha256(
-            canonical_restoration_json_bytes(_plain(payload))
-        ).hexdigest()
-    except ValueError as exc:
-        raise RestorationSettlementValidationError(str(exc)) from exc
+_sha256 = partial(sha256_digest, error=RestorationSettlementValidationError)
+_plain = thaw
+_fingerprint = partial(fingerprint, error=RestorationSettlementValidationError)
 
 
 def _covers(coverage: CanonicalInterval, target: CanonicalInterval) -> bool:

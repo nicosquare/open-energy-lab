@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from functools import partial
 import hashlib
-import math
 from typing import TYPE_CHECKING
 
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.validation import finite, non_empty_str
 from open_energy_lab.market.time import CanonicalInterval
 
 if TYPE_CHECKING:
@@ -18,23 +20,12 @@ if TYPE_CHECKING:
     from .stacked_service import ReplaySample, StackedServiceReplayRequest
 
 
-class FCRSettlementValidationError(ValueError):
+class FCRSettlementValidationError(ValidationError):
     """Raised when explicit settlement inputs have incompatible semantics."""
 
 
-def _finite(value: object, *, field_name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise FCRSettlementValidationError(f"{field_name} must be finite")
-    normalized = float(value)
-    if not math.isfinite(normalized):
-        raise FCRSettlementValidationError(f"{field_name} must be finite")
-    return normalized
-
-
-def _non_empty(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise FCRSettlementValidationError(f"{field_name} must be a non-empty string")
-    return value
+_finite = partial(finite, error=FCRSettlementValidationError)
+_non_empty = partial(non_empty_str, error=FCRSettlementValidationError, strip=True)
 
 
 @dataclass(frozen=True, slots=True)
