@@ -4,13 +4,18 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-import hashlib
-import json
+from functools import partial
 import math
-import re
 from types import MappingProxyType
-from typing import Any
 
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.serialization import (
+    canonical_json_bytes as _canonical_json_bytes,
+    fingerprint,
+    freeze,
+    thaw,
+)
+from open_energy_lab.core.validation import finite, non_empty_str, sha256_digest
 from open_energy_lab.control.fcr_bid_plan import FixedFCRBidPlan
 from open_energy_lab.market.activation import RegulationActivationTrace
 from open_energy_lab.market.artifact import MarketDataArtifact
@@ -30,7 +35,6 @@ FCR_BID_EVALUATION_REPORT_SCHEMA_VERSION = "oel.fcr-bid-evaluation-report.v1"
 FEATURE_010_DEFAULT_SETTLEMENT_PROFILE = "feature-010-default-v1"
 REFERENCE_SETTLEMENT_PROFILE = "robust-storage-bidding-reference-settlement-v1"
 
-_SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 _CONTEXT_KINDS = {
     "accepted_plan",
     "feature_010_market_artifact",
@@ -51,72 +55,24 @@ _DIAGNOSTIC_PHASE_ORDER = {
 }
 
 
-class FCRBidEvaluationValidationError(ValueError):
+class FCRBidEvaluationValidationError(ValidationError):
     """Raised when evaluation inputs or immutable report shapes are invalid."""
 
 
-def _non_empty(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise FCRBidEvaluationValidationError(
-            f"{field_name} must be a non-empty string"
-        )
-    return value
-
-
-def _finite(value: object, *, field_name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise FCRBidEvaluationValidationError(f"{field_name} must be finite")
-    normalized = float(value)
-    if not math.isfinite(normalized):
-        raise FCRBidEvaluationValidationError(f"{field_name} must be finite")
-    return normalized
-
-
-def _sha256(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or _SHA256_PATTERN.fullmatch(value) is None:
-        raise FCRBidEvaluationValidationError(
-            f"{field_name} must be a lowercase SHA-256 fingerprint"
-        )
-    return value
-
-
-def _freeze(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        return MappingProxyType(
-            {str(key): _freeze(inner) for key, inner in sorted(value.items())}
-        )
-    if isinstance(value, (list, tuple)):
-        return tuple(_freeze(inner) for inner in value)
-    return value
-
-
-def _thaw(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        return {str(key): _thaw(inner) for key, inner in value.items()}
-    if isinstance(value, tuple):
-        return [_thaw(inner) for inner in value]
-    return value
+_non_empty = partial(non_empty_str, error=FCRBidEvaluationValidationError, strip=True)
+_finite = partial(finite, error=FCRBidEvaluationValidationError)
+_sha256 = partial(sha256_digest, error=FCRBidEvaluationValidationError)
+_freeze = partial(freeze, sort_keys=True)
+_thaw = thaw
 
 
 def canonical_json_bytes(value: object) -> bytes:
     """Return the compact, sorted, finite JSON representation used by fingerprints."""
 
-    try:
-        return json.dumps(
-            _thaw(value),
-            allow_nan=False,
-            ensure_ascii=False,
-            separators=(",", ":"),
-            sort_keys=True,
-        ).encode("utf-8")
-    except (TypeError, ValueError) as exc:
-        raise FCRBidEvaluationValidationError(
-            f"evaluation data must be finite canonical JSON: {exc}"
-        ) from exc
+    return _canonical_json_bytes(value, error=FCRBidEvaluationValidationError)
 
 
-def _fingerprint(value: object) -> str:
-    return hashlib.sha256(canonical_json_bytes(value)).hexdigest()
+_fingerprint = partial(fingerprint, error=FCRBidEvaluationValidationError)
 
 
 def _same_interval(left: CanonicalInterval, right: CanonicalInterval) -> bool:
