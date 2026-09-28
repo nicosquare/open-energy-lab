@@ -12,12 +12,14 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
+from functools import partial
 import json
 import math
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
+from open_energy_lab.core.validation import mapping
 from .robust_fcr_bidding import (
     DEPLOYABILITY_THRESHOLD,
     ROBUST_FCR_BIDDING_PROBLEM_VERSION,
@@ -79,10 +81,7 @@ _TOP_LEVEL_SECTIONS = {
 }
 
 
-def _mapping(value: object, *, field_name: str) -> dict[str, Any]:
-    if not isinstance(value, Mapping):
-        raise RobustFCRValidationError(f"{field_name} must be a JSON object")
-    return {str(key): inner for key, inner in value.items()}
+_mapping = partial(mapping, error=RobustFCRValidationError)
 
 
 def _exact_mapping(
