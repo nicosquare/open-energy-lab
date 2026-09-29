@@ -105,6 +105,7 @@ A2 full suite **plus `tests/parity`**: **2234 passed, 3 skipped, 6 failed**. Fou
   the A2 branch and `main`. It looks time-dependent. It could be a real bug
   (an unchanged refresh occasionally publishing a new artifact), so
   investigate it separately; it is out of scope for the consolidation PRs.
+  Tracked in [#23](https://github.com/nicosquare/open-energy-lab/issues/23).
 
 A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 baseline TPM failures, 2 skipped**.
 
