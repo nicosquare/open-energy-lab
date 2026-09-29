@@ -24,6 +24,7 @@ from open_energy_lab.core.time import format_utc, utc_datetime, utc_timestamp_te
 from open_energy_lab.core.validation import (
     enum_member,
     finite,
+    integer,
     mapping,
     non_empty_str,
     non_negative,
@@ -69,6 +70,19 @@ def test_signed_float_checks() -> None:
     for check, value in ((positive, 0.0), (positive, -1), (non_negative, -0.5), (non_negative, True)):
         with pytest.raises(ValidationError):
             check(value, field_name="x")
+
+
+def test_sign_checks_can_normalize_negative_zero() -> None:
+    assert math.copysign(1.0, non_negative(-0.0, field_name="x")) == -1.0
+    assert math.copysign(1.0, non_negative(-0.0, field_name="x", normalize_zero=True)) == 1.0
+
+
+def test_integer_minimum() -> None:
+    assert integer(-3, field_name="x") == -3
+    assert integer(2, field_name="x", minimum=2) == 2
+    for value, minimum in ((1, 2), (True, None), (2.0, None)):
+        with pytest.raises(ValidationError):
+            integer(value, field_name="x", minimum=minimum)
 
 
 def test_non_empty_str_strip_option() -> None:

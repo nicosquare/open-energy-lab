@@ -13,13 +13,15 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal, ROUND_HALF_EVEN
+from functools import partial
 import json
 import math
 from pathlib import Path
-import re
 from types import MappingProxyType
-from typing import Any
 
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.time import format_utc, utc_datetime
+from open_energy_lab.core.validation import finite, non_empty_str, positive, sha256_digest
 from .robust_fcr_bidding import (
     RobustFCRBatteryParameters,
     RobustFCRPriceInputs,
@@ -29,7 +31,6 @@ from .robust_fcr_bidding import (
     TerminalStoredEnergyRule,
     _deep_freeze,
     _fingerprint,
-    _sha256,
     _thaw,
 )
 
@@ -51,7 +52,6 @@ FAILURE_POLICY_COUPLED = "coupled-days-block-after-failure-v1"
 AGGREGATION_POLICY = "coverage-labelled-no-zero-fill-v1"
 RESUME_POLICY = "exact-semantic-evidence-v1"
 
-_SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 _PROFILE_IDS = (
     "script-11-relaxation-reset-midnight-v1",
     "script-12-restriction-reset-midnight-v1",
@@ -141,49 +141,16 @@ _DESCRIPTOR_PROVENANCE_FORBIDDEN_TERMS = (
 )
 
 
-class RollingFCRValidationError(ValueError):
+class RollingFCRValidationError(ValidationError):
     """Raised before a rolling solve or replay when a contract is invalid."""
 
 
-def _non_empty(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise RollingFCRValidationError(f"{field_name} must be a non-empty string")
-    return value
-
-
-def _finite(value: object, *, field_name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise RollingFCRValidationError(f"{field_name} must be finite")
-    normalized = float(value)
-    if not math.isfinite(normalized):
-        raise RollingFCRValidationError(f"{field_name} must be finite")
-    return 0.0 if normalized == 0.0 else normalized
-
-
-def _positive(value: object, *, field_name: str) -> float:
-    normalized = _finite(value, field_name=field_name)
-    if normalized <= 0.0:
-        raise RollingFCRValidationError(f"{field_name} must be greater than zero")
-    return normalized
-
-
-def _utc(value: object, *, field_name: str) -> datetime:
-    if not isinstance(value, datetime) or value.tzinfo is None:
-        raise RollingFCRValidationError(f"{field_name} must be an aware UTC datetime")
-    if value.utcoffset() != timedelta(0):
-        raise RollingFCRValidationError(f"{field_name} must be an aware UTC datetime")
-    return value.astimezone(UTC)
-
-
-def _utc_text(value: datetime) -> str:
-    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
-
-
-def _sha(value: object, *, field_name: str) -> str:
-    try:
-        return _sha256(value, field_name=field_name)
-    except ValueError as exc:
-        raise RollingFCRValidationError(str(exc)) from exc
+_non_empty = partial(non_empty_str, error=RollingFCRValidationError, strip=True)
+_finite = partial(finite, error=RollingFCRValidationError, normalize_zero=True)
+_positive = partial(positive, error=RollingFCRValidationError, normalize_zero=True)
+_utc = partial(utc_datetime, error=RollingFCRValidationError)
+_utc_text = format_utc
+_sha = partial(sha256_digest, error=RollingFCRValidationError)
 
 
 def _string_tuple(value: Sequence[object], *, field_name: str) -> tuple[str, ...]:

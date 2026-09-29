@@ -48,10 +48,11 @@ def positive(
     *,
     field_name: str,
     error: type[Exception] = ValidationError,
+    normalize_zero: bool = False,
 ) -> float:
     """Return ``value`` as a finite float greater than zero."""
 
-    normalized = finite(value, field_name=field_name, error=error)
+    normalized = finite(value, field_name=field_name, error=error, normalize_zero=normalize_zero)
     if normalized <= 0.0:
         raise error(f"{field_name} must be positive")
     return normalized
@@ -62,10 +63,11 @@ def non_negative(
     *,
     field_name: str,
     error: type[Exception] = ValidationError,
+    normalize_zero: bool = False,
 ) -> float:
     """Return ``value`` as a finite float greater than or equal to zero."""
 
-    normalized = finite(value, field_name=field_name, error=error)
+    normalized = finite(value, field_name=field_name, error=error, normalize_zero=normalize_zero)
     if normalized < 0.0:
         raise error(f"{field_name} must be non-negative")
     return normalized
@@ -99,6 +101,22 @@ def optional_str(
     if value is None:
         return None
     return non_empty_str(value, field_name=field_name, error=error)
+
+
+def integer(
+    value: object,
+    *,
+    field_name: str,
+    error: type[Exception] = ValidationError,
+    minimum: int | None = None,
+) -> int:
+    """Return ``value`` if it is an ``int`` (not bool), optionally at least ``minimum``."""
+
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise error(f"{field_name} must be an integer")
+    if minimum is not None and value < minimum:
+        raise error(f"{field_name} must be greater than or equal to {minimum}")
+    return value
 
 
 def non_negative_int(
@@ -213,6 +231,7 @@ __all__ = [
     "boolean",
     "enum_member",
     "finite",
+    "integer",
     "mapping",
     "non_empty_str",
     "non_negative",

@@ -10,11 +10,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
+from functools import partial
 import math
 from types import MappingProxyType
 from typing import Any
 
+from open_energy_lab.core.time import format_utc, utc_datetime
+from open_energy_lab.core.validation import finite, non_empty_str, sha256_digest
 from .fcr_rolling_backtest import (
     RollingFCRExperimentProfile,
     RollingFCRValidationError,
@@ -37,7 +40,6 @@ from .robust_fcr_bidding import (
     _deep_freeze,
     _fingerprint,
     _normalize_maximization_gap,
-    _sha256,
     _thaw,
 )
 
@@ -63,38 +65,11 @@ _BIDDER_FORBIDDEN_TERMS = (
 )
 
 
-def _non_empty(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise RollingFCRValidationError(f"{field_name} must be a non-empty string")
-    return value
-
-
-def _finite(value: object, *, field_name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise RollingFCRValidationError(f"{field_name} must be finite")
-    normalized = float(value)
-    if not math.isfinite(normalized):
-        raise RollingFCRValidationError(f"{field_name} must be finite")
-    return 0.0 if normalized == 0.0 else normalized
-
-
-def _utc(value: object, *, field_name: str) -> datetime:
-    if not isinstance(value, datetime) or value.tzinfo is None:
-        raise RollingFCRValidationError(f"{field_name} must be an aware UTC datetime")
-    if value.utcoffset() != timedelta(0):
-        raise RollingFCRValidationError(f"{field_name} must be an aware UTC datetime")
-    return value.astimezone(UTC)
-
-
-def _utc_text(value: datetime) -> str:
-    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
-
-
-def _sha(value: object, *, field_name: str) -> str:
-    try:
-        return _sha256(value, field_name=field_name)
-    except ValueError as exc:
-        raise RollingFCRValidationError(str(exc)) from exc
+_non_empty = partial(non_empty_str, error=RollingFCRValidationError, strip=True)
+_finite = partial(finite, error=RollingFCRValidationError, normalize_zero=True)
+_utc = partial(utc_datetime, error=RollingFCRValidationError)
+_utc_text = format_utc
+_sha = partial(sha256_digest, error=RollingFCRValidationError)
 
 
 def _finite_tuple(

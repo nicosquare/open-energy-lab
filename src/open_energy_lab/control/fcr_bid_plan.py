@@ -9,14 +9,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
-import hashlib
-import json
-import math
-import re
+from datetime import datetime, timedelta
+from functools import partial
 from types import MappingProxyType
-from typing import Any
 
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.serialization import canonical_json_bytes, fingerprint, thaw
+from open_energy_lab.core.time import utc_datetime
+from open_energy_lab.core.validation import finite, non_empty_str, sha256_digest
 from open_energy_lab.simulator.stacked_service import (
     EnergyBaselineSchedule,
     FCRCapacitySchedule,
@@ -26,7 +26,6 @@ from open_energy_lab.simulator.stacked_service import (
 
 
 FIXED_FCR_BID_PLAN_SEMANTICS_VERSION = "oel.fixed-fcr-bid-plan.v1"
-_SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 _PRODUCER_KINDS = {"manual", "heuristic", "robust", "tpm", "other"}
 _SOLVE_STATUSES = {
     "not_applicable",
@@ -45,7 +44,7 @@ _EVALUATION_ONLY_LINEAGE_TERMS = (
 )
 
 
-class FCRBidPlanValidationError(ValueError):
+class FCRBidPlanValidationError(ValidationError):
     """Raised when a fixed plan violates the producer/evaluation boundary."""
 
 
@@ -69,62 +68,13 @@ class ReferenceScheduleMappingResult:
         }
 
 
-def _non_empty(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise FCRBidPlanValidationError(f"{field_name} must be a non-empty string")
-    return value
-
-
-def _finite(value: object, *, field_name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise FCRBidPlanValidationError(f"{field_name} must be finite")
-    normalized = float(value)
-    if not math.isfinite(normalized):
-        raise FCRBidPlanValidationError(f"{field_name} must be finite")
-    return normalized
-
-
-def _sha256(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or _SHA256_PATTERN.fullmatch(value) is None:
-        raise FCRBidPlanValidationError(
-            f"{field_name} must be a lowercase SHA-256 fingerprint"
-        )
-    return value
-
-
-def _utc(value: object, *, field_name: str) -> datetime:
-    if not isinstance(value, datetime):
-        raise FCRBidPlanValidationError(f"{field_name} must be an aware UTC datetime")
-    if value.tzinfo is None or value.utcoffset() != timedelta(0):
-        raise FCRBidPlanValidationError(f"{field_name} must be an aware UTC datetime")
-    return value.astimezone(UTC)
-
-
-def _thaw(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        return {str(key): _thaw(inner) for key, inner in value.items()}
-    if isinstance(value, tuple):
-        return [_thaw(inner) for inner in value]
-    return value
-
-
-def _canonical_json(value: object) -> bytes:
-    try:
-        return json.dumps(
-            _thaw(value),
-            allow_nan=False,
-            ensure_ascii=False,
-            separators=(",", ":"),
-            sort_keys=True,
-        ).encode("utf-8")
-    except (TypeError, ValueError) as exc:
-        raise FCRBidPlanValidationError(
-            f"plan data must be finite canonical JSON: {exc}"
-        ) from exc
-
-
-def _fingerprint(value: object) -> str:
-    return hashlib.sha256(_canonical_json(value)).hexdigest()
+_non_empty = partial(non_empty_str, error=FCRBidPlanValidationError, strip=True)
+_finite = partial(finite, error=FCRBidPlanValidationError)
+_sha256 = partial(sha256_digest, error=FCRBidPlanValidationError)
+_utc = partial(utc_datetime, error=FCRBidPlanValidationError)
+_thaw = thaw
+_canonical_json = partial(canonical_json_bytes, error=FCRBidPlanValidationError)
+_fingerprint = partial(fingerprint, error=FCRBidPlanValidationError)
 
 
 @dataclass(frozen=True, slots=True)

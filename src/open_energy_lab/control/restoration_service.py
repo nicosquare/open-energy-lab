@@ -5,17 +5,23 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
-import hashlib
-import math
+from functools import partial
 from types import MappingProxyType
 from typing import Any
 
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.serialization import fingerprint, freeze
+from open_energy_lab.core.validation import (
+    finite,
+    mapping,
+    non_empty_str,
+    non_negative,
+    positive,
+    sequence,
+)
 from open_energy_lab.market.restoration_activation import (
     RestorationDirection,
     RestorationProduct,
-)
-from open_energy_lab.market.restoration_artifact import (
-    canonical_restoration_json_bytes,
 )
 from open_energy_lab.market.time import (
     CanonicalInterval,
@@ -36,7 +42,7 @@ RESTORATION_BASELINE_BUNDLE_SCHEMA_VERSION = "oel.restoration.baseline-bundle.v1
 DEFAULT_RESTORATION_TOLERANCE = 1e-6
 
 
-class RestorationControlValidationError(ValueError):
+class RestorationControlValidationError(ValidationError):
     """Raised when restoration control inputs are incomplete or infeasible."""
 
 
@@ -56,37 +62,10 @@ class MFRRBaselineMode(str, Enum):
     DETERMINISTIC_HEADROOM = "DETERMINISTIC_HEADROOM"
 
 
-def _non_empty(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value:
-        raise RestorationControlValidationError(
-            f"{field_name} must be a non-empty string"
-        )
-    return value
-
-
-def _finite(value: object, *, field_name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise RestorationControlValidationError(f"{field_name} must be finite")
-    normalized = float(value)
-    if not math.isfinite(normalized):
-        raise RestorationControlValidationError(f"{field_name} must be finite")
-    return normalized
-
-
-def _non_negative(value: object, *, field_name: str) -> float:
-    normalized = _finite(value, field_name=field_name)
-    if normalized < 0:
-        raise RestorationControlValidationError(
-            f"{field_name} must be non-negative"
-        )
-    return normalized
-
-
-def _positive(value: object, *, field_name: str) -> float:
-    normalized = _finite(value, field_name=field_name)
-    if normalized <= 0:
-        raise RestorationControlValidationError(f"{field_name} must be positive")
-    return normalized
+_non_empty = partial(non_empty_str, error=RestorationControlValidationError)
+_finite = partial(finite, error=RestorationControlValidationError)
+_non_negative = partial(non_negative, error=RestorationControlValidationError)
+_positive = partial(positive, error=RestorationControlValidationError)
 
 
 def _product(value: object, *, field_name: str = "product") -> RestorationProduct:
@@ -115,26 +94,9 @@ def _interval(value: object, *, field_name: str) -> CanonicalInterval:
     return value
 
 
-def _mapping(value: object, *, field_name: str) -> dict[str, Any]:
-    if not isinstance(value, Mapping):
-        raise RestorationControlValidationError(f"{field_name} must be a mapping")
-    return {str(key): inner for key, inner in value.items()}
-
-
-def _sequence(value: object, *, field_name: str) -> list[Any]:
-    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
-        raise RestorationControlValidationError(f"{field_name} must be a sequence")
-    return list(value)
-
-
-def _freeze(value: Any) -> Any:
-    if isinstance(value, Mapping):
-        return MappingProxyType(
-            {str(key): _freeze(inner) for key, inner in value.items()}
-        )
-    if isinstance(value, (list, tuple)):
-        return tuple(_freeze(inner) for inner in value)
-    return value
+_mapping = partial(mapping, error=RestorationControlValidationError)
+_sequence = partial(sequence, error=RestorationControlValidationError)
+_freeze = freeze
 
 
 def _plain(value: Any) -> Any:
@@ -147,13 +109,7 @@ def _plain(value: Any) -> Any:
     return value
 
 
-def _fingerprint(payload: object) -> str:
-    try:
-        return hashlib.sha256(
-            canonical_restoration_json_bytes(_plain(payload))
-        ).hexdigest()
-    except ValueError as exc:
-        raise RestorationControlValidationError(str(exc)) from exc
+_fingerprint = partial(fingerprint, error=RestorationControlValidationError)
 
 
 @dataclass(frozen=True, slots=True)
@@ -645,20 +601,6 @@ class RestorationBaselineConfig:
     configuration_fingerprint: str
 
 
-def _battery_payload(battery: BatteryComponent) -> dict[str, object]:
-    return {
-        "name": battery.name,
-        "capacity_kwh": battery.capacity_kwh,
-        "max_charge_kw": battery.max_charge_kw,
-        "max_discharge_kw": battery.max_discharge_kw,
-        "charge_efficiency": battery.charge_efficiency,
-        "discharge_efficiency": battery.discharge_efficiency,
-        "initial_soc": battery.initial_soc,
-        "min_soc": battery.min_soc,
-        "max_soc": battery.max_soc,
-    }
-
-
 def _validate_headroom_and_energy(
     *,
     commitments: DirectionalCapacitySchedule,
@@ -833,7 +775,7 @@ def build_restoration_baseline_config(
         "resolution": normalized_resolution,
         "commitments_fingerprint": commitments.schedule_fingerprint,
         "baseline_fingerprint": baseline.schedule_fingerprint,
-        "battery": _battery_payload(battery),
+        "battery": battery.to_dict(),
         "capability_fingerprint": capability.capability_fingerprint,
         "parameters": _plain(frozen_parameters),
         "tolerance": normalized_tolerance,
@@ -1085,7 +1027,7 @@ def build_afrr_baseline_config(
         "resolution": normalized_resolution,
         "grid": [interval.to_dict() for interval in grid],
         "commitments_fingerprint": commitments.schedule_fingerprint,
-        "battery": _battery_payload(battery),
+        "battery": battery.to_dict(),
         "capability_fingerprint": capability.capability_fingerprint,
         "mode": normalized_mode.value,
         "fixed_power_kw": None if fixed_values is None else list(fixed_values),
@@ -1407,7 +1349,7 @@ def build_mfrr_baseline_config(
         "resolution": normalized_resolution,
         "grid": [interval.to_dict() for interval in grid],
         "commitments_fingerprint": commitments.schedule_fingerprint,
-        "battery": _battery_payload(battery),
+        "battery": battery.to_dict(),
         "capability_fingerprint": capability.capability_fingerprint,
         "mode": normalized_mode.value,
         "fixed_power_kw": None if fixed_values is None else list(fixed_values),

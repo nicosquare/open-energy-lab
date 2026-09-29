@@ -12,15 +12,16 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
-import hashlib
+from functools import partial
 import json
 import math
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
+from open_energy_lab.core.validation import finite, integer, non_negative
 from .fcr_rolling_backtest import (
     DeliveryDateRecordEnvelope,
     RollingFCRDayRevision,
@@ -131,32 +132,15 @@ def _enum(value: object, allowed: set[str] | frozenset[str], *, field_name: str)
     return result
 
 
-def _finite(value: object, *, field_name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise RollingFCRValidationError(f"{field_name} must be a finite number")
-    result = float(value)
-    if not math.isfinite(result):
-        raise RollingFCRValidationError(f"{field_name} must be a finite number")
-    return 0.0 if result == 0.0 else result
+_finite = partial(finite, error=RollingFCRValidationError, normalize_zero=True)
 
 
 def _optional_finite(value: object, *, field_name: str) -> float | None:
     return None if value is None else _finite(value, field_name=field_name)
 
 
-def _non_negative(value: object, *, field_name: str) -> float:
-    result = _finite(value, field_name=field_name)
-    if result < 0.0:
-        raise RollingFCRValidationError(f"{field_name} must be non-negative")
-    return result
-
-
-def _integer(value: object, *, field_name: str, minimum: int = 0) -> int:
-    if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
-        raise RollingFCRValidationError(
-            f"{field_name} must be an integer >= {minimum}"
-        )
-    return value
+_non_negative = partial(non_negative, error=RollingFCRValidationError, normalize_zero=True)
+_integer = partial(integer, error=RollingFCRValidationError, minimum=0)
 
 
 def _date(value: object, *, field_name: str) -> date:
@@ -169,8 +153,7 @@ def _date(value: object, *, field_name: str) -> date:
     return result
 
 
-def _sha(value: object, *, field_name: str) -> str:
-    return _sha256(value, field_name=field_name)
+_sha = _sha256
 
 
 def _finite_tuple(

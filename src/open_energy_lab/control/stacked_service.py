@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import hashlib
-import json
-import math
+from functools import partial
 from types import MappingProxyType
-from typing import Any
 
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.serialization import canonical_json_bytes, fingerprint
+from open_energy_lab.core.validation import finite, non_empty_str
 from open_energy_lab.core import ControllerContext, DispatchProposal
 from open_energy_lab.core.controller import BatteryStateSnapshot, PriceInput
 from open_energy_lab.market.artifact import MarketDataArtifact
@@ -24,23 +24,12 @@ from ._config import PriceThresholdConfig
 from .price_threshold import PriceThresholdController
 
 
-class StackedBaselineValidationError(ValueError):
+class StackedBaselineValidationError(ValidationError):
     """Raised when a deterministic baseline configuration is incompatible."""
 
 
-def _non_empty(value: object, *, field_name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise StackedBaselineValidationError(f"{field_name} must be a non-empty string")
-    return value
-
-
-def _finite(value: object, *, field_name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise StackedBaselineValidationError(f"{field_name} must be finite")
-    normalized = float(value)
-    if not math.isfinite(normalized):
-        raise StackedBaselineValidationError(f"{field_name} must be finite")
-    return normalized
+_non_empty = partial(non_empty_str, error=StackedBaselineValidationError, strip=True)
+_finite = partial(finite, error=StackedBaselineValidationError)
 
 
 def _validate_threshold_config(config: object) -> PriceThresholdConfig:
@@ -61,37 +50,8 @@ def _validate_threshold_config(config: object) -> PriceThresholdConfig:
     return config  # type: ignore[return-value]
 
 
-def _canonical_json(value: object) -> bytes:
-    try:
-        return json.dumps(
-            value,
-            allow_nan=False,
-            ensure_ascii=False,
-            separators=(",", ":"),
-            sort_keys=True,
-        ).encode("utf-8")
-    except (TypeError, ValueError) as exc:
-        raise StackedBaselineValidationError(
-            f"baseline configuration must be finite canonical JSON: {exc}"
-        ) from exc
-
-
-def _fingerprint(value: object) -> str:
-    return hashlib.sha256(_canonical_json(value)).hexdigest()
-
-
-def _battery_payload(battery: BatteryComponent) -> dict[str, object]:
-    return {
-        "name": battery.name,
-        "capacity_kwh": battery.capacity_kwh,
-        "max_charge_kw": battery.max_charge_kw,
-        "max_discharge_kw": battery.max_discharge_kw,
-        "charge_efficiency": battery.charge_efficiency,
-        "discharge_efficiency": battery.discharge_efficiency,
-        "initial_soc": battery.initial_soc,
-        "min_soc": battery.min_soc,
-        "max_soc": battery.max_soc,
-    }
+_canonical_json = partial(canonical_json_bytes, error=StackedBaselineValidationError)
+_fingerprint = partial(fingerprint, error=StackedBaselineValidationError)
 
 
 def _threshold_payload(config: PriceThresholdConfig) -> dict[str, object]:
@@ -299,7 +259,7 @@ def _bundle(
     fingerprint = _fingerprint(
         {
             "builder_kind": builder_kind,
-            "battery": _battery_payload(battery),
+            "battery": battery.to_dict(),
             "energy_schedule": energy_schedule.schedule_fingerprint,
             "fcr_schedule": fcr_schedule.schedule_fingerprint,
             "recovery_dispatch_kw": list(recovery_dispatch_kw),
@@ -383,7 +343,7 @@ def build_regulation_only_baseline(
     ) / (1.0 + efficiency_product)
     centered_battery = BatteryComponent(
         **{
-            **_battery_payload(battery),
+            **battery.to_dict(),
             "initial_soc": centered_kwh / battery.capacity_kwh,
         }
     )
