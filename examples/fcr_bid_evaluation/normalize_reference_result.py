@@ -17,7 +17,7 @@ import re
 import sys
 from typing import Any
 
-from open_energy_lab.market.reference_fcr import load_golden_reference_fixture
+from oel_validation.reference_fcr import load_golden_reference_fixture
 
 
 NORMALIZED_SCHEMA_VERSION = "oel.fcr-reference-normalized-result.v1"

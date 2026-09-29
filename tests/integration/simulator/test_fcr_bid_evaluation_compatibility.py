@@ -287,7 +287,7 @@ def test_static_headroom_failure_can_only_be_replayed_as_diagnostic() -> None:
 
 
 def test_saturated_run_marks_reference_parity_unavailable() -> None:
-    from open_energy_lab.market.reference_fcr import load_golden_reference_fixture
+    from oel_validation.reference_fcr import load_golden_reference_fixture
 
     fixture = load_golden_reference_fixture(
         "tests/fixtures/fcr_bid_evaluation/"

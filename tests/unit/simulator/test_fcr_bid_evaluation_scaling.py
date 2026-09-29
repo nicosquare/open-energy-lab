@@ -14,7 +14,8 @@ from open_energy_lab.market.activation import (
     ActivationImportRequest,
     import_regulation_activation_trace,
 )
-from open_energy_lab.market.reference_fcr import load_golden_reference_fixture
+from oel_validation.fcr_bid_evaluation import compare_reference_values
+from oel_validation.reference_fcr import load_golden_reference_fixture
 from open_energy_lab.simulator import fcr_bid_evaluation as evaluation
 from open_energy_lab.simulator.fcr_settlement import settle_reference_fcr_bid
 from open_energy_lab.simulator.stacked_service import (
@@ -175,7 +176,7 @@ def test_ordinary_day_stages_use_bounded_complete_iterations() -> None:
         physical_metrics,
         settlement,
     )
-    comparison = evaluation.compare_reference_values(
+    comparison = compare_reference_values(
         fixture=fixture,
         actual_values=actual_values,
         activation_trace=request.activation_trace,

@@ -93,8 +93,6 @@ def test_simulator_import_stays_lightweight() -> None:
         "FCRBidEvaluationValidationError",
         "FCRSegmentedEvaluationReport",
         "InvalidCommitmentDiagnosticReport",
-        "ReferenceComparisonReport",
-        "ReferenceFieldComparison",
         "FCRCommitmentInterval",
         "MultiRateTimeContract",
         "ReplayIntervalSummary",
@@ -112,9 +110,6 @@ def test_simulator_import_stays_lightweight() -> None:
         "build_fcr_capacity_schedule",
         "build_settled_evaluation_report",
         "build_validation_failed_evaluation_report",
-        "compare_reference_evaluation",
-        "compare_reference_values",
-        "recompute_reference_precision_bounds",
         "replay_invalid_fcr_bid_diagnostic",
         "replay_stacked_services",
         "replay_stacked_services_diagnostic",
@@ -312,7 +307,7 @@ def test_feature_012_evaluator_exports_are_lazy_and_exactly_owned() -> None:
         import open_energy_lab.simulator as module
 
         assert "open_energy_lab.simulator.fcr_bid_evaluation" not in sys.modules
-        assert "open_energy_lab.market.reference_fcr" not in sys.modules
+        assert "oel_validation.reference_fcr" not in sys.modules
         expected = {
             "ComponentAvailability",
             "DailyFCRBidEvaluationReport",
@@ -331,7 +326,7 @@ def test_feature_012_evaluator_exports_are_lazy_and_exactly_owned() -> None:
                 "open_energy_lab.simulator.fcr_bid_evaluation"
             )
         assert "open_energy_lab.simulator.fcr_bid_evaluation" in sys.modules
-        assert "open_energy_lab.market.reference_fcr" not in sys.modules
+        assert "oel_validation.reference_fcr" not in sys.modules
         """
     )
 

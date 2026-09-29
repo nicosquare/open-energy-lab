@@ -12,11 +12,13 @@ from examples.fcr_bid_evaluation.run_reference_parity import (
 )
 from open_energy_lab.control import (
     RobustFCRSolvePolicy,
-    build_robust_fcr_reference_problem,
-    load_robust_fcr_reference_fixture,
     solve_robust_fcr_bid,
 )
-from open_energy_lab.market.reference_fcr import (
+from oel_validation.robust_fcr_reference import (
+    build_robust_fcr_reference_problem,
+    load_robust_fcr_reference_fixture,
+)
+from oel_validation.reference_fcr import (
     load_golden_reference_fixture,
     load_reference_activation_trace,
 )

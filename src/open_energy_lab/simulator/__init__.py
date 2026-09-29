@@ -21,16 +21,11 @@ if TYPE_CHECKING:
         FCRBidEvaluationRequest,
         FCRBidEvaluationValidationError,
         InvalidCommitmentDiagnosticReport,
-        ReferenceComparisonReport,
-        ReferenceFieldComparison,
         build_accepted_plan_market_context,
         build_feature_010_market_context,
         build_settled_evaluation_report,
         build_validation_failed_evaluation_report,
-        compare_reference_evaluation,
-        compare_reference_values,
         evaluate_fixed_fcr_bid,
-        recompute_reference_precision_bounds,
         replay_invalid_fcr_bid_diagnostic,
     )
     from .fcr_rolling_evaluation import (
@@ -178,14 +173,6 @@ _EXPORT_MAP = {
         ".fcr_bid_evaluation",
         "InvalidCommitmentDiagnosticReport",
     ),
-    "ReferenceComparisonReport": (
-        ".fcr_bid_evaluation",
-        "ReferenceComparisonReport",
-    ),
-    "ReferenceFieldComparison": (
-        ".fcr_bid_evaluation",
-        "ReferenceFieldComparison",
-    ),
     "build_accepted_plan_market_context": (
         ".fcr_bid_evaluation",
         "build_accepted_plan_market_context",
@@ -202,21 +189,9 @@ _EXPORT_MAP = {
         ".fcr_bid_evaluation",
         "build_validation_failed_evaluation_report",
     ),
-    "compare_reference_evaluation": (
-        ".fcr_bid_evaluation",
-        "compare_reference_evaluation",
-    ),
-    "compare_reference_values": (
-        ".fcr_bid_evaluation",
-        "compare_reference_values",
-    ),
     "evaluate_fixed_fcr_bid": (
         ".fcr_bid_evaluation",
         "evaluate_fixed_fcr_bid",
-    ),
-    "recompute_reference_precision_bounds": (
-        ".fcr_bid_evaluation",
-        "recompute_reference_precision_bounds",
     ),
     "replay_invalid_fcr_bid_diagnostic": (
         ".fcr_bid_evaluation",
@@ -517,8 +492,6 @@ __all__ = [
     "FCRBidEvaluationValidationError",
     "FCRSegmentedEvaluationReport",
     "InvalidCommitmentDiagnosticReport",
-    "ReferenceComparisonReport",
-    "ReferenceFieldComparison",
     "FCRCommitmentInterval",
     "MultiRateTimeContract",
     "ReplayIntervalSummary",
@@ -536,9 +509,6 @@ __all__ = [
     "build_fcr_capacity_schedule",
     "build_settled_evaluation_report",
     "build_validation_failed_evaluation_report",
-    "compare_reference_evaluation",
-    "compare_reference_values",
-    "recompute_reference_precision_bounds",
     "replay_invalid_fcr_bid_diagnostic",
     "replay_stacked_services",
     "replay_stacked_services_diagnostic",

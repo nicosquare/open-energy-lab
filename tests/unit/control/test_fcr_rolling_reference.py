@@ -12,7 +12,7 @@ import subprocess
 
 import pytest
 
-from open_energy_lab.control.fcr_rolling_reference import (
+from oel_validation.fcr_rolling_reference import (
     ROLLING_FCR_REFERENCE_FIXTURE_ID,
     ROLLING_FCR_REFERENCE_FIXTURE_SCHEMA_VERSION,
     ROLLING_FCR_REFERENCE_OUTCOMES,

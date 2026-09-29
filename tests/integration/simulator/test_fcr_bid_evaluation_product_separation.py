@@ -14,17 +14,17 @@ from examples.restoration_services.generate_reference_results import (
     load_reference_scenario,
 )
 from open_energy_lab.control.fcr_bid_plan import FCRBidPlanValidationError
-from open_energy_lab.market.reference_fcr import (
+from oel_validation.reference_fcr import (
     ReferenceFCRValidationError,
     build_reference_market_context,
     load_golden_reference_fixture,
 )
 from open_energy_lab.simulator.fcr_bid_evaluation import (
     FCRBidEvaluationValidationError,
-    compare_reference_evaluation,
     evaluate_fixed_fcr_bid,
     replay_invalid_fcr_bid_diagnostic,
 )
+from oel_validation.fcr_bid_evaluation import compare_reference_evaluation
 from open_energy_lab.simulator.fcr_settlement import (
     FCRSettlementValidationError,
     settle_reference_fcr_bid,

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from open_energy_lab.market.reference_fcr import (
+from oel_validation.reference_fcr import (
     ExternalReferenceDataError,
     load_golden_reference_fixture,
     load_reference_activation_trace,

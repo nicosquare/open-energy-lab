@@ -16,12 +16,12 @@ import pytest
 from examples.fcr_bid_evaluation.run_reference_parity import (
     assemble_reference_request,
 )
-from open_energy_lab.control.fcr_bid_plan import map_reference_decisions_to_schedules
+from oel_validation.reference_schedule_mapping import map_reference_decisions_to_schedules
 from open_energy_lab.market.activation import (
     ActivationImportRequest,
     import_regulation_activation_trace,
 )
-from open_energy_lab.market.reference_fcr import (
+from oel_validation.reference_fcr import (
     ReferenceFCRIntegrityError,
     ReferenceFCRValidationError,
     build_reference_market_context,

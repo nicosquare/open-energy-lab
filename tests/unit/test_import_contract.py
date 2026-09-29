@@ -45,7 +45,6 @@ EXPECTED_CONTROL_EXPORTS = sorted([
     "FeasibilityAudit",
     "FixedFCRBidPlan",
     "HorizonWideActivationBudget",
-    "JointReferenceCertificate",
     "MFRRBaselineConfig",
     "MFRRBaselineMode",
     "ObjectiveBreakdown",
@@ -70,8 +69,6 @@ EXPECTED_CONTROL_EXPORTS = sorted([
     "RobustFCRDecisions",
     "RobustFCRFormulationProfile",
     "RobustFCRPriceInputs",
-    "RobustFCRReferenceComparison",
-    "RobustFCRReferenceFixture",
     "RobustFCRRollingBiddingProblem",
     "RobustFCRRollingSolveResult",
     "RobustFCRSolvePolicy",
@@ -87,9 +84,6 @@ EXPECTED_CONTROL_EXPORTS = sorted([
     "RollingFCRDayRevision",
     "RollingFCRExperimentProfile",
     "RollingFCRNumericPolicy",
-    "RollingFCRReferenceComparison",
-    "RollingFCRReferenceFieldResult",
-    "RollingFCRReferenceFixture",
     "RollingFCRResumeEvidence",
     "RollingFCRStateCarryEvidence",
     "RollingFCRStateLink",
@@ -113,7 +107,6 @@ EXPECTED_CONTROL_EXPORTS = sorted([
     "build_regulation_only_baseline",
     "build_restoration_capability",
     "build_robust_fcr_bidding_problem",
-    "build_robust_fcr_reference_problem",
     "build_robust_fcr_rolling_problem",
     "build_robust_fcr_time_contract",
     "build_rolling_fcr_experiment_profile",
@@ -122,14 +115,10 @@ EXPECTED_CONTROL_EXPORTS = sorted([
     "assess_rolling_fcr_resume",
     "build_stacked_heuristic_baseline",
     "compare_robust_fcr_bounds",
-    "compare_robust_fcr_reference",
-    "compare_rolling_fcr_reference",
     "derive_non_intraday_horizon_budget",
     "derive_rolling_fcr_state_carry",
     "load_rolling_fcr_study_result",
     "extract_accepted_predecessor_fixings",
-    "load_robust_fcr_reference_fixture",
-    "load_rolling_fcr_reference_fixture",
     "run_rolling_fcr_study",
     "solve_robust_fcr_bid",
     "solve_robust_fcr_rolling_bid",
@@ -431,7 +420,7 @@ def test_feature_010_public_imports_resolve_from_owned_modules_without_optional_
 def test_feature_012_public_plan_and_evaluator_imports_have_exact_owners():
     control = importlib.import_module("open_energy_lab.control")
     simulator = importlib.import_module("open_energy_lab.simulator")
-    reference = importlib.import_module("open_energy_lab.market.reference_fcr")
+    reference = importlib.import_module("oel_validation.reference_fcr")
     expected = {
         control.BidPlanProducer: "open_energy_lab.simulator.fcr_bid_plan",
         control.FixedFCRBidPlan: "open_energy_lab.simulator.fcr_bid_plan",
@@ -459,10 +448,10 @@ def test_feature_012_public_plan_and_evaluator_imports_have_exact_owners():
             "open_energy_lab.simulator.fcr_bid_evaluation"
         ),
         reference.load_golden_reference_fixture: (
-            "open_energy_lab.market.reference_fcr"
+            "oel_validation.reference_fcr"
         ),
         reference.load_reference_activation_trace: (
-            "open_energy_lab.market.reference_fcr"
+            "oel_validation.reference_fcr"
         ),
     }
 
@@ -477,12 +466,10 @@ def test_feature_013_public_imports_have_exact_owners_and_stay_solver_lazy():
     before_import = set(sys.modules)
     control = importlib.import_module("open_energy_lab.control")
     bidding_owner = "open_energy_lab.control.robust_fcr_bidding"
-    reference_owner = "open_energy_lab.control.robust_fcr_reference"
     expected = {
         control.ConstraintFamilyResidual: bidding_owner,
         control.FeasibilityAudit: bidding_owner,
         control.HorizonWideActivationBudget: bidding_owner,
-        control.JointReferenceCertificate: reference_owner,
         control.ObjectiveBreakdown: bidding_owner,
         control.RecoveryWindowActivationBudget: bidding_owner,
         control.RobustFCRBatteryParameters: bidding_owner,
@@ -491,8 +478,6 @@ def test_feature_013_public_imports_have_exact_owners_and_stay_solver_lazy():
         control.RobustFCRDecisions: bidding_owner,
         control.RobustFCRFormulationProfile: bidding_owner,
         control.RobustFCRPriceInputs: bidding_owner,
-        control.RobustFCRReferenceComparison: reference_owner,
-        control.RobustFCRReferenceFixture: reference_owner,
         control.RobustFCRSolvePolicy: bidding_owner,
         control.RobustFCRSolveResult: bidding_owner,
         control.RobustFCRSolverDependencyUnavailableError: bidding_owner,
@@ -502,12 +487,9 @@ def test_feature_013_public_imports_have_exact_owners_and_stay_solver_lazy():
         control.RobustFCRValidationError: bidding_owner,
         control.TerminalStoredEnergyRule: bidding_owner,
         control.build_robust_fcr_bidding_problem: bidding_owner,
-        control.build_robust_fcr_reference_problem: reference_owner,
         control.build_robust_fcr_time_contract: bidding_owner,
         control.compare_robust_fcr_bounds: bidding_owner,
-        control.compare_robust_fcr_reference: reference_owner,
         control.derive_non_intraday_horizon_budget: bidding_owner,
-        control.load_robust_fcr_reference_fixture: reference_owner,
         control.solve_robust_fcr_bid: bidding_owner,
     }
 
@@ -533,7 +515,6 @@ def test_feature_015_public_imports_have_exact_owners_and_stay_solver_lazy():
     simulator = importlib.import_module("open_energy_lab.simulator")
     study_owner = "open_energy_lab.control.fcr_rolling_backtest"
     rolling_owner = "open_energy_lab.control.robust_fcr_rolling"
-    reference_owner = "open_energy_lab.control.fcr_rolling_reference"
     expected = {
         control.AcceptedBidPolicy: study_owner,
         control.AggregateMetricEvidence: study_owner,
@@ -566,11 +547,6 @@ def test_feature_015_public_imports_have_exact_owners_and_stay_solver_lazy():
         control.build_robust_fcr_rolling_problem: rolling_owner,
         control.extract_accepted_predecessor_fixings: rolling_owner,
         control.solve_robust_fcr_rolling_bid: rolling_owner,
-        control.RollingFCRReferenceComparison: reference_owner,
-        control.RollingFCRReferenceFieldResult: reference_owner,
-        control.RollingFCRReferenceFixture: reference_owner,
-        control.compare_rolling_fcr_reference: reference_owner,
-        control.load_rolling_fcr_reference_fixture: reference_owner,
         market.slice_regulation_activation_trace: (
             "open_energy_lab.market.activation"
         ),

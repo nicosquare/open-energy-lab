@@ -565,6 +565,24 @@ class GoldenReferenceFixture:
     def to_dict(self) -> dict[str, object]:
         return _thaw(self._payload)
 
+    def compare(self, *, actual_values, activation_trace):
+        """Evaluator comparison hook: compare evaluated values with this reference."""
+
+        from .fcr_bid_evaluation import compare_reference_values
+
+        return compare_reference_values(
+            fixture=self,
+            actual_values=actual_values,
+            activation_trace=activation_trace,
+        )
+
+    def domain_unavailable(self, *, reason: str):
+        """Evaluator comparison hook: record that the case is outside the parity domain."""
+
+        from .fcr_bid_evaluation import _reference_domain_unavailable_comparison
+
+        return _reference_domain_unavailable_comparison(self, reason=reason)
+
 
 def _validate_reference_provenance(payload: Mapping[str, Any]) -> Mapping[str, object]:
     raw = _mapping(payload, field_name="reference_provenance")

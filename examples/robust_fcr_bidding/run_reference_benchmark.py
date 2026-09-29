@@ -9,10 +9,12 @@ from pathlib import Path
 
 from open_energy_lab.control import (
     RobustFCRSolvePolicy,
+    solve_robust_fcr_bid,
+)
+from oel_validation.robust_fcr_reference import (
     build_robust_fcr_reference_problem,
     compare_robust_fcr_reference,
     load_robust_fcr_reference_fixture,
-    solve_robust_fcr_bid,
 )
 
 
