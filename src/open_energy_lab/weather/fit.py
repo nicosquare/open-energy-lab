@@ -9,7 +9,7 @@ from pathlib import Path
 from statistics import fmean
 from zoneinfo import ZoneInfo
 
-from open_energy_lab.simulator._weather_schema import iter_weather_field_specs
+from open_energy_lab.weather.schema import iter_weather_field_specs
 
 from ._canonical import (
     CANONICAL_WEATHER_FIELD_ORDER,

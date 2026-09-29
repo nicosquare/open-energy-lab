@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from open_energy_lab.simulator._weather_schema import (
+from open_energy_lab.weather.schema import (
     DEFERRED_STANDARD_WEATHER_FIELD_NAMES,
     IRRADIANCE_FIELD_NAMES,
     REQUIRED_WEATHER_FIELD_NAMES,

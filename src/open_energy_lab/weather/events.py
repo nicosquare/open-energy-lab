@@ -9,7 +9,7 @@ from hashlib import sha256
 from math import ceil
 from random import Random
 
-from open_energy_lab.simulator._weather_schema import IRRADIANCE_FIELD_NAMES
+from open_energy_lab.weather.schema import IRRADIANCE_FIELD_NAMES
 
 
 DEFAULT_MINIMUM_BASE_IRRADIANCE_W_PER_M2 = 50.0
