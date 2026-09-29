@@ -10,13 +10,6 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from .fcr_rolling_reference import (
-        RollingFCRReferenceComparison,
-        RollingFCRReferenceFieldResult,
-        RollingFCRReferenceFixture,
-        compare_rolling_fcr_reference,
-        load_rolling_fcr_reference_fixture,
-    )
     from .fcr_rolling_backtest import (
         AGGREGATION_POLICY,
         FAILURE_POLICY_COUPLED,
@@ -47,14 +40,6 @@ if TYPE_CHECKING:
         derive_rolling_fcr_state_carry,
         load_rolling_fcr_study_result,
         run_rolling_fcr_study,
-    )
-    from .robust_fcr_reference import (
-        JointReferenceCertificate,
-        RobustFCRReferenceComparison,
-        RobustFCRReferenceFixture,
-        build_robust_fcr_reference_problem,
-        compare_robust_fcr_reference,
-        load_robust_fcr_reference_fixture,
     )
     from .robust_fcr_rolling import (
         RobustFCRAcceptedDecisionFixings,
@@ -140,26 +125,6 @@ if TYPE_CHECKING:
 
 
 _EXPORT_MAP = {
-    "RollingFCRReferenceComparison": (
-        ".fcr_rolling_reference",
-        "RollingFCRReferenceComparison",
-    ),
-    "RollingFCRReferenceFieldResult": (
-        ".fcr_rolling_reference",
-        "RollingFCRReferenceFieldResult",
-    ),
-    "RollingFCRReferenceFixture": (
-        ".fcr_rolling_reference",
-        "RollingFCRReferenceFixture",
-    ),
-    "compare_rolling_fcr_reference": (
-        ".fcr_rolling_reference",
-        "compare_rolling_fcr_reference",
-    ),
-    "load_rolling_fcr_reference_fixture": (
-        ".fcr_rolling_reference",
-        "load_rolling_fcr_reference_fixture",
-    ),
     "AGGREGATION_POLICY": (".fcr_rolling_backtest", "AGGREGATION_POLICY"),
     "FAILURE_POLICY_COUPLED": (
         ".fcr_rolling_backtest",
@@ -280,30 +245,6 @@ _EXPORT_MAP = {
     "solve_robust_fcr_rolling_bid": (
         ".robust_fcr_rolling",
         "solve_robust_fcr_rolling_bid",
-    ),
-    "JointReferenceCertificate": (
-        ".robust_fcr_reference",
-        "JointReferenceCertificate",
-    ),
-    "RobustFCRReferenceComparison": (
-        ".robust_fcr_reference",
-        "RobustFCRReferenceComparison",
-    ),
-    "RobustFCRReferenceFixture": (
-        ".robust_fcr_reference",
-        "RobustFCRReferenceFixture",
-    ),
-    "build_robust_fcr_reference_problem": (
-        ".robust_fcr_reference",
-        "build_robust_fcr_reference_problem",
-    ),
-    "compare_robust_fcr_reference": (
-        ".robust_fcr_reference",
-        "compare_robust_fcr_reference",
-    ),
-    "load_robust_fcr_reference_fixture": (
-        ".robust_fcr_reference",
-        "load_robust_fcr_reference_fixture",
     ),
     "ConstraintFamilyResidual": (
         ".robust_fcr_bidding",
@@ -513,7 +454,6 @@ __all__ = sorted([
     "FeasibilityAudit",
     "FixedFCRBidPlan",
     "HorizonWideActivationBudget",
-    "JointReferenceCertificate",
     "MFRRBaselineConfig",
     "MFRRBaselineMode",
     "ObjectiveBreakdown",
@@ -538,8 +478,6 @@ __all__ = sorted([
     "RobustFCRDecisions",
     "RobustFCRFormulationProfile",
     "RobustFCRPriceInputs",
-    "RobustFCRReferenceComparison",
-    "RobustFCRReferenceFixture",
     "RobustFCRRollingBiddingProblem",
     "RobustFCRRollingSolveResult",
     "RobustFCRSolvePolicy",
@@ -555,9 +493,6 @@ __all__ = sorted([
     "RollingFCRDayRevision",
     "RollingFCRExperimentProfile",
     "RollingFCRNumericPolicy",
-    "RollingFCRReferenceComparison",
-    "RollingFCRReferenceFieldResult",
-    "RollingFCRReferenceFixture",
     "RollingFCRResumeEvidence",
     "RollingFCRStateCarryEvidence",
     "RollingFCRStateLink",
@@ -581,7 +516,6 @@ __all__ = sorted([
     "build_regulation_only_baseline",
     "build_restoration_capability",
     "build_robust_fcr_bidding_problem",
-    "build_robust_fcr_reference_problem",
     "build_robust_fcr_rolling_problem",
     "build_robust_fcr_time_contract",
     "build_rolling_fcr_experiment_profile",
@@ -590,13 +524,9 @@ __all__ = sorted([
     "assess_rolling_fcr_resume",
     "build_stacked_heuristic_baseline",
     "compare_robust_fcr_bounds",
-    "compare_robust_fcr_reference",
-    "compare_rolling_fcr_reference",
     "derive_non_intraday_horizon_budget",
     "derive_rolling_fcr_state_carry",
     "extract_accepted_predecessor_fixings",
-    "load_robust_fcr_reference_fixture",
-    "load_rolling_fcr_reference_fixture",
     "load_rolling_fcr_study_result",
     "run_rolling_fcr_study",
     "solve_robust_fcr_bid",

@@ -15,7 +15,7 @@ from examples.fcr_rolling_backtest.normalize_reference_fixture import (
     RollingFCRReferenceNormalizationError,
     normalize_rolling_fcr_reference_fixture,
 )
-from open_energy_lab.control.fcr_rolling_reference import (
+from oel_validation.fcr_rolling_reference import (
     load_rolling_fcr_reference_fixture,
 )
 

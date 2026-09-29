@@ -21,7 +21,7 @@ from open_energy_lab.control.robust_fcr_bidding import (
     RobustFCRFormulationProfile,
     _finalize_solve_result,
 )
-from open_energy_lab.control.robust_fcr_reference import (
+from oel_validation.robust_fcr_reference import (
     REFERENCE_FIXTURE_SCHEMA_VERSION,
     JointReferenceCertificate,
     RobustFCRReferenceFieldResult,
@@ -399,7 +399,7 @@ def test_routine_reference_path_is_guarded_offline_and_local_only(
     native = _native_result(fixture=fixture)
     request = build_reference_certification_request(fixture, native)
     monkeypatch.setattr(
-        "open_energy_lab.control.robust_fcr_reference._certify_reference_decision_box",
+        "oel_validation.robust_fcr_reference._certify_reference_decision_box",
         lambda fixture, native_result, request: _certificate(request),
     )
     comparison = compare_robust_fcr_reference(fixture, native)
@@ -607,7 +607,7 @@ def test_joint_certificate_rejects_false_feasibility_evidence() -> None:
 
 
 def test_joint_certificate_reuses_audited_native_witness_inside_source_box() -> None:
-    from open_energy_lab.control.robust_fcr_reference import (
+    from oel_validation.robust_fcr_reference import (
         _certify_reference_decision_box,
     )
 
@@ -649,7 +649,7 @@ def test_joint_certificate_keeps_independent_highs_backend_for_gurobi_result(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from open_energy_lab.control import _robust_fcr_formulation, _robust_fcr_solver
-    from open_energy_lab.control.robust_fcr_reference import (
+    from oel_validation.robust_fcr_reference import (
         _certify_reference_decision_box,
     )
 
@@ -697,7 +697,7 @@ def test_public_comparison_reports_precision_alternative_and_source_bound_limits
     matching = _native_result()
     request = build_reference_certification_request(fixture, matching)
     monkeypatch.setattr(
-        "open_energy_lab.control.robust_fcr_reference._certify_reference_decision_box",
+        "oel_validation.robust_fcr_reference._certify_reference_decision_box",
         lambda fixture, native_result, request: _certificate(request),
     )
     precision = compare_robust_fcr_reference(fixture, matching)
@@ -710,7 +710,7 @@ def test_public_comparison_reports_precision_alternative_and_source_bound_limits
     different = _native_result(match_decisions=False)
     alternative_request = build_reference_certification_request(fixture, different)
     monkeypatch.setattr(
-        "open_energy_lab.control.robust_fcr_reference._certify_reference_decision_box",
+        "oel_validation.robust_fcr_reference._certify_reference_decision_box",
         lambda fixture, native_result, request: _certificate(request),
     )
     alternative = compare_robust_fcr_reference(fixture, different)
@@ -727,7 +727,7 @@ def test_public_comparison_reports_mismatch_when_joint_certificate_fails(
     fixture = load_robust_fcr_reference_fixture(FIXTURE_PATH)
     native = _native_result(match_decisions=False)
     monkeypatch.setattr(
-        "open_energy_lab.control.robust_fcr_reference._certify_reference_decision_box",
+        "oel_validation.robust_fcr_reference._certify_reference_decision_box",
         lambda fixture, native_result, request: _certificate(
             request,
             feasible=False,
@@ -759,7 +759,7 @@ def test_result_certificate_and_comparison_fingerprints_exclude_runtime_paths(
     )
 
     monkeypatch.setattr(
-        "open_energy_lab.control.robust_fcr_reference._certify_reference_decision_box",
+        "oel_validation.robust_fcr_reference._certify_reference_decision_box",
         lambda fixture, native_result, request: _certificate(request),
     )
     first = compare_robust_fcr_reference(fixture, first_native)

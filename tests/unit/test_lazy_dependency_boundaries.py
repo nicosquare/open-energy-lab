@@ -278,14 +278,16 @@ def test_feature_015_public_roots_and_symbols_stay_solver_and_research_lazy() ->
 
         before = set(sys.modules)
         from open_energy_lab.control import (
-            RollingFCRReferenceFixture,
             RollingFCRStudyManifest,
             RollingFCRStudyResult,
             build_robust_fcr_rolling_problem,
-            compare_rolling_fcr_reference,
             derive_rolling_fcr_state_carry,
             extract_accepted_predecessor_fixings,
             run_rolling_fcr_study,
+        )
+        from oel_validation.fcr_rolling_reference import (
+            RollingFCRReferenceFixture,
+            compare_rolling_fcr_reference,
         )
         from open_energy_lab.market import slice_regulation_activation_trace
         from open_energy_lab.simulator import (
@@ -626,7 +628,7 @@ def test_package_imports_stay_clear_of_lazy_research_stacks(module_name: str) ->
         *RESTORATION_OFFLINE_MODULES,
         "open_energy_lab.control.fcr_bid_plan",
         "open_energy_lab.control.robust_fcr_bidding",
-        "open_energy_lab.control.robust_fcr_reference",
+        "oel_validation.robust_fcr_reference",
         "open_energy_lab.control._robust_fcr_formulation",
         "open_energy_lab.control._robust_fcr_solver",
         "open_energy_lab.control.stacked_service",

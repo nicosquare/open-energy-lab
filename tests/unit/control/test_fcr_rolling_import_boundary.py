@@ -13,7 +13,7 @@ import pytest
 
 ROLLING_MODULES = (
     Path("src/open_energy_lab/control/fcr_rolling_backtest.py"),
-    Path("src/open_energy_lab/control/fcr_rolling_reference.py"),
+    Path("oel_validation/fcr_rolling_reference.py"),
     Path("src/open_energy_lab/control/robust_fcr_rolling.py"),
     Path("src/open_energy_lab/control/_fcr_rolling_orchestrator.py"),
     Path("src/open_energy_lab/market/activation.py"),
@@ -87,7 +87,7 @@ def test_feature_015_foundational_imports_load_no_solver_or_research_stack() -> 
         before = set(sys.modules)
         import open_energy_lab.market.activation
         import open_energy_lab.control.fcr_rolling_backtest
-        import open_energy_lab.control.fcr_rolling_reference
+        import oel_validation.fcr_rolling_reference
         import open_energy_lab.control.robust_fcr_rolling
         import open_energy_lab.control._fcr_rolling_orchestrator
         import open_energy_lab.simulator.fcr_bid_evaluation
@@ -150,7 +150,7 @@ def test_normalized_reference_exports_remain_lazy_and_offline() -> None:
         import sys
 
         before = set(sys.modules)
-        from open_energy_lab.control import (
+        from oel_validation.fcr_rolling_reference import (
             RollingFCRReferenceComparison,
             RollingFCRReferenceFieldResult,
             RollingFCRReferenceFixture,
@@ -266,6 +266,8 @@ def test_public_rolling_contracts_remain_offline_when_external_access_is_poisone
 
         from open_energy_lab.control import (
             build_rolling_fcr_experiment_profile,
+        )
+        from oel_validation.fcr_rolling_reference import (
             load_rolling_fcr_reference_fixture,
         )
 

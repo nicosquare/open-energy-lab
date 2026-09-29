@@ -23,8 +23,10 @@ from open_energy_lab.control import (
     build_robust_fcr_bidding_problem,
     build_robust_fcr_time_contract,
     derive_non_intraday_horizon_budget,
-    load_rolling_fcr_reference_fixture,
     solve_robust_fcr_bid,
+)
+from oel_validation.fcr_rolling_reference import (
+    load_rolling_fcr_reference_fixture,
 )
 from open_energy_lab.market import (
     ActivationImportRequest,

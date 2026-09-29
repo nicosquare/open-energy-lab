@@ -15,10 +15,12 @@ from typing import Any
 from open_energy_lab.control import (
     RollingFCRStudyResult,
     RollingFCRValidationError,
-    compare_rolling_fcr_reference,
-    load_rolling_fcr_reference_fixture,
     load_rolling_fcr_study_result,
     run_rolling_fcr_study,
+)
+from oel_validation.fcr_rolling_reference import (
+    compare_rolling_fcr_reference,
+    load_rolling_fcr_reference_fixture,
 )
 
 try:

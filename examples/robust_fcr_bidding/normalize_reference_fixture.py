@@ -21,7 +21,7 @@ from open_energy_lab.control.robust_fcr_bidding import (
     ROBUST_FCR_BIDDING_PROBLEM_VERSION,
     RobustFCRFormulationProfile,
 )
-from open_energy_lab.control.robust_fcr_reference import (
+from oel_validation.robust_fcr_reference import (
     REFERENCE_FIXTURE_ID,
     REFERENCE_FIXTURE_SCHEMA_VERSION,
     REFERENCE_PRECISION_POLICY_ID,

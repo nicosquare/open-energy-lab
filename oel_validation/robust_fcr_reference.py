@@ -20,7 +20,7 @@ from types import MappingProxyType
 from typing import Any
 
 from open_energy_lab.core.validation import mapping
-from .robust_fcr_bidding import (
+from open_energy_lab.control.robust_fcr_bidding import (
     DEPLOYABILITY_THRESHOLD,
     ROBUST_FCR_BIDDING_PROBLEM_VERSION,
     RecoveryWindowActivationBudget,
@@ -1980,8 +1980,8 @@ def _certify_reference_decision_box(
         policy_payload["solver_name"] = "highs"
         policy = RobustFCRSolvePolicy(**policy_payload)
         problem = build_robust_fcr_reference_problem(fixture, solve_policy=policy)
-        from ._robust_fcr_formulation import assemble_robust_fcr_reference_certificate
-        from ._robust_fcr_solver import require_highs_backend, solve_assembled_model
+        from open_energy_lab.control._robust_fcr_formulation import assemble_robust_fcr_reference_certificate
+        from open_energy_lab.control._robust_fcr_solver import require_highs_backend, solve_assembled_model
 
         backend = require_highs_backend()
         assembled = assemble_robust_fcr_reference_certificate(
@@ -2014,7 +2014,7 @@ def _certify_reference_decision_box(
             witness_fingerprint=None,
             unavailable_reason=None,
         )
-    from .robust_fcr_bidding import _audit_witness
+    from open_energy_lab.control.robust_fcr_bidding import _audit_witness
 
     audit = _audit_witness(
         problem,

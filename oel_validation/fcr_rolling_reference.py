@@ -22,14 +22,14 @@ from types import MappingProxyType
 from typing import Any
 
 from open_energy_lab.core.validation import finite, integer, non_negative
-from .fcr_rolling_backtest import (
+from open_energy_lab.control.fcr_rolling_backtest import (
     DeliveryDateRecordEnvelope,
     RollingFCRDayRevision,
     RollingFCRStudyManifest,
     RollingFCRStudyResult,
     RollingFCRValidationError,
 )
-from .robust_fcr_bidding import _deep_freeze, _fingerprint, _sha256, _thaw
+from open_energy_lab.control.robust_fcr_bidding import _deep_freeze, _fingerprint, _sha256, _thaw
 
 
 ROLLING_FCR_REFERENCE_FIXTURE_SCHEMA_VERSION = "fcr-rolling-reference-fixture-v1"
@@ -2239,7 +2239,7 @@ def _build_latent_certificate(
             source.cutoff_stored_energy_kwh, half
         )
         categories["state.cutoff"] = "state"
-    from ._robust_fcr_formulation import audit_closed_reference_witness
+    from open_energy_lab.control._robust_fcr_formulation import audit_closed_reference_witness
 
     interval_audit = audit_closed_reference_witness(
         field_values=field_values,
