@@ -51,7 +51,7 @@ below ignored `artifacts/`; it refuses committed destinations.
 From the repository root, regenerate the review candidate explicitly:
 
 ```bash
-uv run python examples/robust_fcr_bidding/normalize_reference_fixture.py \
+uv run python -m oel_validation.scripts.normalize_robust_fcr_reference_fixture \
   --source-json baselines/robust_storage_bidding/results/02/2023-06-18.json \
   --expected-sha256 8c13f8318d533c35755e90e4e45bcef336cb7b31c09afccbe616844acbddc1e6 \
   --destination-dir artifacts/reference/robust_fcr_bidding

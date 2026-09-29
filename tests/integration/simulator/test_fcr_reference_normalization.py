@@ -10,7 +10,7 @@ import subprocess
 
 import pytest
 
-from examples.fcr_bid_evaluation.normalize_reference_result import (
+from oel_validation.scripts.normalize_fcr_bid_reference_result import (
     ReferenceNormalizationError,
     normalize_reference_result,
 )

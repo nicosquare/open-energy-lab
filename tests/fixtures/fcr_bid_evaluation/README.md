@@ -99,7 +99,7 @@ Gurobi, or mutate `baselines/`.
 The reviewed normalization command is:
 
 ```bash
-uv run python examples/fcr_bid_evaluation/normalize_reference_result.py \
+uv run python -m oel_validation.scripts.normalize_fcr_bid_reference_result \
   --input baselines/robust_storage_bidding/results/02/2023-06-18.json \
   --expected-sha256 8c13f8318d533c35755e90e4e45bcef336cb7b31c09afccbe616844acbddc1e6 \
   --output-dir artifacts/reference/robust_storage_bidding/normalized

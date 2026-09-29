@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from examples.fcr_bid_evaluation.run_reference_parity import (
+from oel_validation.scripts.run_fcr_bid_reference_parity import (
     DEFAULT_FIXTURE,
     build_reference_request,
 )

@@ -74,7 +74,7 @@ The explicit input manifest is
 From the repository root, a maintainer with the selected local evidence runs:
 
 ```bash
-uv run python examples/fcr_rolling_backtest/normalize_reference_fixture.py \
+uv run python -m oel_validation.scripts.normalize_fcr_rolling_reference_fixture \
   --source-root baselines/robust_storage_bidding \
   --input-manifest examples/fcr_rolling_backtest/reference_inputs_v1.json \
   --destination-dir artifacts/reference/fcr_rolling_backtest

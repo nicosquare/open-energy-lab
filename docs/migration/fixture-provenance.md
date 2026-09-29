@@ -159,7 +159,7 @@ optimization fixture:
   activation sample, external CSV locator, credential, or native solve policy.
 
 The normalizer is
-`examples/robust_fcr_bidding/normalize_reference_fixture.py`. It accepts only
+`oel_validation/scripts/normalize_robust_fcr_reference_fixture.py`. It accepts only
 an explicit digest-matched source path, writes canonical JSON only beneath the
 ignored `artifacts/reference/robust_fcr_bidding/` staging area, runs no Julia or
 solver, reports an ordered semantic diff, and refuses to overwrite the
@@ -199,7 +199,7 @@ for the bounded five-profile/four-date source rerun:
   identities, caller-local paths, and native solver policy.
 
 The no-glob normalizer at
-`examples/fcr_rolling_backtest/normalize_reference_fixture.py` accepts only
+`oel_validation/scripts/normalize_fcr_rolling_reference_fixture.py` accepts only
 the 49 entries explicitly listed in the input manifest, verifies every byte
 digest before parsing, and writes canonical candidates plus semantic diffs
 only beneath ignored `artifacts/reference/fcr_rolling_backtest/`. It neither

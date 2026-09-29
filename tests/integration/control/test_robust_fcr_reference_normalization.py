@@ -11,7 +11,7 @@ import subprocess
 
 import pytest
 
-from examples.robust_fcr_bidding.normalize_reference_fixture import (
+from oel_validation.scripts.normalize_robust_fcr_reference_fixture import (
     ReferenceFixtureNormalizationError,
     normalize_reference_fixture,
 )
@@ -94,11 +94,11 @@ def test_normalizer_uses_explicit_digest_and_writes_byte_stable_artifacts(
     artifact_root = repository / "artifacts"
     destination = artifact_root / "reference/robust_fcr_bidding"
     monkeypatch.setattr(
-        "examples.robust_fcr_bidding.normalize_reference_fixture._REPOSITORY_ROOT",
+        "oel_validation.scripts.normalize_robust_fcr_reference_fixture._REPOSITORY_ROOT",
         repository,
     )
     monkeypatch.setattr(
-        "examples.robust_fcr_bidding.normalize_reference_fixture._ARTIFACT_ROOT",
+        "oel_validation.scripts.normalize_robust_fcr_reference_fixture._ARTIFACT_ROOT",
         artifact_root,
     )
 

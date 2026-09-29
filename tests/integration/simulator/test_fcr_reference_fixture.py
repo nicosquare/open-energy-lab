@@ -13,7 +13,7 @@ from types import MappingProxyType
 
 import pytest
 
-from examples.fcr_bid_evaluation.run_reference_parity import (
+from oel_validation.scripts.run_fcr_bid_reference_parity import (
     assemble_reference_request,
 )
 from oel_validation.reference_schedule_mapping import map_reference_decisions_to_schedules

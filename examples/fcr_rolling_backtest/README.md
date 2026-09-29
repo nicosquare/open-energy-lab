@@ -107,7 +107,7 @@ Only the explicit maintainer normalizer reads caller-listed, digest-pinned raw
 source files:
 
 ```bash
-uv run python examples/fcr_rolling_backtest/normalize_reference_fixture.py \
+uv run python -m oel_validation.scripts.normalize_fcr_rolling_reference_fixture \
   --source-root baselines/robust_storage_bidding \
   --input-manifest examples/fcr_rolling_backtest/reference_inputs_v1.json \
   --destination-dir artifacts/reference/fcr_rolling_backtest
@@ -123,7 +123,7 @@ workbook, and complete activation CSV are not redistributed.
 The full five-profile/four-date comparison is explicit research work:
 
 ```bash
-uv run python examples/fcr_rolling_backtest/run_reference_benchmark.py \
+uv run python -m oel_validation.scripts.run_fcr_rolling_reference_benchmark \
   --fixture tests/fixtures/fcr_rolling_backtest/robust_storage_bidding_experiments_01_05_2023-06-17_20_v1.json \
   --profiles all \
   --dates 2023-06-17 2023-06-18 2023-06-19 2023-06-20 \
@@ -182,7 +182,7 @@ explicit `fcr-rolling-full-history-request-v1` JSON document and a separately
 fingerprinted `fcr-rolling-full-history-data-v1` bundle:
 
 ```bash
-uv run python examples/fcr_rolling_backtest/run_reference_benchmark.py \
+uv run python -m oel_validation.scripts.run_fcr_rolling_reference_benchmark \
   --study-manifest artifacts/reference/fcr_rolling_backtest/full-history-request.json \
   --resume-output artifacts/reference/fcr_rolling_backtest/full-history-result.json
 ```
