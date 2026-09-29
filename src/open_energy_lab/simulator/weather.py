@@ -6,7 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from ._weather_schema import (
+from open_energy_lab.weather.schema import (
     CANONICAL_WEATHER_FIELD_NAMES,
     DEFERRED_STANDARD_WEATHER_FIELD_NAMES,
     IRRADIANCE_FIELD_NAMES,

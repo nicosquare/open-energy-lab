@@ -12,7 +12,12 @@ from random import Random
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from .artifact import WeatherArtifact, load_weather_artifact
+from .artifact import (
+    WeatherArtifact,
+    _covariance_matrix,
+    _numeric_vector,
+    load_weather_artifact,
+)
 from .events import CloudEventAnnotation, apply_cloud_event_overlay, enforce_physical_bounds
 
 
@@ -202,29 +207,6 @@ def _positive_int(value: object, *, field_name: str) -> int:
     if integer_value <= 0:
         raise ValueError(f"{field_name} must be positive")
     return integer_value
-
-
-def _numeric_vector(value: object, *, field_name: str) -> tuple[float, ...]:
-    if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)):
-        raise TypeError(f"{field_name} must be a numeric sequence")
-    return tuple(float(item) for item in value)
-
-
-def _covariance_matrix(value: object, *, expected_size: int) -> tuple[tuple[float, ...], ...]:
-    if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)):
-        raise TypeError("covariance_matrix must be a square numeric sequence")
-
-    rows: list[tuple[float, ...]] = []
-    for row in value:
-        if not isinstance(row, Sequence) or isinstance(row, (str, bytes, bytearray)):
-            raise TypeError("covariance_matrix rows must be numeric sequences")
-        rows.append(tuple(float(item) for item in row))
-
-    if len(rows) != expected_size:
-        raise ValueError("covariance_matrix row count must match mean_vector length")
-    if any(len(row) != expected_size for row in rows):
-        raise ValueError("covariance_matrix must be square with mean_vector-aligned dimensions")
-    return tuple(rows)
 
 
 def _physical_bounds_policy(artifact: WeatherArtifact) -> Mapping[str, object]:

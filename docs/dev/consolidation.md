@@ -86,16 +86,19 @@ Regenerate with `uv run python tools/consolidation_metrics.py`.
 | A1 core + market | 77,838 | 12,517 | 13,289 | 20,983 | 730 | 14 | 14 | 21 | 15 |
 | A1 simulator | 77,492 | 12,510 | 12,914 | 20,983 | 766 | 8 | 8 | 12 | 8 |
 | A1 control | 77,250 | 12,504 | 12,914 | 20,728 | 785 | 1 | 2 | 4 | 6 |
+| A1 weather/demand/planning | 77,214 | 12,504 | 12,802 | 20,728 | 785 | 1 | 2 | 4 | 6 |
 
 A1 simulator full suite: **2230 passed, 4 failed (the v1 `spn_mip` TPM tests still in the baseline; the two surface tests were fixed by #18), 2 skipped**.
 
 A1 control full suite **plus `tests/parity`**: **2235 passed, same 4 v1 `spn_mip` TPM failures, 3 skipped** (1h35m).
 
+A1 weather/demand/planning full suite: **2232 passed, same 4 v1 `spn_mip` TPM failures, 2 skipped** (parity not rerun; no parity-covered code changed).
+
 A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 baseline TPM failures, 2 skipped**.
 
 ## Track A — energy library
 
-- [ ] **A1 core foundation.** Add `core/validation.py`, `core/serialization.py`
+- [x] **A1 core foundation.** Add `core/validation.py`, `core/serialization.py`
   (canonical JSON, fingerprint, atomic write-once), `core/time.py`, and
   `core/errors.py`. Move `market` onto them first, then the other packages.
   Behavior-preserving.
@@ -136,7 +139,18 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     tuple-returning `_sequence` in the reference modules; `_utc_from_text`;
     `fcr_rolling_reference._enum`. Line savings are small here because
     control's bulk is evidence and provenance code (A3/A5).
-  - [ ] weather, demand, planning
+  - [x] weather, demand, planning (branch
+    `consolidation/a1-weather-demand-planning`). Narrowed scope, agreed on
+    2026-09-29: their `_positive_int` / `_string_sequence` /
+    `_validate_timestamp` copies coerce (`int(value)`, `str(item)`) and
+    differ from each other and from core's strict checks, so replacing them
+    would change behavior. They are deferred to A5. Done instead:
+    `simulator/_weather_schema.py` moved to `weather/schema.py` (weather no
+    longer imports a private simulator module), and exact duplicates removed:
+    `_candidate_ordering` (planning), `_numeric_vector` / `_covariance_matrix`
+    (weather), `_numeric_sequence` and the UTC parser (demand). Not merged
+    despite identical code: `_validate_training_record_summary`, which calls
+    each module's own differing helpers.
 - [ ] **A2 shared schedule types.** Move `FixedFCRBidPlan`, the energy and
   capacity schedules, and `RestorationCapability` to `core/schedules.py`.
   Breaks control ↔ simulator.
@@ -148,9 +162,11 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
   and 25–40 curated names each. Strip feature numbers from code. Point pytest at
   `tests/` and gate runs with markers instead of CI file lists. Collapse the
   meta-tests into one parametrized module.
-- [ ] **A5 provenance trim** (D2). Keep fingerprints on persisted artifacts and
-  results only. Add one versioned JSON artifact base shared by weather, demand,
-  market, and the planning dataset.
+- [ ] **A5 provenance trim** (D2). Keep fingerprints on persisted artifacts
+  and results only. Add one versioned JSON artifact base shared by weather,
+  demand, market, and the planning dataset. Settle one loading behavior for
+  the coercing helpers left in weather, demand, and planning, and decide the
+  fate of the robust-FCR canonical form kept in control.
 - [ ] **A6 merge variants**, one PR per package:
   - [ ] market: one `MarketArtifact`, one activation sign convention, a shared
     HTTP layer for ENTSO-E and RTE.

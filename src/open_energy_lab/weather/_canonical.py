@@ -9,7 +9,7 @@ from hashlib import sha1
 from math import isclose
 from zoneinfo import ZoneInfo
 
-from open_energy_lab.simulator._weather_schema import (
+from open_energy_lab.weather.schema import (
     iter_weather_field_specs,
 )
 

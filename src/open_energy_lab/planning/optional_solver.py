@@ -18,6 +18,7 @@ from .problem import (
     DEFAULT_SOLVER_TIME_LIMIT_SECONDS,
     PlanningDecisionCandidate,
     PlanningProblemAssembly,
+    _candidate_ordering,
 )
 
 
@@ -207,14 +208,6 @@ __all__ = [
     "require_pyomo_backend",
     "solve_planning_problem",
 ]
-
-
-def _candidate_ordering(candidate: PlanningDecisionCandidate) -> tuple[object, ...]:
-    return (
-        float(candidate.objective_value),
-        float(candidate.estimated_shortfall_risk),
-        tuple(sorted((str(key), repr(value)) for key, value in candidate.selected_design.items())),
-    )
 
 
 def _solver_metadata(

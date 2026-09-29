@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from ._weather_schema import IRRADIANCE_FIELD_NAMES, validate_weather_field_names
+from open_energy_lab.weather.schema import IRRADIANCE_FIELD_NAMES, validate_weather_field_names
 
 if TYPE_CHECKING:
     from .weather import WeatherComponent
