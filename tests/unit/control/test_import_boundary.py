@@ -222,22 +222,22 @@ def test_control_root_import_defers_controller_submodule_loading() -> None:
         ("build_stacked_heuristic_baseline", "open_energy_lab.control.stacked_service"),
         (
             "RestorationControlValidationError",
-            "open_energy_lab.control.restoration_service",
+            "open_energy_lab.simulator.restoration_contracts",
         ),
         (
             "DirectionalCapacityCommitmentInterval",
-            "open_energy_lab.control.restoration_service",
+            "open_energy_lab.simulator.restoration_contracts",
         ),
-        ("DirectionalCapacitySchedule", "open_energy_lab.control.restoration_service"),
+        ("DirectionalCapacitySchedule", "open_energy_lab.simulator.restoration_contracts"),
         (
             "RestorationEnergyBaselineInterval",
-            "open_energy_lab.control.restoration_service",
+            "open_energy_lab.simulator.restoration_contracts",
         ),
         (
             "RestorationEnergyBaselineSchedule",
-            "open_energy_lab.control.restoration_service",
+            "open_energy_lab.simulator.restoration_contracts",
         ),
-        ("RestorationCapability", "open_energy_lab.control.restoration_service"),
+        ("RestorationCapability", "open_energy_lab.simulator.restoration_contracts"),
         ("AFRRBaselineMode", "open_energy_lab.control.restoration_service"),
         ("AFRRBaselineConfig", "open_energy_lab.control.restoration_service"),
         (
@@ -246,7 +246,7 @@ def test_control_root_import_defers_controller_submodule_loading() -> None:
         ),
         (
             "build_restoration_capability",
-            "open_energy_lab.control.restoration_service",
+            "open_energy_lab.simulator.restoration_contracts",
         ),
         (
             "build_afrr_directional_capacity_schedule",
@@ -346,16 +346,9 @@ def test_feature_012_plan_import_loads_no_reference_or_research_runtime() -> Non
         (
             "open_energy_lab.control.restoration_service",
             (
-                "RestorationControlValidationError",
-                "DirectionalCapacityCommitmentInterval",
-                "DirectionalCapacitySchedule",
-                "RestorationEnergyBaselineInterval",
-                "RestorationEnergyBaselineSchedule",
-                "RestorationCapability",
                 "AFRRBaselineMode",
                 "AFRRBaselineConfig",
                 "RestorationBaselineBundle",
-                "build_restoration_capability",
                 "build_afrr_directional_capacity_schedule",
                 "build_afrr_baseline_config",
                 "build_afrr_baseline",

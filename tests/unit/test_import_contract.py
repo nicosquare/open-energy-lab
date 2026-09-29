@@ -640,7 +640,7 @@ def test_feature_011_restoration_public_imports_resolve_from_exact_owned_modules
             "open_energy_lab.market.restoration_activation"
         ),
         control.DirectionalCapacitySchedule: (
-            "open_energy_lab.control.restoration_service"
+            "open_energy_lab.simulator.restoration_contracts"
         ),
         control.AFRRBaselineConfig: (
             "open_energy_lab.control.restoration_service"
@@ -752,7 +752,7 @@ def test_feature_011_package_roots_resolve_offline_owners_without_adapter_or_cre
             market.MFRRActivationSequence:
                 "open_energy_lab.market.restoration_activation",
             control.DirectionalCapacitySchedule:
-                "open_energy_lab.control.restoration_service",
+                "open_energy_lab.simulator.restoration_contracts",
             control.RestorationBaselineBundle:
                 "open_energy_lab.control.restoration_service",
             simulator.AFRRReplayResult:
