@@ -57,7 +57,7 @@ contract tests (import boundaries, export lists, doc wording).
 
 Import cycles, each hidden by lazy imports:
 
-- control ↔ simulator: plan and schedule types live in `control`.
+- ~~control ↔ simulator: plan and schedule types live in `control`.~~ Removed in A2.
 - simulator ↔ market: `market/reference_fcr.py` golden fixture.
 - tpm ↔ planning: `tpm/fit.py` and `tpm/query.py` load planning datasets.
 
@@ -87,12 +87,24 @@ Regenerate with `uv run python tools/consolidation_metrics.py`.
 | A1 simulator | 77,492 | 12,510 | 12,914 | 20,983 | 766 | 8 | 8 | 12 | 8 |
 | A1 control | 77,250 | 12,504 | 12,914 | 20,728 | 785 | 1 | 2 | 4 | 6 |
 | A1 weather/demand/planning | 77,214 | 12,504 | 12,802 | 20,728 | 785 | 1 | 2 | 4 | 6 |
+| A2 plan/schedule contracts | 77,313 | 12,504 | 13,782 | 19,847 | 785 | 1 | 2 | 4 | 6 |
 
 A1 simulator full suite: **2230 passed, 4 failed (the v1 `spn_mip` TPM tests still in the baseline; the two surface tests were fixed by #18), 2 skipped**.
 
 A1 control full suite **plus `tests/parity`**: **2235 passed, same 4 v1 `spn_mip` TPM failures, 3 skipped** (1h35m).
 
 A1 weather/demand/planning full suite: **2232 passed, same 4 v1 `spn_mip` TPM failures, 2 skipped** (parity not rerun; no parity-covered code changed).
+
+A2 full suite **plus `tests/parity`**: **2234 passed, 3 skipped, 6 failed**. Four are the v1 `spn_mip` TPM tests. One was an integration ownership assertion missed in the first pass, fixed in `85df9b2`. One was the flaky ENTSO-E refresh test below, which loads no module changed by A2.
+
+### Known issues found along the way
+
+- `tests/integration/market/test_entsoe_fixture_workflow.py::test_unchanged_refresh_writes_nothing_and_preserves_current_identity`
+  failed twice within about an hour on 2026-09-29 (refresh reported
+  `published` instead of `unchanged`), then passed 9 times in a row on both
+  the A2 branch and `main`. It looks time-dependent. It could be a real bug
+  (an unchanged refresh occasionally publishing a new artifact), so
+  investigate it separately; it is out of scope for the consolidation PRs.
 
 A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 baseline TPM failures, 2 skipped**.
 
@@ -151,9 +163,16 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     (weather), `_numeric_sequence` and the UTC parser (demand). Not merged
     despite identical code: `_validate_training_record_summary`, which calls
     each module's own differing helpers.
-- [ ] **A2 shared schedule types.** Move `FixedFCRBidPlan`, the energy and
-  capacity schedules, and `RestorationCapability` to `core/schedules.py`.
-  Breaks control ↔ simulator.
+- [x] **A2 shared schedule types** (branch `consolidation/a2-plan-contracts`).
+  Decided 2026-09-29: the simulator owns the contracts it evaluates, not
+  `core/`. `core` would otherwise depend on `market.time`, and `market` already
+  depends on `core`. Layering is now market ← simulator ← control.
+  `control/fcr_bid_plan.py` moved to `simulator/fcr_bid_plan.py` (the
+  reference mapping stays in control until A3). The restoration contracts
+  (capacity and energy schedules, capability) moved to
+  `simulator/restoration_contracts.py`; the aFRR/mFRR baseline heuristics stay
+  in control. `test_simulator_modules_never_load_control` enforces the
+  direction. Test changes: ownership assertions for the moved names only.
 - [ ] **A3 `validation/` package.** Move `control/robust_fcr_reference.py`,
   `control/fcr_rolling_reference.py`, `market/reference_fcr.py`, the parity
   functions in `simulator/fcr_bid_evaluation.py`, and the TPM parity/fidelity
