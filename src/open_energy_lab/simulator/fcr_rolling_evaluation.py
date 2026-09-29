@@ -15,7 +15,7 @@ import math
 
 from open_energy_lab.core.serialization import fingerprint, freeze, thaw
 from open_energy_lab.core.validation import finite, non_empty_str, sha256_digest
-from open_energy_lab.control.fcr_bid_plan import (
+from .fcr_bid_plan import (
     FixedFCRBidPlan,
     build_fixed_fcr_bid_plan,
 )

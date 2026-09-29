@@ -21,11 +21,6 @@ from open_energy_lab.core.validation import (
     positive,
     sha256_digest,
 )
-from open_energy_lab.control.restoration_service import (
-    DirectionalCapacitySchedule,
-    RestorationCapability,
-    RestorationEnergyBaselineSchedule,
-)
 from open_energy_lab.market.restoration_activation import (
     AFRRActivationTrajectory,
     MFRRActivationEvent,
@@ -41,6 +36,11 @@ from open_energy_lab.market.time import (
 )
 
 from .battery import BatteryState, apply_power_request
+from .restoration_contracts import (
+    DirectionalCapacitySchedule,
+    RestorationCapability,
+    RestorationEnergyBaselineSchedule,
+)
 from .scenario import BatteryComponent
 
 

@@ -16,7 +16,7 @@ from open_energy_lab.core.serialization import (
     thaw,
 )
 from open_energy_lab.core.validation import finite, non_empty_str, sha256_digest
-from open_energy_lab.control.fcr_bid_plan import FixedFCRBidPlan
+from .fcr_bid_plan import FixedFCRBidPlan
 from open_energy_lab.market.activation import RegulationActivationTrace
 from open_energy_lab.market.artifact import MarketDataArtifact
 from open_energy_lab.market.time import CanonicalInterval

@@ -387,3 +387,22 @@ def test_future_multi_component_modules_reserve_import_light_boundary() -> None:
         assert optional_modules_loaded == set()
         assert module_spec.origin is not None
         assert Path(module_spec.origin).resolve().parent == package_dir
+
+
+def test_simulator_modules_never_load_control() -> None:
+    """The simulator owns the plan/schedule contracts; control depends on it, not back."""
+
+    _run_isolated_python(
+        """
+        import pkgutil
+        import sys
+
+        import open_energy_lab.simulator as simulator
+
+        for info in pkgutil.iter_modules(simulator.__path__):
+            __import__(f"open_energy_lab.simulator.{info.name}")
+
+        loaded = sorted(name for name in sys.modules if name.startswith("open_energy_lab.control"))
+        assert loaded == [], loaded
+        """
+    )

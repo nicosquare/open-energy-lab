@@ -294,7 +294,11 @@ def _diagnostic_relaxation_plan(
 ) -> Any | None:
     if result.decisions is None or result.solver.objective_value_eur is None:
         return None
-    from .fcr_bid_plan import BidPlanProducer, OptimizationMetric, PlanDiagnostic
+    from open_energy_lab.simulator.fcr_bid_plan import (
+        BidPlanProducer,
+        OptimizationMetric,
+        PlanDiagnostic,
+    )
 
     return _build_fixed_fcr_plan_from_decisions(
         plan_id=f"{day_input.date_classification.delivery_date}-relaxation-diagnostic-plan-v1",

@@ -231,7 +231,7 @@ def extract_accepted_predecessor_fixings(
     is retained beside its explicit source-positive-discharge negation.
     """
 
-    from .fcr_bid_plan import FixedFCRBidPlan
+    from open_energy_lab.simulator.fcr_bid_plan import FixedFCRBidPlan
 
     if not isinstance(plan, FixedFCRBidPlan):
         raise RollingFCRValidationError(
@@ -1032,7 +1032,11 @@ def _build_plan(
     solver: SolverEvidence,
     classification: str,
 ) -> Any:
-    from .fcr_bid_plan import BidPlanProducer, OptimizationMetric, PlanDiagnostic
+    from open_energy_lab.simulator.fcr_bid_plan import (
+        BidPlanProducer,
+        OptimizationMetric,
+        PlanDiagnostic,
+    )
 
     producer_kind = "robust" if classification == "robust_candidate" else "other"
     return _build_fixed_fcr_plan_from_decisions(
