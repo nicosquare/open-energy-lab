@@ -9,9 +9,9 @@ from examples.fcr_bid_evaluation.run_reference_parity import (
     build_reference_request,
 )
 from open_energy_lab.simulator import (
-    compare_reference_evaluation,
     evaluate_fixed_fcr_bid,
 )
+from oel_validation.fcr_bid_evaluation import compare_reference_evaluation
 
 
 DEFAULT_ACTIVATION_PATH = Path(

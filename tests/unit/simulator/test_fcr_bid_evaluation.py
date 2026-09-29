@@ -22,6 +22,10 @@ from tests.unit.simulator.test_stacked_service import (
 from tests.unit.market.test_artifact import PERIOD_START
 
 
+def _validation():
+    return importlib.import_module("oel_validation.fcr_bid_evaluation")
+
+
 def _module():
     try:
         return importlib.import_module("open_energy_lab.simulator.fcr_bid_evaluation")
@@ -460,7 +464,7 @@ def test_diagnostic_result_cannot_enter_settlement_or_reference_comparison() -> 
             diagnostic.physical_trace["samples"],
         )
     with pytest.raises(module.FCRBidEvaluationValidationError, match="settled"):
-        module.compare_reference_evaluation(case.request, diagnostic)
+        _validation().compare_reference_evaluation(case.request, diagnostic)
 
 
 def test_daily_report_exposes_schedule_optimization_and_input_lineage() -> None:
@@ -556,7 +560,7 @@ def test_precision_bounds_are_recomputed_from_decisions_prices_and_activation(
 ) -> None:
     fixture, trace, expected_bounds = zero_activation_reference_case
 
-    actual = _module().recompute_reference_precision_bounds(fixture, trace)
+    actual = _validation().recompute_reference_precision_bounds(fixture, trace)
 
     assert actual == pytest.approx(expected_bounds, abs=1e-12)
 
@@ -565,7 +569,7 @@ def test_reference_comparison_records_exact_rounded_match(
     zero_activation_reference_case,
 ) -> None:
     fixture, trace, _ = zero_activation_reference_case
-    comparison = _module().compare_reference_values(
+    comparison = _validation().compare_reference_values(
         fixture=fixture,
         actual_values={"settlement.day_ahead_revenue_eur": 0.1684},
         activation_trace=trace,
@@ -582,7 +586,7 @@ def test_reference_comparison_uses_analytic_interval_overlap(
 ) -> None:
     fixture, trace, bounds = zero_activation_reference_case
     field_id = "settlement.day_ahead_revenue_eur"
-    comparison = _module().compare_reference_values(
+    comparison = _validation().compare_reference_values(
         fixture=fixture,
         actual_values={field_id: 0.169},
         activation_trace=trace,
@@ -606,7 +610,7 @@ def test_reference_comparison_accepts_closed_interval_endpoint_overlap(
     fixture, trace, bounds = zero_activation_reference_case
     field_id = "settlement.day_ahead_revenue_eur"
     actual = 0.168 + 0.0005 + bounds["day_ahead_revenue_eur"]
-    comparison = _module().compare_reference_values(
+    comparison = _validation().compare_reference_values(
         fixture=fixture,
         actual_values={field_id: actual},
         activation_trace=trace,
@@ -622,7 +626,7 @@ def test_reference_comparison_reports_mismatch_outside_field_bound(
     zero_activation_reference_case,
 ) -> None:
     fixture, trace, _ = zero_activation_reference_case
-    comparison = _module().compare_reference_values(
+    comparison = _validation().compare_reference_values(
         fixture=fixture,
         actual_values={"settlement.day_ahead_revenue_eur": 0.2},
         activation_trace=trace,
@@ -637,7 +641,7 @@ def test_reference_comparison_returns_unavailable_for_unsupported_evidence(
     zero_activation_reference_case,
 ) -> None:
     fixture, trace, _ = zero_activation_reference_case
-    comparison = _module().compare_reference_values(
+    comparison = _validation().compare_reference_values(
         fixture=fixture,
         actual_values={"physical.throughput_kwh": 83.0},
         activation_trace=trace,
@@ -653,7 +657,7 @@ def test_reference_objective_metadata_is_compared_separately_from_profit(
     zero_activation_reference_case,
 ) -> None:
     fixture, trace, _ = zero_activation_reference_case
-    comparison = _module().compare_reference_values(
+    comparison = _validation().compare_reference_values(
         fixture=fixture,
         actual_values={
             "plan.objective": 11.028,
@@ -673,7 +677,7 @@ def test_reference_comparison_api_rejects_a_blanket_tolerance_argument(
     fixture, trace, _ = zero_activation_reference_case
 
     with pytest.raises(TypeError, match="tolerance"):
-        _module().compare_reference_values(
+        _validation().compare_reference_values(
             fixture=fixture,
             actual_values={"settlement.total_profit_eur": 10.749},
             activation_trace=trace,

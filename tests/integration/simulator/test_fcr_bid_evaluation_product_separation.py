@@ -21,10 +21,10 @@ from oel_validation.reference_fcr import (
 )
 from open_energy_lab.simulator.fcr_bid_evaluation import (
     FCRBidEvaluationValidationError,
-    compare_reference_evaluation,
     evaluate_fixed_fcr_bid,
     replay_invalid_fcr_bid_diagnostic,
 )
+from oel_validation.fcr_bid_evaluation import compare_reference_evaluation
 from open_energy_lab.simulator.fcr_settlement import (
     FCRSettlementValidationError,
     settle_reference_fcr_bid,

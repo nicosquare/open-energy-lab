@@ -25,9 +25,9 @@ from open_energy_lab.simulator import (
     BatteryComponent,
     FCRBidEvaluationRequest,
     MultiRateTimeContract,
-    compare_reference_evaluation,
     evaluate_fixed_fcr_bid,
 )
+from oel_validation.fcr_bid_evaluation import compare_reference_evaluation
 
 
 DEFAULT_FIXTURE = Path(
