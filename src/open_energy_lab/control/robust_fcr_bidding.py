@@ -2806,7 +2806,7 @@ def _build_fixed_fcr_plan_from_decisions(
 ) -> Any:
     """Map canonical 24/6 decisions into one bidder-neutral fixed plan."""
 
-    from open_energy_lab.control.fcr_bid_plan import build_fixed_fcr_bid_plan
+    from open_energy_lab.simulator.fcr_bid_plan import build_fixed_fcr_bid_plan
     from open_energy_lab.simulator.stacked_service import (
         build_energy_baseline_schedule,
         build_fcr_capacity_schedule,
@@ -2884,7 +2884,7 @@ def _build_deployable_plan(
     audit: FeasibilityAudit,
     diagnostics: Sequence[RobustFCRDiagnostic],
 ) -> Any:
-    from open_energy_lab.control.fcr_bid_plan import (
+    from open_energy_lab.simulator.fcr_bid_plan import (
         BidPlanProducer,
         OptimizationMetric,
         PlanDiagnostic,

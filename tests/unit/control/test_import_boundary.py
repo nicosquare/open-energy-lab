@@ -285,7 +285,7 @@ def test_feature_012_plan_exports_are_lazy_and_owned_by_fcr_bid_plan() -> None:
     assert {
         getattr(module, name).__module__
         for name in expected
-    } == {"open_energy_lab.control.fcr_bid_plan"}
+    } == {"open_energy_lab.simulator.fcr_bid_plan"}
 
 
 def test_feature_012_plan_import_loads_no_reference_or_research_runtime() -> None:
