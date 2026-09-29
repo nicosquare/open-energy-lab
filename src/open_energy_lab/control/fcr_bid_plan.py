@@ -61,7 +61,7 @@ def map_reference_decisions_to_schedules(
     normalized fixture.  This function consumes no baseline path at runtime.
     """
 
-    from open_energy_lab.market.reference_fcr import (
+    from oel_validation.reference_fcr import (
         GoldenReferenceFixture,
         REFERENCE_MAPPING_ID,
     )

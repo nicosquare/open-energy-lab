@@ -234,7 +234,7 @@ REFERENCE_FIXTURE_PATH = Path(
 
 
 def _reference_fixture():
-    reference = importlib.import_module("open_energy_lab.market.reference_fcr")
+    reference = importlib.import_module("oel_validation.reference_fcr")
     return reference.load_golden_reference_fixture(REFERENCE_FIXTURE_PATH)
 
 

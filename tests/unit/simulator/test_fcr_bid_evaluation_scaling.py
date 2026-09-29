@@ -14,7 +14,7 @@ from open_energy_lab.market.activation import (
     ActivationImportRequest,
     import_regulation_activation_trace,
 )
-from open_energy_lab.market.reference_fcr import load_golden_reference_fixture
+from oel_validation.reference_fcr import load_golden_reference_fixture
 from open_energy_lab.simulator import fcr_bid_evaluation as evaluation
 from open_energy_lab.simulator.fcr_settlement import settle_reference_fcr_bid
 from open_energy_lab.simulator.stacked_service import (

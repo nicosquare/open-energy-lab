@@ -14,7 +14,7 @@ from open_energy_lab.control.fcr_bid_plan import (
     build_fixed_fcr_bid_plan,
     map_reference_decisions_to_schedules,
 )
-from open_energy_lab.market.reference_fcr import (
+from oel_validation.reference_fcr import (
     GoldenReferenceFixture,
     build_reference_market_context,
     load_golden_reference_fixture,

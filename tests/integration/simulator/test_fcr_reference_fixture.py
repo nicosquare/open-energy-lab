@@ -21,7 +21,7 @@ from open_energy_lab.market.activation import (
     ActivationImportRequest,
     import_regulation_activation_trace,
 )
-from open_energy_lab.market.reference_fcr import (
+from oel_validation.reference_fcr import (
     ReferenceFCRIntegrityError,
     ReferenceFCRValidationError,
     build_reference_market_context,

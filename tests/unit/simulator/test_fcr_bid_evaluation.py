@@ -445,7 +445,7 @@ def test_battery_mutation_produces_failed_report_without_replay_or_settlement() 
 def test_diagnostic_result_cannot_enter_settlement_or_reference_comparison() -> None:
     module = _module()
     settlement = importlib.import_module("open_energy_lab.simulator.fcr_settlement")
-    reference = importlib.import_module("open_energy_lab.market.reference_fcr")
+    reference = importlib.import_module("oel_validation.reference_fcr")
     fixture = reference.load_golden_reference_fixture(REFERENCE_FIXTURE_PATH)
     case = _us1_case(
         capacities_kw=(2.0,),
@@ -488,7 +488,7 @@ REFERENCE_FIXTURE_PATH = Path(
 
 @pytest.fixture(scope="module")
 def zero_activation_reference_case():
-    reference = importlib.import_module("open_energy_lab.market.reference_fcr")
+    reference = importlib.import_module("oel_validation.reference_fcr")
     activation = importlib.import_module("open_energy_lab.market.activation")
     fixture = reference.load_golden_reference_fixture(REFERENCE_FIXTURE_PATH)
     period = fixture.mapping.target_period

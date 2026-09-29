@@ -16,7 +16,7 @@ from open_energy_lab.control import (
     load_robust_fcr_reference_fixture,
     solve_robust_fcr_bid,
 )
-from open_energy_lab.market.reference_fcr import (
+from oel_validation.reference_fcr import (
     load_golden_reference_fixture,
     load_reference_activation_trace,
 )

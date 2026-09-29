@@ -1667,7 +1667,7 @@ def recompute_reference_precision_bounds(
 ) -> Mapping[str, float]:
     """Recompute every analytic decision-rounding bound from declared inputs."""
 
-    from open_energy_lab.market.reference_fcr import GoldenReferenceFixture
+    from oel_validation.reference_fcr import GoldenReferenceFixture
 
     if not isinstance(fixture, GoldenReferenceFixture):
         raise FCRBidEvaluationValidationError(
@@ -1756,7 +1756,7 @@ def compare_reference_values(
 ) -> ReferenceComparisonReport:
     """Compare supported fields without applying a blanket numeric tolerance."""
 
-    from open_energy_lab.market.reference_fcr import GoldenReferenceFixture
+    from oel_validation.reference_fcr import GoldenReferenceFixture
 
     if not isinstance(fixture, GoldenReferenceFixture):
         raise FCRBidEvaluationValidationError(
@@ -1970,7 +1970,7 @@ def _reference_domain_unavailable_comparison(
     *,
     reason: str,
 ) -> ReferenceComparisonReport:
-    from open_energy_lab.market.reference_fcr import GoldenReferenceFixture
+    from oel_validation.reference_fcr import GoldenReferenceFixture
 
     if not isinstance(fixture, GoldenReferenceFixture):
         raise FCRBidEvaluationValidationError(

@@ -240,7 +240,7 @@ def test_feature_012_plan_and_evaluator_import_without_reference_or_solver_side_
         }
         loaded_roots = {name.split(".", 1)[0] for name in newly_loaded}
         assert forbidden_roots.isdisjoint(loaded_roots)
-        assert "open_energy_lab.market.reference_fcr" not in sys.modules
+        assert "oel_validation.reference_fcr" not in sys.modules
         assert not any("julia" in name.casefold() for name in newly_loaded)
         """
     )
@@ -252,7 +252,7 @@ def test_feature_012_focused_reference_loader_import_is_offline_and_lightweight(
         import sys
 
         loaded_before = set(sys.modules)
-        import open_energy_lab.market.reference_fcr as reference_fcr
+        import oel_validation.reference_fcr as reference_fcr
 
         newly_loaded = set(sys.modules) - loaded_before
         forbidden_roots = {
@@ -264,7 +264,7 @@ def test_feature_012_focused_reference_loader_import_is_offline_and_lightweight(
         loaded_roots = {name.split(".", 1)[0] for name in newly_loaded}
         assert forbidden_roots.isdisjoint(loaded_roots)
         assert reference_fcr.load_golden_reference_fixture.__module__ == (
-            "open_energy_lab.market.reference_fcr"
+            "oel_validation.reference_fcr"
         )
         assert not any("baselines" in name for name in newly_loaded)
         """
@@ -622,7 +622,7 @@ def test_package_imports_stay_clear_of_lazy_research_stacks(module_name: str) ->
         "open_energy_lab.market.artifact",
         "open_energy_lab.market.activation",
         "open_energy_lab.market.entsoe",
-        "open_energy_lab.market.reference_fcr",
+        "oel_validation.reference_fcr",
         *RESTORATION_OFFLINE_MODULES,
         "open_energy_lab.control.fcr_bid_plan",
         "open_energy_lab.control.robust_fcr_bidding",

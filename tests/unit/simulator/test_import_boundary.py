@@ -312,7 +312,7 @@ def test_feature_012_evaluator_exports_are_lazy_and_exactly_owned() -> None:
         import open_energy_lab.simulator as module
 
         assert "open_energy_lab.simulator.fcr_bid_evaluation" not in sys.modules
-        assert "open_energy_lab.market.reference_fcr" not in sys.modules
+        assert "oel_validation.reference_fcr" not in sys.modules
         expected = {
             "ComponentAvailability",
             "DailyFCRBidEvaluationReport",
@@ -331,7 +331,7 @@ def test_feature_012_evaluator_exports_are_lazy_and_exactly_owned() -> None:
                 "open_energy_lab.simulator.fcr_bid_evaluation"
             )
         assert "open_energy_lab.simulator.fcr_bid_evaluation" in sys.modules
-        assert "open_energy_lab.market.reference_fcr" not in sys.modules
+        assert "oel_validation.reference_fcr" not in sys.modules
         """
     )
 

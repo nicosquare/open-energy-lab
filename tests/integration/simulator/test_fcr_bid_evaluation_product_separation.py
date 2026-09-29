@@ -14,7 +14,7 @@ from examples.restoration_services.generate_reference_results import (
     load_reference_scenario,
 )
 from open_energy_lab.control.fcr_bid_plan import FCRBidPlanValidationError
-from open_energy_lab.market.reference_fcr import (
+from oel_validation.reference_fcr import (
     ReferenceFCRValidationError,
     build_reference_market_context,
     load_golden_reference_fixture,

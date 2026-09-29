@@ -431,7 +431,7 @@ def test_feature_010_public_imports_resolve_from_owned_modules_without_optional_
 def test_feature_012_public_plan_and_evaluator_imports_have_exact_owners():
     control = importlib.import_module("open_energy_lab.control")
     simulator = importlib.import_module("open_energy_lab.simulator")
-    reference = importlib.import_module("open_energy_lab.market.reference_fcr")
+    reference = importlib.import_module("oel_validation.reference_fcr")
     expected = {
         control.BidPlanProducer: "open_energy_lab.simulator.fcr_bid_plan",
         control.FixedFCRBidPlan: "open_energy_lab.simulator.fcr_bid_plan",
@@ -459,10 +459,10 @@ def test_feature_012_public_plan_and_evaluator_imports_have_exact_owners():
             "open_energy_lab.simulator.fcr_bid_evaluation"
         ),
         reference.load_golden_reference_fixture: (
-            "open_energy_lab.market.reference_fcr"
+            "oel_validation.reference_fcr"
         ),
         reference.load_reference_activation_trace: (
-            "open_energy_lab.market.reference_fcr"
+            "oel_validation.reference_fcr"
         ),
     }
 

@@ -31,7 +31,7 @@ from open_energy_lab.market import (
     build_local_delivery_day,
     import_regulation_activation_trace,
 )
-from open_energy_lab.market.reference_fcr import (
+from oel_validation.reference_fcr import (
     load_golden_reference_fixture,
 )
 from open_energy_lab.simulator import evaluate_fixed_fcr_bid

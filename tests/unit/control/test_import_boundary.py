@@ -302,7 +302,7 @@ def test_feature_012_plan_import_loads_no_reference_or_research_runtime() -> Non
         }
         loaded_roots = {name.split(".", 1)[0] for name in sys.modules}
         assert forbidden_roots.isdisjoint(loaded_roots)
-        assert "open_energy_lab.market.reference_fcr" not in sys.modules
+        assert "oel_validation.reference_fcr" not in sys.modules
         """
     )
 
