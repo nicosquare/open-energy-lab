@@ -13,6 +13,10 @@ from tests.unit.market.test_artifact import PERIOD_START
 from tests.unit.simulator.test_stacked_service import _energy_schedule, _fcr_schedule
 
 
+def _mapping_module():
+    return importlib.import_module("oel_validation.reference_schedule_mapping")
+
+
 def _module():
     try:
         return importlib.import_module("open_energy_lab.control.fcr_bid_plan")
@@ -240,7 +244,7 @@ def _reference_fixture():
 
 def test_reference_mapping_inverts_x0_and_preserves_nonnegative_xr() -> None:
     fixture = _reference_fixture()
-    mapped = _module().map_reference_decisions_to_schedules(fixture)
+    mapped = _mapping_module().map_reference_decisions_to_schedules(fixture)
 
     assert len(mapped.energy_schedule.intervals) == 24
     assert len(mapped.fcr_schedule.intervals) == 6
@@ -258,7 +262,7 @@ def test_reference_mapping_inverts_x0_and_preserves_nonnegative_xr() -> None:
 def test_reference_mapping_rejects_negative_xr_before_building_schedules(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    module = _module()
+    module = _mapping_module()
     fixture = _reference_fixture()
     invalid = replace(
         fixture,
@@ -280,12 +284,12 @@ def test_reference_mapping_rejects_negative_xr_before_building_schedules(
         module.FCRBidPlanValidationError,
         match=r"rounded_xr_kw\[1\].*non-negative.*before schedule",
     ):
-        module.map_reference_decisions_to_schedules(invalid)
+        _mapping_module().map_reference_decisions_to_schedules(invalid)
     assert calls == []
 
 
 def test_reference_mapping_assigns_deterministic_evidence_references() -> None:
-    mapped = _module().map_reference_decisions_to_schedules(_reference_fixture())
+    mapped = _mapping_module().map_reference_decisions_to_schedules(_reference_fixture())
 
     for index, commitment in enumerate(mapped.fcr_schedule.intervals):
         assert commitment.volume_observation_ref == (
@@ -298,7 +302,7 @@ def test_reference_mapping_assigns_deterministic_evidence_references() -> None:
 
 def test_reference_and_library_activation_equations_are_sign_equivalent() -> None:
     fixture = _reference_fixture()
-    mapped = _module().map_reference_decisions_to_schedules(fixture)
+    mapped = _mapping_module().map_reference_decisions_to_schedules(fixture)
     activation_values = (-0.5, 0.0, 0.75)
 
     for activation_index, activation in enumerate(activation_values):
@@ -317,7 +321,7 @@ def test_reference_and_library_activation_equations_are_sign_equivalent() -> Non
 
 def test_reference_one_based_indices_match_zero_based_interval_edges() -> None:
     fixture = _reference_fixture()
-    mapped = _module().map_reference_decisions_to_schedules(fixture)
+    mapped = _mapping_module().map_reference_decisions_to_schedules(fixture)
 
     assert mapped.energy_schedule.intervals[23].power_kw == -fixture.rounded_x0_kw[23]
     assert mapped.fcr_schedule.intervals[5].capacity_kw == fixture.rounded_xr_kw[5]
@@ -365,4 +369,4 @@ def test_reference_mapper_rejects_a_dst_transition_period() -> None:
         _module().FCRBidPlanValidationError,
         match="ordinary 24-hour delivery day",
     ):
-        _module().map_reference_decisions_to_schedules(invalid)
+        _mapping_module().map_reference_decisions_to_schedules(invalid)
