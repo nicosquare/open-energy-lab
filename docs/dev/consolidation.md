@@ -58,7 +58,7 @@ contract tests (import boundaries, export lists, doc wording).
 Import cycles, each hidden by lazy imports:
 
 - ~~control ↔ simulator: plan and schedule types live in `control`.~~ Removed in A2.
-- simulator ↔ market: `market/reference_fcr.py` golden fixture.
+- ~~simulator ↔ market: `market/reference_fcr.py` golden fixture.~~ Removed in A3a.
 - tpm ↔ planning: `tpm/fit.py` and `tpm/query.py` load planning datasets.
 
 Baseline test run (`uv run pytest tests/unit tests/integration`, 24m53s):
@@ -88,6 +88,7 @@ Regenerate with `uv run python tools/consolidation_metrics.py`.
 | A1 control | 77,250 | 12,504 | 12,914 | 20,728 | 785 | 1 | 2 | 4 | 6 |
 | A1 weather/demand/planning | 77,214 | 12,504 | 12,802 | 20,728 | 785 | 1 | 2 | 4 | 6 |
 | A2 plan/schedule contracts | 77,313 | 12,504 | 13,782 | 19,847 | 785 | 1 | 2 | 4 | 6 |
+| A3a validation code (+6,873 in `oel_validation/`) | 70,425 | 11,316 | 13,222 | 14,707 | 785 | 1 | 2 | 4 | 6 |
 
 A1 simulator full suite: **2230 passed, 4 failed (the v1 `spn_mip` TPM tests still in the baseline; the two surface tests were fixed by #18), 2 skipped**.
 
@@ -96,6 +97,8 @@ A1 control full suite **plus `tests/parity`**: **2235 passed, same 4 v1 `spn_mip
 A1 weather/demand/planning full suite: **2232 passed, same 4 v1 `spn_mip` TPM failures, 2 skipped** (parity not rerun; no parity-covered code changed).
 
 A2 full suite **plus `tests/parity`**: **2234 passed, 3 skipped, 6 failed**. Four are the v1 `spn_mip` TPM tests. One was an integration ownership assertion missed in the first pass, fixed in `85df9b2`. One was the flaky ENTSO-E refresh test below, which loads no module changed by A2.
+
+A3a full suite **plus `tests/parity`**: **2237 passed, 3 skipped, 6 failed**. Four are the v1 `spn_mip` TPM tests. Two were the robust-FCR and rolling walkthrough notebooks, which still imported moved names from the control root; fixed in the notebook commit (13 notebook tests pass).
 
 ### Known issues found along the way
 
@@ -174,10 +177,29 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
   `simulator/restoration_contracts.py`; the aFRR/mFRR baseline heuristics stay
   in control. `test_simulator_modules_never_load_control` enforces the
   direction. Test changes: ownership assertions for the moved names only.
-- [ ] **A3 `validation/` package.** Move `control/robust_fcr_reference.py`,
-  `control/fcr_rolling_reference.py`, `market/reference_fcr.py`, the parity
-  functions in `simulator/fcr_bid_evaluation.py`, and the TPM parity/fidelity
-  evidence. Breaks simulator ↔ market.
+- [ ] **A3 validation package** (D1). Shape agreed on 2026-09-29: a top-level
+  `oel_validation/` package, not in the wheel, importable from the repo root.
+  TPM evidence stays with Track B.
+  - [x] A3a code (branch `consolidation/a3a-validation-code`):
+    `market/reference_fcr.py`, `control/robust_fcr_reference.py`,
+    `control/fcr_rolling_reference.py`, the evaluator parity functions, and the
+    reference schedule mapping now live in `oel_validation/`. 16 exports left
+    the control and simulator roots. `evaluate_fixed_fcr_bid` keeps a generic
+    optional `comparison_fixture` hook (protocols `EvaluationComparisonFixture`
+    and `EvaluationComparison`), so request and report bytes are unchanged.
+    `tests/unit/test_validation_boundary.py` guards the boundary. Breaks
+    simulator ↔ market.
+  - [ ] A3b fixtures and scripts: move the reference fixtures and the
+    reference scripts (`examples/*/run_reference_*.py`,
+    `normalize_reference_*.py`) into `oel_validation/`, together with the
+    provenance paths recorded in fixtures, `pyproject` excludes, CI lists, and
+    README commands. The documented `uv run python examples/...` commands for
+    these scripts already failed on `main` (the repo root is not on the path);
+    `python -m examples....` works. Fix them in A3b.
+  - [ ] Follow-up: `control/_robust_fcr_formulation.py` still holds the
+    reference-certificate helpers (`assemble_robust_fcr_reference_certificate`,
+    `audit_closed_reference_witness`, `RobustFCRReferenceIntervalAudit`). They
+    share formulation internals with the real solve path.
 - [ ] **A4 package surface.** Replace lazy `__init__` files with plain imports
   and 25–40 curated names each. Strip feature numbers from code. Point pytest at
   `tests/` and gate runs with markers instead of CI file lists. Collapse the
