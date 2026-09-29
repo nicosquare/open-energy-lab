@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 from open_energy_lab.weather._canonical import (
     CANONICAL_WEATHER_FIELD_ORDER,
     LOCAL_CIVIL_TIME_BASIS,
+    _parse_utc_timestamp,
 )
 
 
@@ -262,13 +263,6 @@ def _numeric_sequence(value: object, *, field_name: str) -> tuple[float, ...]:
     if not normalized:
         raise ValueError(f"{field_name} must not be empty")
     return normalized
-
-
-def _parse_utc_timestamp(timestamp_text: str) -> datetime:
-    parsed = datetime.fromisoformat(timestamp_text.replace("Z", "+00:00"))
-    if parsed.tzinfo is None:
-        raise ValueError("timestamp_utc values must be timezone-aware UTC timestamps")
-    return parsed.astimezone(ZoneInfo("UTC"))
 
 
 def _parse_local_timestamp(timestamp_text: str, *, field_name: str) -> datetime:

@@ -14,6 +14,8 @@ from open_energy_lab.weather._canonical import (
     LOCAL_CIVIL_TIME_BASIS,
 )
 
+from ._aligned_history import _numeric_sequence
+
 
 SUPPORTED_DEMAND_ARTIFACT_SCHEMA_VERSIONS = ("v1",)
 SUPPORTED_DOUBLE_COUNTING_POLICY = (
@@ -499,10 +501,3 @@ def _string_sequence(value: object, *, field_name: str) -> tuple[str, ...]:
     return normalized
 
 
-def _numeric_sequence(value: object, *, field_name: str) -> tuple[float, ...]:
-    if isinstance(value, str) or not isinstance(value, Sequence):
-        raise TypeError(f"{field_name} must be a sequence of numeric values")
-    normalized = tuple(float(item) for item in value)
-    if not normalized:
-        raise ValueError(f"{field_name} must not be empty")
-    return normalized
