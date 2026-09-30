@@ -17,6 +17,9 @@ from open_energy_lab.control.robust_fcr_bidding import (
 from tests.robust_fcr_case_utils import build_authored_problem
 
 
+pytestmark = pytest.mark.licensed_gurobi
+
+
 def _skip_after_unavailable(result) -> None:
     assert result.solver.solve_status == "unavailable"
     assert result.solver.has_incumbent is False

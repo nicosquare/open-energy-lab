@@ -15,6 +15,9 @@ from examples.epita_research_plan.generate_figures import (
 )
 
 
+pytestmark = pytest.mark.slow
+
+
 def test_research_backbone_data_uses_reviewed_and_deployable_evidence() -> None:
     data = build_research_backbone_data()
 

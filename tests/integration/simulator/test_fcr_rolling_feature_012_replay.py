@@ -26,6 +26,9 @@ from tests.fcr_rolling_case_utils import (
 )
 
 
+pytestmark = pytest.mark.slow
+
+
 def _bounded_manifest(date_count: int):
     source = build_authored_manifest(
         "script-14-restriction-rolling-0800-v1"

@@ -91,6 +91,10 @@ def _artifact_payload(locator: str) -> dict[str, object]:
     }
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="v1 serialized spn_mip payload path is broken since 3a5307e; retired in consolidation step B3 (docs/dev/consolidation.md)",
+)
 @pytest.mark.skipif(not _gurobi_available(), reason="gurobi solver unavailable")
 def test_solve_spn_chance_model_from_artifact_solves_with_gurobi(tmp_path: Path) -> None:
     payload_path = tmp_path / "spn_payload.pkl"

@@ -27,6 +27,9 @@ from tests.fcr_rolling_case_utils import (
 )
 
 
+pytestmark = pytest.mark.slow
+
+
 def _single_date_manifest(profile_id: str):
     original = build_authored_manifest(profile_id)
     return replace(original, dates=(original.dates[1],))

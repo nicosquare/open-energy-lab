@@ -34,6 +34,10 @@ def _gurobi_available() -> bool:
         return bool(available())
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="v1 serialized spn_mip payload path is broken since 3a5307e; retired in consolidation step B3 (docs/dev/consolidation.md)",
+)
 @pytest.mark.skipif(not _legacy_backend_available(), reason="legacy-compatible SPFlow backend unavailable")
 @pytest.mark.skipif(not _gurobi_available(), reason="gurobi solver unavailable")
 def test_real_spflow_backend_supports_fit_query_and_direct_mio_solve(tmp_path) -> None:

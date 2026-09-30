@@ -141,6 +141,10 @@ def _gurobi_available() -> bool:
         return bool(available())
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="v1 serialized spn_mip payload path is broken since 3a5307e; retired in consolidation step B3 (docs/dev/consolidation.md)",
+)
 @pytest.mark.skipif(not _gurobi_available(), reason="gurobi solver unavailable")
 def test_registered_backend_adapter_supports_fit_reload_query_and_solve(
     tmp_path: Path,

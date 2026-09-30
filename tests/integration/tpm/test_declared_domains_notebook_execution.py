@@ -8,6 +8,9 @@ from pathlib import Path
 import pytest
 
 
+pytestmark = pytest.mark.notebook
+
+
 NOTEBOOK_PATH = Path(
     "examples/tpm_planning/declared_feature_domains_walkthrough.ipynb"
 )
