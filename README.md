@@ -175,20 +175,23 @@ improvements under a retained bound, mismatch, and unavailable or unfinalized
 evidence. It does not prove Table A1 parity, full-history parity, or optimality
 for time-limited source incumbents.
 
-## Local Checks
+## Running the tests
 
-Run the scaffold validation checks from the repository root:
-
-```bash
-uv run pytest tests/unit/test_import_contract.py tests/unit/test_module_scaffold.py
-uv run python -c "import open_energy_lab"
-```
-
-After the legacy-isolation test is added, include:
+From the repository root:
 
 ```bash
-uv run pytest tests/unit/test_no_legacy_imports.py
+uv run pytest                      # routine offline suite (~2 min, no network or licence)
+uv run pytest -m slow              # solver-backed and multi-day checks (~5 min)
+uv run --group notebook pytest -m notebook   # execute the walkthrough notebooks
 ```
+
+Other groups are opt-in and need local resources: `licensed_gurobi` (a
+licensed Gurobi), `live_entsoe` / `live_rte` (API credentials), and
+`reference_benchmark` / `external_reference_data` (the private
+`baselines/` reference data). Select them with `-m`, for example
+`uv run pytest -m "reference_benchmark or external_reference_data"`. CI runs
+the routine suite on Python 3.11–3.14 plus the `slow` and `notebook` groups;
+see `.github/workflows/ci.yml`.
 
 Do not add new reusable code to `legacy/*` unless a future migration,
 reference-fix, or submodule-maintenance spec explicitly authorizes it.
