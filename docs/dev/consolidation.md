@@ -100,6 +100,8 @@ A2 full suite **plus `tests/parity`**: **2234 passed, 3 skipped, 6 failed**. Fou
 
 A3a full suite **plus `tests/parity`**: **2237 passed, 3 skipped, 6 failed**. Four are the v1 `spn_mip` TPM tests. Two were the robust-FCR and rolling walkthrough notebooks, which still imported moved names from the control root; fixed in the notebook commit (13 notebook tests pass).
 
+A3b: full suite **plus `tests/parity`**: **2238 passed, 4 skipped, same 4 v1 `spn_mip` TPM failures**. The extra skip was intermittent: two later runs covering every test file skipped only the two opt-in Gurobi checks and the robust benchmark below.
+
 ### Known issues found along the way
 
 - `tests/integration/market/test_entsoe_fixture_workflow.py::test_unchanged_refresh_writes_nothing_and_preserves_current_identity`
@@ -177,7 +179,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
   `simulator/restoration_contracts.py`; the aFRR/mFRR baseline heuristics stay
   in control. `test_simulator_modules_never_load_control` enforces the
   direction. Test changes: ownership assertions for the moved names only.
-- [ ] **A3 validation package** (D1). Shape agreed on 2026-09-29: a top-level
+- [x] **A3 validation package** (D1). Shape agreed on 2026-09-29: a top-level
   `oel_validation/` package, not in the wheel, importable from the repo root.
   TPM evidence stays with Track B.
   - [x] A3a code (branch `consolidation/a3a-validation-code`):
@@ -189,13 +191,15 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     and `EvaluationComparison`), so request and report bytes are unchanged.
     `tests/unit/test_validation_boundary.py` guards the boundary. Breaks
     simulator ↔ market.
-  - [ ] A3b fixtures and scripts: move the reference fixtures and the
-    reference scripts (`examples/*/run_reference_*.py`,
-    `normalize_reference_*.py`) into `oel_validation/`, together with the
-    provenance paths recorded in fixtures, `pyproject` excludes, CI lists, and
-    README commands. The documented `uv run python examples/...` commands for
-    these scripts already failed on `main` (the repo root is not on the path);
-    `python -m examples....` works. Fix them in A3b.
+  - [x] A3b scripts (branch `consolidation/a3b-validation-fixtures`). Scope
+    narrowed on 2026-09-29: the six reference tools (`run_reference_*`,
+    `normalize_reference_*`) moved from `examples/` to `oel_validation/scripts/`.
+    Run them with `uv run python -m oel_validation.scripts.<name>`; the
+    commands documented before failed on `main`. The three reference fixtures
+    stay in `tests/fixtures` (test inputs for 20+ tests). The generation
+    command recorded inside `fcr_bidding/..._restriction_v1.json` is kept as
+    the historical record, because moving the fixtures would force a
+    provenance and fingerprint regeneration chain.
   - [ ] Follow-up: `control/_robust_fcr_formulation.py` still holds the
     reference-certificate helpers (`assemble_robust_fcr_reference_certificate`,
     `audit_closed_reference_witness`, `RobustFCRReferenceIntervalAudit`). They
@@ -252,3 +256,13 @@ Can run in parallel with Track A once the TPM part of A3 lands.
 - Update the metrics above when an item lands.
 - Don't add new per-module copies of helpers that exist in `core/` (or in the
   TPM package's internal helpers).
+- `tests/parity/test_robust_fcr_reference_benchmark.py` skips on this machine
+  ("reached its selected resource limit with a non-optimal audited
+  incumbent"). HiGHS on the session's 10 cores does not prove optimality within
+  its 3,600 s limit (the Julia reference solved it with Gurobi in 1,070 s).
+  Confirmed on `main` @ `5cfcb09`, so it predates the consolidation. The full
+  robust reference comparison is therefore not produced by the routine parity
+  run here. Decide how to produce it if it is cited as thesis evidence (e.g.
+  Gurobi, or a longer limit). Note: the machine's high load average comes from
+  another user's processes stuck in uninterruptible I/O; actual CPU use is
+  about 2%, so it is not load.
