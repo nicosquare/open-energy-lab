@@ -151,7 +151,7 @@ def audit_closed_reference_witness(
     """Audit one common witness against decisions, objective, and state boxes.
 
     The helper deliberately consumes the independent equation-family residual
-    and modeled-slack evidence produced by Feature 013.  It adds only interval
+    and modeled-slack evidence produced by the robust bidding solve.  It adds only interval
     membership checks and therefore does not create a second formulation or
     feasibility model.
     """

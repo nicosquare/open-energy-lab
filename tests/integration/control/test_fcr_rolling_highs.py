@@ -242,7 +242,7 @@ def test_rolling_solve_propagates_required_backend_failure_without_fallback(
         "script-13-arbitrage-only-midnight-v1"
     )
 
-    with pytest.raises(RobustFCRSolverDependencyUnavailableError, match="Feature 013"):
+    with pytest.raises(RobustFCRSolverDependencyUnavailableError, match="robust FCR bidding"):
         solve_robust_fcr_rolling_bid(problem)
 
 

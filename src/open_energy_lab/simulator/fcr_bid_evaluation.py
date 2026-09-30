@@ -302,7 +302,7 @@ def build_market_data_context(
     market_artifact: MarketDataArtifact,
     period: CanonicalInterval,
 ) -> EvaluationMarketContext:
-    """Copy validated Feature 010 observations into a source-independent view."""
+    """Copy validated market-data artifact observations into a source-independent view."""
 
     if not isinstance(market_artifact, MarketDataArtifact):
         raise FCRBidEvaluationValidationError(
@@ -316,7 +316,7 @@ def build_market_data_context(
         or period.end_utc > covered.end_utc
     ):
         raise FCRBidEvaluationValidationError(
-            "Feature 010 artifact does not contain the market-context period"
+            "market-data artifact does not contain the market-context period"
         )
     day_series = market_artifact.series["day_ahead_price"]
     fcr_series = market_artifact.series["fcr_capacity_price"]

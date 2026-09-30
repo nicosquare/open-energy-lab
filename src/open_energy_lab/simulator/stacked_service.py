@@ -903,7 +903,7 @@ def _summary_row(
     interval: CanonicalInterval,
     values: tuple[list[float], list[float], list[float]],
 ) -> ReplayIntervalSummary:
-    """Finalize one group with Feature 010's exact ``sum`` semantics."""
+    """Finalize one group with plain ``sum`` so persisted replay payloads keep their JSON types."""
 
     charge = sum(values[0])
     discharge = sum(values[1])
@@ -945,8 +945,8 @@ def _aggregate_physical_samples(
     ]
     aggregate_values: list[tuple[float, float, float, float, float, bool]] = []
     saturation_sample_count = 0
-    # Preserve Feature 010's canonical JSON type: ``sum(...)`` returned the
-    # integer zero when no sample saturated and a float otherwise.
+    # Keep the canonical JSON type stable for fingerprints: ``sum(...)`` returns
+    # the integer zero when no sample saturated and a float otherwise.
     saturation_duration_hours: int | float = 0
     active_events: dict[str, dict[str, object]] = {}
     closed_events: list[dict[str, object]] = []

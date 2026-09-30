@@ -1,6 +1,6 @@
 """Native quarter-hour ENTSO-E day-ahead acquisition for restoration studies.
 
-This adapter is additive to Feature 010's closed hourly A44/A81 lifecycle.  It
+This adapter is additive to the hourly A44/A81 market-data lifecycle in ``market.entsoe``.  It
 fetches only A44, preserves the source PT15M observations without resampling,
 and returns a source-separated restoration artifact held in memory.
 """

@@ -1,6 +1,6 @@
 """Additive exact-zero-FCR and fixed-overlap optimization contracts.
 
-Feature 013's public 24/96/6 problem remains unchanged. This module owns only
+The single-day 24/96/6 problem in ``robust_fcr_bidding`` remains unchanged. This module owns only
 the two source executable frames that cannot be represented by that contract:
 script 13's hourly arbitrage-only model and script 14's signed-index 40-hour
 accepted-overlap restriction.

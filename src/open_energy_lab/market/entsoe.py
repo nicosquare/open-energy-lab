@@ -3166,7 +3166,7 @@ def fetch_entsoe_market_data(
 
     if not isinstance(request.profile, FranceEntsoeProfile):
         raise EntsoeRequestValidationError(
-            "fetch_entsoe_market_data is reserved for the closed Feature 010 "
+            "fetch_entsoe_market_data is reserved for the hourly France "
             "A44/A81 profile; use the restoration quarter-hour A44 acquisition "
             "operation for fr-day-ahead-quarter-hour-v2"
         )
@@ -3284,7 +3284,7 @@ def refresh_entsoe_market_data(
 
     if not isinstance(request.profile, FranceEntsoeProfile):
         raise EntsoeRequestValidationError(
-            "refresh_entsoe_market_data is reserved for the closed Feature 010 "
+            "refresh_entsoe_market_data is reserved for the hourly France "
             "A44/A81 profile"
         )
 

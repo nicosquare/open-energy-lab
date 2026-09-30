@@ -1,4 +1,4 @@
-"""Lazy solver loading and backend-neutral raw results for Feature 013."""
+"""Lazy solver loading and backend-neutral raw results for robust FCR bidding."""
 
 from __future__ import annotations
 
@@ -156,12 +156,12 @@ def require_highs_backend() -> SolverBackendModules:
         pyomo_environ = import_module("pyomo.environ")
     except (ImportError, ModuleNotFoundError) as exc:
         raise RobustFCRSolverDependencyUnavailableError(
-            "Feature 013 requires Pyomo 6.10.1; run `uv sync --dev` and retry"
+            "robust FCR bidding requires Pyomo 6.10.1; run `uv sync --dev` and retry"
         ) from exc
     pyomo_version = str(getattr(pyomo_package, "__version__", "unknown"))
     if pyomo_version != REQUIRED_PYOMO_VERSION:
         raise RobustFCRSolverDependencyUnavailableError(
-            "Feature 013 requires Pyomo "
+            "robust FCR bidding requires Pyomo "
             f"{REQUIRED_PYOMO_VERSION}; installed version is {pyomo_version}"
         )
 
@@ -169,12 +169,12 @@ def require_highs_backend() -> SolverBackendModules:
         highspy = import_module("highspy")
     except (ImportError, ModuleNotFoundError) as exc:
         raise RobustFCRSolverDependencyUnavailableError(
-            "Feature 013 requires highspy 1.15.1; run `uv sync --dev` and retry"
+            "robust FCR bidding requires highspy 1.15.1; run `uv sync --dev` and retry"
         ) from exc
     highspy_version = _installed_highspy_version(highspy)
     if highspy_version != REQUIRED_HIGHSPY_VERSION:
         raise RobustFCRSolverDependencyUnavailableError(
-            "Feature 013 requires highspy "
+            "robust FCR bidding requires highspy "
             f"{REQUIRED_HIGHSPY_VERSION}; installed version is {highspy_version}"
         )
 
@@ -188,7 +188,7 @@ def require_highs_backend() -> SolverBackendModules:
         ) from exc
     if not available:
         raise RobustFCRSolverUnavailableError(
-            "HiGHS is required for Feature 013 but is unavailable to Pyomo"
+            "HiGHS is required for robust FCR bidding but is unavailable to Pyomo"
         )
 
     return SolverBackendModules(
