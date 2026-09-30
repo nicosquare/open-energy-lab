@@ -9,6 +9,17 @@ import inspect
 import open_energy_lab.control as control
 import open_energy_lab.market as market
 import open_energy_lab.simulator as simulator
+from open_energy_lab.control.stacked_service import (
+    ArbitrageOnlyBaselineConfig,
+    BaselineScheduleBundle,
+    RegulationOnlyBaselineConfig,
+)
+from open_energy_lab.simulator.fcr_settlement import (
+    SettlementBreakdown,
+)
+from open_energy_lab.simulator.stacked_service import (
+    StackedServiceReplayResult,
+)
 from tests.unit.control.test_stacked_service import _stacked_config
 from tests.unit.market.test_artifact import _build_artifact
 from tests.unit.simulator.test_stacked_service import (
@@ -26,18 +37,18 @@ FEATURE_010_PUBLIC_OWNERS = {
     market.RegulationActivationTrace: "open_energy_lab.market.activation",
     market.build_market_data_artifact: "open_energy_lab.market.artifact",
     market.import_regulation_activation_trace: "open_energy_lab.market.activation",
-    control.ArbitrageOnlyBaselineConfig: "open_energy_lab.control.stacked_service",
-    control.RegulationOnlyBaselineConfig: "open_energy_lab.control.stacked_service",
+    ArbitrageOnlyBaselineConfig: "open_energy_lab.control.stacked_service",
+    RegulationOnlyBaselineConfig: "open_energy_lab.control.stacked_service",
     control.StackedHeuristicConfig: "open_energy_lab.control.stacked_service",
-    control.BaselineScheduleBundle: "open_energy_lab.control.stacked_service",
+    BaselineScheduleBundle: "open_energy_lab.control.stacked_service",
     control.build_stacked_heuristic_baseline: "open_energy_lab.control.stacked_service",
     simulator.EnergyBaselineSchedule: "open_energy_lab.simulator.stacked_service",
     simulator.FCRCapacitySchedule: "open_energy_lab.simulator.stacked_service",
     simulator.MultiRateTimeContract: "open_energy_lab.simulator.stacked_service",
     simulator.TerminalSOCTarget: "open_energy_lab.simulator.stacked_service",
     simulator.StackedServiceReplayRequest: "open_energy_lab.simulator.stacked_service",
-    simulator.StackedServiceReplayResult: "open_energy_lab.simulator.stacked_service",
-    simulator.SettlementBreakdown: "open_energy_lab.simulator.fcr_settlement",
+    StackedServiceReplayResult: "open_energy_lab.simulator.stacked_service",
+    SettlementBreakdown: "open_energy_lab.simulator.fcr_settlement",
     simulator.build_energy_baseline_schedule: "open_energy_lab.simulator.stacked_service",
     simulator.build_fcr_capacity_schedule: "open_energy_lab.simulator.stacked_service",
     simulator.replay_stacked_services: "open_energy_lab.simulator.stacked_service",
@@ -91,12 +102,12 @@ FEATURE_010_CONSTRUCTOR_FIELDS = {
         "artifact_fingerprint",
         "retention_and_license",
     ),
-    control.ArbitrageOnlyBaselineConfig: (
+    ArbitrageOnlyBaselineConfig: (
         "schedule_id",
         "semantics_version",
         "price_threshold_config",
     ),
-    control.RegulationOnlyBaselineConfig: (
+    RegulationOnlyBaselineConfig: (
         "schedule_id",
         "semantics_version",
         "fcr_schedule",
@@ -107,7 +118,7 @@ FEATURE_010_CONSTRUCTOR_FIELDS = {
         "price_threshold_config",
         "fcr_schedule",
     ),
-    control.BaselineScheduleBundle: (
+    BaselineScheduleBundle: (
         "builder_kind",
         "battery",
         "energy_schedule",
@@ -161,7 +172,7 @@ FEATURE_010_CONSTRUCTOR_FIELDS = {
         "commitment_validation_mode",
         "commitment_validation_errors",
     ),
-    simulator.StackedServiceReplayResult: (
+    StackedServiceReplayResult: (
         "simulation_semantics_version",
         "validation_status",
         "input_fingerprints",
@@ -178,7 +189,7 @@ FEATURE_010_CONSTRUCTOR_FIELDS = {
         "trace_fingerprint",
         "result_fingerprint",
     ),
-    simulator.SettlementBreakdown: (
+    SettlementBreakdown: (
         "energy_intervals",
         "fcr_blocks",
         "day_ahead_energy_revenue_eur",
@@ -208,8 +219,8 @@ FEATURE_010_SERIALIZATION_KEYS = {
     simulator.FCRCapacitySchedule: FEATURE_010_CONSTRUCTOR_FIELDS[
         simulator.FCRCapacitySchedule
     ],
-    simulator.SettlementBreakdown: FEATURE_010_CONSTRUCTOR_FIELDS[
-        simulator.SettlementBreakdown
+    SettlementBreakdown: FEATURE_010_CONSTRUCTOR_FIELDS[
+        SettlementBreakdown
     ],
 }
 
@@ -225,8 +236,9 @@ def test_feature_010_public_symbols_keep_exact_names_types_and_module_owners() -
             if owner_name.startswith("open_energy_lab.control")
             else simulator
         )
-        assert name in package.__all__
-        assert getattr(package, name) is exported
+        # A4a curated the package roots; names kept at a root must still be the same object.
+        if name in package.__all__:
+            assert getattr(package, name) is exported
         assert getattr(owner, name) is exported
         assert exported.__module__ == owner_name
 
@@ -279,10 +291,10 @@ def test_feature_010_builders_return_exact_closed_types_and_serialization_shapes
         (activation, market.RegulationActivationTrace),
         (energy, simulator.EnergyBaselineSchedule),
         (fcr, simulator.FCRCapacitySchedule),
-        (baseline, control.BaselineScheduleBundle),
+        (baseline, BaselineScheduleBundle),
         (request, simulator.StackedServiceReplayRequest),
-        (replay, simulator.StackedServiceReplayResult),
-        (replay.settlement, simulator.SettlementBreakdown),
+        (replay, StackedServiceReplayResult),
+        (replay.settlement, SettlementBreakdown),
     )
     for value, expected_type in exact_types:
         assert type(value) is expected_type

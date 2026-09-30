@@ -8,6 +8,25 @@ import inspect
 import open_energy_lab.control as control
 import open_energy_lab.market as market
 import open_energy_lab.simulator as simulator
+from open_energy_lab.control.stacked_service import (
+    ArbitrageOnlyBaselineConfig,
+    RegulationOnlyBaselineConfig,
+)
+from open_energy_lab.simulator.fcr_bid_evaluation import (
+    InvalidCommitmentDiagnosticReport,
+)
+from open_energy_lab.simulator.fcr_bid_plan import (
+    FixedFCRBidPlan,
+    build_fixed_fcr_bid_plan,
+)
+from open_energy_lab.simulator.fcr_settlement import (
+    DirectionalFCREnergy,
+    ReferenceSettlementBreakdown,
+    SettlementBreakdown,
+)
+from open_energy_lab.simulator.stacked_service import (
+    StackedServiceReplayResult,
+)
 from tests.integration.simulator.fcr_bid_evaluation_fixture_utils import (
     build_test_evaluation_case,
 )
@@ -18,24 +37,24 @@ def test_feature_010_and_additive_feature_012_symbols_have_exact_owners() -> Non
     owners = {
         market.MarketDataArtifact: "open_energy_lab.market.artifact",
         market.RegulationActivationTrace: "open_energy_lab.market.activation",
-        control.ArbitrageOnlyBaselineConfig: "open_energy_lab.control.stacked_service",
-        control.RegulationOnlyBaselineConfig: "open_energy_lab.control.stacked_service",
+        ArbitrageOnlyBaselineConfig: "open_energy_lab.control.stacked_service",
+        RegulationOnlyBaselineConfig: "open_energy_lab.control.stacked_service",
         control.StackedHeuristicConfig: "open_energy_lab.control.stacked_service",
         control.build_stacked_heuristic_baseline: "open_energy_lab.control.stacked_service",
         simulator.EnergyBaselineSchedule: "open_energy_lab.simulator.stacked_service",
         simulator.FCRCapacitySchedule: "open_energy_lab.simulator.stacked_service",
         simulator.StackedServiceReplayRequest: "open_energy_lab.simulator.stacked_service",
-        simulator.StackedServiceReplayResult: "open_energy_lab.simulator.stacked_service",
-        simulator.SettlementBreakdown: "open_energy_lab.simulator.fcr_settlement",
+        StackedServiceReplayResult: "open_energy_lab.simulator.stacked_service",
+        SettlementBreakdown: "open_energy_lab.simulator.fcr_settlement",
         simulator.replay_stacked_services: "open_energy_lab.simulator.stacked_service",
         simulator.settle_stacked_services: "open_energy_lab.simulator.fcr_settlement",
-        control.FixedFCRBidPlan: "open_energy_lab.simulator.fcr_bid_plan",
-        control.build_fixed_fcr_bid_plan: "open_energy_lab.simulator.fcr_bid_plan",
+        FixedFCRBidPlan: "open_energy_lab.simulator.fcr_bid_plan",
+        build_fixed_fcr_bid_plan: "open_energy_lab.simulator.fcr_bid_plan",
         simulator.FCRBidEvaluationRequest: "open_energy_lab.simulator.fcr_bid_evaluation",
         simulator.DailyFCRBidEvaluationReport: "open_energy_lab.simulator.fcr_bid_evaluation",
-        simulator.InvalidCommitmentDiagnosticReport: "open_energy_lab.simulator.fcr_bid_evaluation",
-        simulator.DirectionalFCREnergy: "open_energy_lab.simulator.fcr_settlement",
-        simulator.ReferenceSettlementBreakdown: "open_energy_lab.simulator.fcr_settlement",
+        InvalidCommitmentDiagnosticReport: "open_energy_lab.simulator.fcr_bid_evaluation",
+        DirectionalFCREnergy: "open_energy_lab.simulator.fcr_settlement",
+        ReferenceSettlementBreakdown: "open_energy_lab.simulator.fcr_settlement",
         simulator.evaluate_fixed_fcr_bid: "open_energy_lab.simulator.fcr_bid_evaluation",
     }
 
@@ -76,10 +95,10 @@ def test_feature_010_constructor_signatures_remain_exact_and_feature_012_is_addi
         "settle_stacked_services": "(request: 'StackedServiceReplayRequest', samples: 'Sequence[ReplaySample]') -> 'SettlementBreakdown'",
     }
     assert "energy_schedule: 'EnergyBaselineSchedule'" in str(
-        inspect.signature(control.build_fixed_fcr_bid_plan)
+        inspect.signature(build_fixed_fcr_bid_plan)
     )
     assert "fcr_schedule: 'FCRCapacitySchedule'" in str(
-        inspect.signature(control.build_fixed_fcr_bid_plan)
+        inspect.signature(build_fixed_fcr_bid_plan)
     )
     assert str(inspect.signature(simulator.evaluate_fixed_fcr_bid)) == (
         "(request: 'FCRBidEvaluationRequest') -> 'DailyFCRBidEvaluationReport'"
@@ -93,8 +112,8 @@ def test_feature_010_exact_types_serialization_and_default_settlement_are_closed
     assert type(request.energy_schedule) is simulator.EnergyBaselineSchedule
     assert type(request.fcr_schedule) is simulator.FCRCapacitySchedule
     assert type(request) is simulator.StackedServiceReplayRequest
-    assert type(result) is simulator.StackedServiceReplayResult
-    assert type(result.settlement) is simulator.SettlementBreakdown
+    assert type(result) is StackedServiceReplayResult
+    assert type(result.settlement) is SettlementBreakdown
     assert tuple(request.energy_schedule.to_dict()) == (
         "schedule_id",
         "semantics_version",
