@@ -59,8 +59,8 @@ local smoke fixture when practical.
 Fixture path: tests/fixtures/fcr_bidding/robust_storage_bidding_2023-06-18_restriction_v1.json
 Purpose: normalized, offline 2023-06-18 restriction input/result and source-precision evidence for native bid-selection comparison
 Origin: robust-storage-bidding revision 7e44738bb30e5c8204efe40103b9be4c2203685c plus a generated untracked Experiment 2 result
-Source legacy path or generation script: baselines/robust_storage_bidding/results/02/2023-06-18.json; examples/robust_fcr_bidding/normalize_reference_fixture.py
-Generation command: uv run python examples/robust_fcr_bidding/normalize_reference_fixture.py --source-json baselines/robust_storage_bidding/results/02/2023-06-18.json --destination-dir artifacts/reference/robust_fcr_bidding
+Source legacy path or generation script: baselines/robust_storage_bidding/results/02/2023-06-18.json; oel_validation/scripts/normalize_robust_fcr_reference_fixture.py
+Generation command: uv run python -m oel_validation.scripts.normalize_robust_fcr_reference_fixture --source-json baselines/robust_storage_bidding/results/02/2023-06-18.json --destination-dir artifacts/reference/robust_fcr_bidding
 Random seed: none in source evidence; native benchmark seed 13 belongs to its separate caller-owned solve policy
 Input data: exact battery, prices, terminal, 24/96/6 mappings, 0.25/2.25/2.75-hour uncertainty evidence, and restriction profile
 Expected output or invariant: rounded objective/bound, 24 x0, six xr, unavailable-field ledger, joint source-precision policy, and cross-feature fixture reference
@@ -84,8 +84,8 @@ locked required dependencies.
 Fixture path: tests/fixtures/fcr_rolling_backtest/robust_storage_bidding_experiments_01_05_2023-06-17_20_v1.json
 Purpose: normalized offline comparison evidence for all five non-intraday executable profiles over the bounded 2023-06-17 through 2023-06-20 Julia/Gurobi rerun
 Origin: robust-storage-bidding revision 7e44738bb30e5c8204efe40103b9be4c2203685c plus caller-generated scripts 11 through 15 JSON and retained log evidence
-Source legacy path or generation script: baselines/robust_storage_bidding/results/01 through 05, corresponding generated logs below baselines/robust_storage_bidding/code, and examples/fcr_rolling_backtest/normalize_reference_fixture.py
-Generation command: uv run python examples/fcr_rolling_backtest/normalize_reference_fixture.py --source-root baselines/robust_storage_bidding --input-manifest examples/fcr_rolling_backtest/reference_inputs_v1.json --destination-dir artifacts/reference/fcr_rolling_backtest
+Source legacy path or generation script: baselines/robust_storage_bidding/results/01 through 05, corresponding generated logs below baselines/robust_storage_bidding/code, and oel_validation/scripts/normalize_fcr_rolling_reference_fixture.py
+Generation command: uv run python -m oel_validation.scripts.normalize_fcr_rolling_reference_fixture --source-root baselines/robust_storage_bidding --input-manifest examples/fcr_rolling_backtest/reference_inputs_v1.json --destination-dir artifacts/reference/fcr_rolling_backtest
 Random seed: none declared by the source rerun; every native benchmark seed belongs to its separate caller-owned solve policy
 Input data: five executable profiles, four ordinary dates, battery/uncertainty/terminal contracts, 24 hourly and six four-hour prices per delivery day, source lifecycle/carry evidence, 20 generated JSON files, 11 log segments, exact source/package references, and pinned SHA-256 identities
 Expected output or invariant: canonical 5-by-4 profile/date evidence, six retained time-limit incumbents with same-solve upper bounds, source-rounded decisions/objectives/states, 08:00 initialization/finalization roles, explicit unavailable fields, and a byte-preserving semantic cross-check of Feature 013's governed fixture

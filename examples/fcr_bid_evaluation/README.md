@@ -88,7 +88,7 @@ an absent file.
 Then run:
 
 ```bash
-uv run python examples/fcr_bid_evaluation/run_reference_parity.py \
+uv run python -m oel_validation.scripts.run_fcr_bid_reference_parity \
   --activation-path artifacts/reference/robust_storage_bidding/regulation_signal.csv
 ```
 
@@ -105,7 +105,7 @@ After an authorized researcher separately runs
 directory, normalize the generated JSON without starting Julia or a solver:
 
 ```bash
-uv run python examples/fcr_bid_evaluation/normalize_reference_result.py \
+uv run python -m oel_validation.scripts.normalize_fcr_bid_reference_result \
   --input baselines/robust_storage_bidding/results/02/2023-06-18.json \
   --expected-sha256 8c13f8318d533c35755e90e4e45bcef336cb7b31c09afccbe616844acbddc1e6 \
   --output-dir artifacts/reference/robust_storage_bidding/normalized

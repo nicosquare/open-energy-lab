@@ -352,7 +352,7 @@ Alternatives considered: eager solver imports, a new rolling optimizer dependenc
 ```text
 Dependency: Gurobi/gurobipy 13.0.2
 Requested by: explicitly selected rolling benchmark research evidence where the implemented formulation adapter supports it
-Target module: shared src/open_energy_lab/control/_robust_fcr_solver.py adapter and examples/fcr_rolling_backtest/run_reference_benchmark.py
+Target module: shared src/open_energy_lab/control/_robust_fcr_solver.py adapter and oel_validation/scripts/run_fcr_rolling_reference_benchmark.py
 Classification: optional and license-backed, unchanged from Feature 013
 Import boundary: package and license are probed only after explicit solver_name="gurobi" selection
 Install mechanism: `uv sync --dev --extra gurobi` plus a caller-managed valid license

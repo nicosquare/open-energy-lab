@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from examples.fcr_rolling_backtest.run_reference_benchmark import (
+from oel_validation.scripts.run_fcr_rolling_reference_benchmark import (
     FULL_HISTORY_REQUEST_SCHEMA_VERSION,
     FULL_HISTORY_SOURCE_DATE_LIST_SHA256,
     _load_full_history_request,
@@ -128,7 +128,7 @@ def test_complete_five_profile_four_date_native_reference_comparison() -> None:
 def test_explicit_gurobi_unavailability_never_falls_back_to_highs(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import examples.fcr_rolling_backtest.run_reference_benchmark as benchmark
+    import oel_validation.scripts.run_fcr_rolling_reference_benchmark as benchmark
 
     monkeypatch.setattr(
         benchmark,

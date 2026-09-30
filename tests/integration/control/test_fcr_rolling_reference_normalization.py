@@ -11,7 +11,7 @@ import subprocess
 
 import pytest
 
-from examples.fcr_rolling_backtest.normalize_reference_fixture import (
+from oel_validation.scripts.normalize_fcr_rolling_reference_fixture import (
     RollingFCRReferenceNormalizationError,
     normalize_rolling_fcr_reference_fixture,
 )
@@ -335,11 +335,11 @@ def test_normalizer_is_digest_first_explicit_redacting_and_byte_stable(
     repository, source_root, artifact_root, manifest_path = _build_inputs(tmp_path)
     destination = artifact_root / "reference/fcr_rolling_backtest"
     monkeypatch.setattr(
-        "examples.fcr_rolling_backtest.normalize_reference_fixture._REPOSITORY_ROOT",
+        "oel_validation.scripts.normalize_fcr_rolling_reference_fixture._REPOSITORY_ROOT",
         repository,
     )
     monkeypatch.setattr(
-        "examples.fcr_rolling_backtest.normalize_reference_fixture._ARTIFACT_ROOT",
+        "oel_validation.scripts.normalize_fcr_rolling_reference_fixture._ARTIFACT_ROOT",
         artifact_root,
     )
 
@@ -388,11 +388,11 @@ def test_normalizer_checks_every_digest_before_parsing(
     manifest["artifacts"][0]["sha256"] = "0" * 64
     manifest_path.write_bytes(_canonical_bytes(manifest))
     monkeypatch.setattr(
-        "examples.fcr_rolling_backtest.normalize_reference_fixture._REPOSITORY_ROOT",
+        "oel_validation.scripts.normalize_fcr_rolling_reference_fixture._REPOSITORY_ROOT",
         repository,
     )
     monkeypatch.setattr(
-        "examples.fcr_rolling_backtest.normalize_reference_fixture._ARTIFACT_ROOT",
+        "oel_validation.scripts.normalize_fcr_rolling_reference_fixture._ARTIFACT_ROOT",
         artifact_root,
     )
     first_json = source_root / "results/01/2023-06-17.json"
@@ -413,11 +413,11 @@ def test_normalizer_rejects_log_segmentation_and_json_log_mismatch(
 ) -> None:
     repository, source_root, artifact_root, manifest_path = _build_inputs(tmp_path)
     monkeypatch.setattr(
-        "examples.fcr_rolling_backtest.normalize_reference_fixture._REPOSITORY_ROOT",
+        "oel_validation.scripts.normalize_fcr_rolling_reference_fixture._REPOSITORY_ROOT",
         repository,
     )
     monkeypatch.setattr(
-        "examples.fcr_rolling_backtest.normalize_reference_fixture._ARTIFACT_ROOT",
+        "oel_validation.scripts.normalize_fcr_rolling_reference_fixture._ARTIFACT_ROOT",
         artifact_root,
     )
     log_path = source_root / "code/14.log"
@@ -444,11 +444,11 @@ def test_normalizer_rejects_log_segmentation_and_json_log_mismatch(
 
     repository, source_root, artifact_root, manifest_path = _build_inputs(tmp_path / "mismatch")
     monkeypatch.setattr(
-        "examples.fcr_rolling_backtest.normalize_reference_fixture._REPOSITORY_ROOT",
+        "oel_validation.scripts.normalize_fcr_rolling_reference_fixture._REPOSITORY_ROOT",
         repository,
     )
     monkeypatch.setattr(
-        "examples.fcr_rolling_backtest.normalize_reference_fixture._ARTIFACT_ROOT",
+        "oel_validation.scripts.normalize_fcr_rolling_reference_fixture._ARTIFACT_ROOT",
         artifact_root,
     )
     log_path = source_root / "code/11-2023-06-17.log"
@@ -480,11 +480,11 @@ def test_normalizer_rejects_committed_destination_and_preserves_feature_013(
 ) -> None:
     repository, source_root, artifact_root, manifest_path = _build_inputs(tmp_path)
     monkeypatch.setattr(
-        "examples.fcr_rolling_backtest.normalize_reference_fixture._REPOSITORY_ROOT",
+        "oel_validation.scripts.normalize_fcr_rolling_reference_fixture._REPOSITORY_ROOT",
         repository,
     )
     monkeypatch.setattr(
-        "examples.fcr_rolling_backtest.normalize_reference_fixture._ARTIFACT_ROOT",
+        "oel_validation.scripts.normalize_fcr_rolling_reference_fixture._ARTIFACT_ROOT",
         artifact_root,
     )
     governed = repository / COMMITTED_FEATURE_013_FIXTURE
@@ -514,11 +514,11 @@ def test_normalizer_emits_ordered_semantic_diff(
 ) -> None:
     repository, source_root, artifact_root, manifest_path = _build_inputs(tmp_path)
     monkeypatch.setattr(
-        "examples.fcr_rolling_backtest.normalize_reference_fixture._REPOSITORY_ROOT",
+        "oel_validation.scripts.normalize_fcr_rolling_reference_fixture._REPOSITORY_ROOT",
         repository,
     )
     monkeypatch.setattr(
-        "examples.fcr_rolling_backtest.normalize_reference_fixture._ARTIFACT_ROOT",
+        "oel_validation.scripts.normalize_fcr_rolling_reference_fixture._ARTIFACT_ROOT",
         artifact_root,
     )
     result = normalize_rolling_fcr_reference_fixture(
