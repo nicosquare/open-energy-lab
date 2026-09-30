@@ -89,6 +89,7 @@ Regenerate with `uv run python tools/consolidation_metrics.py`.
 | A1 weather/demand/planning | 77,214 | 12,504 | 12,802 | 20,728 | 785 | 1 | 2 | 4 | 6 |
 | A2 plan/schedule contracts | 77,313 | 12,504 | 13,782 | 19,847 | 785 | 1 | 2 | 4 | 6 |
 | A3a validation code (+6,873 in `oel_validation/`) | 70,425 | 11,316 | 13,222 | 14,707 | 785 | 1 | 2 | 4 | 6 |
+| A4a package surfaces | 69,053 | 11,044 | 12,778 | 14,227 | 785 | 1 | 2 | 4 | 6 |
 
 A1 simulator full suite: **2230 passed, 4 failed (the v1 `spn_mip` TPM tests still in the baseline; the two surface tests were fixed by #18), 2 skipped**.
 
@@ -101,6 +102,8 @@ A2 full suite **plus `tests/parity`**: **2234 passed, 3 skipped, 6 failed**. Fou
 A3a full suite **plus `tests/parity`**: **2237 passed, 3 skipped, 6 failed**. Four are the v1 `spn_mip` TPM tests. Two were the robust-FCR and rolling walkthrough notebooks, which still imported moved names from the control root; fixed in the notebook commit (13 notebook tests pass).
 
 A3b: full suite **plus `tests/parity`**: **2238 passed, 4 skipped, same 4 v1 `spn_mip` TPM failures**. The extra skip was intermittent: two later runs covering every test file skipped only the two opt-in Gurobi checks and the robust benchmark below.
+
+A4a full suite **plus `tests/parity`**: **2210 passed, 3 skipped, same 4 v1 `spn_mip` TPM failures**. Collected tests: 2246 on `main` − 50 (the 24 superseded meta-tests, parametrized) + 21 (new surface tests) = 2217.
 
 ### Known issues found along the way
 
@@ -203,10 +206,24 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     reference-certificate helpers (`assemble_robust_fcr_reference_certificate`,
     `audit_closed_reference_witness`, `RobustFCRReferenceIntervalAudit`). They
     share formulation internals with the real solve path.
-- [ ] **A4 package surface.** Replace lazy `__init__` files with plain imports
-  and 25–40 curated names each. Strip feature numbers from code. Point pytest at
-  `tests/` and gate runs with markers instead of CI file lists. Collapse the
-  meta-tests into one parametrized module.
+- [ ] **A4 package surface**, split into three PRs on 2026-09-30:
+  - [x] A4a surfaces: plain-import roots with curated exports (market 86 → 29,
+    simulator 106 → 42, control 98 → 37; planning, weather, demand and
+    visualization unchanged). Everything else stays importable from its
+    submodule. `control/fcr_bid_plan.py` is removed and simulator exports the
+    contracts it owns. `tests/unit/test_package_surfaces.py` replaces 24
+    per-package meta-tests after an assertion-by-assertion audit (see the
+    A4a commit message); only lazy-loading checks were dropped on purpose.
+    The audit caught a regression: eager imports loaded `socket` through
+    `multiprocessing`, fixed by importing it where it is used.
+  - [ ] A4b names: replace feature numbers in code identifiers and error
+    messages (e.g. `build_feature_010_market_context`, "Feature 013
+    requires …") and rename `settle_reference_fcr_bid`. Persisted strings such
+    as `feature-015-…` producer versions feed fingerprints, so they wait for
+    A5.
+  - [ ] A4c tests: point pytest `testpaths` at `tests/` with markers for
+    slow, parity and licensed runs instead of CI file lists; merge the
+    remaining per-package meta-tests.
 - [ ] **A5 provenance trim** (D2). Keep fingerprints on persisted artifacts
   and results only. Add one versioned JSON artifact base shared by weather,
   demand, market, and the planning dataset. Settle one loading behavior for
