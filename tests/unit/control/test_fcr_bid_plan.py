@@ -19,10 +19,10 @@ def _mapping_module():
 
 def _module():
     try:
-        return importlib.import_module("open_energy_lab.control.fcr_bid_plan")
+        return importlib.import_module("open_energy_lab.simulator.fcr_bid_plan")
     except ModuleNotFoundError as exc:
         pytest.fail(
-            "open_energy_lab.control.fcr_bid_plan is not implemented",
+            "open_energy_lab.simulator.fcr_bid_plan is not implemented",
             pytrace=False,
         )
         raise AssertionError from exc

@@ -15,7 +15,7 @@ from open_energy_lab.control._fcr_rolling_orchestrator import (
     _derive_causal_0800_checkpoint,
     _prefix_trace_for_solved_day,
 )
-from open_energy_lab.simulator import FCRBidEvaluationValidationError
+from open_energy_lab.simulator.fcr_bid_evaluation import FCRBidEvaluationValidationError
 from tests.fcr_rolling_case_utils import (
     AUTHORED_DELIVERY_DATES,
     build_authored_activation_trace,

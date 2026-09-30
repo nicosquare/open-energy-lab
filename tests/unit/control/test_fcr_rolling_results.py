@@ -11,15 +11,17 @@ from types import SimpleNamespace
 import pytest
 
 from open_energy_lab.control import (
+    RollingFCRStudyResult,
+    RollingFCRValidationError,
+    aggregate_rolling_fcr_records,
+    run_rolling_fcr_study,
+)
+from open_energy_lab.control.fcr_rolling_backtest import (
     AggregateMetricEvidence,
     ContinuitySegment,
     DeliveryDateClassification,
     DeliveryDateRecordEnvelope,
     RollingFCRDayRevision,
-    RollingFCRStudyResult,
-    RollingFCRValidationError,
-    aggregate_rolling_fcr_records,
-    run_rolling_fcr_study,
 )
 from tests.fcr_rolling_case_utils import (
     AUTHORED_DELIVERY_DATES,

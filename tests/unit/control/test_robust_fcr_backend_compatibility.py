@@ -13,9 +13,7 @@ from open_energy_lab.control._robust_fcr_solver import (
     load_optional_gurobi_backend,
     require_highs_backend,
 )
-from open_energy_lab.control import (
-    RobustFCRSolverDependencyUnavailableError,
-)
+from open_energy_lab.control.robust_fcr_bidding import RobustFCRSolverDependencyUnavailableError
 
 
 def test_locked_pyomo_and_highs_versions_are_available_through_explicit_boundary() -> None:

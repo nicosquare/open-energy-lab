@@ -34,22 +34,6 @@ def test_weather_package_root_reserves_a_lightweight_public_boundary() -> None:
     assert module_file.parent.parent.name == "open_energy_lab"
 
 
-def test_weather_root_import_defers_planned_submodule_loading() -> None:
-    module_spec = importlib.util.find_spec(WEATHER_PACKAGE)
-    if module_spec is None:
-        for module_name in PLANNED_WEATHER_SUBMODULES:
-            assert module_name not in sys.modules
-        return
-
-    for module_name in (WEATHER_PACKAGE, *PLANNED_WEATHER_SUBMODULES):
-        sys.modules.pop(module_name, None)
-
-    importlib.import_module(WEATHER_PACKAGE)
-
-    for module_name in PLANNED_WEATHER_SUBMODULES:
-        assert module_name not in sys.modules
-
-
 def test_planned_weather_submodules_stay_within_the_reserved_package_boundary() -> None:
     package_spec = importlib.util.find_spec(WEATHER_PACKAGE)
     if package_spec is None:

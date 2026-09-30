@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from open_energy_lab.control import RobustFCRFormulationProfile
+from open_energy_lab.control.robust_fcr_bidding import RobustFCRFormulationProfile
 from open_energy_lab.control._robust_fcr_formulation import (
     SOURCE_EQUATION_REFERENCES,
     SOURCE_EQUATION_VERSION,

@@ -89,6 +89,7 @@ Regenerate with `uv run python tools/consolidation_metrics.py`.
 | A1 weather/demand/planning | 77,214 | 12,504 | 12,802 | 20,728 | 785 | 1 | 2 | 4 | 6 |
 | A2 plan/schedule contracts | 77,313 | 12,504 | 13,782 | 19,847 | 785 | 1 | 2 | 4 | 6 |
 | A3a validation code (+6,873 in `oel_validation/`) | 70,425 | 11,316 | 13,222 | 14,707 | 785 | 1 | 2 | 4 | 6 |
+| A4a package surfaces | 69,053 | 11,044 | 12,778 | 14,227 | 785 | 1 | 2 | 4 | 6 |
 
 A1 simulator full suite: **2230 passed, 4 failed (the v1 `spn_mip` TPM tests still in the baseline; the two surface tests were fixed by #18), 2 skipped**.
 
@@ -101,6 +102,8 @@ A2 full suite **plus `tests/parity`**: **2234 passed, 3 skipped, 6 failed**. Fou
 A3a full suite **plus `tests/parity`**: **2237 passed, 3 skipped, 6 failed**. Four are the v1 `spn_mip` TPM tests. Two were the robust-FCR and rolling walkthrough notebooks, which still imported moved names from the control root; fixed in the notebook commit (13 notebook tests pass).
 
 A3b: full suite **plus `tests/parity`**: **2238 passed, 4 skipped, same 4 v1 `spn_mip` TPM failures**. The extra skip was intermittent: two later runs covering every test file skipped only the two opt-in Gurobi checks and the robust benchmark below.
+
+A4a full suite **plus `tests/parity`**: **2210 passed, 3 skipped, same 4 v1 `spn_mip` TPM failures**. Collected tests: 2246 on `main` − 50 (the 24 superseded meta-tests, parametrized) + 21 (new surface tests) = 2217.
 
 ### Known issues found along the way
 
@@ -120,7 +123,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
   (canonical JSON, fingerprint, atomic write-once), `core/time.py`, and
   `core/errors.py`. Move `market` onto them first, then the other packages.
   Behavior-preserving.
-  - [x] core + market (branch `consolidation/a1-core-market`). Every market
+  - [x] core + market ([#17](https://github.com/nicosquare/open-energy-lab/pull/17)). Every market
     copy was proven equivalent to its core replacement before deletion
     (87/87 cases at `1319b4e`). Kept local because behavior differs:
     `market.artifact._positive_int` / `_non_negative_int` (accept `2.0`),
@@ -128,7 +131,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     `market.activation._utc` (also parses strings), `market.time._require_utc`
     (offset in message). Standardized: error message wording only; no test
     pinned it.
-  - [x] simulator (branch `consolidation/a1-simulator`). Proven equivalent
+  - [x] simulator ([#20](https://github.com/nicosquare/open-energy-lab/pull/20)). Proven equivalent
     first (42/42 cases at `28d7d8c`). core gained `positive`, `non_negative`,
     and `freeze(sort_keys=)`; `market.reference_fcr._freeze` moved onto it.
     Also: `BatteryComponent.to_dict()` replaces three identical
@@ -141,7 +144,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     (differs per module). One difference: the old `_thaw` in three FCR
     modules left Enum members as-is, while `core.thaw` returns their values.
     Canonical bytes are identical and those modules hold no Enums.
-  - [x] control (branch `consolidation/a1-control`). Proven equivalent first
+  - [x] control ([#21](https://github.com/nicosquare/open-energy-lab/pull/21)). Proven equivalent first
     (40/40 cases at `0e3ff69`). core gained `integer(minimum=)` and
     `normalize_zero` on `positive` / `non_negative`. The last two
     `_battery_payload` copies now use `BatteryComponent.to_dict()`. Two known
@@ -157,8 +160,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     tuple-returning `_sequence` in the reference modules; `_utc_from_text`;
     `fcr_rolling_reference._enum`. Line savings are small here because
     control's bulk is evidence and provenance code (A3/A5).
-  - [x] weather, demand, planning (branch
-    `consolidation/a1-weather-demand-planning`). Narrowed scope, agreed on
+  - [x] weather, demand, planning ([#22](https://github.com/nicosquare/open-energy-lab/pull/22)). Narrowed scope, agreed on
     2026-09-29: their `_positive_int` / `_string_sequence` /
     `_validate_timestamp` copies coerce (`int(value)`, `str(item)`) and
     differ from each other and from core's strict checks, so replacing them
@@ -169,7 +171,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     (weather), `_numeric_sequence` and the UTC parser (demand). Not merged
     despite identical code: `_validate_training_record_summary`, which calls
     each module's own differing helpers.
-- [x] **A2 shared schedule types** (branch `consolidation/a2-plan-contracts`).
+- [x] **A2 shared schedule types** ([#24](https://github.com/nicosquare/open-energy-lab/pull/24)).
   Decided 2026-09-29: the simulator owns the contracts it evaluates, not
   `core/`. `core` would otherwise depend on `market.time`, and `market` already
   depends on `core`. Layering is now market ← simulator ← control.
@@ -182,7 +184,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
 - [x] **A3 validation package** (D1). Shape agreed on 2026-09-29: a top-level
   `oel_validation/` package, not in the wheel, importable from the repo root.
   TPM evidence stays with Track B.
-  - [x] A3a code (branch `consolidation/a3a-validation-code`):
+  - [x] A3a code ([#25](https://github.com/nicosquare/open-energy-lab/pull/25)):
     `market/reference_fcr.py`, `control/robust_fcr_reference.py`,
     `control/fcr_rolling_reference.py`, the evaluator parity functions, and the
     reference schedule mapping now live in `oel_validation/`. 16 exports left
@@ -191,7 +193,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     and `EvaluationComparison`), so request and report bytes are unchanged.
     `tests/unit/test_validation_boundary.py` guards the boundary. Breaks
     simulator ↔ market.
-  - [x] A3b scripts (branch `consolidation/a3b-validation-fixtures`). Scope
+  - [x] A3b scripts ([#26](https://github.com/nicosquare/open-energy-lab/pull/26)). Scope
     narrowed on 2026-09-29: the six reference tools (`run_reference_*`,
     `normalize_reference_*`) moved from `examples/` to `oel_validation/scripts/`.
     Run them with `uv run python -m oel_validation.scripts.<name>`; the
@@ -204,10 +206,24 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     reference-certificate helpers (`assemble_robust_fcr_reference_certificate`,
     `audit_closed_reference_witness`, `RobustFCRReferenceIntervalAudit`). They
     share formulation internals with the real solve path.
-- [ ] **A4 package surface.** Replace lazy `__init__` files with plain imports
-  and 25–40 curated names each. Strip feature numbers from code. Point pytest at
-  `tests/` and gate runs with markers instead of CI file lists. Collapse the
-  meta-tests into one parametrized module.
+- [ ] **A4 package surface**, split into three PRs on 2026-09-30:
+  - [x] A4a surfaces: plain-import roots with curated exports (market 86 → 29,
+    simulator 106 → 42, control 98 → 37; planning, weather, demand and
+    visualization unchanged). Everything else stays importable from its
+    submodule. `control/fcr_bid_plan.py` is removed and simulator exports the
+    contracts it owns. `tests/unit/test_package_surfaces.py` replaces 24
+    per-package meta-tests after an assertion-by-assertion audit (see the
+    A4a commit message); only lazy-loading checks were dropped on purpose.
+    The audit caught a regression: eager imports loaded `socket` through
+    `multiprocessing`, fixed by importing it where it is used.
+  - [ ] A4b names: replace feature numbers in code identifiers and error
+    messages (e.g. `build_feature_010_market_context`, "Feature 013
+    requires …") and rename `settle_reference_fcr_bid`. Persisted strings such
+    as `feature-015-…` producer versions feed fingerprints, so they wait for
+    A5.
+  - [ ] A4c tests: point pytest `testpaths` at `tests/` with markers for
+    slow, parity and licensed runs instead of CI file lists; merge the
+    remaining per-package meta-tests.
 - [ ] **A5 provenance trim** (D2). Keep fingerprints on persisted artifacts
   and results only. Add one versioned JSON artifact base shared by weather,
   demand, market, and the planning dataset. Settle one loading behavior for

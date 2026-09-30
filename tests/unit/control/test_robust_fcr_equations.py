@@ -9,10 +9,10 @@ import pytest
 
 from open_energy_lab.control import (
     RecoveryWindowActivationBudget,
-    RobustFCRFormulationProfile,
     RobustFCRUncertaintyProfile,
     derive_non_intraday_horizon_budget,
 )
+from open_energy_lab.control.robust_fcr_bidding import RobustFCRFormulationProfile
 from open_energy_lab.control._robust_fcr_formulation import (
     assemble_robust_fcr_model,
     build_normalized_index_sets,

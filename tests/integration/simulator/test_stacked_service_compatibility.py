@@ -10,13 +10,13 @@ import pytest
 
 from open_energy_lab.control import PriceThresholdConfig
 from open_energy_lab.simulator import (
-    ArbitrageObjectiveRepresentation,
     ArbitrageScenario,
     DispatchRequestSeries,
     PriceSignal,
     TerminalSOCTarget,
     TimeGrid,
 )
+from open_energy_lab.simulator.pricing import ArbitrageObjectiveRepresentation
 from open_energy_lab.simulator._units import POSITIVE_DISPATCH_MEANING
 from tests.unit.control.test_stacked_service import (
     _arbitrage_config,

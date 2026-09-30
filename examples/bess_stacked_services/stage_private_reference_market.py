@@ -19,12 +19,14 @@ import sys
 import tempfile
 
 from open_energy_lab.market import (
-    FRANCE_AREA_EIC,
-    FRANCE_PROFILE_ID,
     MarketArtifactValidationError,
     MarketDataArtifact,
     build_market_data_artifact,
     load_market_data_artifact,
+)
+from open_energy_lab.market.artifact import (
+    FRANCE_AREA_EIC,
+    FRANCE_PROFILE_ID,
 )
 
 

@@ -113,18 +113,20 @@ def test_result_resume_and_persistence_exports_remain_lazy() -> None:
 
         before = set(sys.modules)
         from open_energy_lab.control import (
+            aggregate_rolling_fcr_records,
+            load_rolling_fcr_study_result,
+        )
+        from open_energy_lab.control.fcr_rolling_backtest import (
             AGGREGATION_POLICY,
             FAILURE_POLICY_COUPLED,
             FAILURE_POLICY_INDEPENDENT,
             RESUME_POLICY,
             RollingFCRResumeEvidence,
             RollingFCRStateCarryEvidence,
-            aggregate_rolling_fcr_records,
             assess_rolling_fcr_resume,
             derive_rolling_fcr_state_carry,
-            extract_accepted_predecessor_fixings,
-            load_rolling_fcr_study_result,
         )
+        from open_energy_lab.control.robust_fcr_rolling import extract_accepted_predecessor_fixings
 
         assert AGGREGATION_POLICY == "coverage-labelled-no-zero-fill-v1"
         assert FAILURE_POLICY_COUPLED.startswith("coupled-days-")

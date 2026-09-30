@@ -17,14 +17,6 @@ EXPECTED_ROOT_EXPORTS = [
     "build_measured_demand_training_payload",
     "build_synthetic_demand_training_payload",
 ]
-PLANNED_SUBMODULES = (
-    "open_energy_lab.demand._aligned_history",
-    "open_energy_lab.demand._weather_response",
-    "open_energy_lab.demand.fit",
-    "open_energy_lab.demand.artifact",
-    "open_energy_lab.demand.sampling",
-    "open_energy_lab.demand.study_inputs",
-)
 
 
 def _demand_package_spec():
@@ -55,20 +47,6 @@ def test_demand_root_surface_stays_explicit_about_stable_exports() -> None:
     assert module.fit_demand_model.__module__ == "open_energy_lab.demand.fit"
     assert module.load_demand_artifact.__module__ == "open_energy_lab.demand.artifact"
     assert module.sample_demand_family.__module__ == "open_energy_lab.demand.sampling"
-
-
-def test_demand_root_import_defers_planned_submodule_loading() -> None:
-    if _demand_package_spec() is None:
-        for module_name in PLANNED_SUBMODULES:
-            assert module_name not in sys.modules
-        return
-
-    _clear_demand_modules()
-
-    importlib.import_module(DEMAND_PACKAGE)
-
-    for module_name in PLANNED_SUBMODULES:
-        assert module_name not in sys.modules
 
 
 def test_demand_root_reserves_only_the_documented_public_surface() -> None:

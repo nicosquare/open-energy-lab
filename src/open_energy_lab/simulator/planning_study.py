@@ -6,8 +6,6 @@ import copyreg
 import hashlib
 import importlib
 import json
-import multiprocessing
-from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict, fields, is_dataclass, replace
 from pathlib import Path
 from typing import Any
@@ -155,6 +153,11 @@ def generate_planning_study_dataset(
         if request.worker_count == 1 or len(work) == 1:
             results = tuple(_simulate_configuration_batch(*item) for item in work)
         else:
+            # Imported here: multiprocessing loads socket, and importing the
+            # simulator package must stay free of network modules.
+            from concurrent.futures import ProcessPoolExecutor
+            import multiprocessing
+
             _register_reloaded_dataclass_reducers(work)
             with ProcessPoolExecutor(
                 max_workers=request.worker_count,

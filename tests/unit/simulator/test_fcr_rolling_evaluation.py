@@ -8,7 +8,7 @@ from types import MappingProxyType
 import pytest
 
 from open_energy_lab.market import CanonicalInterval
-from open_energy_lab.simulator import FCRBidEvaluationValidationError
+from open_energy_lab.simulator.fcr_bid_evaluation import FCRBidEvaluationValidationError
 from tests.fcr_rolling_case_utils import fingerprint
 from tests.integration.simulator.fcr_bid_evaluation_fixture_utils import (
     build_test_evaluation_case,
@@ -78,7 +78,7 @@ def _binding(case) -> MappingProxyType[str, object]:
 
 
 def test_accepted_context_converts_energy_prices_and_records_assumption() -> None:
-    from open_energy_lab.simulator import build_accepted_plan_market_context
+    from open_energy_lab.simulator.fcr_bid_evaluation import build_accepted_plan_market_context
 
     case = _eight_hour_case()
     context = build_accepted_plan_market_context(
@@ -103,7 +103,7 @@ def test_accepted_context_converts_energy_prices_and_records_assumption() -> Non
 
 
 def test_evidence_backed_context_rejects_system_volume_as_individual_award() -> None:
-    from open_energy_lab.simulator import build_accepted_plan_market_context
+    from open_energy_lab.simulator.fcr_bid_evaluation import build_accepted_plan_market_context
 
     case = _eight_hour_case()
     evidence_policy = dict(_policy("evidence_backed_accepted"))
@@ -149,10 +149,8 @@ def test_segmented_evaluation_delegates_and_reconciles_state_and_metrics(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import open_energy_lab.simulator.fcr_rolling_evaluation as rolling
-    from open_energy_lab.simulator import (
-        build_accepted_plan_market_context,
-        evaluate_fixed_fcr_bid_segments,
-    )
+    from open_energy_lab.simulator import evaluate_fixed_fcr_bid_segments
+    from open_energy_lab.simulator.fcr_bid_evaluation import build_accepted_plan_market_context
 
     case = _eight_hour_case()
     start = case.time_contract.start_utc
@@ -222,10 +220,8 @@ def test_segmented_evaluation_delegates_and_reconciles_state_and_metrics(
 
 
 def test_segmented_evaluation_rejects_non_partition_and_context_mismatch() -> None:
-    from open_energy_lab.simulator import (
-        build_accepted_plan_market_context,
-        evaluate_fixed_fcr_bid_segments,
-    )
+    from open_energy_lab.simulator import evaluate_fixed_fcr_bid_segments
+    from open_energy_lab.simulator.fcr_bid_evaluation import build_accepted_plan_market_context
 
     case = _eight_hour_case()
     start = case.time_contract.start_utc

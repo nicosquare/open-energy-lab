@@ -8,11 +8,13 @@ import math
 
 import pytest
 
-from open_energy_lab.control import (
-    RobustFCRAcceptedDecisionFixings,
+from open_energy_lab.control import RollingFCRValidationError
+from open_energy_lab.control.fcr_rolling_backtest import (
     RollingFCRStateLink,
-    RollingFCRValidationError,
     derive_rolling_fcr_state_carry,
+)
+from open_energy_lab.control.robust_fcr_rolling import (
+    RobustFCRAcceptedDecisionFixings,
     extract_accepted_predecessor_fixings,
 )
 from open_energy_lab.control._robust_fcr_formulation import (

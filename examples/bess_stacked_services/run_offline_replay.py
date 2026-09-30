@@ -17,12 +17,12 @@ from open_energy_lab.simulator import (
     BatteryComponent,
     MultiRateTimeContract,
     StackedServiceReplayRequest,
-    StackedServiceReplayResult,
     TerminalSOCTarget,
     build_energy_baseline_schedule,
     build_fcr_capacity_schedule,
     replay_stacked_services,
 )
+from open_energy_lab.simulator.stacked_service import StackedServiceReplayResult
 
 
 DEFAULT_FIXTURE_DIR = Path("tests/fixtures/market")

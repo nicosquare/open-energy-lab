@@ -137,99 +137,13 @@ def test_package_roots_do_not_load_required_backends() -> None:
     )
 
 
-def test_feature_011_offline_roots_and_symbols_load_no_adapters_credentials_or_research_stacks() -> None:
-    _run_isolated_python(
-        """
-        import os
-        import sys
-
-        credential_keys = {
-            "RTE_CLIENT_ID",
-            "RTE_CLIENT_SECRET",
-            "RTE_ACCESS_TOKEN",
-            "ENTSOE_API_TOKEN",
-        }
-        forbidden_roots = {
-            "IPython", "citylearn", "cupy", "docplex", "gurobipy",
-            "highspy", "ipykernel", "jupyter", "mlflow", "nbclient",
-            "nbformat", "notebook", "pyomo", "spflow", "submitit",
-            "tensorboard", "torch", "torchrl", "wandb",
-        }
-        offline_modules = {
-            "open_energy_lab.market.restoration_artifact",
-            "open_energy_lab.market.restoration_activation",
-            "open_energy_lab.control.restoration_service",
-            "open_energy_lab.simulator.restoration_service",
-            "open_energy_lab.simulator.restoration_settlement",
-        }
-        adapter_modules = {
-            "open_energy_lab.market.rte",
-            "open_energy_lab.market.entsoe",
-            "open_energy_lab.market.entsoe_restoration",
-        }
-
-        class GuardedEnvironment(dict):
-            def __getitem__(self, key):
-                if key in credential_keys:
-                    raise AssertionError(f"credential read during import: {key}")
-                return super().__getitem__(key)
-
-            def get(self, key, default=None):
-                if key in credential_keys:
-                    raise AssertionError(f"credential read during import: {key}")
-                return super().get(key, default)
-
-            def __contains__(self, key):
-                if key in credential_keys:
-                    raise AssertionError(f"credential inspected during import: {key}")
-                return super().__contains__(key)
-
-        os.environ = GuardedEnvironment(os.environ)
-        loaded_before = set(sys.modules)
-
-        import open_energy_lab
-        import open_energy_lab.control as control
-        import open_energy_lab.market as market
-        import open_energy_lab.simulator as simulator
-
-        assert offline_modules.isdisjoint(sys.modules)
-        assert adapter_modules.isdisjoint(sys.modules)
-
-        assert market.RestorationMarketArtifact.__module__ == (
-            "open_energy_lab.market.restoration_artifact"
-        )
-        assert market.AFRRActivationTrajectory.__module__ == (
-            "open_energy_lab.market.restoration_activation"
-        )
-        assert control.AFRRBaselineConfig.__module__ == (
-            "open_energy_lab.control.restoration_service"
-        )
-        assert simulator.AFRRReplayRequest.__module__ == (
-            "open_energy_lab.simulator.restoration_service"
-        )
-        assert simulator.RestorationSettlement.__module__ == (
-            "open_energy_lab.simulator.restoration_settlement"
-        )
-
-        assert offline_modules.issubset(sys.modules)
-        assert adapter_modules.isdisjoint(sys.modules)
-        newly_loaded = set(sys.modules) - loaded_before
-        loaded_roots = {name.split(".", 1)[0] for name in newly_loaded}
-        assert forbidden_roots.isdisjoint(loaded_roots), sorted(
-            forbidden_roots & loaded_roots
-        )
-        assert not any(name == "legacy" or name.startswith("legacy.") for name in newly_loaded)
-        """
-    )
-
-
 def test_feature_012_plan_and_evaluator_import_without_reference_or_solver_side_effects() -> None:
     _run_isolated_python(
         """
         import sys
 
         loaded_before = set(sys.modules)
-        import open_energy_lab.control.fcr_bid_plan
+        import open_energy_lab.simulator.fcr_bid_plan
         import open_energy_lab.simulator.fcr_bid_evaluation
 
         newly_loaded = set(sys.modules) - loaded_before
@@ -278,23 +192,27 @@ def test_feature_015_public_roots_and_symbols_stay_solver_and_research_lazy() ->
 
         before = set(sys.modules)
         from open_energy_lab.control import (
-            RollingFCRStudyManifest,
             RollingFCRStudyResult,
-            build_robust_fcr_rolling_problem,
-            derive_rolling_fcr_state_carry,
-            extract_accepted_predecessor_fixings,
             run_rolling_fcr_study,
+        )
+        from open_energy_lab.control.fcr_rolling_backtest import (
+            RollingFCRStudyManifest,
+            derive_rolling_fcr_state_carry,
+        )
+        from open_energy_lab.control.robust_fcr_rolling import (
+            build_robust_fcr_rolling_problem,
+            extract_accepted_predecessor_fixings,
         )
         from oel_validation.fcr_rolling_reference import (
             RollingFCRReferenceFixture,
             compare_rolling_fcr_reference,
         )
         from open_energy_lab.market import slice_regulation_activation_trace
-        from open_energy_lab.simulator import (
+        from open_energy_lab.simulator import evaluate_fixed_fcr_bid_segments
+        from open_energy_lab.simulator.fcr_bid_evaluation import build_accepted_plan_market_context
+        from open_energy_lab.simulator.fcr_rolling_evaluation import (
             FCRAcceptedPlanSegment,
             FCRSegmentedEvaluationReport,
-            build_accepted_plan_market_context,
-            evaluate_fixed_fcr_bid_segments,
         )
 
         assert RollingFCRReferenceFixture.__name__ == "RollingFCRReferenceFixture"
@@ -626,7 +544,7 @@ def test_package_imports_stay_clear_of_lazy_research_stacks(module_name: str) ->
         "open_energy_lab.market.entsoe",
         "oel_validation.reference_fcr",
         *RESTORATION_OFFLINE_MODULES,
-        "open_energy_lab.control.fcr_bid_plan",
+        "open_energy_lab.simulator.fcr_bid_plan",
         "open_energy_lab.control.robust_fcr_bidding",
         "oel_validation.robust_fcr_reference",
         "open_energy_lab.control._robust_fcr_formulation",

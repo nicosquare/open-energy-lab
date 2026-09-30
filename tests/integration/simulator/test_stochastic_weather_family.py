@@ -7,7 +7,6 @@ from collections.abc import Iterable, Mapping, Sequence
 import pytest
 
 from open_energy_lab.simulator import (
-    ArbitrageObjectiveRepresentation,
     BatteryComponent,
     BatteryLoadPVScenario,
     DispatchRequestSeries,
@@ -17,6 +16,7 @@ from open_energy_lab.simulator import (
     TimeGrid,
     WeatherComponent,
 )
+from open_energy_lab.simulator.pricing import ArbitrageObjectiveRepresentation
 from open_energy_lab.simulator._units import DEFAULT_ABSOLUTE_TOLERANCE, POSITIVE_DISPATCH_MEANING
 from open_energy_lab.simulator.stochastic_weather import (
     WeatherFamilyEvaluationRequest,

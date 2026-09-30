@@ -13,7 +13,6 @@ from open_energy_lab.control import (
     SocGuardrailController,
 )
 from open_energy_lab.simulator import (
-    ArbitrageObjectiveRepresentation,
     ArbitrageScenario,
     BatteryComponent,
     BatteryLoadPVScenario,
@@ -25,6 +24,7 @@ from open_energy_lab.simulator import (
     WeatherComponent,
     evaluate_with_controller,
 )
+from open_energy_lab.simulator.pricing import ArbitrageObjectiveRepresentation
 from open_energy_lab.simulator._units import (
     DEFAULT_ABSOLUTE_TOLERANCE,
     POSITIVE_DISPATCH_MEANING,

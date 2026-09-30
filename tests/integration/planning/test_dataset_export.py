@@ -14,7 +14,6 @@ from open_energy_lab.demand import (
     sample_demand_family,
 )
 from open_energy_lab.simulator import (
-    ArbitrageObjectiveRepresentation,
     BatteryComponent,
     BatteryLoadPVScenario,
     DispatchRequestSeries,
@@ -24,6 +23,7 @@ from open_energy_lab.simulator import (
     TimeGrid,
     evaluate_demand_family,
 )
+from open_energy_lab.simulator.pricing import ArbitrageObjectiveRepresentation
 from open_energy_lab.simulator._units import DEFAULT_ABSOLUTE_TOLERANCE, POSITIVE_DISPATCH_MEANING
 from open_energy_lab.simulator.demand import (
     CoolingServiceConfiguration,

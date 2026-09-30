@@ -8,7 +8,7 @@ import hashlib
 import json
 from typing import Sequence
 
-from open_energy_lab.control.fcr_bid_plan import (
+from open_energy_lab.simulator.fcr_bid_plan import (
     BidPlanProducer,
     FixedFCRBidPlan,
     OptimizationMetric,

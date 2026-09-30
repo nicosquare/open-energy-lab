@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 import hashlib
 import json
 
-from open_energy_lab.control import (
+from open_energy_lab.simulator.fcr_bid_plan import (
     BidPlanProducer,
     OptimizationMetric,
     build_fixed_fcr_bid_plan,

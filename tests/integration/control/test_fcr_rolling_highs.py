@@ -8,11 +8,11 @@ import pytest
 
 from open_energy_lab.control import (
     RobustFCRBatteryParameters,
-    RobustFCRSolverDependencyUnavailableError,
     TerminalStoredEnergyRule,
     run_rolling_fcr_study,
-    solve_robust_fcr_rolling_bid,
 )
+from open_energy_lab.control.robust_fcr_bidding import RobustFCRSolverDependencyUnavailableError
+from open_energy_lab.control.robust_fcr_rolling import solve_robust_fcr_rolling_bid
 from open_energy_lab.control.robust_fcr_rolling import (
     _rolling_incumbent_is_accepted,
 )

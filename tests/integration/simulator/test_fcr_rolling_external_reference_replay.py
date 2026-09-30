@@ -11,19 +11,21 @@ from pathlib import Path
 import pytest
 
 from open_energy_lab.control import (
-    BidPlanProducer,
-    OptimizationMetric,
     RecoveryWindowActivationBudget,
     RobustFCRBatteryParameters,
     RobustFCRPriceInputs,
     RobustFCRSolvePolicy,
     RobustFCRUncertaintyProfile,
     TerminalStoredEnergyRule,
-    build_fixed_fcr_bid_plan,
     build_robust_fcr_bidding_problem,
     build_robust_fcr_time_contract,
     derive_non_intraday_horizon_budget,
     solve_robust_fcr_bid,
+)
+from open_energy_lab.simulator.fcr_bid_plan import (
+    BidPlanProducer,
+    OptimizationMetric,
+    build_fixed_fcr_bid_plan,
 )
 from oel_validation.fcr_rolling_reference import (
     load_rolling_fcr_reference_fixture,
