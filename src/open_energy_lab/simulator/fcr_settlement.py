@@ -181,7 +181,7 @@ class DirectionalFCREnergy:
 
 
 @dataclass(frozen=True, slots=True)
-class ReferenceSettlementBreakdown:
+class FixedFCRBidSettlement:
     """Additive delivered-energy settlement for reference-result evaluation."""
 
     profile_id: str
@@ -483,10 +483,10 @@ def settle_stacked_services(
     )
 
 
-def settle_reference_fcr_bid(
+def settle_fixed_fcr_bid(
     request: FCRBidEvaluationRequest,
     samples: Sequence[ReplaySample],
-) -> ReferenceSettlementBreakdown:
+) -> FixedFCRBidSettlement:
     """Settle one valid fixed plan under the explicit reference-result profile."""
 
     from .fcr_bid_evaluation import (
@@ -631,7 +631,7 @@ def settle_reference_fcr_bid(
         raise FCRSettlementValidationError(
             "reference settlement components do not reconcile to total profit"
         )
-    return ReferenceSettlementBreakdown(
+    return FixedFCRBidSettlement(
         profile_id=REFERENCE_SETTLEMENT_PROFILE,
         day_ahead_revenue=ComponentAvailability.available(energy_revenue),
         fcr_capacity_revenue=ComponentAvailability.available(capacity_revenue),
@@ -684,7 +684,7 @@ __all__ = [
     "FCRSettlementBlock",
     "FCRSettlementValidationError",
     "SettlementBreakdown",
-    "ReferenceSettlementBreakdown",
-    "settle_reference_fcr_bid",
+    "FixedFCRBidSettlement",
+    "settle_fixed_fcr_bid",
     "settle_stacked_services",
 ]

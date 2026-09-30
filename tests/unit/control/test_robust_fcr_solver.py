@@ -9,7 +9,7 @@ import pytest
 
 from open_energy_lab.control._robust_fcr_solver import (
     RawRobustFCRSolveResult,
-    _normalized_status,
+    normalize_backend_termination_status,
     require_highs_backend,
     unavailable_exact_raw_result,
     unavailable_gurobi_raw_result,
@@ -174,7 +174,7 @@ def test_backend_termination_matrix_is_solver_neutral(
     has_incumbent: bool,
     expected: str,
 ) -> None:
-    assert _normalized_status(
+    assert normalize_backend_termination_status(
         termination,
         has_incumbent=has_incumbent,
     ) == expected

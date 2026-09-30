@@ -216,8 +216,8 @@ def test_repeated_exact_zero_fcr_solves_have_identical_semantic_evidence() -> No
 @pytest.mark.parametrize(
     "reason",
     (
-        "Feature 013 requires highspy 1.15.1; run `uv sync --dev` and retry",
-        "Feature 013 requires Pyomo 6.10.1; installed version is incompatible",
+        "robust FCR bidding requires highspy 1.15.1; run `uv sync --dev` and retry",
+        "robust FCR bidding requires Pyomo 6.10.1; installed version is incompatible",
     ),
 )
 def test_rolling_solve_propagates_required_backend_failure_without_fallback(
@@ -242,7 +242,7 @@ def test_rolling_solve_propagates_required_backend_failure_without_fallback(
         "script-13-arbitrage-only-midnight-v1"
     )
 
-    with pytest.raises(RobustFCRSolverDependencyUnavailableError, match="Feature 013"):
+    with pytest.raises(RobustFCRSolverDependencyUnavailableError, match="robust FCR bidding"):
         solve_robust_fcr_rolling_bid(problem)
 
 

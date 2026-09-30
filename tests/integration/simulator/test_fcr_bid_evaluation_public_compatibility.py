@@ -21,7 +21,7 @@ from open_energy_lab.simulator.fcr_bid_plan import (
 )
 from open_energy_lab.simulator.fcr_settlement import (
     DirectionalFCREnergy,
-    ReferenceSettlementBreakdown,
+    FixedFCRBidSettlement,
     SettlementBreakdown,
 )
 from open_energy_lab.simulator.stacked_service import (
@@ -54,7 +54,7 @@ def test_feature_010_and_additive_feature_012_symbols_have_exact_owners() -> Non
         simulator.DailyFCRBidEvaluationReport: "open_energy_lab.simulator.fcr_bid_evaluation",
         InvalidCommitmentDiagnosticReport: "open_energy_lab.simulator.fcr_bid_evaluation",
         DirectionalFCREnergy: "open_energy_lab.simulator.fcr_settlement",
-        ReferenceSettlementBreakdown: "open_energy_lab.simulator.fcr_settlement",
+        FixedFCRBidSettlement: "open_energy_lab.simulator.fcr_settlement",
         simulator.evaluate_fixed_fcr_bid: "open_energy_lab.simulator.fcr_bid_evaluation",
     }
 

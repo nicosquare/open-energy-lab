@@ -17,7 +17,7 @@ from open_energy_lab.market.activation import (
 from oel_validation.fcr_bid_evaluation import compare_reference_values
 from oel_validation.reference_fcr import load_golden_reference_fixture
 from open_energy_lab.simulator import fcr_bid_evaluation as evaluation
-from open_energy_lab.simulator.fcr_settlement import settle_reference_fcr_bid
+from open_energy_lab.simulator.fcr_settlement import settle_fixed_fcr_bid
 from open_energy_lab.simulator.stacked_service import (
     _PhysicalReplayInputs,
     _aggregate_physical_samples,
@@ -167,7 +167,7 @@ def test_ordinary_day_stages_use_bounded_complete_iterations() -> None:
     assert counted_replay_samples.iterations <= 2
 
     counted_replay_samples.reset()
-    settlement = settle_reference_fcr_bid(request, counted_replay_samples)
+    settlement = settle_fixed_fcr_bid(request, counted_replay_samples)
     assert counted_replay_samples.iterations <= 2
 
     activation_samples.reset()

@@ -27,7 +27,7 @@ from open_energy_lab.simulator.fcr_bid_evaluation import (
 from oel_validation.fcr_bid_evaluation import compare_reference_evaluation
 from open_energy_lab.simulator.fcr_settlement import (
     FCRSettlementValidationError,
-    settle_reference_fcr_bid,
+    settle_fixed_fcr_bid,
 )
 from tests.integration.simulator.fcr_bid_evaluation_fixture_utils import (
     build_test_evaluation_case,
@@ -153,9 +153,9 @@ def test_reference_settlement_rejects_restoration_requests_samples_and_settlemen
 
     for case in (afrr_case, mfrr_case):
         with pytest.raises(FCRSettlementValidationError, match="FCRBidEvaluationRequest"):
-            settle_reference_fcr_bid(case.replay.request, case.replay.samples)
+            settle_fixed_fcr_bid(case.replay.request, case.replay.samples)
         wrong_samples = (case.replay.samples[0],) * sample_count
         with pytest.raises(FCRSettlementValidationError, match="non-ReplaySample"):
-            settle_reference_fcr_bid(valid.request, wrong_samples)
+            settle_fixed_fcr_bid(valid.request, wrong_samples)
         with pytest.raises(FCRSettlementValidationError, match="replay-sample sequence"):
-            settle_reference_fcr_bid(valid.request, case.settlement)
+            settle_fixed_fcr_bid(valid.request, case.settlement)

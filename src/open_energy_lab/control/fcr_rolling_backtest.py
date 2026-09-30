@@ -1,10 +1,13 @@
-"""Immutable contracts and deterministic orchestration for Feature 015.
+"""Immutable contracts and deterministic orchestration for rolling FCR studies.
 
 The public objects in this module describe rolling studies without importing a
 solver, simulator implementation, source runtime, dataframe stack, network
-client, or credential provider.  Optimization is delegated lazily to Feature
-013 and :mod:`open_energy_lab.control.robust_fcr_rolling`; physical replay and
-settlement are delegated to Feature 012 by the private orchestrator.
+client, or credential provider.  Optimization is delegated lazily to
+:mod:`open_energy_lab.control.robust_fcr_bidding` and
+:mod:`open_energy_lab.control.robust_fcr_rolling`; physical replay and
+settlement are delegated to the fixed-bid evaluator
+(:mod:`open_energy_lab.simulator.fcr_bid_evaluation`) by the private
+orchestrator.
 """
 
 from __future__ import annotations
@@ -750,7 +753,7 @@ class RollingFCRBatteryBinding:
         capacity = _positive(self.capacity_kwh, field_name="capacity_kwh")
         if capacity < self.optimization_battery.maximum_stored_energy_kwh:
             raise RollingFCRValidationError(
-                "capacity_kwh must cover Feature 013 maximum stored energy"
+                "capacity_kwh must cover the robust bidding maximum stored energy"
             )
         if isinstance(self.replay_timestep_seconds, bool) or not isinstance(self.replay_timestep_seconds, int) or self.replay_timestep_seconds <= 0:
             raise RollingFCRValidationError("replay_timestep_seconds must be positive")
@@ -834,7 +837,7 @@ class RollingFCRExperimentProfile:
         if self.plan_classification not in {"robust_candidate", "diagnostic_non_robust", "arbitrage_only"}:
             raise RollingFCRValidationError("unsupported profile plan classification")
         if self.table_a1_parity_claim is not False:
-            raise RollingFCRValidationError("Feature 015 profiles must not claim Table A1 parity")
+            raise RollingFCRValidationError("rolling FCR profiles must not claim Table A1 parity")
         if self.semantics_version != ROLLING_FCR_PROFILE_VERSION:
             raise RollingFCRValidationError("unsupported rolling profile version")
         carry = _string_tuple(self.allowed_state_carry_policies, field_name="allowed_state_carry_policies")

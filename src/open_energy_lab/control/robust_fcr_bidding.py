@@ -386,7 +386,7 @@ class RobustFCRTimeContract:
             hours=24
         ):
             raise RobustFCRValidationError(
-                "Feature 013 requires one ordinary 24-hour delivery day"
+                "robust FCR bidding requires one ordinary 24-hour delivery day"
             )
         planning = tuple(self.planning_intervals)
         energy = tuple(self.energy_intervals)
@@ -497,12 +497,12 @@ def build_robust_fcr_time_contract(
         )
     except MarketTimeValidationError as exc:
         raise RobustFCRValidationError(
-            "Feature 013 requires one ordinary 24-hour delivery day in a valid "
+            "robust FCR bidding requires one ordinary 24-hour delivery day in a valid "
             f"market timezone: {exc}"
         ) from exc
     if len(planning) != 96 or len(energy) != 24 or len(fcr) != 6:
         raise RobustFCRValidationError(
-            "Feature 013 requires one ordinary 24-hour local delivery day"
+            "robust FCR bidding requires one ordinary 24-hour local delivery day"
         )
     period = CanonicalInterval.from_utc(
         planning[0].start_utc,

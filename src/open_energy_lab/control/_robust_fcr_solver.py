@@ -1,4 +1,4 @@
-"""Lazy solver loading and backend-neutral raw results for Feature 013."""
+"""Lazy solver loading and backend-neutral raw results for robust FCR bidding."""
 
 from __future__ import annotations
 
@@ -156,12 +156,12 @@ def require_highs_backend() -> SolverBackendModules:
         pyomo_environ = import_module("pyomo.environ")
     except (ImportError, ModuleNotFoundError) as exc:
         raise RobustFCRSolverDependencyUnavailableError(
-            "Feature 013 requires Pyomo 6.10.1; run `uv sync --dev` and retry"
+            "robust FCR bidding requires Pyomo 6.10.1; run `uv sync --dev` and retry"
         ) from exc
     pyomo_version = str(getattr(pyomo_package, "__version__", "unknown"))
     if pyomo_version != REQUIRED_PYOMO_VERSION:
         raise RobustFCRSolverDependencyUnavailableError(
-            "Feature 013 requires Pyomo "
+            "robust FCR bidding requires Pyomo "
             f"{REQUIRED_PYOMO_VERSION}; installed version is {pyomo_version}"
         )
 
@@ -169,12 +169,12 @@ def require_highs_backend() -> SolverBackendModules:
         highspy = import_module("highspy")
     except (ImportError, ModuleNotFoundError) as exc:
         raise RobustFCRSolverDependencyUnavailableError(
-            "Feature 013 requires highspy 1.15.1; run `uv sync --dev` and retry"
+            "robust FCR bidding requires highspy 1.15.1; run `uv sync --dev` and retry"
         ) from exc
     highspy_version = _installed_highspy_version(highspy)
     if highspy_version != REQUIRED_HIGHSPY_VERSION:
         raise RobustFCRSolverDependencyUnavailableError(
-            "Feature 013 requires highspy "
+            "robust FCR bidding requires highspy "
             f"{REQUIRED_HIGHSPY_VERSION}; installed version is {highspy_version}"
         )
 
@@ -188,7 +188,7 @@ def require_highs_backend() -> SolverBackendModules:
         ) from exc
     if not available:
         raise RobustFCRSolverUnavailableError(
-            "HiGHS is required for Feature 013 but is unavailable to Pyomo"
+            "HiGHS is required for robust FCR bidding but is unavailable to Pyomo"
         )
 
     return SolverBackendModules(
@@ -318,15 +318,6 @@ def extract_complete_witness(
     return MappingProxyType(witness)
 
 
-def _extract_complete_witness(
-    assembled: AssembledRobustFCRModel,
-    pyo: Any,
-) -> Mapping[str, object]:
-    """Backward-compatible private alias for Feature 013 tests and callers."""
-
-    return extract_complete_witness(assembled, pyo)
-
-
 def extract_arbitrage_only_witness(
     assembled: AssembledRobustFCRModel,
     pyo: Any,
@@ -444,15 +435,6 @@ def normalize_backend_termination_status(
     return "feasible" if has_incumbent else "failed"
 
 
-def _normalized_status(termination: str, *, has_incumbent: bool) -> str:
-    """Backward-compatible private alias for Feature 013 tests and callers."""
-
-    return normalize_backend_termination_status(
-        termination,
-        has_incumbent=has_incumbent,
-    )
-
-
 def _result_upper_bound(results: Any) -> float | None:
     candidates: list[object] = []
     problem = getattr(results, "problem", None)
@@ -542,7 +524,7 @@ def solve_assembled_model(
             confirmed = False
             witness = None
             objective = None
-    status = _normalized_status(termination, has_incumbent=confirmed)
+    status = normalize_backend_termination_status(termination, has_incumbent=confirmed)
     upper_bound = _result_upper_bound(results)
     if status == "optimal" and objective is not None and upper_bound is None:
         upper_bound = objective
@@ -699,7 +681,7 @@ def solve_gurobi_assembled_model(
     if confirmed:
         try:
             assembled.model.solutions.load_from(results)
-            witness = _extract_complete_witness(assembled, pyo)
+            witness = extract_complete_witness(assembled, pyo)
             objective = _finite_backend_value(
                 pyo.value(assembled.model.objective),
                 field_name="objective value",
@@ -713,7 +695,7 @@ def solve_gurobi_assembled_model(
                     "message": str(exc),
                 }
             )
-    status = _normalized_status(termination, has_incumbent=confirmed)
+    status = normalize_backend_termination_status(termination, has_incumbent=confirmed)
     upper_bound = _result_upper_bound(results)
     if status == "optimal" and objective is not None and upper_bound is None:
         upper_bound = objective

@@ -1,4 +1,4 @@
-"""Private deterministic state machine for Feature 015 rolling studies."""
+"""Private deterministic state machine for rolling FCR studies."""
 
 from __future__ import annotations
 
@@ -241,7 +241,7 @@ def _derive_causal_0800_checkpoint(
         <= battery.maximum_stored_energy_kwh + tolerance
     ):
         raise RollingFCRValidationError(
-            "Feature 012 cutoff checkpoint lies outside declared battery bounds"
+            "cutoff checkpoint lies outside declared battery bounds"
         )
     carry_evidence = derive_rolling_fcr_state_carry(
         checkpoint,
@@ -826,7 +826,7 @@ def _evaluate_full_day(
     activation_trace: object,
     evaluation_suffix: str,
 ) -> object:
-    """Evaluate one accepted ordinary-day plan only through Feature 012."""
+    """Evaluate one accepted ordinary-day plan only through the fixed-bid evaluator."""
 
     if solved.plan is None:
         raise RollingFCRValidationError(
@@ -1647,7 +1647,7 @@ def _run_midnight_carry_study(
     *,
     activation_traces: Mapping[date, object] | None,
 ) -> RollingFCRStudyResult:
-    """Run realized Feature 012 midnight carry with explicit continuity."""
+    """Run the realized midnight-carry study with explicit continuity."""
 
     by_date = {item.date_classification.delivery_date: item for item in day_inputs}
     if len(by_date) != len(day_inputs):

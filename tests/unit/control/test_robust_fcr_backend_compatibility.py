@@ -42,7 +42,7 @@ def test_missing_required_packages_have_actionable_sync_guidance(
     )
     with pytest.raises(
         RobustFCRSolverDependencyUnavailableError,
-        match=r"Feature 013 requires.*uv sync --dev",
+        match=r"robust FCR bidding requires.*uv sync --dev",
     ):
         require_highs_backend()
 

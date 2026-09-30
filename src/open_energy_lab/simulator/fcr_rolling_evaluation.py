@@ -1,8 +1,8 @@
-"""Segmented accepted-plan evaluation composed exclusively from Feature 012.
+"""Segmented accepted-plan evaluation composed exclusively from the fixed-bid evaluator.
 
 This module owns no battery transition, tracking, saturation, settlement, or
 profit equation. It slices immutable plans and activation, constructs a fresh
-Feature 012 battery for each segment, delegates to ``evaluate_fixed_fcr_bid``,
+battery component for each segment, delegates to ``evaluate_fixed_fcr_bid``,
 and reconciles the returned reports.
 """
 
@@ -125,7 +125,7 @@ class FCRAcceptedPlanSegment:
 
 @dataclass(frozen=True, slots=True)
 class FCRSegmentedEvaluationReport:
-    """Deterministic reconciliation of ordered Feature 012 reports."""
+    """Deterministic reconciliation of ordered fixed-bid evaluation reports."""
 
     evaluation_id: str
     parent_plan_fingerprint: str
@@ -181,7 +181,7 @@ class FCRSegmentedEvaluationReport:
         reports = tuple(self.reports)
         if not segments or len(segments) != len(reports):
             raise FCRBidEvaluationValidationError(
-                "segmented report requires one Feature 012 report per segment"
+                "segmented report requires one fixed-bid evaluation report per segment"
             )
         if any(item.parent_plan_fingerprint != self.parent_plan_fingerprint for item in segments):
             raise FCRBidEvaluationValidationError(
@@ -189,7 +189,7 @@ class FCRSegmentedEvaluationReport:
             )
         if any(report.status != "settled" for report in reports):
             raise FCRBidEvaluationValidationError(
-                "segmented report accepts only settled Feature 012 reports"
+                "segmented report accepts only settled fixed-bid evaluation reports"
             )
         checkpoints = tuple(
             _finite(value, field_name="stored energy checkpoint")
@@ -604,7 +604,7 @@ def evaluate_fixed_fcr_bid_segments(
     settlement_profile: str,
     numeric_tolerance: float,
 ) -> FCRSegmentedEvaluationReport:
-    """Evaluate ordered accepted-plan segments solely through Feature 012."""
+    """Evaluate ordered accepted-plan segments solely through ``evaluate_fixed_fcr_bid``."""
 
     if not isinstance(plan, FixedFCRBidPlan):
         raise FCRBidEvaluationValidationError("plan must be one FixedFCRBidPlan")
@@ -674,7 +674,7 @@ def evaluate_fixed_fcr_bid_segments(
         report = evaluate_fixed_fcr_bid(request)
         if report.status != "settled" or report.physical_metrics is None:
             raise FCRBidEvaluationValidationError(
-                f"Feature 012 segment {index} did not settle"
+                f"fixed-bid evaluation of segment {index} did not settle"
             )
         current_stored = float(
             report.physical_metrics["stored_energy_kwh"]["terminal"]
@@ -688,7 +688,7 @@ def evaluate_fixed_fcr_bid_segments(
     )
     if residual > tolerance:
         raise FCRBidEvaluationValidationError(
-            "Feature 012 segment terminal and successor initial states do not reconcile"
+            "segment terminal and successor initial battery states do not reconcile"
         )
     return FCRSegmentedEvaluationReport(
         evaluation_id=evaluation_id,

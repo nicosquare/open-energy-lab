@@ -45,7 +45,7 @@ _TOLERANCE = 1e-6
 
 
 class RestorationProduct(str, Enum):
-    """Restoration products owned by Feature 011; FCR is intentionally absent."""
+    """aFRR and mFRR restoration products; FCR is intentionally absent."""
 
     AFRR = "AFRR"
     MFRR = "MFRR"

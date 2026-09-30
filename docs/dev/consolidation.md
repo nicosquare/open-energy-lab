@@ -90,6 +90,7 @@ Regenerate with `uv run python tools/consolidation_metrics.py`.
 | A2 plan/schedule contracts | 77,313 | 12,504 | 13,782 | 19,847 | 785 | 1 | 2 | 4 | 6 |
 | A3a validation code (+6,873 in `oel_validation/`) | 70,425 | 11,316 | 13,222 | 14,707 | 785 | 1 | 2 | 4 | 6 |
 | A4a package surfaces | 69,053 | 11,044 | 12,778 | 14,227 | 785 | 1 | 2 | 4 | 6 |
+| A4b names | 69,038 | 11,044 | 12,778 | 14,212 | 785 | 1 | 2 | 4 | 6 |
 
 A1 simulator full suite: **2230 passed, 4 failed (the v1 `spn_mip` TPM tests still in the baseline; the two surface tests were fixed by #18), 2 skipped**.
 
@@ -104,6 +105,8 @@ A3a full suite **plus `tests/parity`**: **2237 passed, 3 skipped, 6 failed**. Fo
 A3b: full suite **plus `tests/parity`**: **2238 passed, 4 skipped, same 4 v1 `spn_mip` TPM failures**. The extra skip was intermittent: two later runs covering every test file skipped only the two opt-in Gurobi checks and the robust benchmark below.
 
 A4a full suite **plus `tests/parity`**: **2210 passed, 3 skipped, same 4 v1 `spn_mip` TPM failures**. Collected tests: 2246 on `main` − 50 (the 24 superseded meta-tests, parametrized) + 21 (new surface tests) = 2217.
+
+A4b full suite **plus `tests/parity`**: **2208 passed, 3 skipped, 6 failed**. Four are the v1 `spn_mip` TPM tests. Two were a test that simulates the old dependency-error wording, fixed in the follow-up commit; that test file then passed in full. Skips: the two opt-in Gurobi checks and the robust benchmark (resource limit).
 
 ### Known issues found along the way
 
@@ -216,11 +219,17 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     A4a commit message); only lazy-loading checks were dropped on purpose.
     The audit caught a regression: eager imports loaded `socket` through
     `multiprocessing`, fixed by importing it where it is used.
-  - [ ] A4b names: replace feature numbers in code identifiers and error
-    messages (e.g. `build_feature_010_market_context`, "Feature 013
-    requires …") and rename `settle_reference_fcr_bid`. Persisted strings such
-    as `feature-015-…` producer versions feed fingerprints, so they wait for
-    A5.
+  - [x] A4b names: `build_feature_010_market_context` → `build_market_data_context`,
+    `settle_reference_fcr_bid` → `settle_fixed_fcr_bid`,
+    `ReferenceSettlementBreakdown` → `FixedFCRBidSettlement`, and
+    `FEATURE_010_DEFAULT_SETTLEMENT_PROFILE` → `STACKED_SERVICE_SETTLEMENT_PROFILE`
+    (the value is unchanged). The two private solver aliases for "Feature 013
+    callers" are removed. About 40 messages, docstrings and comments now
+    describe the behavior. Kept for A5 (33 lines in control and simulator):
+    persisted strings such as producer_version, semantics, conversion_id,
+    context_kind, creation_cause, efficiency_lineage,
+    feasible_incumbent_rule, `feature_012_*` payload keys, and one recorded
+    plan diagnostic. tpm is untouched.
   - [ ] A4c tests: point pytest `testpaths` at `tests/` with markers for
     slow, parity and licensed runs instead of CI file lists; merge the
     remaining per-package meta-tests.
