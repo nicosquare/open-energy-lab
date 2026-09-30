@@ -120,7 +120,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
   (canonical JSON, fingerprint, atomic write-once), `core/time.py`, and
   `core/errors.py`. Move `market` onto them first, then the other packages.
   Behavior-preserving.
-  - [x] core + market (branch `consolidation/a1-core-market`). Every market
+  - [x] core + market ([#17](https://github.com/nicosquare/open-energy-lab/pull/17)). Every market
     copy was proven equivalent to its core replacement before deletion
     (87/87 cases at `1319b4e`). Kept local because behavior differs:
     `market.artifact._positive_int` / `_non_negative_int` (accept `2.0`),
@@ -128,7 +128,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     `market.activation._utc` (also parses strings), `market.time._require_utc`
     (offset in message). Standardized: error message wording only; no test
     pinned it.
-  - [x] simulator (branch `consolidation/a1-simulator`). Proven equivalent
+  - [x] simulator ([#20](https://github.com/nicosquare/open-energy-lab/pull/20)). Proven equivalent
     first (42/42 cases at `28d7d8c`). core gained `positive`, `non_negative`,
     and `freeze(sort_keys=)`; `market.reference_fcr._freeze` moved onto it.
     Also: `BatteryComponent.to_dict()` replaces three identical
@@ -141,7 +141,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     (differs per module). One difference: the old `_thaw` in three FCR
     modules left Enum members as-is, while `core.thaw` returns their values.
     Canonical bytes are identical and those modules hold no Enums.
-  - [x] control (branch `consolidation/a1-control`). Proven equivalent first
+  - [x] control ([#21](https://github.com/nicosquare/open-energy-lab/pull/21)). Proven equivalent first
     (40/40 cases at `0e3ff69`). core gained `integer(minimum=)` and
     `normalize_zero` on `positive` / `non_negative`. The last two
     `_battery_payload` copies now use `BatteryComponent.to_dict()`. Two known
@@ -157,8 +157,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     tuple-returning `_sequence` in the reference modules; `_utc_from_text`;
     `fcr_rolling_reference._enum`. Line savings are small here because
     control's bulk is evidence and provenance code (A3/A5).
-  - [x] weather, demand, planning (branch
-    `consolidation/a1-weather-demand-planning`). Narrowed scope, agreed on
+  - [x] weather, demand, planning ([#22](https://github.com/nicosquare/open-energy-lab/pull/22)). Narrowed scope, agreed on
     2026-09-29: their `_positive_int` / `_string_sequence` /
     `_validate_timestamp` copies coerce (`int(value)`, `str(item)`) and
     differ from each other and from core's strict checks, so replacing them
@@ -169,7 +168,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     (weather), `_numeric_sequence` and the UTC parser (demand). Not merged
     despite identical code: `_validate_training_record_summary`, which calls
     each module's own differing helpers.
-- [x] **A2 shared schedule types** (branch `consolidation/a2-plan-contracts`).
+- [x] **A2 shared schedule types** ([#24](https://github.com/nicosquare/open-energy-lab/pull/24)).
   Decided 2026-09-29: the simulator owns the contracts it evaluates, not
   `core/`. `core` would otherwise depend on `market.time`, and `market` already
   depends on `core`. Layering is now market ← simulator ← control.
@@ -182,7 +181,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
 - [x] **A3 validation package** (D1). Shape agreed on 2026-09-29: a top-level
   `oel_validation/` package, not in the wheel, importable from the repo root.
   TPM evidence stays with Track B.
-  - [x] A3a code (branch `consolidation/a3a-validation-code`):
+  - [x] A3a code ([#25](https://github.com/nicosquare/open-energy-lab/pull/25)):
     `market/reference_fcr.py`, `control/robust_fcr_reference.py`,
     `control/fcr_rolling_reference.py`, the evaluator parity functions, and the
     reference schedule mapping now live in `oel_validation/`. 16 exports left
@@ -191,7 +190,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     and `EvaluationComparison`), so request and report bytes are unchanged.
     `tests/unit/test_validation_boundary.py` guards the boundary. Breaks
     simulator ↔ market.
-  - [x] A3b scripts (branch `consolidation/a3b-validation-fixtures`). Scope
+  - [x] A3b scripts ([#26](https://github.com/nicosquare/open-energy-lab/pull/26)). Scope
     narrowed on 2026-09-29: the six reference tools (`run_reference_*`,
     `normalize_reference_*`) moved from `examples/` to `oel_validation/scripts/`.
     Run them with `uv run python -m oel_validation.scripts.<name>`; the
