@@ -27,6 +27,7 @@ gurobi = [
 [dependency-groups]
 dev = [
     "pytest>=8.0",
+    "pyyaml>=6",
 ]
 notebook = [
     "ipykernel",
@@ -63,11 +64,18 @@ exclude = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests/unit"]
+testpaths = ["tests"]
 pythonpath = [".", "src"]
-addopts = "-ra"
+# A plain `pytest` runs the routine offline suite. Opt-in groups are selected
+# explicitly, e.g. `pytest -m slow` or `pytest -m "reference_benchmark or
+# external_reference_data"`; a later -m on the command line replaces this one.
+addopts = """-ra --strict-markers -m "not slow and not notebook and not licensed_gurobi \
+and not live_entsoe and not live_rte and not reference_benchmark \
+and not external_reference_data""""
 markers = [
-    "licensed_gurobi: explicitly selected TPM checks requiring a configured Gurobi license",
+    "slow: solver-backed or multi-day checks taking more than about ten seconds (run in their own CI job)",
+    "notebook: executes a walkthrough notebook; needs the notebook dependency group (run in their own CI job)",
+    "licensed_gurobi: explicitly selected checks requiring an installed and licensed Gurobi",
     "live_entsoe: explicitly selected credentialed ENTSO-E compatibility checks (excluded from routine offline validation)",
     "live_rte: explicitly selected credentialed RTE compatibility checks (excluded from routine offline validation)",
     "reference_benchmark: explicitly selected reference-host performance checks (excluded from routine correctness validation)",

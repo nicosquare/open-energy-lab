@@ -1843,6 +1843,7 @@ gurobi = [
 [package.dev-dependencies]
 dev = [
     { name = "pytest" },
+    { name = "pyyaml" },
 ]
 notebook = [
     { name = "ipykernel" },
@@ -1866,7 +1867,10 @@ requires-dist = [
 provides-extras = ["gurobi"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=8.0" }]
+dev = [
+    { name = "pytest", specifier = ">=8.0" },
+    { name = "pyyaml", specifier = ">=6" },
+]
 notebook = [
     { name = "ipykernel" },
     { name = "jupyterlab" },
