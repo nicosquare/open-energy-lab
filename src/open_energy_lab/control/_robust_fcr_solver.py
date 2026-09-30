@@ -318,15 +318,6 @@ def extract_complete_witness(
     return MappingProxyType(witness)
 
 
-def _extract_complete_witness(
-    assembled: AssembledRobustFCRModel,
-    pyo: Any,
-) -> Mapping[str, object]:
-    """Backward-compatible private alias for Feature 013 tests and callers."""
-
-    return extract_complete_witness(assembled, pyo)
-
-
 def extract_arbitrage_only_witness(
     assembled: AssembledRobustFCRModel,
     pyo: Any,
@@ -444,15 +435,6 @@ def normalize_backend_termination_status(
     return "feasible" if has_incumbent else "failed"
 
 
-def _normalized_status(termination: str, *, has_incumbent: bool) -> str:
-    """Backward-compatible private alias for Feature 013 tests and callers."""
-
-    return normalize_backend_termination_status(
-        termination,
-        has_incumbent=has_incumbent,
-    )
-
-
 def _result_upper_bound(results: Any) -> float | None:
     candidates: list[object] = []
     problem = getattr(results, "problem", None)
@@ -542,7 +524,7 @@ def solve_assembled_model(
             confirmed = False
             witness = None
             objective = None
-    status = _normalized_status(termination, has_incumbent=confirmed)
+    status = normalize_backend_termination_status(termination, has_incumbent=confirmed)
     upper_bound = _result_upper_bound(results)
     if status == "optimal" and objective is not None and upper_bound is None:
         upper_bound = objective
@@ -699,7 +681,7 @@ def solve_gurobi_assembled_model(
     if confirmed:
         try:
             assembled.model.solutions.load_from(results)
-            witness = _extract_complete_witness(assembled, pyo)
+            witness = extract_complete_witness(assembled, pyo)
             objective = _finite_backend_value(
                 pyo.value(assembled.model.objective),
                 field_name="objective value",
@@ -713,7 +695,7 @@ def solve_gurobi_assembled_model(
                     "message": str(exc),
                 }
             )
-    status = _normalized_status(termination, has_incumbent=confirmed)
+    status = normalize_backend_termination_status(termination, has_incumbent=confirmed)
     upper_bound = _result_upper_bound(results)
     if status == "optimal" and objective is not None and upper_bound is None:
         upper_bound = objective
