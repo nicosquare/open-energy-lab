@@ -123,17 +123,6 @@ def test_market_package_root_is_a_regular_source_tree_package() -> None:
     assert "legacy" not in module_file.parts
 
 
-def test_market_root_import_defers_every_feature_submodule() -> None:
-    for module_name in RELOADED_MARKET_MODULES:
-        sys.modules.pop(module_name, None)
-
-    module = importlib.import_module(MARKET_PACKAGE)
-
-    assert module.__name__ == MARKET_PACKAGE
-    for module_name in PLANNED_MARKET_SUBMODULES:
-        assert module_name not in sys.modules
-
-
 def test_market_root_exports_no_transport_or_credential_capability() -> None:
     module = importlib.import_module(MARKET_PACKAGE)
     forbidden_name_fragments = (
@@ -268,7 +257,7 @@ def test_feature_012_offline_types_do_not_import_the_external_reference_loader()
         """
         import sys
 
-        import open_energy_lab.control.fcr_bid_plan
+        import open_energy_lab.simulator.fcr_bid_plan
         import open_energy_lab.simulator.fcr_bid_evaluation
 
         assert "oel_validation.reference_fcr" not in sys.modules

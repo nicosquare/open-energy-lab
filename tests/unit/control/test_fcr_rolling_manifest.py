@@ -8,12 +8,14 @@ from datetime import timedelta
 import pytest
 
 from open_energy_lab.control import (
-    AcceptedBidPolicy,
-    DeliveryDateClassification,
-    RollingFCRDataDescriptor,
     RollingFCRDayInput,
     RollingFCRValidationError,
     build_rolling_fcr_experiment_profile,
+)
+from open_energy_lab.control.fcr_rolling_backtest import (
+    AcceptedBidPolicy,
+    DeliveryDateClassification,
+    RollingFCRDataDescriptor,
 )
 from tests.fcr_rolling_case_utils import (
     AUTHORED_DELIVERY_DATES,

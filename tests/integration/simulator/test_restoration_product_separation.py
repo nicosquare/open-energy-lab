@@ -15,17 +15,15 @@ from examples.restoration_services.generate_reference_results import (
 from open_energy_lab.control import (
     AFRRBaselineMode,
     MFRRBaselineMode,
-    RegulationOnlyBaselineConfig,
-    RestorationControlValidationError,
-    StackedBaselineValidationError,
     build_afrr_baseline_config,
     build_mfrr_baseline_config,
 )
+from open_energy_lab.simulator.restoration_contracts import RestorationControlValidationError
+from open_energy_lab.control.stacked_service import (
+    RegulationOnlyBaselineConfig,
+    StackedBaselineValidationError,
+)
 from open_energy_lab.simulator import (
-    FCRSettlementValidationError,
-    RestorationReplayValidationError,
-    RestorationSettlementValidationError,
-    StackedServiceValidationError,
     build_afrr_replay_request,
     build_mfrr_replay_request,
     replay_afrr,
@@ -34,6 +32,10 @@ from open_energy_lab.simulator import (
     settle_restoration_services,
     settle_stacked_services,
 )
+from open_energy_lab.simulator.fcr_settlement import FCRSettlementValidationError
+from open_energy_lab.simulator.restoration_service import RestorationReplayValidationError
+from open_energy_lab.simulator.restoration_settlement import RestorationSettlementValidationError
+from open_energy_lab.simulator.stacked_service import StackedServiceValidationError
 from tests.unit.control.test_stacked_service import _regulation_config
 from tests.unit.simulator.test_stacked_service import (
     _activation_trace,

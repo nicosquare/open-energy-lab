@@ -15,7 +15,6 @@ from open_energy_lab.planning import (
     solve_planning_problem,
 )
 from open_energy_lab.simulator import (
-    ArbitrageObjectiveRepresentation,
     BatteryComponent,
     BatteryLoadPVScenario,
     DispatchRequestSeries,
@@ -25,6 +24,7 @@ from open_energy_lab.simulator import (
     evaluate_demand_family,
     export_planning_dataset,
 )
+from open_energy_lab.simulator.pricing import ArbitrageObjectiveRepresentation
 from open_energy_lab.simulator._units import (
     DEFAULT_ABSOLUTE_TOLERANCE,
     POSITIVE_DISPATCH_MEANING,

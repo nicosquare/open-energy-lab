@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 import hashlib
 import json
 
-from open_energy_lab.control import FixedFCRBidPlan
+from open_energy_lab.simulator.fcr_bid_plan import FixedFCRBidPlan
 from open_energy_lab.market import (
     ActivationImportRequest,
     CanonicalInterval,

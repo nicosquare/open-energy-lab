@@ -8,7 +8,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from open_energy_lab.control.fcr_bid_plan import (
+from open_energy_lab.simulator.fcr_bid_plan import (
     BidPlanProducer,
     OptimizationMetric,
     build_fixed_fcr_bid_plan,

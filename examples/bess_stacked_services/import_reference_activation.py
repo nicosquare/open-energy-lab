@@ -11,12 +11,12 @@ import sys
 from zoneinfo import ZoneInfo
 
 from open_energy_lab.market import (
-    ACTIVATION_SIGN_SEMANTICS,
     ActivationImportRequest,
     RegulationActivationTrace,
     import_regulation_activation_trace,
     write_regulation_activation_trace,
 )
+from open_energy_lab.market.activation import ACTIVATION_SIGN_SEMANTICS
 
 
 REFERENCE_COMMIT = "7e44738bb30e5c8204efe40103b9be4c2203685c"

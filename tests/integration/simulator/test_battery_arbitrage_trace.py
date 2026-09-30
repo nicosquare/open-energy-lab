@@ -8,13 +8,15 @@ from pathlib import Path
 import pytest
 
 from open_energy_lab.simulator import (
-    ArbitrageObjectiveRepresentation,
     ArbitrageScenario,
     BatteryComponent,
-    DeterministicRulePolicy,
     DispatchRequestSeries,
     PriceSignal,
     TimeGrid,
+)
+from open_energy_lab.simulator.pricing import (
+    ArbitrageObjectiveRepresentation,
+    DeterministicRulePolicy,
 )
 from open_energy_lab.simulator._units import DEFAULT_ABSOLUTE_TOLERANCE, POSITIVE_DISPATCH_MEANING
 

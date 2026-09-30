@@ -7,7 +7,6 @@ import pytest
 
 from open_energy_lab.demand import DemandSamplingRequest, load_demand_artifact, sample_demand_family
 from open_energy_lab.simulator import (
-    ArbitrageObjectiveRepresentation,
     BatteryComponent,
     BatteryLoadPVScenario,
     DispatchRequestSeries,
@@ -15,6 +14,7 @@ from open_energy_lab.simulator import (
     PVComponent,
     PriceSignal,
 )
+from open_energy_lab.simulator.pricing import ArbitrageObjectiveRepresentation
 from open_energy_lab.simulator._units import DEFAULT_ABSOLUTE_TOLERANCE, POSITIVE_DISPATCH_MEANING
 from open_energy_lab.simulator.weather import weather_component_from_sampled_trace
 from open_energy_lab.weather import (

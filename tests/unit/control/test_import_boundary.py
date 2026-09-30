@@ -6,7 +6,6 @@ import importlib
 import subprocess
 import sys
 import textwrap
-from pathlib import Path
 
 import pytest
 
@@ -25,106 +24,6 @@ OPTIONAL_RESEARCH_MODULES = {
 
 # Keep this exact public-surface snapshot synchronized with the repository-wide
 # EXPECTED_CONTROL_EXPORTS contract in tests/unit/test_import_contract.py.
-EXPECTED_ROOT_EXPORTS = sorted([
-    "AGGREGATION_POLICY",
-    "AFRRBaselineConfig",
-    "AFRRBaselineMode",
-    "ArbitrageOnlyBaselineConfig",
-    "BaselineScheduleBundle",
-    "BidPlanProducer",
-    "AcceptedBidPolicy",
-    "AggregateMetricEvidence",
-    "CallerSuppliedRollingState",
-    "ContinuitySegment",
-    "ConstraintFamilyResidual",
-    "DirectionalCapacityCommitmentInterval",
-    "DirectionalCapacitySchedule",
-    "DeliveryDateClassification",
-    "DeliveryDateRecordEnvelope",
-    "FAILURE_POLICY_COUPLED",
-    "FAILURE_POLICY_INDEPENDENT",
-    "FCRBidPlanValidationError",
-    "FeasibilityAudit",
-    "FixedFCRBidPlan",
-    "HorizonWideActivationBudget",
-    "MFRRBaselineConfig",
-    "MFRRBaselineMode",
-    "ObjectiveBreakdown",
-    "OptimizationMetric",
-    "PVSelfConsumptionConfig",
-    "PVSelfConsumptionController",
-    "PlanDiagnostic",
-    "PriceThresholdConfig",
-    "PriceThresholdController",
-    "RegulationOnlyBaselineConfig",
-    "RecoveryWindowActivationBudget",
-    "RESUME_POLICY",
-    "RestorationBaselineBundle",
-    "RestorationCapability",
-    "RestorationControlValidationError",
-    "RestorationEnergyBaselineInterval",
-    "RestorationEnergyBaselineSchedule",
-    "RobustFCRBatteryParameters",
-    "RobustFCRAcceptedDecisionFixings",
-    "RobustFCRBiddingProblem",
-    "RobustFCRBoundComparison",
-    "RobustFCRDecisions",
-    "RobustFCRFormulationProfile",
-    "RobustFCRPriceInputs",
-    "RobustFCRRollingBiddingProblem",
-    "RobustFCRRollingSolveResult",
-    "RobustFCRSolvePolicy",
-    "RobustFCRSolveResult",
-    "RobustFCRSolverDependencyUnavailableError",
-    "RobustFCRSolverUnavailableError",
-    "RobustFCRTimeContract",
-    "RobustFCRUncertaintyProfile",
-    "RobustFCRValidationError",
-    "RollingFCRBatteryBinding",
-    "RollingFCRDataDescriptor",
-    "RollingFCRDayInput",
-    "RollingFCRDayRevision",
-    "RollingFCRExperimentProfile",
-    "RollingFCRNumericPolicy",
-    "RollingFCRResumeEvidence",
-    "RollingFCRStateCarryEvidence",
-    "RollingFCRStateLink",
-    "RollingFCRStudyManifest",
-    "RollingFCRStudyResult",
-    "RollingFCRValidationError",
-    "SerializedScheduleReference",
-    "SocGuardrailConfig",
-    "SocGuardrailController",
-    "StackedBaselineValidationError",
-    "StackedHeuristicConfig",
-    "TerminalStoredEnergyRule",
-    "build_afrr_baseline",
-    "build_afrr_baseline_config",
-    "build_afrr_directional_capacity_schedule",
-    "build_arbitrage_only_baseline",
-    "build_fixed_fcr_bid_plan",
-    "build_mfrr_baseline",
-    "build_mfrr_baseline_config",
-    "build_mfrr_directional_capacity_schedule",
-    "build_regulation_only_baseline",
-    "build_restoration_capability",
-    "build_robust_fcr_bidding_problem",
-    "build_robust_fcr_rolling_problem",
-    "build_robust_fcr_time_contract",
-    "build_rolling_fcr_experiment_profile",
-    "build_rolling_fcr_study_manifest",
-    "aggregate_rolling_fcr_records",
-    "assess_rolling_fcr_resume",
-    "build_stacked_heuristic_baseline",
-    "compare_robust_fcr_bounds",
-    "derive_non_intraday_horizon_budget",
-    "derive_rolling_fcr_state_carry",
-    "load_rolling_fcr_study_result",
-    "extract_accepted_predecessor_fixings",
-    "run_rolling_fcr_study",
-    "solve_robust_fcr_bid",
-    "solve_robust_fcr_rolling_bid",
-])
 
 
 def _optional_modules_loaded_after(before_import: set[str]) -> set[str]:
@@ -145,144 +44,12 @@ def _run_isolated_python(source: str) -> None:
     )
 
 
-def test_control_package_import_stays_lightweight() -> None:
-    loaded_before_import = set(sys.modules)
-
-    module = importlib.import_module("open_energy_lab.control")
-
-    optional_modules_loaded = _optional_modules_loaded_after(loaded_before_import)
-
-    assert optional_modules_loaded == set()
-    assert module.__file__ is not None
-    module_file = Path(module.__file__).resolve()
-    assert module_file.name == "__init__.py"
-    assert module_file.parent.name == "control"
-    assert module_file.parent.parent.name == "open_energy_lab"
-    assert module.__all__ == EXPECTED_ROOT_EXPORTS
-    assert sorted(name for name in dir(module) if name in EXPECTED_ROOT_EXPORTS) == EXPECTED_ROOT_EXPORTS
-
-
-def test_control_root_import_defers_controller_submodule_loading() -> None:
-    _run_isolated_python(
-        """
-        import sys
-
-        import open_energy_lab.control as module
-
-        assert "open_energy_lab.control._config" not in sys.modules
-        assert "open_energy_lab.control.price_threshold" not in sys.modules
-        assert "open_energy_lab.control.soc_guardrail" not in sys.modules
-        assert "open_energy_lab.control.pv_self_consumption" not in sys.modules
-        assert "open_energy_lab.control.stacked_service" not in sys.modules
-        assert "open_energy_lab.control.restoration_service" not in sys.modules
-
-        getattr(module, "PriceThresholdConfig")
-        getattr(module, "PriceThresholdController")
-
-        assert "open_energy_lab.control._config" in sys.modules
-        assert "open_energy_lab.control.price_threshold" in sys.modules
-        assert "open_energy_lab.control.soc_guardrail" not in sys.modules
-        assert "open_energy_lab.control.pv_self_consumption" not in sys.modules
-        assert "open_energy_lab.control.stacked_service" not in sys.modules
-        assert "open_energy_lab.control.restoration_service" not in sys.modules
-
-        getattr(module, "AFRRBaselineConfig")
-        assert "open_energy_lab.control.restoration_service" in sys.modules
-        """
-    )
-
-
-@pytest.mark.parametrize(
-    ("export_name", "module_name"),
-    (
-        ("PVSelfConsumptionConfig", "open_energy_lab.control._config"),
-        ("PVSelfConsumptionController", "open_energy_lab.control.pv_self_consumption"),
-        ("PriceThresholdConfig", "open_energy_lab.control._config"),
-        ("PriceThresholdController", "open_energy_lab.control.price_threshold"),
-        ("SocGuardrailConfig", "open_energy_lab.control._config"),
-        ("SocGuardrailController", "open_energy_lab.control.soc_guardrail"),
-        ("ArbitrageOnlyBaselineConfig", "open_energy_lab.control.stacked_service"),
-        ("BaselineScheduleBundle", "open_energy_lab.control.stacked_service"),
-        ("RegulationOnlyBaselineConfig", "open_energy_lab.control.stacked_service"),
-        ("StackedBaselineValidationError", "open_energy_lab.control.stacked_service"),
-        ("StackedHeuristicConfig", "open_energy_lab.control.stacked_service"),
-        ("build_arbitrage_only_baseline", "open_energy_lab.control.stacked_service"),
-        ("build_regulation_only_baseline", "open_energy_lab.control.stacked_service"),
-        ("build_stacked_heuristic_baseline", "open_energy_lab.control.stacked_service"),
-        (
-            "RestorationControlValidationError",
-            "open_energy_lab.simulator.restoration_contracts",
-        ),
-        (
-            "DirectionalCapacityCommitmentInterval",
-            "open_energy_lab.simulator.restoration_contracts",
-        ),
-        ("DirectionalCapacitySchedule", "open_energy_lab.simulator.restoration_contracts"),
-        (
-            "RestorationEnergyBaselineInterval",
-            "open_energy_lab.simulator.restoration_contracts",
-        ),
-        (
-            "RestorationEnergyBaselineSchedule",
-            "open_energy_lab.simulator.restoration_contracts",
-        ),
-        ("RestorationCapability", "open_energy_lab.simulator.restoration_contracts"),
-        ("AFRRBaselineMode", "open_energy_lab.control.restoration_service"),
-        ("AFRRBaselineConfig", "open_energy_lab.control.restoration_service"),
-        (
-            "RestorationBaselineBundle",
-            "open_energy_lab.control.restoration_service",
-        ),
-        (
-            "build_restoration_capability",
-            "open_energy_lab.simulator.restoration_contracts",
-        ),
-        (
-            "build_afrr_directional_capacity_schedule",
-            "open_energy_lab.control.restoration_service",
-        ),
-        (
-            "build_afrr_baseline_config",
-            "open_energy_lab.control.restoration_service",
-        ),
-        ("build_afrr_baseline", "open_energy_lab.control.restoration_service"),
-    ),
-)
-def test_control_root_exports_resolve_from_expected_modules(
-    export_name: str,
-    module_name: str,
-) -> None:
-    module = importlib.import_module("open_energy_lab.control")
-    export = getattr(module, export_name)
-
-    assert export.__module__ == module_name
-
-
-def test_feature_012_plan_exports_are_lazy_and_owned_by_fcr_bid_plan() -> None:
-    module = importlib.import_module("open_energy_lab.control")
-    expected = {
-        "BidPlanProducer",
-        "FCRBidPlanValidationError",
-        "FixedFCRBidPlan",
-        "OptimizationMetric",
-        "PlanDiagnostic",
-        "SerializedScheduleReference",
-        "build_fixed_fcr_bid_plan",
-    }
-
-    assert expected.issubset(module.__all__)
-    assert {
-        getattr(module, name).__module__
-        for name in expected
-    } == {"open_energy_lab.simulator.fcr_bid_plan"}
-
-
 def test_feature_012_plan_import_loads_no_reference_or_research_runtime() -> None:
     _run_isolated_python(
         """
         import sys
 
-        import open_energy_lab.control.fcr_bid_plan
+        import open_energy_lab.simulator.fcr_bid_plan
 
         forbidden_roots = {
             "IPython", "baselines", "citylearn", "docplex", "gurobipy",

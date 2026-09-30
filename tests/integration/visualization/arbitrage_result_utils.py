@@ -8,7 +8,6 @@ from typing import Any
 
 from open_energy_lab.core import ControllerContext, DispatchProposal
 from open_energy_lab.simulator import (
-    ArbitrageObjectiveRepresentation,
     ArbitrageScenario,
     BatteryComponent,
     DispatchRequestSeries,
@@ -16,6 +15,7 @@ from open_energy_lab.simulator import (
     TimeGrid,
     evaluate_with_controller,
 )
+from open_energy_lab.simulator.pricing import ArbitrageObjectiveRepresentation
 from open_energy_lab.simulator._units import POSITIVE_DISPATCH_MEANING
 
 

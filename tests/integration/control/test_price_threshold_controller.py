@@ -6,7 +6,6 @@ import pytest
 
 from open_energy_lab.control import PriceThresholdConfig, PriceThresholdController
 from open_energy_lab.simulator import (
-    ArbitrageObjectiveRepresentation,
     ArbitrageScenario,
     BatteryComponent,
     DispatchRequestSeries,
@@ -14,6 +13,7 @@ from open_energy_lab.simulator import (
     TimeGrid,
     evaluate_with_controller,
 )
+from open_energy_lab.simulator.pricing import ArbitrageObjectiveRepresentation
 from open_energy_lab.simulator._units import (
     DEFAULT_ABSOLUTE_TOLERANCE,
     POSITIVE_DISPATCH_MEANING,

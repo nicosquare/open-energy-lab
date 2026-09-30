@@ -22,7 +22,7 @@ FEATURE_011_OFFLINE_MODULES = (
     TARGET_PACKAGE / "simulator" / "restoration_settlement.py",
 )
 FEATURE_012_OFFLINE_MODULES = (
-    TARGET_PACKAGE / "control" / "fcr_bid_plan.py",
+    TARGET_PACKAGE / "simulator" / "fcr_bid_plan.py",
     Path("oel_validation") / "reference_fcr.py",
     TARGET_PACKAGE / "simulator" / "fcr_bid_evaluation.py",
     TARGET_PACKAGE / "simulator" / "fcr_settlement.py",

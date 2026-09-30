@@ -16,10 +16,10 @@ from examples.fcr_rolling_backtest.run_authored_study import (
 from open_energy_lab.control import (
     RollingFCRValidationError,
     aggregate_rolling_fcr_records,
-    assess_rolling_fcr_resume,
     load_rolling_fcr_study_result,
     run_rolling_fcr_study,
 )
+from open_energy_lab.control.fcr_rolling_backtest import assess_rolling_fcr_resume
 from tests.fcr_rolling_case_utils import (
     AUTHORED_DELIVERY_DATES,
     build_authored_activation_trace,

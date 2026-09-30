@@ -244,7 +244,7 @@ def build_authored_terminal_rule() -> Any:
 def build_authored_data_descriptor(kind: str) -> Any:
     """Build one governed fingerprint-only rolling data descriptor."""
 
-    from open_energy_lab.control import RollingFCRDataDescriptor
+    from open_energy_lab.control.fcr_rolling_backtest import RollingFCRDataDescriptor
 
     values = {
         "day_ahead_price": (
@@ -295,7 +295,7 @@ def build_authored_data_descriptor(kind: str) -> Any:
 
 
 def build_authored_acceptance_policy() -> Any:
-    from open_energy_lab.control import AcceptedBidPolicy
+    from open_energy_lab.control.fcr_rolling_backtest import AcceptedBidPolicy
 
     return AcceptedBidPolicy(
         policy_id="feature-015-authored-assumed-acceptance-v1",
@@ -311,7 +311,7 @@ def build_authored_numeric_policy(
     *,
     state_carry_policy: str = "source_three_decimal",
 ) -> Any:
-    from open_energy_lab.control import RollingFCRNumericPolicy
+    from open_energy_lab.control.fcr_rolling_backtest import RollingFCRNumericPolicy
 
     return RollingFCRNumericPolicy(
         solve_policy_fingerprint=solve_policy.solve_policy_fingerprint,
@@ -324,7 +324,7 @@ def build_authored_battery_binding(
     *,
     initial_stored_energy_kwh: float = 10.0,
 ) -> Any:
-    from open_energy_lab.control import RollingFCRBatteryBinding
+    from open_energy_lab.control.fcr_rolling_backtest import RollingFCRBatteryBinding
 
     return RollingFCRBatteryBinding(
         optimization_battery=build_authored_battery(
@@ -337,7 +337,7 @@ def build_authored_battery_binding(
 
 
 def authored_date_classifications(profile_id: str) -> tuple[Any, ...]:
-    from open_energy_lab.control import DeliveryDateClassification
+    from open_energy_lab.control.fcr_rolling_backtest import DeliveryDateClassification
 
     values = []
     for index, delivery_date in enumerate(AUTHORED_DELIVERY_DATES):
@@ -369,12 +369,14 @@ def build_authored_manifest(
     caller_state_declarations: Sequence[Any] = (),
 ) -> Any:
     from open_energy_lab.control import (
+        build_rolling_fcr_experiment_profile,
+        build_rolling_fcr_study_manifest,
+    )
+    from open_energy_lab.control.fcr_rolling_backtest import (
         AGGREGATION_POLICY,
         FAILURE_POLICY_COUPLED,
         FAILURE_POLICY_INDEPENDENT,
         RESUME_POLICY,
-        build_rolling_fcr_experiment_profile,
-        build_rolling_fcr_study_manifest,
     )
 
     profile = build_rolling_fcr_experiment_profile(profile_id)
@@ -422,7 +424,7 @@ def build_authored_caller_state(
 ) -> Any:
     """Build an explicit kWh restart state at one delivery handoff."""
 
-    from open_energy_lab.control import CallerSuppliedRollingState
+    from open_energy_lab.control.fcr_rolling_backtest import CallerSuppliedRollingState
 
     cutoff = build_authored_time_contract(delivery_date).delivery_period.start_utc
     source_fingerprint = fingerprint(
@@ -490,7 +492,7 @@ def build_authored_accepted_fixings(
     public_energy_charge_positive_kw: Sequence[float] = (0.0,) * 16,
     fcr_capacity_kw: Sequence[float] = (0.0,) * 4,
 ) -> Any:
-    from open_energy_lab.control import RobustFCRAcceptedDecisionFixings
+    from open_energy_lab.control.robust_fcr_rolling import RobustFCRAcceptedDecisionFixings
 
     public = tuple(float(value) for value in public_energy_charge_positive_kw)
     fcr = tuple(float(value) for value in fcr_capacity_kw)
@@ -547,10 +549,8 @@ def build_authored_rolling_problem(
     accepted_fixings: Any | None = None,
     solve_policy: Any | None = None,
 ) -> Any:
-    from open_energy_lab.control import (
-        build_robust_fcr_rolling_problem,
-        build_rolling_fcr_experiment_profile,
-    )
+    from open_energy_lab.control import build_rolling_fcr_experiment_profile
+    from open_energy_lab.control.robust_fcr_rolling import build_robust_fcr_rolling_problem
 
     profile = build_rolling_fcr_experiment_profile(profile_id)
     policy = solve_policy or build_authored_solve_policy(time_limit_seconds=30.0)
@@ -691,7 +691,7 @@ def build_authored_fixed_plan(
 ) -> Any:
     """Build one full-precision accepted robust plan without loading a solver."""
 
-    from open_energy_lab.control import (
+    from open_energy_lab.simulator.fcr_bid_plan import (
         BidPlanProducer,
         OptimizationMetric,
         build_fixed_fcr_bid_plan,

@@ -1,578 +1,131 @@
-"""Simulator package boundary for the first migration target.
+"""Battery scenarios, physical replay, and settlement for energy and balancing services.
 
-`open_energy_lab.simulator` is the stable package location for simulator work.
-Concrete arbitrage-facing types remain experimental until later migration
-phases promote them. This module intentionally stays import-light and does not
-pull in optional research stacks.
+The root exports the main workflows and types; everything else stays
+importable from its submodule.
 """
 
 from __future__ import annotations
 
-from importlib import import_module
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from .fcr_bid_evaluation import (
-        ComponentAvailability,
-        DailyFCRBidEvaluationReport,
-        EvaluationDiagnostic,
-        EvaluationMarketContext,
-        EvaluationPriceObservation,
-        FCRBidEvaluationRequest,
-        FCRBidEvaluationValidationError,
-        InvalidCommitmentDiagnosticReport,
-        build_accepted_plan_market_context,
-        build_feature_010_market_context,
-        build_settled_evaluation_report,
-        build_validation_failed_evaluation_report,
-        evaluate_fixed_fcr_bid,
-        replay_invalid_fcr_bid_diagnostic,
-    )
-    from .fcr_rolling_evaluation import (
-        FCRAcceptedPlanSegment,
-        FCRSegmentedEvaluationReport,
-        evaluate_fixed_fcr_bid_segments,
-    )
-    from .fcr_settlement import (
-        DirectionalFCREnergy,
-        EnergySettlementInterval,
-        FCRPenaltyRule,
-        FCRSettlementBlock,
-        FCRSettlementValidationError,
-        ReferenceSettlementBreakdown,
-        SettlementBreakdown,
-        settle_stacked_services,
-    )
-    from .load import LoadComponent
-    from .planning_export import PlanningExportRequest, export_planning_dataset
-    from .planning_study import (
-        PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION,
-        generate_planning_study_dataset,
-    )
-    from .pricing import (
-        ArbitrageObjectiveRepresentation,
-        DeterministicRulePolicy,
-        PriceSignal,
-    )
-    from .pv import PVComponent
-    from .scenario import (
-        ArbitrageScenario,
-        BatteryLoadPVScenario,
-        BatteryComponent,
-        DispatchRequestSeries,
-        TimeGrid,
-    )
-    from .stochastic_demand import (
-        DemandFamilyEvaluationRequest,
-        DemandFamilyEvaluationResult,
-        DemandScenarioEvaluationResult,
-        SUPPORTED_SUMMARY_OUTPUT_FIELDS as DEMAND_SUPPORTED_SUMMARY_OUTPUT_FIELDS,
-        evaluate_demand_family,
-    )
-    from .stochastic_weather import (
-        SUPPORTED_SUMMARY_OUTPUT_FIELDS,
-        WeatherFamilyEvaluationRequest,
-        WeatherFamilyEvaluationResult,
-        WeatherScenarioEvaluationResult,
-        evaluate_weather_family,
-    )
-    from .stacked_service import (
-        EnergyBaselineInterval,
-        EnergyBaselineSchedule,
-        FCRCapacitySchedule,
-        FCRCommitmentInterval,
-        MultiRateTimeContract,
-        ReplayIntervalSummary,
-        ReplaySample,
-        SaturationEvent,
-        StackedServiceReplayRequest,
-        StackedServiceReplayResult,
-        StackedServiceValidationError,
-        StateCheckpoint,
-        TerminalSOCTarget,
-        TerminalSOCReport,
-        build_energy_baseline_schedule,
-        build_fcr_capacity_schedule,
-        replay_stacked_services,
-        replay_stacked_services_diagnostic,
-    )
-    from .restoration_service import (
-        AFRRDirectionalPerformance,
-        AFRRReplayRequest,
-        AFRRReplayResult,
-        MFRREventPerformance,
-        MFRRPerformanceAggregate,
-        MFRRReplayRequest,
-        MFRRReplayResult,
-        RestorationEnergyTotals,
-        RestorationIntegrationGrid,
-        RestorationReplaySample,
-        RestorationReplayValidationError,
-        build_afrr_replay_request,
-        build_mfrr_replay_request,
-        build_restoration_integration_grid,
-        replay_afrr,
-        replay_mfrr,
-    )
-    from .restoration_settlement import (
-        AFRRRestorationSettlement,
-        AreaPriceProxyMapping,
-        DayAheadEnergyPrice,
-        DirectionalActivationPrice,
-        DirectionalCapacityPrice,
-        MFRRRestorationSettlement,
-        RestorationPenaltyRule,
-        RestorationSettlement,
-        RestorationSettlementDiagnostic,
-        RestorationSettlementValidationError,
-        SettlementAvailability,
-        SettlementComponentStatus,
-        SettlementPriceState,
-        ThroughputDegradationRule,
-        build_area_price_proxy_mapping,
-        build_day_ahead_energy_price,
-        build_directional_activation_price,
-        build_directional_capacity_price,
-        build_restoration_penalty_rule,
-        build_throughput_degradation_rule,
-        settle_restoration_services,
-    )
-    from .weather import WeatherComponent
-
-
-_EXPORT_MAP = {
-    "ComponentAvailability": (
-        ".fcr_bid_evaluation",
-        "ComponentAvailability",
-    ),
-    "DailyFCRBidEvaluationReport": (
-        ".fcr_bid_evaluation",
-        "DailyFCRBidEvaluationReport",
-    ),
-    "EvaluationDiagnostic": (
-        ".fcr_bid_evaluation",
-        "EvaluationDiagnostic",
-    ),
-    "EvaluationMarketContext": (
-        ".fcr_bid_evaluation",
-        "EvaluationMarketContext",
-    ),
-    "EvaluationPriceObservation": (
-        ".fcr_bid_evaluation",
-        "EvaluationPriceObservation",
-    ),
-    "FCRBidEvaluationRequest": (
-        ".fcr_bid_evaluation",
-        "FCRBidEvaluationRequest",
-    ),
-    "FCRBidEvaluationValidationError": (
-        ".fcr_bid_evaluation",
-        "FCRBidEvaluationValidationError",
-    ),
-    "InvalidCommitmentDiagnosticReport": (
-        ".fcr_bid_evaluation",
-        "InvalidCommitmentDiagnosticReport",
-    ),
-    "build_accepted_plan_market_context": (
-        ".fcr_bid_evaluation",
-        "build_accepted_plan_market_context",
-    ),
-    "build_feature_010_market_context": (
-        ".fcr_bid_evaluation",
-        "build_feature_010_market_context",
-    ),
-    "build_settled_evaluation_report": (
-        ".fcr_bid_evaluation",
-        "build_settled_evaluation_report",
-    ),
-    "build_validation_failed_evaluation_report": (
-        ".fcr_bid_evaluation",
-        "build_validation_failed_evaluation_report",
-    ),
-    "evaluate_fixed_fcr_bid": (
-        ".fcr_bid_evaluation",
-        "evaluate_fixed_fcr_bid",
-    ),
-    "replay_invalid_fcr_bid_diagnostic": (
-        ".fcr_bid_evaluation",
-        "replay_invalid_fcr_bid_diagnostic",
-    ),
-    "FCRAcceptedPlanSegment": (
-        ".fcr_rolling_evaluation",
-        "FCRAcceptedPlanSegment",
-    ),
-    "FCRSegmentedEvaluationReport": (
-        ".fcr_rolling_evaluation",
-        "FCRSegmentedEvaluationReport",
-    ),
-    "evaluate_fixed_fcr_bid_segments": (
-        ".fcr_rolling_evaluation",
-        "evaluate_fixed_fcr_bid_segments",
-    ),
-    "ArbitrageObjectiveRepresentation": (".pricing", "ArbitrageObjectiveRepresentation"),
-    "ArbitrageScenario": (".scenario", "ArbitrageScenario"),
-    "BatteryLoadPVScenario": (".scenario", "BatteryLoadPVScenario"),
-    "BatteryComponent": (".scenario", "BatteryComponent"),
-    "DEMAND_SUPPORTED_SUMMARY_OUTPUT_FIELDS": (
-        ".stochastic_demand",
-        "SUPPORTED_SUMMARY_OUTPUT_FIELDS",
-    ),
-    "DemandFamilyEvaluationRequest": (
-        ".stochastic_demand",
-        "DemandFamilyEvaluationRequest",
-    ),
-    "DemandFamilyEvaluationResult": (
-        ".stochastic_demand",
-        "DemandFamilyEvaluationResult",
-    ),
-    "DemandScenarioEvaluationResult": (
-        ".stochastic_demand",
-        "DemandScenarioEvaluationResult",
-    ),
-    "DeterministicRulePolicy": (".pricing", "DeterministicRulePolicy"),
-    "DispatchRequestSeries": (".scenario", "DispatchRequestSeries"),
-    "evaluate_demand_family": (".stochastic_demand", "evaluate_demand_family"),
-    "export_planning_dataset": (".planning_export", "export_planning_dataset"),
-    "generate_planning_study_dataset": (
-        ".planning_study",
-        "generate_planning_study_dataset",
-    ),
-    "evaluate_with_controller": (".controller_runner", "evaluate_with_controller"),
-    "evaluate_weather_family": (".stochastic_weather", "evaluate_weather_family"),
-    "LoadComponent": (".load", "LoadComponent"),
-    "PlanningExportRequest": (".planning_export", "PlanningExportRequest"),
-    "PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION": (
-        ".planning_study",
-        "PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION",
-    ),
-    "PVComponent": (".pv", "PVComponent"),
-    "PriceSignal": (".pricing", "PriceSignal"),
-    "SUPPORTED_SUMMARY_OUTPUT_FIELDS": (
-        ".stochastic_weather",
-        "SUPPORTED_SUMMARY_OUTPUT_FIELDS",
-    ),
-    "TimeGrid": (".scenario", "TimeGrid"),
-    "WeatherComponent": (".weather", "WeatherComponent"),
-    "WeatherFamilyEvaluationRequest": (
-        ".stochastic_weather",
-        "WeatherFamilyEvaluationRequest",
-    ),
-    "WeatherFamilyEvaluationResult": (
-        ".stochastic_weather",
-        "WeatherFamilyEvaluationResult",
-    ),
-    "WeatherScenarioEvaluationResult": (
-        ".stochastic_weather",
-        "WeatherScenarioEvaluationResult",
-    ),
-    "EnergyBaselineInterval": (".stacked_service", "EnergyBaselineInterval"),
-    "EnergyBaselineSchedule": (".stacked_service", "EnergyBaselineSchedule"),
-    "FCRCapacitySchedule": (".stacked_service", "FCRCapacitySchedule"),
-    "FCRCommitmentInterval": (".stacked_service", "FCRCommitmentInterval"),
-    "MultiRateTimeContract": (".stacked_service", "MultiRateTimeContract"),
-    "ReplayIntervalSummary": (".stacked_service", "ReplayIntervalSummary"),
-    "ReplaySample": (".stacked_service", "ReplaySample"),
-    "SaturationEvent": (".stacked_service", "SaturationEvent"),
-    "StackedServiceReplayRequest": (
-        ".stacked_service",
-        "StackedServiceReplayRequest",
-    ),
-    "StackedServiceReplayResult": (
-        ".stacked_service",
-        "StackedServiceReplayResult",
-    ),
-    "StackedServiceValidationError": (
-        ".stacked_service",
-        "StackedServiceValidationError",
-    ),
-    "StateCheckpoint": (".stacked_service", "StateCheckpoint"),
-    "TerminalSOCTarget": (".stacked_service", "TerminalSOCTarget"),
-    "TerminalSOCReport": (".stacked_service", "TerminalSOCReport"),
-    "build_energy_baseline_schedule": (
-        ".stacked_service",
-        "build_energy_baseline_schedule",
-    ),
-    "build_fcr_capacity_schedule": (
-        ".stacked_service",
-        "build_fcr_capacity_schedule",
-    ),
-    "replay_stacked_services": (".stacked_service", "replay_stacked_services"),
-    "replay_stacked_services_diagnostic": (
-        ".stacked_service",
-        "replay_stacked_services_diagnostic",
-    ),
-    "EnergySettlementInterval": (
-        ".fcr_settlement",
-        "EnergySettlementInterval",
-    ),
-    "DirectionalFCREnergy": (".fcr_settlement", "DirectionalFCREnergy"),
-    "FCRPenaltyRule": (".fcr_settlement", "FCRPenaltyRule"),
-    "FCRSettlementBlock": (".fcr_settlement", "FCRSettlementBlock"),
-    "FCRSettlementValidationError": (
-        ".fcr_settlement",
-        "FCRSettlementValidationError",
-    ),
-    "SettlementBreakdown": (".fcr_settlement", "SettlementBreakdown"),
-    "ReferenceSettlementBreakdown": (
-        ".fcr_settlement",
-        "ReferenceSettlementBreakdown",
-    ),
-    "settle_stacked_services": (".fcr_settlement", "settle_stacked_services"),
-    "RestorationSettlementValidationError": (
-        ".restoration_settlement",
-        "RestorationSettlementValidationError",
-    ),
-    "SettlementAvailability": (
-        ".restoration_settlement",
-        "SettlementAvailability",
-    ),
-    "SettlementComponentStatus": (
-        ".restoration_settlement",
-        "SettlementComponentStatus",
-    ),
-    "SettlementPriceState": (
-        ".restoration_settlement",
-        "SettlementPriceState",
-    ),
-    "DayAheadEnergyPrice": (
-        ".restoration_settlement",
-        "DayAheadEnergyPrice",
-    ),
-    "DirectionalCapacityPrice": (
-        ".restoration_settlement",
-        "DirectionalCapacityPrice",
-    ),
-    "AreaPriceProxyMapping": (
-        ".restoration_settlement",
-        "AreaPriceProxyMapping",
-    ),
-    "DirectionalActivationPrice": (
-        ".restoration_settlement",
-        "DirectionalActivationPrice",
-    ),
-    "RestorationPenaltyRule": (
-        ".restoration_settlement",
-        "RestorationPenaltyRule",
-    ),
-    "ThroughputDegradationRule": (
-        ".restoration_settlement",
-        "ThroughputDegradationRule",
-    ),
-    "RestorationSettlementDiagnostic": (
-        ".restoration_settlement",
-        "RestorationSettlementDiagnostic",
-    ),
-    "RestorationSettlement": (
-        ".restoration_settlement",
-        "RestorationSettlement",
-    ),
-    "AFRRRestorationSettlement": (
-        ".restoration_settlement",
-        "AFRRRestorationSettlement",
-    ),
-    "MFRRRestorationSettlement": (
-        ".restoration_settlement",
-        "MFRRRestorationSettlement",
-    ),
-    "build_day_ahead_energy_price": (
-        ".restoration_settlement",
-        "build_day_ahead_energy_price",
-    ),
-    "build_directional_capacity_price": (
-        ".restoration_settlement",
-        "build_directional_capacity_price",
-    ),
-    "build_area_price_proxy_mapping": (
-        ".restoration_settlement",
-        "build_area_price_proxy_mapping",
-    ),
-    "build_directional_activation_price": (
-        ".restoration_settlement",
-        "build_directional_activation_price",
-    ),
-    "build_restoration_penalty_rule": (
-        ".restoration_settlement",
-        "build_restoration_penalty_rule",
-    ),
-    "build_throughput_degradation_rule": (
-        ".restoration_settlement",
-        "build_throughput_degradation_rule",
-    ),
-    "settle_restoration_services": (
-        ".restoration_settlement",
-        "settle_restoration_services",
-    ),
-    "RestorationReplayValidationError": (
-        ".restoration_service",
-        "RestorationReplayValidationError",
-    ),
-    "RestorationIntegrationGrid": (
-        ".restoration_service",
-        "RestorationIntegrationGrid",
-    ),
-    "RestorationReplaySample": (
-        ".restoration_service",
-        "RestorationReplaySample",
-    ),
-    "RestorationEnergyTotals": (
-        ".restoration_service",
-        "RestorationEnergyTotals",
-    ),
-    "AFRRReplayRequest": (".restoration_service", "AFRRReplayRequest"),
-    "AFRRDirectionalPerformance": (
-        ".restoration_service",
-        "AFRRDirectionalPerformance",
-    ),
-    "AFRRReplayResult": (".restoration_service", "AFRRReplayResult"),
-    "MFRRReplayRequest": (".restoration_service", "MFRRReplayRequest"),
-    "MFRREventPerformance": (
-        ".restoration_service",
-        "MFRREventPerformance",
-    ),
-    "MFRRPerformanceAggregate": (
-        ".restoration_service",
-        "MFRRPerformanceAggregate",
-    ),
-    "MFRRReplayResult": (".restoration_service", "MFRRReplayResult"),
-    "build_restoration_integration_grid": (
-        ".restoration_service",
-        "build_restoration_integration_grid",
-    ),
-    "build_afrr_replay_request": (
-        ".restoration_service",
-        "build_afrr_replay_request",
-    ),
-    "replay_afrr": (".restoration_service", "replay_afrr"),
-    "build_mfrr_replay_request": (
-        ".restoration_service",
-        "build_mfrr_replay_request",
-    ),
-    "replay_mfrr": (".restoration_service", "replay_mfrr"),
-}
+from .controller_runner import (
+    evaluate_with_controller,
+)
+from .fcr_bid_evaluation import (
+    DailyFCRBidEvaluationReport,
+    EvaluationMarketContext,
+    EvaluationPriceObservation,
+    FCRBidEvaluationRequest,
+    evaluate_fixed_fcr_bid,
+)
+from .fcr_bid_plan import (
+    FixedFCRBidPlan,
+    build_fixed_fcr_bid_plan,
+)
+from .fcr_rolling_evaluation import (
+    evaluate_fixed_fcr_bid_segments,
+)
+from .fcr_settlement import (
+    settle_stacked_services,
+)
+from .load import (
+    LoadComponent,
+)
+from .planning_export import (
+    PlanningExportRequest,
+    export_planning_dataset,
+)
+from .planning_study import (
+    generate_planning_study_dataset,
+)
+from .pricing import (
+    PriceSignal,
+)
+from .pv import (
+    PVComponent,
+)
+from .restoration_contracts import (
+    DirectionalCapacitySchedule,
+    RestorationCapability,
+    RestorationEnergyBaselineSchedule,
+)
+from .restoration_service import (
+    build_afrr_replay_request,
+    build_mfrr_replay_request,
+    replay_afrr,
+    replay_mfrr,
+)
+from .restoration_settlement import (
+    settle_restoration_services,
+)
+from .scenario import (
+    ArbitrageScenario,
+    BatteryComponent,
+    BatteryLoadPVScenario,
+    DispatchRequestSeries,
+    TimeGrid,
+)
+from .stacked_service import (
+    EnergyBaselineSchedule,
+    FCRCapacitySchedule,
+    MultiRateTimeContract,
+    StackedServiceReplayRequest,
+    TerminalSOCTarget,
+    build_energy_baseline_schedule,
+    build_fcr_capacity_schedule,
+    replay_stacked_services,
+)
+from .stochastic_demand import (
+    DemandFamilyEvaluationRequest,
+    evaluate_demand_family,
+)
+from .stochastic_weather import (
+    WeatherFamilyEvaluationRequest,
+    evaluate_weather_family,
+)
+from .weather import (
+    WeatherComponent,
+)
 
 __all__ = [
-    "ArbitrageObjectiveRepresentation",
     "ArbitrageScenario",
-    "BatteryLoadPVScenario",
     "BatteryComponent",
-    "ComponentAvailability",
-    "DEMAND_SUPPORTED_SUMMARY_OUTPUT_FIELDS",
-    "DemandFamilyEvaluationRequest",
-    "DemandFamilyEvaluationResult",
-    "DemandScenarioEvaluationResult",
+    "BatteryLoadPVScenario",
     "DailyFCRBidEvaluationReport",
-    "DeterministicRulePolicy",
+    "DemandFamilyEvaluationRequest",
+    "DirectionalCapacitySchedule",
     "DispatchRequestSeries",
-    "EvaluationDiagnostic",
+    "EnergyBaselineSchedule",
     "EvaluationMarketContext",
     "EvaluationPriceObservation",
-    "evaluate_demand_family",
-    "evaluate_fixed_fcr_bid",
-    "evaluate_fixed_fcr_bid_segments",
-    "export_planning_dataset",
-    "generate_planning_study_dataset",
-    "evaluate_with_controller",
-    "evaluate_weather_family",
+    "FCRBidEvaluationRequest",
+    "FCRCapacitySchedule",
+    "FixedFCRBidPlan",
     "LoadComponent",
-    "PlanningExportRequest",
-    "PLANNING_STUDY_SIMULATION_SEMANTICS_VERSION",
+    "MultiRateTimeContract",
     "PVComponent",
+    "PlanningExportRequest",
     "PriceSignal",
-    "SUPPORTED_SUMMARY_OUTPUT_FIELDS",
+    "RestorationCapability",
+    "RestorationEnergyBaselineSchedule",
+    "StackedServiceReplayRequest",
+    "TerminalSOCTarget",
     "TimeGrid",
     "WeatherComponent",
     "WeatherFamilyEvaluationRequest",
-    "WeatherFamilyEvaluationResult",
-    "WeatherScenarioEvaluationResult",
-    "EnergyBaselineInterval",
-    "EnergyBaselineSchedule",
-    "FCRCapacitySchedule",
-    "FCRAcceptedPlanSegment",
-    "FCRBidEvaluationRequest",
-    "FCRBidEvaluationValidationError",
-    "FCRSegmentedEvaluationReport",
-    "InvalidCommitmentDiagnosticReport",
-    "FCRCommitmentInterval",
-    "MultiRateTimeContract",
-    "ReplayIntervalSummary",
-    "ReplaySample",
-    "SaturationEvent",
-    "StackedServiceReplayRequest",
-    "StackedServiceReplayResult",
-    "StackedServiceValidationError",
-    "StateCheckpoint",
-    "TerminalSOCTarget",
-    "TerminalSOCReport",
-    "build_energy_baseline_schedule",
-    "build_accepted_plan_market_context",
-    "build_feature_010_market_context",
-    "build_fcr_capacity_schedule",
-    "build_settled_evaluation_report",
-    "build_validation_failed_evaluation_report",
-    "replay_invalid_fcr_bid_diagnostic",
-    "replay_stacked_services",
-    "replay_stacked_services_diagnostic",
-    "EnergySettlementInterval",
-    "DirectionalFCREnergy",
-    "FCRPenaltyRule",
-    "FCRSettlementBlock",
-    "FCRSettlementValidationError",
-    "SettlementBreakdown",
-    "ReferenceSettlementBreakdown",
-    "settle_stacked_services",
-    "RestorationSettlementValidationError",
-    "SettlementAvailability",
-    "SettlementComponentStatus",
-    "SettlementPriceState",
-    "DayAheadEnergyPrice",
-    "DirectionalCapacityPrice",
-    "AreaPriceProxyMapping",
-    "DirectionalActivationPrice",
-    "RestorationPenaltyRule",
-    "ThroughputDegradationRule",
-    "RestorationSettlementDiagnostic",
-    "RestorationSettlement",
-    "AFRRRestorationSettlement",
-    "MFRRRestorationSettlement",
-    "build_day_ahead_energy_price",
-    "build_directional_capacity_price",
-    "build_area_price_proxy_mapping",
-    "build_directional_activation_price",
-    "build_restoration_penalty_rule",
-    "build_throughput_degradation_rule",
-    "settle_restoration_services",
-    "RestorationReplayValidationError",
-    "RestorationIntegrationGrid",
-    "RestorationReplaySample",
-    "RestorationEnergyTotals",
-    "AFRRReplayRequest",
-    "AFRRDirectionalPerformance",
-    "AFRRReplayResult",
-    "MFRRReplayRequest",
-    "MFRREventPerformance",
-    "MFRRPerformanceAggregate",
-    "MFRRReplayResult",
-    "build_restoration_integration_grid",
     "build_afrr_replay_request",
-    "replay_afrr",
+    "build_energy_baseline_schedule",
+    "build_fcr_capacity_schedule",
+    "build_fixed_fcr_bid_plan",
     "build_mfrr_replay_request",
+    "evaluate_demand_family",
+    "evaluate_fixed_fcr_bid",
+    "evaluate_fixed_fcr_bid_segments",
+    "evaluate_weather_family",
+    "evaluate_with_controller",
+    "export_planning_dataset",
+    "generate_planning_study_dataset",
+    "replay_afrr",
     "replay_mfrr",
+    "replay_stacked_services",
+    "settle_restoration_services",
+    "settle_stacked_services",
 ]
-
-
-def __getattr__(name: str) -> Any:
-    """Lazily resolve exported simulator symbols at the stable package root."""
-
-    try:
-        module_name, attribute_name = _EXPORT_MAP[name]
-    except KeyError as exc:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}") from exc
-
-    module = import_module(module_name, __name__)
-    value = getattr(module, attribute_name)
-    globals()[name] = value
-    return value
-
-
-def __dir__() -> list[str]:
-    return sorted(list(globals().keys()) + __all__)

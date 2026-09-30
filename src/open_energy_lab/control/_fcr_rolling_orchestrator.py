@@ -137,7 +137,7 @@ def _accepted_market_context(
     start_hour: int,
     end_hour: int,
 ) -> object:
-    from open_energy_lab.simulator import build_accepted_plan_market_context
+    from open_energy_lab.simulator.fcr_bid_evaluation import build_accepted_plan_market_context
 
     first_fcr = start_hour // 4
     last_fcr = end_hour // 4

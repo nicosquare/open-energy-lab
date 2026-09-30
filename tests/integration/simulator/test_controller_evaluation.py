@@ -17,7 +17,6 @@ from open_energy_lab.control import (
 )
 from open_energy_lab.core import ControllerContext, DispatchProposal
 from open_energy_lab.simulator import (
-    ArbitrageObjectiveRepresentation,
     ArbitrageScenario,
     BatteryComponent,
     BatteryLoadPVScenario,
@@ -28,6 +27,7 @@ from open_energy_lab.simulator import (
     TimeGrid,
     WeatherComponent,
 )
+from open_energy_lab.simulator.pricing import ArbitrageObjectiveRepresentation
 from open_energy_lab.simulator._units import (
     DEFAULT_ABSOLUTE_TOLERANCE,
     POSITIVE_DISPATCH_MEANING,

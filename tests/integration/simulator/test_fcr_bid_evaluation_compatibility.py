@@ -307,7 +307,7 @@ def test_saturated_run_marks_reference_parity_unavailable() -> None:
 
 def test_feature_012_rejects_non_fcr_schedule_product_before_evaluation() -> None:
     from dataclasses import replace
-    from open_energy_lab.control.fcr_bid_plan import FCRBidPlanValidationError
+    from open_energy_lab.simulator.fcr_bid_plan import FCRBidPlanValidationError
 
     case = _dynamic_case()
 
