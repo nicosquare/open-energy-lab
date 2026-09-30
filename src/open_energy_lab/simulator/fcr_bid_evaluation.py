@@ -32,7 +32,7 @@ from .stacked_service import (
 
 FCR_BID_EVALUATION_SEMANTICS_VERSION = "oel.fcr-bid-evaluation.v1"
 FCR_BID_EVALUATION_REPORT_SCHEMA_VERSION = "oel.fcr-bid-evaluation-report.v1"
-FEATURE_010_DEFAULT_SETTLEMENT_PROFILE = "feature-010-default-v1"
+STACKED_SERVICE_SETTLEMENT_PROFILE = "feature-010-default-v1"
 REFERENCE_SETTLEMENT_PROFILE = "robust-storage-bidding-reference-settlement-v1"
 
 _CONTEXT_KINDS = {
@@ -41,7 +41,7 @@ _CONTEXT_KINDS = {
     "reference_result",
 }
 _SETTLEMENT_PROFILES = {
-    FEATURE_010_DEFAULT_SETTLEMENT_PROFILE,
+    STACKED_SERVICE_SETTLEMENT_PROFILE,
     REFERENCE_SETTLEMENT_PROFILE,
 }
 _DIAGNOSTIC_PHASE_ORDER = {
@@ -297,7 +297,7 @@ def _observations_within_period(series: object, period: CanonicalInterval) -> tu
     )
 
 
-def build_feature_010_market_context(
+def build_market_data_context(
     *,
     market_artifact: MarketDataArtifact,
     period: CanonicalInterval,
@@ -1579,7 +1579,7 @@ def evaluate_fixed_fcr_bid(
             diagnostics=diagnostics,
         )
 
-    from .fcr_settlement import settle_reference_fcr_bid
+    from .fcr_settlement import settle_fixed_fcr_bid
     from .stacked_service import _PhysicalReplayInputs, _replay_physical_kernel
 
     physical = _replay_physical_kernel(
@@ -1595,7 +1595,7 @@ def evaluate_fixed_fcr_bid(
     )
     physical_trace = _physical_trace_payload(physical)
     trace_fingerprint = _fingerprint(physical_trace)
-    settlement = settle_reference_fcr_bid(request, physical.samples)
+    settlement = settle_fixed_fcr_bid(request, physical.samples)
     physical_metrics = _daily_physical_metrics(request, physical)
     comparison = None
     if request.comparison_fixture is not None:
@@ -1720,11 +1720,11 @@ __all__ = [
     "FCRBidEvaluationValidationError",
     "FCR_BID_EVALUATION_REPORT_SCHEMA_VERSION",
     "FCR_BID_EVALUATION_SEMANTICS_VERSION",
-    "FEATURE_010_DEFAULT_SETTLEMENT_PROFILE",
+    "STACKED_SERVICE_SETTLEMENT_PROFILE",
     "REFERENCE_SETTLEMENT_PROFILE",
     "InvalidCommitmentDiagnosticReport",
     "build_accepted_plan_market_context",
-    "build_feature_010_market_context",
+    "build_market_data_context",
     "build_settled_evaluation_report",
     "build_validation_failed_evaluation_report",
     "canonical_json_bytes",

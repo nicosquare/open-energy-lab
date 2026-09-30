@@ -39,7 +39,7 @@ def _module():
 
 def _market_context():
     plan = _plan()
-    return _module().build_feature_010_market_context(
+    return _module().build_market_data_context(
         market_artifact=_build_artifact(),
         period=plan.energy_schedule.covered_period,
     )
@@ -459,7 +459,7 @@ def test_diagnostic_result_cannot_enter_settlement_or_reference_comparison() -> 
     diagnostic = module.replay_invalid_fcr_bid_diagnostic(case.request)
 
     with pytest.raises(settlement.FCRSettlementValidationError, match="ReplaySample"):
-        settlement.settle_reference_fcr_bid(
+        settlement.settle_fixed_fcr_bid(
             case.request,
             diagnostic.physical_trace["samples"],
         )

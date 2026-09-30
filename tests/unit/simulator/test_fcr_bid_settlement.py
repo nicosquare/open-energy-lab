@@ -225,7 +225,7 @@ def test_reference_settlement_rejects_internal_total_or_combined_fcr_mismatch() 
             terminal_soc_target=None,
         )
     )
-    valid = settlement_module.settle_reference_fcr_bid(
+    valid = settlement_module.settle_fixed_fcr_bid(
         case.request,
         physical.samples,
     )
