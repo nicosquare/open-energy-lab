@@ -9,12 +9,30 @@ import tempfile
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 from typing import Any
+
+from open_energy_lab.core.artifact import read_artifact_source, safe_sidecar_locator
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.serialization import write_bytes_atomically
+from open_energy_lab.core.time import format_utc, utc_timestamp_text
+from open_energy_lab.core.validation import (
+    mapping,
+    non_empty_str,
+    non_negative_int,
+    require_fields,
+    sequence,
+    sha256_digest,
+)
 
 
 STUDY_DATASET_SCHEMA_VERSION = "v2"
 SUPPORTED_STUDY_DATASET_SHARD_FORMATS = ("jsonl", "parquet")
+
+
+class StudyDatasetValidationError(ValidationError):
+    """Raised when a study dataset manifest is malformed."""
 
 
 class StudyDatasetIntegrityError(ValueError):
@@ -46,15 +64,21 @@ class StudyDatasetShard:
 
     @classmethod
     def from_dict(cls, value: Mapping[str, object]) -> StudyDatasetShard:
+        data = _mapping(value, field_name="shard")
+        _require_fields(data, _SHARD_FIELDS, field_name="study dataset shard")
         return cls(
-            shard_index=int(value["shard_index"]),
-            locator=str(value["locator"]),
-            shard_format=str(value["shard_format"]),
-            row_count=int(value["row_count"]),
-            row_start=int(value["row_start"]),
-            row_stop=int(value["row_stop"]),
-            sha256=str(value["sha256"]),
-            semantic_sha256=str(value["semantic_sha256"]),
+            shard_index=_non_negative_int(data["shard_index"], field_name="shard_index"),
+            locator=safe_sidecar_locator(
+                _non_empty(data["locator"], field_name="locator"),
+                field_name="locator",
+                error=StudyDatasetValidationError,
+            ),
+            shard_format=_non_empty(data["shard_format"], field_name="shard_format"),
+            row_count=_non_negative_int(data["row_count"], field_name="row_count"),
+            row_start=_non_negative_int(data["row_start"], field_name="row_start"),
+            row_stop=_non_negative_int(data["row_stop"], field_name="row_stop"),
+            sha256=_sha256(data["sha256"], field_name="sha256"),
+            semantic_sha256=_sha256(data["semantic_sha256"], field_name="semantic_sha256"),
         )
 
 
@@ -87,12 +111,17 @@ class PlanningStudyDatasetManifest:
             raise ValueError("manifest row_count must equal the sum of shard row counts")
         if tuple(shard.shard_index for shard in self.shards) != tuple(range(len(self.shards))):
             raise ValueError("manifest shards must use contiguous ordered indices")
+        if self.created_at:
+            created_at = _timestamp(self.created_at, field_name="created_at")
+        else:
+            created_at = format_utc(datetime.now(UTC))
+        object.__setattr__(self, "created_at", created_at)
 
     def to_dict(self) -> dict[str, object]:
         return {
             "dataset_id": self.dataset_id,
             "schema_version": self.schema_version,
-            "created_at": self.created_at or datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            "created_at": self.created_at,
             "request_fingerprint": self.request_fingerprint,
             "column_order": list(self.column_order),
             "shard_format": self.shard_format,
@@ -271,7 +300,6 @@ class PlanningStudyDatasetWriter:
             row_count=offset,
             semantic_sha256=semantic.hexdigest(),
             metadata=dict(metadata or {}),
-            created_at=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             source_path=self.manifest_path,
         )
         _atomic_write_json(self.manifest_path, manifest.to_dict())
@@ -281,40 +309,61 @@ class PlanningStudyDatasetWriter:
 def load_study_dataset_manifest(
     source: str | Path | Mapping[str, Any],
 ) -> PlanningStudyDatasetManifest:
-    if isinstance(source, Mapping):
-        data = source
-        source_path = Path()
-    else:
-        source_path = Path(source)
-        data = json.loads(source_path.read_text(encoding="utf-8"))
-    required = {
-        "dataset_id",
-        "schema_version",
-        "created_at",
-        "request_fingerprint",
-        "column_order",
-        "shard_format",
-        "row_count",
-        "semantic_sha256",
-        "shards",
-        "metadata",
-    }
-    missing = sorted(required - set(data))
-    if missing:
-        raise ValueError("study dataset manifest is missing: " + ", ".join(missing))
-    return PlanningStudyDatasetManifest(
-        dataset_id=str(data["dataset_id"]),
-        schema_version=str(data["schema_version"]),
-        created_at=str(data["created_at"]),
-        request_fingerprint=str(data["request_fingerprint"]),
-        column_order=tuple(str(name) for name in data["column_order"]),
-        shard_format=str(data["shard_format"]),
-        row_count=int(data["row_count"]),
-        semantic_sha256=str(data["semantic_sha256"]),
-        shards=tuple(StudyDatasetShard.from_dict(item) for item in data["shards"]),
-        metadata=dict(data["metadata"]),
-        source_path=source_path,
+    data, _, _ = read_artifact_source(
+        source, label="study dataset manifest", error=StudyDatasetValidationError
     )
+    _require_fields(data, _MANIFEST_FIELDS, field_name="study dataset manifest")
+    return PlanningStudyDatasetManifest(
+        dataset_id=_non_empty(data["dataset_id"], field_name="dataset_id"),
+        schema_version=_non_empty(data["schema_version"], field_name="schema_version"),
+        created_at=_timestamp(data["created_at"], field_name="created_at"),
+        request_fingerprint=_non_empty(data["request_fingerprint"], field_name="request_fingerprint"),
+        column_order=tuple(
+            _non_empty(name, field_name=f"column_order[{index}]")
+            for index, name in enumerate(_sequence(data["column_order"], field_name="column_order"))
+        ),
+        shard_format=_non_empty(data["shard_format"], field_name="shard_format"),
+        row_count=_non_negative_int(data["row_count"], field_name="row_count"),
+        semantic_sha256=_sha256(data["semantic_sha256"], field_name="semantic_sha256"),
+        shards=tuple(
+            StudyDatasetShard.from_dict(item)
+            for item in _sequence(data["shards"], field_name="shards")
+        ),
+        metadata=_mapping(data["metadata"], field_name="metadata"),
+        source_path=Path() if isinstance(source, Mapping) else Path(source),
+    )
+
+
+_SHARD_FIELDS = (
+    "shard_index",
+    "locator",
+    "shard_format",
+    "row_count",
+    "row_start",
+    "row_stop",
+    "sha256",
+    "semantic_sha256",
+)
+_MANIFEST_FIELDS = (
+    "dataset_id",
+    "schema_version",
+    "created_at",
+    "request_fingerprint",
+    "column_order",
+    "shard_format",
+    "row_count",
+    "semantic_sha256",
+    "shards",
+    "metadata",
+)
+_E = StudyDatasetValidationError
+_mapping = partial(mapping, error=_E)
+_non_empty = partial(non_empty_str, error=_E)
+_non_negative_int = partial(non_negative_int, error=_E)
+_require_fields = partial(require_fields, error=_E)
+_sequence = partial(sequence, error=_E)
+_sha256 = partial(sha256_digest, error=_E)
+_timestamp = partial(utc_timestamp_text, error=_E)
 
 
 def iter_study_rows(
@@ -421,22 +470,8 @@ def _atomic_write_rows(
 
 
 def _atomic_write_json(path: Path, value: Mapping[str, object]) -> None:
-    file_descriptor, temporary_name = tempfile.mkstemp(
-        dir=path.parent,
-        prefix=f".{path.name}.",
-        suffix=".tmp",
-    )
-    os.close(file_descriptor)
-    temporary_path = Path(temporary_name)
-    try:
-        temporary_path.write_text(
-            json.dumps(value, indent=2, sort_keys=False) + "\n",
-            encoding="utf-8",
-        )
-        os.replace(temporary_path, path)
-    finally:
-        if temporary_path.exists():
-            temporary_path.unlink()
+    document = json.dumps(value, indent=2, sort_keys=False, allow_nan=False) + "\n"
+    write_bytes_atomically(path, document.encode("utf-8"))
 
 
 def _read_rows(
@@ -464,6 +499,7 @@ __all__ = [
     "STUDY_DATASET_SCHEMA_VERSION",
     "StudyDatasetIntegrityError",
     "StudyDatasetShard",
+    "StudyDatasetValidationError",
     "iter_study_rows",
     "load_study_dataset_manifest",
 ]
