@@ -43,7 +43,6 @@ FORBIDDEN_IMPORT_ROOTS = {
     "requests",
     "socket",
     "ssl",
-    "urllib",
     "xml",
     # Notebook and interactive stacks.
     "IPython",
@@ -177,7 +176,10 @@ def test_market_root_import_loads_no_network_notebook_solver_or_legacy_stack() -
         newly_loaded = set(sys.modules) - loaded_before
         loaded_roots = {{name.split(".", 1)[0] for name in newly_loaded}}
 
-        unexpected = forbidden & loaded_roots
+        # urllib.parse (pure string parsing) is allowed; pathlib imports it on Python <= 3.12.
+        unexpected = (forbidden & loaded_roots) | (
+            {{"urllib.request", "urllib.response"}} & newly_loaded
+        )
         assert not unexpected, (
             "market root eagerly loaded forbidden stacks: "
             + ", ".join(sorted(unexpected))
@@ -226,7 +228,10 @@ def test_source_independent_market_modules_remain_import_light_when_present() ->
             importlib.import_module(module_name)
             newly_loaded = set(sys.modules) - loaded_before
             loaded_roots = {{name.split(".", 1)[0] for name in newly_loaded}}
-            unexpected = forbidden & loaded_roots
+            # urllib.parse (pure string parsing) is allowed; pathlib imports it on Python <= 3.12.
+            unexpected = (forbidden & loaded_roots) | (
+                {{"urllib.request", "urllib.response"}} & newly_loaded
+            )
             assert not unexpected, (
                 f"{{module_name}} eagerly loaded forbidden stacks: "
                 + ", ".join(sorted(unexpected))

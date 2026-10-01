@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+import pytest
+
 from open_energy_lab.control.robust_fcr_bidding import (
     RobustFCRBatteryParameters,
     RobustFCRPriceInputs,
@@ -12,6 +14,9 @@ from open_energy_lab.control.robust_fcr_bidding import (
     solve_robust_fcr_bid,
 )
 from tests.robust_fcr_case_utils import build_authored_problem
+
+
+pytestmark = pytest.mark.slow
 
 
 def _presolve_zero_problem(*, problem_id: str = "feature-013-presolve-zero"):

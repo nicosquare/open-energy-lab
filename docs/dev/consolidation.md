@@ -209,7 +209,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     reference-certificate helpers (`assemble_robust_fcr_reference_certificate`,
     `audit_closed_reference_witness`, `RobustFCRReferenceIntervalAudit`). They
     share formulation internals with the real solve path.
-- [ ] **A4 package surface**, split into three PRs on 2026-09-30:
+- [x] **A4 package surface**, split into three PRs on 2026-09-30:
   - [x] A4a surfaces: plain-import roots with curated exports (market 86 → 29,
     simulator 106 → 42, control 98 → 37; planning, weather, demand and
     visualization unchanged). Everything else stays importable from its
@@ -230,9 +230,26 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     context_kind, creation_cause, efficiency_lineage,
     feasible_incumbent_rule, `feature_012_*` payload keys, and one recorded
     plan diagnostic. tpm is untouched.
-  - [ ] A4c tests: point pytest `testpaths` at `tests/` with markers for
-    slow, parity and licensed runs instead of CI file lists; merge the
-    remaining per-package meta-tests.
+  - [x] A4c tests: pytest now runs all of `tests/`, with a default `-m` that
+    deselects the `slow`, `notebook` and opt-in groups (`licensed_gurobi`,
+    `live_*`, `reference_benchmark`, `external_reference_data`). A plain
+    `pytest` is the routine offline suite: 2155 passed + 4 xfailed in about
+    2 minutes. CI went from 4 jobs with file lists and about 15 `--ignore`
+    entries to `tests` (3.11–3.14), `slow` (every push/PR, agreed on
+    2026-09-30) and `notebooks`; licensed, live and reference checks are
+    local opt-in. Closes a CI coverage gap (market, core, visualization and
+    several root-level tests never ran) and stops live ENTSO-E/RTE calls in
+    routine local runs. The 4 v1 `spn_mip` TPM tests are
+    `xfail(strict=True)` until B3. Still open: `AGENTS.md` "Useful Checks"
+    lists the old commands (rewritten in A7).
+    The first CI run found two issues local 3.14 runs could not: the
+    boundary tests forbade all of `urllib`, but `pathlib` imports
+    `urllib.parse` on Python <= 3.12 (now only `urllib.request` and
+    `urllib.response` are forbidden); and float `sum()` differs on Python
+    3.11, so pinned fingerprints failed there. OEL now requires
+    **Python >= 3.12** (agreed 2026-10-01; caveat: `tpm_for_sp` pins
+    < 3.12). CI on GitHub: tests 3.12–3.14 about 3 min each, slow about
+    6 min, notebooks about 3 min, all green.
 - [ ] **A5 provenance trim** (D2). Keep fingerprints on persisted artifacts
   and results only. Add one versioned JSON artifact base shared by weather,
   demand, market, and the planning dataset. Settle one loading behavior for

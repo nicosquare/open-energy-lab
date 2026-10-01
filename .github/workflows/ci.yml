@@ -1,4 +1,4 @@
-name: Required backend CI
+name: CI
 
 on:
   push:
@@ -7,299 +7,84 @@ on:
 permissions:
   contents: read
 
+# Test selection lives in pyproject.toml markers, not in this file:
+# - a plain `pytest` runs the routine offline suite;
+# - `slow` and `notebook` tests run in their own jobs below;
+# - licensed_gurobi, live_entsoe/live_rte, reference_benchmark and
+#   external_reference_data need a licence, credentials, or private reference
+#   data, and are run locally on demand only.
+env:
+  OPT_IN: >-
+    not licensed_gurobi and not live_entsoe and not live_rte
+    and not reference_benchmark and not external_reference_data
+
 jobs:
-  required-backends:
-    name: Required backends (Python ${{ matrix.python-version }})
+  tests:
+    name: Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
-
+        python-version: ["3.12", "3.13", "3.14"]
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           version: "0.12.5"
           enable-cache: true
           cache-dependency-glob: uv.lock
           cache-suffix: py${{ matrix.python-version }}
-
       - name: Install locked project environment
         run: uv sync --locked --group dev
+      - name: Verify required backends
+        run: uv run --locked --no-sync python tools/verify_backends.py
+      - name: Run routine suite
+        run: uv run --locked --no-sync pytest
 
-      - name: Verify required backend installation
-        run: |
-          uv run --locked --no-sync python - <<'PY'
-          from importlib.metadata import version
-
-          import highspy
-          import pyomo.environ as pyo
-          import spflow
-
-          expected = {
-              "spflow": "1.1.0",
-              "pyomo": "6.10.1",
-              "highspy": "1.15.1",
-          }
-          actual = {package: version(package) for package in expected}
-          if actual != expected:
-              raise RuntimeError(f"required backend versions differ: {actual!r}")
-
-          solver = pyo.SolverFactory("highs")
-          if not solver.available(exception_flag=False):
-              raise RuntimeError("required Pyomo HiGHS solver is unavailable")
-
-          print(f"required backend versions: {actual}")
-          print(f"HiGHS runtime version: {highspy.Highs().version()}")
-          PY
-
-      # Required jobs intentionally have no condition or continue-on-error.
-      # Legacy/fake-backend and optional Gurobi tests are excluded; bounded real
-      # SPFlow/HiGHS tests are collected.
-      - name: Run focused TPM and planning suite (120-second limit)
-        run: |
-          timeout --signal=TERM --kill-after=10s 120s \
-            uv run --locked --no-sync pytest \
-              tests/unit/tpm \
-              tests/unit/planning \
-              tests/integration/tpm \
-              tests/integration/planning \
-              --ignore=tests/integration/tpm/test_conditional_mio_notebook_execution.py \
-              --ignore=tests/integration/tpm/test_backend_adapter_workflow.py \
-              --ignore=tests/integration/tpm/test_generic_rows_workflow.py \
-              --ignore=tests/integration/tpm/test_mio_solver.py \
-              --ignore=tests/integration/tpm/test_real_spflow_backend.py \
-              --ignore=tests/integration/planning/test_fixture_schema.py \
-              --ignore=tests/integration/planning/test_gurobi_solver.py \
-              --ignore=tests/integration/planning/test_reproducibility_contract.py \
-              --ignore=tests/integration/planning/test_spn_mio_gurobi.py \
-              --ignore=tests/integration/planning/test_tpm_fit_workflow.py \
-              --ignore=tests/integration/planning/test_tpm_fixture_schema.py \
-              --strict-markers \
-              -ra
-
-  conditional-mio-notebook:
-    name: Conditional MIO notebook (Python 3.11)
+  slow:
+    name: Slow solver and replay tests (Python 3.14)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
+    timeout-minutes: 45
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.11"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          version: "0.12.5"
-          enable-cache: true
-          cache-dependency-glob: uv.lock
-          cache-suffix: conditional-mio-notebook-py311
-
-      - name: Install locked notebook environment
-        run: uv sync --locked --group dev --group notebook
-
-      - name: Verify conditional MIO notebook backends
-        run: |
-          uv run --locked --no-sync python - <<'PY'
-          from importlib.metadata import version
-
-          import highspy
-          import ipykernel
-          import nbclient
-          import nbformat
-          import pyomo.environ as pyo
-          import spflow
-
-          expected = {
-              "spflow": "1.1.0",
-              "pyomo": "6.10.1",
-              "highspy": "1.15.1",
-          }
-          actual = {package: version(package) for package in expected}
-          if actual != expected:
-              raise RuntimeError(
-                  f"conditional MIO backend versions differ: {actual!r}"
-              )
-
-          solver = pyo.SolverFactory("highs")
-          if not solver.available(exception_flag=False):
-              raise RuntimeError("required Pyomo HiGHS solver is unavailable")
-
-          notebook_versions = {
-              package: version(package)
-              for package in ("nbclient", "nbformat", "ipykernel")
-          }
-          print(f"required backend versions: {actual}")
-          print(f"notebook dependency versions: {notebook_versions}")
-          print(f"HiGHS runtime version: {highspy.Highs().version()}")
-          PY
-
-      - name: Execute conditional MIO notebook offline (180-second limit)
-        run: |
-          timeout --signal=TERM --kill-after=10s 180s \
-            uv run --offline --locked --no-sync pytest \
-              tests/unit/tpm/test_conditional_mio_notebook.py \
-              tests/integration/tpm/test_conditional_mio_notebook_execution.py \
-              --strict-markers \
-              -ra
-
-  robust-fcr-required-backends:
-    name: Robust FCR backends (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          version: "0.12.5"
-          enable-cache: true
-          cache-dependency-glob: uv.lock
-          cache-suffix: robust-fcr-py${{ matrix.python-version }}
-
-      - name: Install locked project environment
-        run: uv sync --locked --group dev
-
-      - name: Verify robust FCR backend installation
-        run: |
-          uv run --locked --no-sync python - <<'PY'
-          from importlib.metadata import version
-
-          import highspy
-          import pyomo.environ as pyo
-
-          expected = {
-              "pyomo": "6.10.1",
-              "highspy": "1.15.1",
-          }
-          actual = {package: version(package) for package in expected}
-          if actual != expected:
-              raise RuntimeError(f"required robust FCR backend versions differ: {actual!r}")
-
-          solver = pyo.SolverFactory("highs")
-          if not solver.available(exception_flag=False):
-              raise RuntimeError("required Pyomo HiGHS solver is unavailable")
-
-          print(f"required robust FCR backend versions: {actual}")
-          print(f"HiGHS runtime version: {highspy.Highs().version()}")
-          PY
-
-      # The historical reference benchmark, external activation replay, and
-      # licensed Gurobi evidence remain explicitly selected non-routine paths.
-      - name: Run bounded robust FCR suite (240-second limit)
-        run: |
-          timeout --signal=TERM --kill-after=10s 240s \
-            uv run --locked --no-sync pytest \
-              tests/unit/control/test_robust_fcr_backend_compatibility.py \
-              tests/unit/control/test_robust_fcr_equations.py \
-              tests/unit/control/test_robust_fcr_import_boundary.py \
-              tests/unit/control/test_robust_fcr_problem.py \
-              tests/unit/control/test_robust_fcr_reference.py \
-              tests/unit/control/test_robust_fcr_solver.py \
-              tests/unit/control/test_robust_fcr_source_documentation.py \
-              tests/integration/control/test_robust_fcr_highs.py \
-              tests/integration/control/test_robust_fcr_reference_normalization.py \
-              tests/integration/simulator/test_robust_fcr_feature_012_replay.py \
-              --ignore=tests/integration/control/test_robust_fcr_optional_gurobi.py \
-              -m "not reference_benchmark and not external_reference_data" \
-              --strict-markers \
-              -ra
-
-      - name: Run bounded rolling FCR suite (120-second limit)
-        run: |
-          timeout --signal=TERM --kill-after=10s 120s \
-            uv run --locked --no-sync pytest \
-              tests/unit/control/test_fcr_rolling_import_boundary.py \
-              tests/unit/control/test_fcr_rolling_manifest.py \
-              tests/unit/control/test_fcr_rolling_orchestration.py \
-              tests/unit/control/test_fcr_rolling_reference.py \
-              tests/unit/control/test_fcr_rolling_results.py \
-              tests/unit/control/test_fcr_rolling_source_documentation.py \
-              tests/integration/control/test_fcr_rolling_highs.py \
-              tests/integration/control/test_fcr_rolling_reference_normalization.py \
-              tests/integration/control/test_fcr_rolling_resume.py \
-              -m "not reference_benchmark and not external_reference_data" \
-              --strict-markers \
-              -ra
-
-  offline-feature-regressions:
-    name: Offline control, simulator, weather, and demand regressions
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up Python 3.14
-        uses: actions/setup-python@v7
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           version: "0.12.5"
           enable-cache: true
           cache-dependency-glob: uv.lock
-          cache-suffix: offline-py314
-
+          cache-suffix: slow-py3.14
       - name: Install locked project environment
         run: uv sync --locked --group dev
+      - name: Verify required backends
+        run: uv run --locked --no-sync python tools/verify_backends.py
+      - name: Run slow tests
+        run: uv run --locked --no-sync pytest -m "slow and ${OPT_IN}"
 
-      - name: Run broad offline feature suite (120-second limit)
-        run: |
-          timeout --signal=TERM --kill-after=10s 120s \
-            uv run --locked --no-sync pytest \
-              tests/unit/control \
-              tests/unit/simulator \
-              tests/unit/weather \
-              tests/unit/demand \
-              tests/integration/weather \
-              tests/integration/demand \
-              tests/integration/simulator \
-              tests/unit/test_ci_workflow.py \
-              tests/unit/test_lazy_dependency_boundaries.py \
-              tests/unit/test_import_contract.py \
-              tests/unit/test_no_legacy_imports.py \
-              --ignore=tests/integration/control/test_robust_fcr_optional_gurobi.py \
-              --ignore=tests/integration/simulator/test_fcr_rolling_feature_012_replay.py \
-              -m "not reference_benchmark and not external_reference_data" \
-              --strict-markers \
-              -ra
-
-      - name: Run rolling FCR common replay suite (120-second limit)
-        run: |
-          timeout --signal=TERM --kill-after=10s 120s \
-            uv run --locked --no-sync pytest \
-              tests/integration/simulator/test_fcr_rolling_feature_012_replay.py \
-              -m "not reference_benchmark and not external_reference_data" \
-              --strict-markers \
-              -ra
+  notebooks:
+    name: Notebooks (Python 3.12)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.5"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-suffix: notebooks-py3.12
+      - name: Install locked notebook environment
+        run: uv sync --locked --group dev --group notebook
+      - name: Verify required and notebook backends
+        run: uv run --locked --no-sync python tools/verify_backends.py --notebook
+      - name: Execute notebooks offline
+        run: uv run --offline --locked --no-sync pytest -m "notebook and ${OPT_IN}"

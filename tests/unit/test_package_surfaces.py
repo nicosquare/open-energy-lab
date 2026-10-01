@@ -153,9 +153,10 @@ FORBIDDEN_ROOTS = {
     "gurobipy", "highspy", "http", "httpx", "ipykernel", "julia", "juliacall",
     "jupyter", "keyring", "legacy", "matplotlib", "mlflow", "nbclient", "nbformat",
     "notebook", "oel_validation", "pandas", "pvlib", "pyomo", "requests", "socket",
-    "spflow", "ssl", "submitit", "tensorboard", "torch", "torchrl", "urllib",
-    "wandb", "xml",
+    "spflow", "ssl", "submitit", "tensorboard", "torch", "torchrl", "wandb", "xml",
 }
+# Network-capable stdlib modules, checked by full name: urllib.parse (pure string parsing) is allowed; pathlib imports it on Python <= 3.12.
+FORBIDDEN_MODULES = {"urllib.request", "urllib.response"}
 CREDENTIALED_ADAPTERS = {
     "open_energy_lab.market.entsoe",
     "open_energy_lab.market.entsoe_restoration",
@@ -202,6 +203,7 @@ def test_root_import_loads_no_optional_research_or_adapter_code(package: str) ->
     loaded = set(json.loads(completed.stdout.strip().splitlines()[-1]))
     assert {name.split(".")[0] for name in loaded} & FORBIDDEN_ROOTS == set()
     assert loaded & CREDENTIALED_ADAPTERS == set()
+    assert loaded & FORBIDDEN_MODULES == set()
 
 
 def test_persisted_simulator_semantics_constants_are_unchanged() -> None:

@@ -16,7 +16,7 @@ def test_restoration_artifact_import_is_transport_and_credential_free() -> None:
 
         credential_keys = {"RTE_CLIENT_ID", "RTE_CLIENT_SECRET", "ENTSOE_API_TOKEN"}
         forbidden_roots = {
-            "requests", "urllib", "socket", "ssl", "httpx", "aiohttp",
+            "requests", "socket", "ssl", "httpx", "aiohttp",
             "IPython", "jupyter", "nbformat", "notebook", "pyomo", "torch",
             "wandb", "legacy",
         }
@@ -41,6 +41,8 @@ def test_restoration_artifact_import_is_transport_and_credential_free() -> None:
         newly_loaded = set(sys.modules) - loaded_before
         loaded_roots = {name.split(".", 1)[0] for name in newly_loaded}
         assert not (forbidden_roots & loaded_roots)
+        # urllib.parse (pure string parsing) is allowed; pathlib imports it on Python <= 3.12.
+        assert not ({"urllib.request", "urllib.response"} & newly_loaded)
         assert "open_energy_lab.market.rte" not in sys.modules
         assert "open_energy_lab.market.entsoe" not in sys.modules
         assert module.RestorationMarketArtifact.__module__ == module.__name__

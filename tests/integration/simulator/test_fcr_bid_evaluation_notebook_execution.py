@@ -8,6 +8,9 @@ from pathlib import Path
 import pytest
 
 
+pytestmark = pytest.mark.notebook
+
+
 NOTEBOOK_PATH = Path(
     "examples/fcr_bid_evaluation/fcr_bid_evaluation_walkthrough.ipynb"
 )

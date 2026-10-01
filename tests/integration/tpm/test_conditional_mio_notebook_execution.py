@@ -8,6 +8,11 @@ import os
 from pathlib import Path
 import sys
 
+import pytest
+
+
+pytestmark = pytest.mark.notebook
+
 
 NOTEBOOK_PATH = Path(
     "examples/tpm_planning/conditional_mio_embedding_walkthrough.ipynb"
