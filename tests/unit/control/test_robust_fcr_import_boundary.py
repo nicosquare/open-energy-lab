@@ -30,7 +30,6 @@ FORBIDDEN_DIRECT_IMPORTS = {
     "pyomo",
     "requests",
     "socket",
-    "urllib",
 }
 
 
@@ -91,7 +90,7 @@ def test_feature_013_pure_imports_load_no_solver_or_reference_stack() -> None:
         forbidden_roots = {
             "IPython", "baselines", "gurobipy", "highspy", "httpx",
             "julia", "juliacall", "legacy", "nbclient", "nbformat",
-            "notebook", "pandas", "pyomo", "requests", "urllib",
+            "notebook", "pandas", "pyomo", "requests",
         }
 
         class GuardedEnvironment(dict):
@@ -124,6 +123,8 @@ def test_feature_013_pure_imports_load_no_solver_or_reference_stack() -> None:
 
         newly_loaded = set(sys.modules) - loaded_before
         loaded_roots = {name.split(".", 1)[0] for name in newly_loaded}
+        # urllib.parse (pure string parsing) is allowed; pathlib imports it on Python <= 3.12.
+        assert not ({"urllib.request", "urllib.response"} & newly_loaded)
         assert forbidden_roots.isdisjoint(loaded_roots), sorted(
             forbidden_roots & loaded_roots
         )
