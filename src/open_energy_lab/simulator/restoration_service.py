@@ -136,14 +136,12 @@ class RestorationIntegrationGrid:
     period: CanonicalInterval
     resolution: str
     intervals: tuple[CanonicalInterval, ...]
-    grid_fingerprint: str
 
     def to_dict(self) -> dict[str, object]:
         return {
             "period": self.period.to_dict(),
             "resolution": self.resolution,
             "intervals": [item.to_dict() for item in self.intervals],
-            "grid_fingerprint": self.grid_fingerprint,
         }
 
 
@@ -184,16 +182,10 @@ def build_restoration_integration_grid(
         raise RestorationReplayValidationError(
             "integration grid coverage is incomplete"
         )
-    payload = {
-        "period": period.to_dict(),
-        "resolution": normalized_resolution,
-        "intervals": [item.to_dict() for item in normalized],
-    }
     return RestorationIntegrationGrid(
         period=period,
         resolution=normalized_resolution,
         intervals=normalized,
-        grid_fingerprint=_fingerprint(payload),
     )
 
 
@@ -330,7 +322,7 @@ def build_restoration_replay_request_core(
         "capability_fingerprint": capability.capability_fingerprint,
         "commitments_fingerprint": commitments.schedule_fingerprint,
         "baseline_fingerprint": baseline.schedule_fingerprint,
-        "integration_grid_fingerprint": integration_grid.grid_fingerprint,
+        "integration_grid_fingerprint": _fingerprint(integration_grid.to_dict()),
         "tolerance": normalized_tolerance,
         "input_fingerprints": dict(fingerprints),
     }

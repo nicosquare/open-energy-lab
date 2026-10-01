@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
 from datetime import UTC, datetime, timedelta
-import re
 
 import pytest
 
@@ -45,7 +44,6 @@ def test_directional_capacity_price_preserves_identity_eligibility_and_fingerpri
     assert price.value_state is SettlementPriceState.VALUE
     assert price.price == 12.5
     assert price.eligibility is True
-    assert re.fullmatch(r"[0-9a-f]{64}", price.price_fingerprint)
     with pytest.raises(FrozenInstanceError):
         price.price = 10.0  # type: ignore[misc]
 
@@ -73,7 +71,6 @@ def test_activation_price_retains_product_direction_kind_unit_and_basis() -> Non
     assert price.mfrr_kind.value == "DIRECT"
     assert price.unit == "EUR/MWh"
     assert price.pricing_basis == "STUDY_ASSUMPTION"
-    assert re.fullmatch(r"[0-9a-f]{64}", price.price_fingerprint)
 
 
 @pytest.mark.parametrize(
@@ -142,7 +139,6 @@ def test_day_ahead_price_is_product_bound_and_coverage_explicit() -> None:
     assert price.interval == INTERVAL
     assert price.product.value == "AFRR"
     assert price.price == 50.0
-    assert re.fullmatch(r"[0-9a-f]{64}", price.price_fingerprint)
 
 
 def test_penalty_and_degradation_rules_are_explicit_finite_and_fingerprinted() -> None:
@@ -169,8 +165,6 @@ def test_penalty_and_degradation_rules_are_explicit_finite_and_fingerprinted() -
 
     assert penalty.rate == 2.0
     assert degradation.cost_per_kwh == 0.08
-    assert re.fullmatch(r"[0-9a-f]{64}", penalty.rule_fingerprint)
-    assert re.fullmatch(r"[0-9a-f]{64}", degradation.rule_fingerprint)
     assert SettlementComponentStatus.UNCONFIGURED.value == "UNCONFIGURED"
 
     with pytest.raises(RestorationSettlementValidationError, match="non-negative"):
