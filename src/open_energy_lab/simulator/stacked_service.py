@@ -709,7 +709,29 @@ class StackedServiceReplayResult:
     settlement: object
     terminal_soc_report: TerminalSOCReport | None
     trace_fingerprint: str
-    result_fingerprint: str
+    result_fingerprint: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "result_fingerprint", _fingerprint(self.to_dict()))
+
+    def to_dict(self) -> dict[str, object]:
+        """Replay summary content; ``result_fingerprint`` is its hash."""
+
+        return {
+            "simulation_semantics_version": self.simulation_semantics_version,
+            "validation_status": self.validation_status,
+            "input_fingerprints": _thaw(self.input_fingerprints),
+            "trace_fingerprint": self.trace_fingerprint,
+            "checkpoint_summaries": [item.to_dict() for item in self.checkpoint_summaries],
+            "energy_summaries": [item.to_dict() for item in self.energy_summaries],
+            "fcr_summaries": [item.to_dict() for item in self.fcr_summaries],
+            "tracking_summary": _thaw(self.tracking_summary),
+            "throughput_kwh": self.throughput_kwh,
+            "settlement": self.settlement.to_dict(),
+            "terminal_soc_report": (
+                None if self.terminal_soc_report is None else self.terminal_soc_report.to_dict()
+            ),
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -1174,35 +1196,13 @@ def _run_replay(
             item.to_dict() for item in physical.saturation_events
         ],
     }
-    trace_fingerprint = _fingerprint(trace_payload)
-    result_payload = {
-        "simulation_semantics_version": request.simulation_semantics_version,
-        "validation_status": (
+    return StackedServiceReplayResult(
+        simulation_semantics_version=request.simulation_semantics_version,
+        validation_status=(
             "commitment_validation_failed"
             if request.commitment_validation_errors
             else "validated"
         ),
-        "input_fingerprints": _thaw(inputs),
-        "trace_fingerprint": trace_fingerprint,
-        "checkpoint_summaries": [
-            item.to_dict() for item in physical.checkpoint_summaries
-        ],
-        "energy_summaries": [
-            item.to_dict() for item in physical.energy_summaries
-        ],
-        "fcr_summaries": [item.to_dict() for item in physical.fcr_summaries],
-        "tracking_summary": _thaw(physical.tracking_summary),
-        "throughput_kwh": physical.throughput_kwh,
-        "settlement": settlement.to_dict(),
-        "terminal_soc_report": (
-            None
-            if physical.terminal_soc_report is None
-            else physical.terminal_soc_report.to_dict()
-        ),
-    }
-    return StackedServiceReplayResult(
-        simulation_semantics_version=request.simulation_semantics_version,
-        validation_status=result_payload["validation_status"],
         input_fingerprints=inputs,
         samples=physical.samples,
         state_checkpoints=physical.state_checkpoints,
@@ -1214,8 +1214,7 @@ def _run_replay(
         throughput_kwh=physical.throughput_kwh,
         settlement=settlement,
         terminal_soc_report=physical.terminal_soc_report,
-        trace_fingerprint=trace_fingerprint,
-        result_fingerprint=_fingerprint(result_payload),
+        trace_fingerprint=_fingerprint(trace_payload),
     )
 
 
