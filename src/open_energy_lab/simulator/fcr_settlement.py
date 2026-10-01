@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from open_energy_lab.core.errors import ValidationError
 from open_energy_lab.core.validation import finite, non_empty_str
@@ -339,27 +339,25 @@ def _same_interval(left: CanonicalInterval, right: CanonicalInterval) -> bool:
     return left.start_utc == right.start_utc and left.end_utc == right.end_utc
 
 
-def _directional_energy(
-    samples: Sequence[ReplaySample],
+def _aligned_with_prices(
+    scheduled: Sequence[Any],
+    prices: Sequence[Any],
     *,
-    power_field: str,
-    numeric_tolerance: float,
-) -> DirectionalFCREnergy:
-    upward = 0.0
-    downward = 0.0
-    for sample in samples:
-        power = float(getattr(sample, power_field))
-        duration = (
-            sample.interval.end_utc - sample.interval.start_utc
-        ).total_seconds() / 3600.0
-        upward += max(-power, 0.0) * duration
-        downward += max(power, 0.0) * duration
-    return DirectionalFCREnergy(
-        upward_discharge_kwh=upward,
-        downward_charge_kwh=downward,
-        signed_net_charge_positive_kwh=downward - upward,
-        numeric_tolerance=numeric_tolerance,
-    )
+    label: str,
+) -> Iterator[tuple[Any, Any, float]]:
+    """Pair schedule intervals with same-interval prices and their duration in hours."""
+
+    if len(prices) != len(scheduled):
+        raise FCRSettlementValidationError(
+            f"{label} prices do not align with the accepted schedule"
+        )
+    for index, (item, price) in enumerate(zip(scheduled, prices, strict=True)):
+        if not _same_interval(item.interval, price.interval):
+            raise FCRSettlementValidationError(
+                f"{label} price observation {index} is not aligned"
+            )
+        duration = (item.interval.end_utc - item.interval.start_utc).total_seconds() / 3600.0
+        yield item, price, duration
 
 
 def settle_stacked_services(
@@ -384,22 +382,12 @@ def settle_stacked_services(
     if any(not isinstance(sample, ReplaySample) for sample in replay_samples):
         raise FCRSettlementValidationError("samples contain a non-ReplaySample value")
 
-    price_observations = request.market_artifact.series["day_ahead_price"].observations
-    if len(price_observations) != len(request.energy_schedule.intervals):
-        raise FCRSettlementValidationError(
-            "day-ahead price observations do not align with the accepted schedule"
-        )
     energy_items: list[EnergySettlementInterval] = []
-    for index, (schedule, observation) in enumerate(
-        zip(request.energy_schedule.intervals, price_observations, strict=True)
+    for schedule, observation, duration in _aligned_with_prices(
+        request.energy_schedule.intervals,
+        request.market_artifact.series["day_ahead_price"].observations,
+        label="day-ahead",
     ):
-        if not _same_interval(schedule.interval, observation.interval):
-            raise FCRSettlementValidationError(
-                f"day-ahead price observation {index} is not aligned"
-            )
-        duration = (
-            schedule.interval.end_utc - schedule.interval.start_utc
-        ).total_seconds() / 3600.0
         revenue = -(schedule.power_kw * duration) * observation.value / 1000.0
         energy_items.append(
             EnergySettlementInterval(
@@ -411,24 +399,12 @@ def settle_stacked_services(
             )
         )
 
-    fcr_price_observations = request.market_artifact.series[
-        "fcr_capacity_price"
-    ].observations
-    if len(fcr_price_observations) != len(request.fcr_schedule.intervals):
-        raise FCRSettlementValidationError(
-            "FCR capacity-price observations do not align with commitments"
-        )
     fcr_items: list[FCRSettlementBlock] = []
-    for index, (commitment, observation) in enumerate(
-        zip(request.fcr_schedule.intervals, fcr_price_observations, strict=True)
+    for commitment, observation, duration in _aligned_with_prices(
+        request.fcr_schedule.intervals,
+        request.market_artifact.series["fcr_capacity_price"].observations,
+        label="FCR capacity",
     ):
-        if not _same_interval(commitment.interval, observation.interval):
-            raise FCRSettlementValidationError(
-                f"FCR capacity-price observation {index} is not aligned"
-            )
-        duration = (
-            commitment.interval.end_utc - commitment.interval.start_utc
-        ).total_seconds() / 3600.0
         revenue = commitment.capacity_kw / 1000.0 * observation.value * duration
         fcr_items.append(
             FCRSettlementBlock(
@@ -503,55 +479,25 @@ def settle_fixed_fcr_bid(
             "samples must exactly cover every activation interval"
         )
     energy_revenue = 0.0
-    if len(request.market_context.day_ahead_prices) != len(
-        request.energy_schedule.intervals
+    for schedule, price, duration in _aligned_with_prices(
+        request.energy_schedule.intervals,
+        request.market_context.day_ahead_prices,
+        label="day-ahead",
     ):
-        raise FCRSettlementValidationError(
-            "day-ahead prices do not align with the accepted schedule"
-        )
-    for index, (schedule, price) in enumerate(
-        zip(
-            request.energy_schedule.intervals,
-            request.market_context.day_ahead_prices,
-            strict=True,
-        )
-    ):
-        if not _same_interval(schedule.interval, price.interval):
-            raise FCRSettlementValidationError(
-                f"day-ahead price observation {index} is not aligned"
-            )
         if price.canonical_unit != "EUR/MWh":
             raise FCRSettlementValidationError(
                 "day-ahead price canonical unit must be EUR/MWh"
             )
-        duration = (
-            schedule.interval.end_utc - schedule.interval.start_utc
-        ).total_seconds() / 3600.0
         energy_revenue += -(
             schedule.power_kw * duration * price.canonical_value / 1000.0
         )
 
     capacity_revenue = 0.0
-    if len(request.market_context.fcr_capacity_prices) != len(
-        request.fcr_schedule.intervals
+    for commitment, price, duration in _aligned_with_prices(
+        request.fcr_schedule.intervals,
+        request.market_context.fcr_capacity_prices,
+        label="FCR capacity",
     ):
-        raise FCRSettlementValidationError(
-            "FCR capacity prices do not align with the accepted schedule"
-        )
-    for index, (commitment, price) in enumerate(
-        zip(
-            request.fcr_schedule.intervals,
-            request.market_context.fcr_capacity_prices,
-            strict=True,
-        )
-    ):
-        if not _same_interval(commitment.interval, price.interval):
-            raise FCRSettlementValidationError(
-                f"FCR capacity price observation {index} is not aligned"
-            )
-        duration = (
-            commitment.interval.end_utc - commitment.interval.start_utc
-        ).total_seconds() / 3600.0
         if price.canonical_unit == "EUR/kW/block":
             capacity_revenue += commitment.capacity_kw * price.canonical_value
         elif price.canonical_unit == "EUR/MW/h":
