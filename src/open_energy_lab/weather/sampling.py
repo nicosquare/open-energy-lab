@@ -16,6 +16,7 @@ from .artifact import (
     WeatherArtifact,
     _covariance_matrix,
     _numeric_vector,
+    _positive_int,
     load_weather_artifact,
 )
 from .events import CloudEventAnnotation, apply_cloud_event_overlay, enforce_physical_bounds
@@ -198,15 +199,6 @@ def _field_order(artifact: WeatherArtifact) -> tuple[str, ...]:
     if field_order != expected:
         raise ValueError("artifact field_order must match canonical_field_order without timestamp_utc")
     return field_order
-
-
-def _positive_int(value: object, *, field_name: str) -> int:
-    if isinstance(value, bool) or value is None:
-        raise TypeError(f"{field_name} must be a positive integer")
-    integer_value = int(value)
-    if integer_value <= 0:
-        raise ValueError(f"{field_name} must be positive")
-    return integer_value
 
 
 def _physical_bounds_policy(artifact: WeatherArtifact) -> Mapping[str, object]:
