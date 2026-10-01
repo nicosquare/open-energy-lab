@@ -20,6 +20,7 @@ from oel_validation.reference_fcr import (
     load_golden_reference_fixture,
     load_reference_activation_trace,
 )
+from open_energy_lab.core.serialization import fingerprint
 from open_energy_lab.market.activation import RegulationActivationTrace
 from open_energy_lab.simulator import (
     BatteryComponent,
@@ -214,12 +215,11 @@ def main() -> int:
         "lineage": {
             "fixture_fingerprint": request.comparison_fixture.fixture_fingerprint,
             "plan_fingerprint": request.plan.plan_fingerprint,
-            "evaluation_input_fingerprint": request.evaluation_input_fingerprint,
             "activation_fingerprint": request.activation_trace.artifact_fingerprint,
-            "trace_fingerprint": report.trace_fingerprint,
-            "settlement_fingerprint": report.settlement_fingerprint,
+            "trace_fingerprint": fingerprint(report.to_dict()["physical_trace"]),
+            "settlement_fingerprint": fingerprint(report.to_dict()["settlement"]),
             "comparison_fingerprint": comparison.comparison_fingerprint,
-            "result_fingerprint": report.result_fingerprint,
+            "result_fingerprint": fingerprint(report.to_dict()),
         },
         "physical_metrics": report.to_dict()["physical_metrics"],
         "settlement": report.to_dict()["settlement"],

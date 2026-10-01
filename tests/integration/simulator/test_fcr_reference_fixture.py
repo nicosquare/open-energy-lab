@@ -198,13 +198,6 @@ def test_golden_fixture_offline_evaluation_is_canonically_stable_without_csv() -
     assert first.status == "settled"
     assert first.canonical_bytes() == repeated.canonical_bytes()
     assert request.plan.plan_fingerprint == repeated.plan_fingerprint
-    assert request.evaluation_input_fingerprint == (
-        repeated.evaluation_input_fingerprint
-    )
-    assert first.trace_fingerprint == repeated.trace_fingerprint
-    assert first.settlement_fingerprint == repeated.settlement_fingerprint
-    assert first.comparison_fingerprint == repeated.comparison_fingerprint
-    assert first.result_fingerprint == repeated.result_fingerprint
 
 
 @pytest.mark.parametrize(

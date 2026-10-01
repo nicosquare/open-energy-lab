@@ -345,7 +345,6 @@ def build_manifest(
             ),
         ),
         numeric_policy=RollingFCRNumericPolicy(
-            solve_policy_fingerprint=policy.solve_policy_fingerprint,
             state_carry_policy=state_carry_policy,
             decimal_places=(
                 3 if state_carry_policy == "source_three_decimal" else 0
@@ -446,7 +445,6 @@ def build_explicit_manifest(
         settlement_profile="robust-storage-bidding-reference-settlement-v1",
         acceptance_policy=accepted,
         numeric_policy=RollingFCRNumericPolicy(
-            solve_policy_fingerprint=solve_policy.solve_policy_fingerprint,
             state_carry_policy=state_carry_policy,
             decimal_places=(
                 3 if state_carry_policy == "source_three_decimal" else 0
@@ -555,10 +553,10 @@ def build_day_inputs(
                 decision_cutoff_utc=cutoff,
                 information_cutoff_utc=cutoff,
                 producer_input_fingerprints={
-                    "market_prices": prices.price_input_fingerprint,
+                    "market_prices": fingerprint(prices.to_dict()),
                     "battery_binding": manifest.battery_binding.binding_fingerprint,
                     "uncertainty_profile": (
-                        manifest.uncertainty_profile.uncertainty_profile_fingerprint
+                        fingerprint(manifest.uncertainty_profile.to_dict())
                     ),
                     "numeric_policy": (
                         manifest.numeric_policy.numeric_policy_fingerprint
@@ -646,10 +644,10 @@ def build_explicit_day_inputs(
                 decision_cutoff_utc=cutoff,
                 information_cutoff_utc=cutoff,
                 producer_input_fingerprints={
-                    "market_prices": prices.price_input_fingerprint,
+                    "market_prices": fingerprint(prices.to_dict()),
                     "battery_binding": manifest.battery_binding.binding_fingerprint,
                     "uncertainty_profile": (
-                        manifest.uncertainty_profile.uncertainty_profile_fingerprint
+                        fingerprint(manifest.uncertainty_profile.to_dict())
                     ),
                     "numeric_policy": (
                         manifest.numeric_policy.numeric_policy_fingerprint

@@ -162,7 +162,6 @@ def _accepted_market_context(
             "fcr_capacity_descriptor": (
                 manifest.fcr_capacity_descriptor.normalized_data_fingerprint
             ),
-            "price_input": solved.day_input.prices.price_input_fingerprint,
         },
     )
 
@@ -588,16 +587,14 @@ def _build_0800_successor_problem(
     )
     if (
         base_input.accepted_fixings is not None
-        and base_input.accepted_fixings.fixings_fingerprint
-        != fixings.fixings_fingerprint
+        and base_input.accepted_fixings != fixings
     ):
         raise RollingFCRValidationError(
             "caller-provided predecessor fixings differ from the accepted plan"
         )
     if (
         base_input.predecessor_prices is not None
-        and base_input.predecessor_prices.price_input_fingerprint
-        != predecessor.day_input.prices.price_input_fingerprint
+        and base_input.predecessor_prices != predecessor.day_input.prices
     ):
         raise RollingFCRValidationError(
             "caller-provided predecessor prices differ from the listed predecessor"

@@ -10,6 +10,7 @@ import pytest
 from oel_validation.scripts.run_fcr_bid_reference_parity import (
     assemble_reference_request,
 )
+from open_energy_lab.control.robust_fcr_bidding import _fingerprint
 from open_energy_lab.control import (
     RobustFCRSolvePolicy,
     solve_robust_fcr_bid,
@@ -65,9 +66,7 @@ def _external_replay_policy() -> RobustFCRSolvePolicy:
             allow_feasible_incumbent_plan=True,
         )
     )
-    assert policy.solve_policy_fingerprint == (
-        EXPECTED_EXTERNAL_REPLAY_POLICY_FINGERPRINT
-    )
+    assert _fingerprint(policy.to_dict()) == EXPECTED_EXTERNAL_REPLAY_POLICY_FINGERPRINT
     return policy
 
 
@@ -177,9 +176,7 @@ def test_native_and_recorded_schedules_share_feature_012_external_replay() -> No
             {
                 "activation_trace_fingerprint": activation_trace.artifact_fingerprint,
                 "external_replay_profile_id": EXTERNAL_REPLAY_PROFILE_ID,
-                "external_replay_policy_fingerprint": (
-                    replay_policy.solve_policy_fingerprint
-                ),
+                "external_replay_policy_fingerprint": _fingerprint(replay_policy.to_dict()),
                 "native": {
                     "solve_status": native.solver.solve_status,
                     "optimization_objective_eur": native.solver.objective_value_eur,

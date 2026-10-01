@@ -314,7 +314,6 @@ def build_authored_numeric_policy(
     from open_energy_lab.control.fcr_rolling_backtest import RollingFCRNumericPolicy
 
     return RollingFCRNumericPolicy(
-        solve_policy_fingerprint=solve_policy.solve_policy_fingerprint,
         state_carry_policy=state_carry_policy,
         decimal_places=3 if state_carry_policy == "source_three_decimal" else 0,
     )
@@ -473,10 +472,10 @@ def build_authored_day_input(manifest: Any, delivery_date: date) -> Any:
         decision_cutoff_utc=cutoff,
         information_cutoff_utc=cutoff,
         producer_input_fingerprints={
-            "market_prices": prices.price_input_fingerprint,
+            "market_prices": fingerprint(prices.to_dict()),
             "battery_binding": manifest.battery_binding.binding_fingerprint,
             "uncertainty_profile": (
-                manifest.uncertainty_profile.uncertainty_profile_fingerprint
+                fingerprint(manifest.uncertainty_profile.to_dict())
             ),
             "numeric_policy": manifest.numeric_policy.numeric_policy_fingerprint,
         },
@@ -569,9 +568,7 @@ def build_authored_rolling_problem(
         "solve_policy": policy,
         "information_cutoff_utc": cutoff,
         "producer_input_fingerprints": {
-            "authored_prices": build_authored_prices(
-                delivery_date
-            ).price_input_fingerprint,
+            "authored_prices": fingerprint(build_authored_prices(delivery_date).to_dict()),
             "authored_case": fingerprint(
                 {"profile": profile_id, "delivery_date": delivery_date.isoformat()}
             ),

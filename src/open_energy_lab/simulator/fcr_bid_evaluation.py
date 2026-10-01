@@ -208,7 +208,6 @@ class EvaluationMarketContext:
     fcr_capacity_prices: tuple[EvaluationPriceObservation, ...]
     accepted_bid_evidence: Mapping[str, object]
     source_fingerprints: Mapping[str, str]
-    context_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         if self.context_kind not in _CONTEXT_KINDS:
@@ -271,9 +270,8 @@ class EvaluationMarketContext:
             "source_fingerprints",
             _freeze(source_fingerprints),
         )
-        object.__setattr__(self, "context_fingerprint", _fingerprint(self._payload()))
 
-    def _payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "context_kind": self.context_kind,
             "semantics_version": self.semantics_version,
@@ -283,9 +281,6 @@ class EvaluationMarketContext:
             "accepted_bid_evidence": _thaw(self.accepted_bid_evidence),
             "source_fingerprints": _thaw(self.source_fingerprints),
         }
-
-    def to_dict(self) -> dict[str, object]:
-        return {**self._payload(), "context_fingerprint": self.context_fingerprint}
 
 
 def _observations_within_period(series: object, period: CanonicalInterval) -> tuple[object, ...]:
@@ -697,9 +692,7 @@ class FCRBidEvaluationRequest:
     comparison_fixture: EvaluationComparisonFixture | None
     numeric_tolerance: float
     semantics_version: str = FCR_BID_EVALUATION_SEMANTICS_VERSION
-    input_fingerprints: Mapping[str, object] = field(init=False)
-    evaluation_input_fingerprint: str = field(init=False)
-    _battery_fingerprint_at_binding: str = field(init=False, repr=False)
+    _battery_at_binding: Mapping[str, object] = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -781,62 +774,8 @@ class FCRBidEvaluationRequest:
             raise FCRBidEvaluationValidationError(
                 "numeric_tolerance must be positive"
             )
-        battery_fingerprint = _fingerprint(self.battery.to_dict())
-        penalty_payload = (
-            None
-            if self.penalty_rule is None
-            else self.penalty_rule.to_dict()
-            if hasattr(self.penalty_rule, "to_dict")
-            else repr(self.penalty_rule)
-        )
-        terminal_payload = (
-            None
-            if self.terminal_soc_target is None
-            else self.terminal_soc_target.to_dict()
-        )
-        comparison_fingerprint = (
-            None
-            if self.comparison_fixture is None
-            else getattr(self.comparison_fixture, "fixture_fingerprint", None)
-        )
-        if self.comparison_fixture is not None:
-            comparison_fingerprint = _sha256(
-                comparison_fingerprint,
-                field_name="comparison fixture fingerprint",
-            )
-        input_fingerprints = _freeze(
-            {
-                "plan": self.plan.plan_fingerprint,
-                "market_context": self.market_context.context_fingerprint,
-                "activation_trace": self.activation_trace.artifact_fingerprint,
-                "energy_schedule": self.plan.energy_schedule.schedule_fingerprint,
-                "fcr_schedule": self.plan.fcr_schedule.schedule_fingerprint,
-                "battery": battery_fingerprint,
-                "time_contract": _fingerprint(self.time_contract.to_dict()),
-                "settlement_profile": self.settlement_profile,
-                "penalty_rule": (
-                    None if penalty_payload is None else _fingerprint(penalty_payload)
-                ),
-                "terminal_soc_target": (
-                    None if terminal_payload is None else _fingerprint(terminal_payload)
-                ),
-                "comparison_fixture": comparison_fingerprint,
-                "numeric_tolerance": tolerance,
-                "semantics_version": self.semantics_version,
-            }
-        )
         object.__setattr__(self, "numeric_tolerance", tolerance)
-        object.__setattr__(self, "input_fingerprints", input_fingerprints)
-        object.__setattr__(
-            self,
-            "evaluation_input_fingerprint",
-            _fingerprint(_thaw(input_fingerprints)),
-        )
-        object.__setattr__(
-            self,
-            "_battery_fingerprint_at_binding",
-            battery_fingerprint,
-        )
+        object.__setattr__(self, "_battery_at_binding", self.battery.to_dict())
 
     @property
     def energy_schedule(self) -> EnergyBaselineSchedule:
@@ -847,7 +786,7 @@ class FCRBidEvaluationRequest:
         return self.plan.fcr_schedule
 
     def assert_battery_unchanged(self) -> None:
-        if _fingerprint(self.battery.to_dict()) != self._battery_fingerprint_at_binding:
+        if self.battery.to_dict() != self._battery_at_binding:
             raise FCRBidEvaluationValidationError(
                 "battery mutated after evaluation request binding"
             )
@@ -857,9 +796,6 @@ class FCRBidEvaluationRequest:
             "evaluation_id": self.evaluation_id,
             "semantics_version": self.semantics_version,
             "plan_fingerprint": self.plan.plan_fingerprint,
-            "market_context_fingerprint": self.market_context.context_fingerprint,
-            "input_fingerprints": _thaw(self.input_fingerprints),
-            "evaluation_input_fingerprint": self.evaluation_input_fingerprint,
         }
 
 
@@ -872,20 +808,14 @@ class DailyFCRBidEvaluationReport:
     information_cutoff_utc: str
     schedule_identity: Mapping[str, object]
     optimization_metadata: Mapping[str, object]
-    input_fingerprints: Mapping[str, object]
     diagnostics: tuple[EvaluationDiagnostic, ...]
     plan_fingerprint: str
-    evaluation_input_fingerprint: str
     physical_trace: Mapping[str, object] | None
     physical_metrics: Mapping[str, object] | None
     settlement: Mapping[str, object] | None
     total_profit_eur: float | None
-    trace_fingerprint: str | None
-    settlement_fingerprint: str | None
     comparison: Mapping[str, object] | None
-    comparison_fingerprint: str | None
     schema_version: str = FCR_BID_EVALUATION_REPORT_SCHEMA_VERSION
-    result_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         if self.schema_version != FCR_BID_EVALUATION_REPORT_SCHEMA_VERSION:
@@ -909,19 +839,10 @@ class DailyFCRBidEvaluationReport:
             "optimization_metadata",
             _freeze(self.optimization_metadata),
         )
-        object.__setattr__(self, "input_fingerprints", _freeze(self.input_fingerprints))
         object.__setattr__(
             self,
             "plan_fingerprint",
             _sha256(self.plan_fingerprint, field_name="plan_fingerprint"),
-        )
-        object.__setattr__(
-            self,
-            "evaluation_input_fingerprint",
-            _sha256(
-                self.evaluation_input_fingerprint,
-                field_name="evaluation_input_fingerprint",
-            ),
         )
         if self.status == "settled":
             if (
@@ -946,19 +867,6 @@ class DailyFCRBidEvaluationReport:
                 "total_profit_eur",
                 _finite(self.total_profit_eur, field_name="total_profit_eur"),
             )
-            object.__setattr__(
-                self,
-                "trace_fingerprint",
-                _sha256(self.trace_fingerprint, field_name="trace_fingerprint"),
-            )
-            object.__setattr__(
-                self,
-                "settlement_fingerprint",
-                _sha256(
-                    self.settlement_fingerprint,
-                    field_name="settlement_fingerprint",
-                ),
-            )
         else:
             if any(
                 item is not None
@@ -967,40 +875,15 @@ class DailyFCRBidEvaluationReport:
                     self.physical_trace,
                     self.settlement,
                     self.total_profit_eur,
-                    self.trace_fingerprint,
-                    self.settlement_fingerprint,
                     self.comparison,
-                    self.comparison_fingerprint,
                 )
             ):
                 raise FCRBidEvaluationValidationError(
                     "validation-failed report must omit trace, settlement, profit, and comparison"
                 )
-        if self.comparison_fingerprint is not None:
-            object.__setattr__(
-                self,
-                "comparison_fingerprint",
-                _sha256(
-                    self.comparison_fingerprint,
-                    field_name="comparison_fingerprint",
-                ),
-            )
-            if self.comparison is None:
-                raise FCRBidEvaluationValidationError(
-                    "comparison fingerprint requires field-level comparison content"
-                )
-            if self.comparison.get("comparison_fingerprint") != self.comparison_fingerprint:
-                raise FCRBidEvaluationValidationError(
-                    "comparison content does not match comparison_fingerprint"
-                )
-        elif self.comparison is not None:
-            raise FCRBidEvaluationValidationError(
-                "comparison content requires a comparison fingerprint"
-            )
         object.__setattr__(self, "producer", _freeze(self.producer))
-        object.__setattr__(self, "result_fingerprint", _fingerprint(self._payload()))
 
-    def _payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "schema_version": self.schema_version,
             "evaluation_id": self.evaluation_id,
@@ -1010,22 +893,14 @@ class DailyFCRBidEvaluationReport:
             "information_cutoff_utc": self.information_cutoff_utc,
             "schedule_identity": _thaw(self.schedule_identity),
             "optimization_metadata": _thaw(self.optimization_metadata),
-            "input_fingerprints": _thaw(self.input_fingerprints),
             "diagnostics": [item.to_dict() for item in self.diagnostics],
             "plan_fingerprint": self.plan_fingerprint,
-            "evaluation_input_fingerprint": self.evaluation_input_fingerprint,
             "physical_trace": _thaw(self.physical_trace),
             "physical_metrics": _thaw(self.physical_metrics),
             "settlement": _thaw(self.settlement),
             "total_profit_eur": self.total_profit_eur,
-            "trace_fingerprint": self.trace_fingerprint,
-            "settlement_fingerprint": self.settlement_fingerprint,
             "comparison": _thaw(self.comparison),
-            "comparison_fingerprint": self.comparison_fingerprint,
         }
-
-    def to_dict(self) -> dict[str, object]:
-        return {**self._payload(), "result_fingerprint": self.result_fingerprint}
 
     def canonical_bytes(self) -> bytes:
         return canonical_json_bytes(self.to_dict())
@@ -1041,16 +916,13 @@ class InvalidCommitmentDiagnosticReport:
     information_cutoff_utc: str
     schedule_identity: Mapping[str, object]
     optimization_metadata: Mapping[str, object]
-    input_fingerprints: Mapping[str, object]
     diagnostics: tuple[EvaluationDiagnostic, ...]
     physical_trace: Mapping[str, object]
     physical_metrics: Mapping[str, object]
-    trace_fingerprint: str
     status: str = "invalid_commitment_diagnostic"
     settlement: None = field(default=None, init=False)
     total_profit_eur: None = field(default=None, init=False)
     comparison: None = field(default=None, init=False)
-    diagnostic_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         if self.status != "invalid_commitment_diagnostic":
@@ -1070,21 +942,10 @@ class InvalidCommitmentDiagnosticReport:
             "optimization_metadata",
             _freeze(self.optimization_metadata),
         )
-        object.__setattr__(self, "input_fingerprints", _freeze(self.input_fingerprints))
         object.__setattr__(self, "physical_trace", _freeze(self.physical_trace))
         object.__setattr__(self, "physical_metrics", _freeze(self.physical_metrics))
-        object.__setattr__(
-            self,
-            "trace_fingerprint",
-            _sha256(self.trace_fingerprint, field_name="trace_fingerprint"),
-        )
-        object.__setattr__(
-            self,
-            "diagnostic_fingerprint",
-            _fingerprint(self._payload()),
-        )
 
-    def _payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "evaluation_id": self.evaluation_id,
             "status": self.status,
@@ -1093,20 +954,12 @@ class InvalidCommitmentDiagnosticReport:
             "information_cutoff_utc": self.information_cutoff_utc,
             "schedule_identity": _thaw(self.schedule_identity),
             "optimization_metadata": _thaw(self.optimization_metadata),
-            "input_fingerprints": _thaw(self.input_fingerprints),
             "diagnostics": [item.to_dict() for item in self.diagnostics],
             "physical_trace": _thaw(self.physical_trace),
             "physical_metrics": _thaw(self.physical_metrics),
-            "trace_fingerprint": self.trace_fingerprint,
             "settlement": None,
             "total_profit_eur": None,
             "comparison": None,
-        }
-
-    def to_dict(self) -> dict[str, object]:
-        return {
-            **self._payload(),
-            "diagnostic_fingerprint": self.diagnostic_fingerprint,
         }
 
 
@@ -1127,9 +980,7 @@ def _report_identity(request: FCRBidEvaluationRequest) -> dict[str, object]:
             "objective": request.plan.objective.to_dict(),
             "objective_bound": request.plan.objective_bound.to_dict(),
         },
-        "input_fingerprints": _thaw(request.input_fingerprints),
         "plan_fingerprint": request.plan.plan_fingerprint,
-        "evaluation_input_fingerprint": request.evaluation_input_fingerprint,
     }
 
 
@@ -1141,10 +992,7 @@ def build_settled_evaluation_report(
     physical_metrics: Mapping[str, object],
     settlement: Mapping[str, object],
     total_profit_eur: float,
-    trace_fingerprint: str,
-    settlement_fingerprint: str,
     comparison: Mapping[str, object] | None,
-    comparison_fingerprint: str | None,
 ) -> DailyFCRBidEvaluationReport:
     request.assert_battery_unchanged()
     return DailyFCRBidEvaluationReport(
@@ -1155,10 +1003,7 @@ def build_settled_evaluation_report(
         physical_metrics=physical_metrics,
         settlement=settlement,
         total_profit_eur=total_profit_eur,
-        trace_fingerprint=trace_fingerprint,
-        settlement_fingerprint=settlement_fingerprint,
         comparison=comparison,
-        comparison_fingerprint=comparison_fingerprint,
     )
 
 
@@ -1175,10 +1020,7 @@ def build_validation_failed_evaluation_report(
         physical_metrics=None,
         settlement=None,
         total_profit_eur=None,
-        trace_fingerprint=None,
-        settlement_fingerprint=None,
         comparison=None,
-        comparison_fingerprint=None,
     )
 
 
@@ -1219,7 +1061,6 @@ def _preflight_diagnostics(
             "battery_mutated",
             "battery",
             str(exc),
-            (request.input_fingerprints["battery"],),
         )
     if not _schedule_fingerprint_matches(request.energy_schedule):
         reject(
@@ -1387,10 +1228,7 @@ def _preflight_diagnostics(
             severity="info",
             field_path=None,
             message="fixed plan passed deterministic accepted-commitment preflight",
-            evidence_refs=(
-                request.plan.plan_fingerprint,
-                request.market_context.context_fingerprint,
-            ),
+            evidence_refs=(request.plan.plan_fingerprint,),
         ),
     )
 
@@ -1594,7 +1432,6 @@ def evaluate_fixed_fcr_bid(
         )
     )
     physical_trace = _physical_trace_payload(physical)
-    trace_fingerprint = _fingerprint(physical_trace)
     settlement = settle_fixed_fcr_bid(request, physical.samples)
     physical_metrics = _daily_physical_metrics(request, physical)
     comparison = None
@@ -1645,12 +1482,7 @@ def evaluate_fixed_fcr_bid(
         physical_metrics=physical_metrics,
         settlement=settlement.to_dict(),
         total_profit_eur=settlement.total_profit_eur,
-        trace_fingerprint=trace_fingerprint,
-        settlement_fingerprint=settlement.settlement_fingerprint,
         comparison=None if comparison is None else comparison.to_dict(),
-        comparison_fingerprint=(
-            None if comparison is None else comparison.comparison_fingerprint
-        ),
     )
 
 
@@ -1702,11 +1534,9 @@ def replay_invalid_fcr_bid_diagnostic(
         information_cutoff_utc=identity["information_cutoff_utc"],
         schedule_identity=identity["schedule_identity"],
         optimization_metadata=identity["optimization_metadata"],
-        input_fingerprints=identity["input_fingerprints"],
         diagnostics=errors,
         physical_trace=physical_trace,
         physical_metrics=_daily_physical_metrics(request, physical),
-        trace_fingerprint=_fingerprint(physical_trace),
     )
 
 

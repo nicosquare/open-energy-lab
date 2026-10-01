@@ -9,6 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from open_energy_lab.core.serialization import fingerprint
 from open_energy_lab.control import run_rolling_fcr_study
 from open_energy_lab.control._fcr_rolling_orchestrator import (
     _SolvedRollingDay,
@@ -51,7 +52,7 @@ def _zero_input(manifest, delivery_date):
         prices=prices,
         producer_input_fingerprints={
             **dict(source.producer_input_fingerprints),
-            "market_prices": prices.price_input_fingerprint,
+            "market_prices": fingerprint(prices.to_dict()),
         },
     )
 

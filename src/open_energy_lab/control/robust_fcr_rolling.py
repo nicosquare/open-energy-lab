@@ -963,13 +963,6 @@ def _independent_witness_audit(
     return FeasibilityAudit(
         constraint_families=built,
         modeled_slacks=slacks,
-        raw_witness_fingerprint=_fingerprint(_thaw(witness)),
-        canonical_witness_fingerprint=_fingerprint(
-            {
-                "decisions": decisions.to_dict(),
-                "audit_kind": "independent-rolling-equation-audit-v1",
-            }
-        ),
         deployability_threshold=DEPLOYABILITY_THRESHOLD,
         passes_deployability_audit=passes,
     )

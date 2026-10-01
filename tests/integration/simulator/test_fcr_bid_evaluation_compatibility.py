@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from open_energy_lab.core.serialization import fingerprint
 from open_energy_lab.simulator.stacked_service import (
     StackedServiceValidationError,
     replay_stacked_services,
@@ -360,15 +361,12 @@ def test_zero_service_limits_preserve_default_and_separate_reference_profiles() 
     assert reference_baseline_only.settlement["activation_energy_revenue"][
         "value_eur"
     ] == 0.0
-    assert reference_baseline_only.settlement_fingerprint == (
+    assert fingerprint(reference_baseline_only.to_dict()["settlement"]) == (
         "147ba0bd5d713308706cc162e12780d40bcb05a00c0a8fa55381a9a22518b3de"
     )
     assert reference_regulation_only.settlement["day_ahead_revenue"][
         "value_eur"
     ] == 0.0
-    assert reference_regulation_only.settlement_fingerprint == (
+    assert fingerprint(reference_regulation_only.to_dict()["settlement"]) == (
         "e59472f8925623cd568ea0c8b3ea2fc15a72cf7c4d7b69e29d5dec202efaae04"
-    )
-    assert reference_baseline_only.settlement_fingerprint != (
-        reference_regulation_only.settlement_fingerprint
     )

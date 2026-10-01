@@ -142,7 +142,7 @@ optimization fixture:
   `tests/fixtures/fcr_bidding/robust_storage_bidding_2023-06-18_restriction_v1.json`;
 - schema: `oel.robust-fcr-reference-restriction.v1`;
 - fixture fingerprint:
-  `d2d7d7430153d91c5c589fe8118005d01e02d70012bf5e8bbf4f419c13154ba4`;
+  `4677ff94aee7f6e836d2429fe8aead10a4147fcb7c14231e87ee23253f0a6a9e`;
 - pinned reference revision:
   `7e44738bb30e5c8204efe40103b9be4c2203685c`;
 - generated source result path:

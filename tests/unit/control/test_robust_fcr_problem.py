@@ -19,6 +19,7 @@ from open_energy_lab.control.robust_fcr_bidding import (
     RobustFCRValidationError,
     TerminalStoredEnergyRule,
     build_robust_fcr_bidding_problem,
+    _fingerprint,
     build_robust_fcr_time_contract,
     derive_non_intraday_horizon_budget,
 )
@@ -84,9 +85,8 @@ def test_battery_rejects_invalid_physical_values(
         RobustFCRBatteryParameters(**values)
 
 
-def test_battery_is_frozen_and_has_content_fingerprint() -> None:
+def test_battery_is_frozen_and_has_canonical_content() -> None:
     battery = RobustFCRBatteryParameters(**authored_battery_mapping())
-    assert len(battery.battery_fingerprint) == 64
     assert battery.to_dict()["units"] == {
         "power": "kW",
         "stored_energy": "kWh",
@@ -130,11 +130,10 @@ def test_prices_accept_negative_zero_and_tied_values_but_require_counts() -> Non
         fcr_interval_refs=tuple(f"fcr:{index}" for index in range(6)),
     )
     assert prices.day_ahead_energy_prices_eur_per_kwh[0] == -0.01
-    assert len(prices.price_input_fingerprint) == 64
 
     with pytest.raises(RobustFCRValidationError, match="exactly 24"):
         replace(prices, day_ahead_energy_prices_eur_per_kwh=(0.0,) * 23)
-    assert len(time_contract.time_contract_fingerprint) == 64
+    assert time_contract.to_dict()["resolutions"]["planning"] == "PT15M"
 
 
 def test_uncertainty_sets_are_distinct_and_derive_reference_budget() -> None:
@@ -152,7 +151,7 @@ def test_uncertainty_sets_are_distinct_and_derive_reference_budget() -> None:
 
     assert horizon.horizon_activation_budget_hours == 2.75
     assert horizon.derivation_rule == HORIZON_BUDGET_DERIVATION_RULE
-    assert horizon.recovery_window_fingerprint == recovery.recovery_window_fingerprint
+    assert horizon.derivation_inputs["recovery_window_hours"] == recovery.recovery_window_hours
     assert profile.recovery_window is recovery
     assert profile.horizon_wide is horizon
     assert profile.to_dict()["semantics_version"].endswith(".v1")
@@ -187,7 +186,7 @@ def test_solve_policy_defaults_and_configurable_objective_comparison() -> None:
     assert default.objective_comparison_relative_tolerance == 1e-9
     assert default.decision_canonicalization_id == DECISION_CANONICALIZATION_ID
     assert custom.objective_comparison_allowance(10.0, 11.0) == 0.033
-    assert custom.solve_policy_fingerprint != default.solve_policy_fingerprint
+    assert custom != default
 
     for field_name in (
         "objective_comparison_absolute_tolerance_eur",
@@ -308,9 +307,7 @@ def test_nondecision_numeric_change_changes_identity_despite_wide_comparison_tol
 
     assert base.solve_policy.objective_comparison_allowance(0.0, delta) == 1.0
     assert base.problem_fingerprint != changed.problem_fingerprint
-    assert base.comparison_problem_fingerprint != (
-        changed.comparison_problem_fingerprint
-    )
+    assert base.comparison_dict() != changed.comparison_dict()
 
 
 def test_price_values_from_shared_mapping_are_not_mutated() -> None:
@@ -332,13 +329,13 @@ def test_feature_015_refactor_guard_preserves_ordinary_problem_identity() -> Non
     assert len(problem.prices.fcr_capacity_prices_eur_per_kw_block) == 6
     assert (
         problem.problem_fingerprint
-        == "60096175d66da13ee99eac05b0680a040e7d8dd15f8ebd6f9aca3f8f0a4c1a62"
+        == "67b27299cc6bef8196b9129c9b4f07fbd5dc95936d3e3cadec45d2a3c6bdc0da"
     )
     assert (
-        problem.comparison_problem_fingerprint
-        == "8b5b362db4bed3af10a3026ff678b3cc338e3ee96da134d0f432817e4968da52"
+        _fingerprint(problem.comparison_dict())
+        == "de8e5a554e8155a6f335055cf37ad911aca5c7e87ef75cca8c5e74f735eba247"
     )
     assert (
-        problem.time_contract.time_contract_fingerprint
+        _fingerprint(problem.time_contract.to_dict())
         == "9d584023b06e5a6f5ea4e475cd9aa49d1a4d63b0edef9aafb7c4181e78d63c56"
     )

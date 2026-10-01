@@ -18,7 +18,6 @@ from .robust_fcr_bidding import (
     _finite,
     _integer,
     _non_empty,
-    _sha256,
 )
 
 
@@ -357,7 +356,6 @@ def build_model_input(problem: RobustFCRBiddingProblem) -> RobustFCRModelInput:
         )
     battery = problem.battery
     return build_normalized_model_input(
-        problem_fingerprint=problem.problem_fingerprint,
         planning_resolution_hours=0.25,
         planning_interval_count=96,
         planning_intervals_per_energy_interval=4,
@@ -396,7 +394,6 @@ def build_model_input(problem: RobustFCRBiddingProblem) -> RobustFCRModelInput:
 
 def build_normalized_model_input(
     *,
-    problem_fingerprint: str,
     planning_resolution_hours: float,
     planning_interval_count: int,
     planning_intervals_per_energy_interval: int,
@@ -406,7 +403,6 @@ def build_normalized_model_input(
     """Build a backend-neutral normalized frame for daily or rolling assembly."""
 
     return RobustFCRModelInput(
-        problem_fingerprint=problem_fingerprint,
         planning_resolution_hours=planning_resolution_hours,
         index_sets=build_normalized_index_sets(
             planning_interval_count,
@@ -425,17 +421,11 @@ def build_normalized_model_input(
 class RobustFCRModelInput:
     """Immutable backend-neutral values handed to private model assembly."""
 
-    problem_fingerprint: str
     planning_resolution_hours: float
     index_sets: NormalizedRobustFCRIndexSets
     payload: Mapping[str, object]
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "problem_fingerprint",
-            _sha256(self.problem_fingerprint, field_name="problem_fingerprint"),
-        )
         resolution = _finite(
             self.planning_resolution_hours,
             field_name="planning_resolution_hours",
@@ -1133,7 +1123,6 @@ def assemble_arbitrage_only_model(
         sense=pyo.maximize,
     )
     model_input = build_normalized_model_input(
-        problem_fingerprint=problem.rolling_problem_fingerprint,
         planning_resolution_hours=1.0,
         planning_interval_count=24,
         planning_intervals_per_energy_interval=1,
@@ -1382,7 +1371,6 @@ def assemble_rolling_0800_model(
         sense=pyo.maximize,
     )
     model_input = build_normalized_model_input(
-        problem_fingerprint=problem.rolling_problem_fingerprint,
         planning_resolution_hours=0.25,
         planning_interval_count=160,
         planning_intervals_per_energy_interval=4,

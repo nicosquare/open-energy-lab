@@ -13,6 +13,7 @@ from examples.fcr_rolling_backtest.run_authored_study import (
     _load_resume_bundle,
     _partial_result,
 )
+from open_energy_lab.core.serialization import fingerprint
 from open_energy_lab.control import (
     RollingFCRValidationError,
     aggregate_rolling_fcr_records,
@@ -37,7 +38,7 @@ def _zero_input(manifest: object, delivery_date: date) -> object:
         prices=prices,
         producer_input_fingerprints={
             **original.producer_input_fingerprints,
-            "market_prices": prices.price_input_fingerprint,
+            "market_prices": fingerprint(prices.to_dict()),
         },
     )
 
@@ -218,7 +219,6 @@ def test_resume_rejects_solver_numeric_rounding_acceptance_and_source_changes(
         solve_policy=changed_solver,
         numeric_policy=replace(
             manifest.numeric_policy,
-            solve_policy_fingerprint=changed_solver.solve_policy_fingerprint,
         ),
     )
     rounding_manifest = build_authored_manifest(

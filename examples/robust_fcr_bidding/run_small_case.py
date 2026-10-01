@@ -7,6 +7,7 @@ from datetime import UTC, date, datetime
 import hashlib
 import json
 
+from open_energy_lab.core.serialization import fingerprint
 from open_energy_lab.control import (
     RecoveryWindowActivationBudget,
     RobustFCRBatteryParameters,
@@ -263,7 +264,7 @@ def build_small_problem():
         information_cutoff_utc=datetime(2023, 6, 17, 12, tzinfo=UTC),
         producer_input_fingerprints={
             "authored_case": _digest("feature-013-small-case-v1"),
-            "market_prices": prices.price_input_fingerprint,
+            "market_prices": fingerprint(prices.to_dict()),
         },
         provenance={
             "source": "examples/robust_fcr_bidding/run_small_case.py",
@@ -324,7 +325,7 @@ def build_walkthrough_problem():
         terminal_rule=terminal,
         producer_input_fingerprints={
             "authored_case": _digest("feature-013-walkthrough-case-v2"),
-            "market_prices": prices.price_input_fingerprint,
+            "market_prices": fingerprint(prices.to_dict()),
         },
         provenance={
             "source": "examples/robust_fcr_bidding/run_small_case.py",
@@ -376,12 +377,6 @@ def main() -> int:
                     },
                     "maximum_modeled_slack": max(
                         restriction.feasibility_audit.modeled_slacks.values()
-                    ),
-                    "raw_witness_fingerprint": (
-                        restriction.feasibility_audit.raw_witness_fingerprint
-                    ),
-                    "canonical_witness_fingerprint": (
-                        restriction.feasibility_audit.canonical_witness_fingerprint
                     ),
                 },
                 indent=2,

@@ -65,8 +65,6 @@ class FCRAcceptedPlanSegment:
     parent_plan_fingerprint: str
     period: CanonicalInterval
     plan: FixedFCRBidPlan
-    market_context_fingerprint: str
-    segment_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -92,21 +90,8 @@ class FCRAcceptedPlanSegment:
             raise FCRBidEvaluationValidationError(
                 "segment plan schedule must exactly match the segment period"
             )
-        object.__setattr__(
-            self,
-            "market_context_fingerprint",
-            _sha256(
-                self.market_context_fingerprint,
-                field_name="segment market_context_fingerprint",
-            ),
-        )
-        object.__setattr__(
-            self,
-            "segment_fingerprint",
-            _fingerprint(self._payload()),
-        )
 
-    def _payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "segment_id": self.segment_id,
             "parent_plan_fingerprint": self.parent_plan_fingerprint,
@@ -116,11 +101,7 @@ class FCRAcceptedPlanSegment:
                 self.plan.energy_schedule.schedule_fingerprint
             ),
             "fcr_schedule_fingerprint": self.plan.fcr_schedule.schedule_fingerprint,
-            "market_context_fingerprint": self.market_context_fingerprint,
         }
-
-    def to_dict(self) -> dict[str, object]:
-        return {**self._payload(), "segment_fingerprint": self.segment_fingerprint}
 
 
 @dataclass(frozen=True, slots=True)
@@ -249,9 +230,9 @@ class FCRSegmentedEvaluationReport:
             "selected_period": _interval_payload(self.selected_period),
             "activation_trace_fingerprint": self.activation_trace_fingerprint,
             "battery_binding_fingerprint": self.battery_binding_fingerprint,
-            "segment_fingerprints": [item.segment_fingerprint for item in self.segments],
+            "segments": [item.to_dict() for item in self.segments],
             "feature_012_report_fingerprints": [
-                item.result_fingerprint for item in self.reports
+                _fingerprint(item.to_dict()) for item in self.reports
             ],
             "stored_energy_checkpoints_kwh": list(
                 self.stored_energy_checkpoints_kwh
@@ -638,7 +619,6 @@ def evaluate_fixed_fcr_bid_segments(
             parent_plan_fingerprint=plan.plan_fingerprint,
             period=period,
             plan=segment_plan,
-            market_context_fingerprint=context.context_fingerprint,
         )
         segment_trace = slice_regulation_activation_trace(
             activation_trace,

@@ -16,7 +16,7 @@ NOTEBOOK_PATH = Path(
 )
 FIGURE_EXPORT_DIR = Path("tmp/robust-fcr-bidding-notebook/figures")
 EXPECTED_DISPLAY_FINGERPRINT = (
-    "a49277c072f2e45803614a3c9766625b4baf63c6e165986aba0c4fa52fc05395"
+    "f2ee5637194ae1df0130b4d33047431d1bdcdaad23de8628a426d50440828744"
 )
 
 

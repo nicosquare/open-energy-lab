@@ -273,11 +273,31 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     validation still lives in `from_dict`, not the constructor.
     Checks: `pytest` 2174 passed + 4 xfailed, `-m slow` 34 passed,
     `-m notebook` 7 passed.
-  - [ ] A5b: drop the in-memory fingerprints (about 23 in control, 9 in
-    simulator FCR).
+  - [x] A5b in-memory fingerprints (agreed 2026-10-01: remove self-only
+    hashes, turn real checks into object comparisons, keep hashes whose
+    values the rolling study saves). Removed from FCR settlement, market
+    context, evaluation request and reports, rolling-evaluation segments,
+    every robust bidding input (battery, time contract, budgets,
+    uncertainty, terminal rule, prices, solve policy), formulation
+    profile, decisions, witness audit, bound comparison, model input and
+    the rolling data descriptor (src −482 lines net). Checks that compared
+    hashes now compare objects: horizon budget vs recovery window,
+    bound-comparison problems (`RobustFCRSolveResult` holds its problem),
+    predecessor prices and fixings. Saved hash values change, the saved
+    format does not; rolling results saved before this branch no longer
+    resume (accepted). Evidence: a `to_dict()` snapshot of the control,
+    simulator and parity tests is identical to `main` apart from the
+    removed keys and hash values (tooling kept in history,
+    commit `daa4287`). Deferred: stacked-service replay hashes (they feed
+    restoration settlement, A6); producer lineage
+    (`producer_input_fingerprints`, `configuration_fingerprint`), which is
+    caller-supplied provenance with a look-ahead guard; and the rolling
+    backtest's acceptance policy, battery binding, numeric policy and day
+    input hashes, which are woven into saved evidence (A5c).
   - [ ] A5c: slim the persisted rolling-result format, rename the persisted
     `feature-0NN` strings, fold the robust canonical form into core,
-    regenerate fixtures.
+    regenerate fixtures; also the rolling-backtest hashes deferred from
+    A5b and the stale pins in `docs/migration/fcr-rolling-backtest-parity.md`.
 - [ ] **A6 merge variants**, one PR per package:
   - [ ] market: one `MarketArtifact`, one activation sign convention, a shared
     HTTP layer for ENTSO-E and RTE.

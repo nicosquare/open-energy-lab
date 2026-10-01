@@ -12,6 +12,7 @@ from open_energy_lab.control import (
     RobustFCRSolvePolicy,
     solve_robust_fcr_bid,
 )
+from open_energy_lab.control.robust_fcr_bidding import _fingerprint
 from oel_validation.robust_fcr_reference import (
     build_robust_fcr_reference_problem,
     compare_robust_fcr_reference,
@@ -33,7 +34,7 @@ EXPECTED_POLICY_FINGERPRINT = (
     "d4d8934676fce6755f525ef8844f796669e0ec49158a2107515b2dee29b682ed"
 )
 EXPECTED_FIXTURE_FINGERPRINT = (
-    "d2d7d7430153d91c5c589fe8118005d01e02d70012bf5e8bbf4f419c13154ba4"
+    "4677ff94aee7f6e836d2429fe8aead10a4147fcb7c14231e87ee23253f0a6a9e"
 )
 
 
@@ -43,7 +44,7 @@ def _benchmark_policy() -> RobustFCRSolvePolicy:
     )
     assert mapping.pop("profile_id") == NATIVE_REFERENCE_BENCHMARK_PROFILE_ID
     policy = RobustFCRSolvePolicy(**mapping)
-    assert policy.solve_policy_fingerprint == EXPECTED_POLICY_FINGERPRINT
+    assert _fingerprint(policy.to_dict()) == EXPECTED_POLICY_FINGERPRINT
     return policy
 
 
@@ -53,9 +54,7 @@ def _solve_once(fixture, policy):
         solve_policy=policy,
     )
     assert problem.solve_policy is policy
-    assert problem.solve_policy.solve_policy_fingerprint == (
-        EXPECTED_POLICY_FINGERPRINT
-    )
+    assert _fingerprint(problem.solve_policy.to_dict()) == EXPECTED_POLICY_FINGERPRINT
     return solve_robust_fcr_bid(problem, formulation="restriction")
 
 
@@ -137,7 +136,7 @@ def _benchmark_record(fixture, policy, native, comparison) -> dict[str, object]:
             "solver": native.solver.to_dict(),
             "semantic_result_fingerprint": native.semantic_result_fingerprint,
             "decision_vector_fingerprint": (
-                native.decisions.decision_vector_fingerprint
+                _fingerprint(native.decisions.to_dict())
                 if native.decisions is not None
                 else None
             ),
@@ -227,9 +226,6 @@ def test_full_2023_06_18_restriction_reference_comparison(
     assert native.formulation.kind == "restriction"
     assert native.solver.solver_name == "highs"
     assert native.solver.configured_options["solve_policy"] == policy.to_dict()
-    assert native.solver.configured_options["solve_policy_fingerprint"] == (
-        policy.solve_policy_fingerprint
-    )
     assert native.feasibility_audit is not None
     assert native.feasibility_audit.passes_deployability_audit is True
 

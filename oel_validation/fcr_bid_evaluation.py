@@ -507,7 +507,10 @@ def compare_reference_evaluation(
         raise FCRBidEvaluationValidationError(
             "reference comparison requires one settled evaluation report"
         )
-    if report.evaluation_input_fingerprint != request.evaluation_input_fingerprint:
+    if (
+        report.evaluation_id != request.evaluation_id
+        or report.plan_fingerprint != request.plan.plan_fingerprint
+    ):
         raise FCRBidEvaluationValidationError(
             "evaluation report does not belong to the supplied request"
         )
@@ -564,7 +567,8 @@ def compare_reference_evaluation(
             requested_field_ids=requested_field_ids,
         )
     if requested_field_ids is None and (
-        report.comparison_fingerprint != comparison.comparison_fingerprint
+        report.comparison is None
+        or report.comparison.get("comparison_fingerprint") != comparison.comparison_fingerprint
     ):
         raise FCRBidEvaluationValidationError(
             "report comparison fingerprint does not match recomputed field results"

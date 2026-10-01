@@ -1399,10 +1399,6 @@ def build_robust_fcr_reference_problem(
         producer_input_fingerprints={
             "reference_fixture": fixture.fixture_fingerprint,
             "reference_problem": payload["problem_fingerprint"],
-            "reference_prices": prices.price_input_fingerprint,
-            "reference_formulation": (
-                fixture.reference_formulation.formulation_fingerprint
-            ),
         },
         provenance={
             "fixture_id": fixture.fixture_id,
@@ -1455,20 +1451,13 @@ def build_reference_decision_intervals(
 
 
 def _native_policy_evidence(native_result: RobustFCRSolveResult) -> tuple[str, Mapping[str, object]]:
-    options = native_result.solver.configured_options
-    fingerprint = _sha256(
-        options.get("solve_policy_fingerprint"),
-        field_name="native solve_policy_fingerprint",
-    )
-    raw_policy = options.get("solve_policy")
+    raw_policy = native_result.solver.configured_options.get("solve_policy")
     if not isinstance(raw_policy, Mapping):
         raise RobustFCRValidationError(
             "native result must retain its complete separately supplied solve policy"
         )
-    policy = dict(raw_policy)
-    if policy.get("solve_policy_fingerprint") != fingerprint:
-        raise RobustFCRValidationError("native solve policy evidence is inconsistent")
-    return fingerprint, policy
+    policy = _thaw(raw_policy)
+    return _fingerprint(policy), policy
 
 
 def build_reference_certification_request(
@@ -1967,12 +1956,11 @@ def _certify_reference_decision_box(
                 maximum_slack=maximum_slack,
                 maximum_residual=maximum_residual,
                 certified_objective_value_eur=objective,
-                witness_fingerprint=audit.canonical_witness_fingerprint,
+                witness_fingerprint=_fingerprint(native_result.decisions.to_dict()),
                 unavailable_reason=None,
             )
     try:
         policy_payload = dict(native_result.solver.configured_options["solve_policy"])
-        policy_payload.pop("solve_policy_fingerprint", None)
         # The joint rounded-vector certificate is independent validation, not a
         # continuation of the native optimization solve.  Keep it on the
         # required open-source backend even when the compared result came from
@@ -2090,7 +2078,7 @@ def _certify_reference_decision_box(
         maximum_slack=maximum_slack,
         maximum_residual=maximum_residual,
         certified_objective_value_eur=objective,
-        witness_fingerprint=audit.witness_fingerprint,
+        witness_fingerprint=_fingerprint(raw.witness),
         unavailable_reason=None,
     )
 

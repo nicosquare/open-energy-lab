@@ -14,6 +14,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from open_energy_lab.control.robust_fcr_bidding import _fingerprint
 from open_energy_lab.control._robust_fcr_solver import RawRobustFCRSolveResult
 from open_energy_lab.control.robust_fcr_bidding import (
     DEPLOYABILITY_THRESHOLD,
@@ -418,7 +419,6 @@ def test_reference_problem_requires_a_separate_complete_native_policy() -> None:
     problem = build_robust_fcr_reference_problem(fixture, solve_policy=policy)
 
     assert problem.solve_policy is policy
-    assert problem.solve_policy.solve_policy_fingerprint == policy.solve_policy_fingerprint
     assert problem.battery.initial_stored_energy_kwh == 53.328
     assert problem.terminal_rule.minimum_terminal_stored_energy_kwh == (
         53.327556325823224
@@ -640,9 +640,7 @@ def test_joint_certificate_reuses_audited_native_witness_inside_source_box() -> 
     )
     assert certificate.maximum_slack == 0.0
     assert certificate.maximum_residual == 0.0
-    assert certificate.witness_fingerprint == (
-        native.feasibility_audit.canonical_witness_fingerprint
-    )
+    assert certificate.witness_fingerprint == _fingerprint(native.decisions.to_dict())
 
 
 def test_joint_certificate_keeps_independent_highs_backend_for_gurobi_result(

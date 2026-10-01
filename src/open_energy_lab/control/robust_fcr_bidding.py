@@ -223,7 +223,6 @@ class RobustFCRBatteryParameters:
     charge_efficiency: float
     discharge_efficiency: float
     semantics_version: str = ROBUST_FCR_BATTERY_PARAMETERS_VERSION
-    battery_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -283,11 +282,6 @@ class RobustFCRBatteryParameters:
         object.__setattr__(self, "initial_stored_energy_kwh", initial_energy)
         object.__setattr__(self, "charge_efficiency", charge_efficiency)
         object.__setattr__(self, "discharge_efficiency", discharge_efficiency)
-        object.__setattr__(
-            self,
-            "battery_fingerprint",
-            _fingerprint(self._semantic_payload()),
-        )
 
     @property
     def source_minimum_power_kw(self) -> float:
@@ -297,7 +291,7 @@ class RobustFCRBatteryParameters:
     def source_maximum_power_kw(self) -> float:
         return self.maximum_discharge_power_kw
 
-    def _semantic_payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "semantics_version": self.semantics_version,
             "maximum_charge_power_kw": self.maximum_charge_power_kw,
@@ -314,9 +308,6 @@ class RobustFCRBatteryParameters:
             },
             "source_power_sign": "positive_is_discharge",
         }
-
-    def to_dict(self) -> dict[str, object]:
-        return {**self._semantic_payload(), "battery_fingerprint": self.battery_fingerprint}
 
 
 def _validate_partition(
@@ -362,7 +353,6 @@ class RobustFCRTimeContract:
     planning_to_energy: tuple[int, ...]
     planning_to_fcr: tuple[int, ...]
     semantics_version: str = ROBUST_FCR_TIME_CONTRACT_VERSION
-    time_contract_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -430,13 +420,8 @@ class RobustFCRTimeContract:
         object.__setattr__(self, "fcr_intervals", fcr)
         object.__setattr__(self, "planning_to_energy", planning_to_energy)
         object.__setattr__(self, "planning_to_fcr", planning_to_fcr)
-        object.__setattr__(
-            self,
-            "time_contract_fingerprint",
-            _fingerprint(self._semantic_payload()),
-        )
 
-    def _semantic_payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "semantics_version": self.semantics_version,
             "delivery_period": self.delivery_period.to_dict(),
@@ -461,12 +446,6 @@ class RobustFCRTimeContract:
                 "baselines/robust_storage_bidding/code/02_model.jl:170-174,252-253",
                 "baselines/robust_storage_bidding/code/12.jl:27-47",
             ],
-        }
-
-    def to_dict(self) -> dict[str, object]:
-        return {
-            **self._semantic_payload(),
-            "time_contract_fingerprint": self.time_contract_fingerprint,
         }
 
 
@@ -528,7 +507,6 @@ class RecoveryWindowActivationBudget:
     pointwise_activation_lower: float = -1.0
     pointwise_activation_upper: float = 1.0
     semantics_version: str = RECOVERY_WINDOW_ACTIVATION_BUDGET_VERSION
-    recovery_window_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -571,13 +549,8 @@ class RecoveryWindowActivationBudget:
         object.__setattr__(self, "recovery_window_hours", window)
         object.__setattr__(self, "pointwise_activation_lower", lower)
         object.__setattr__(self, "pointwise_activation_upper", upper)
-        object.__setattr__(
-            self,
-            "recovery_window_fingerprint",
-            _fingerprint(self._semantic_payload()),
-        )
 
-    def _semantic_payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "semantics_version": self.semantics_version,
             "recovery_activation_budget_hours": self.recovery_activation_budget_hours,
@@ -595,22 +568,14 @@ class RecoveryWindowActivationBudget:
             ],
         }
 
-    def to_dict(self) -> dict[str, object]:
-        return {
-            **self._semantic_payload(),
-            "recovery_window_fingerprint": self.recovery_window_fingerprint,
-        }
-
 
 @dataclass(frozen=True, slots=True)
 class HorizonWideActivationBudget:
     horizon_hours: float
     horizon_activation_budget_hours: float
     derivation_rule: str
-    recovery_window_fingerprint: str
     derivation_inputs: Mapping[str, object]
     semantics_version: str = HORIZON_WIDE_ACTIVATION_BUDGET_VERSION
-    horizon_budget_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -634,10 +599,6 @@ class HorizonWideActivationBudget:
             )
         if self.derivation_rule != HORIZON_BUDGET_DERIVATION_RULE:
             raise RobustFCRValidationError("unsupported horizon-budget derivation rule")
-        source_fingerprint = _sha256(
-            self.recovery_window_fingerprint,
-            field_name="recovery_window_fingerprint",
-        )
         derivation_inputs = _deep_freeze(
             self.derivation_inputs,
             field_name="derivation_inputs",
@@ -695,32 +656,19 @@ class HorizonWideActivationBudget:
             )
         object.__setattr__(self, "horizon_hours", horizon)
         object.__setattr__(self, "horizon_activation_budget_hours", budget)
-        object.__setattr__(self, "recovery_window_fingerprint", source_fingerprint)
         object.__setattr__(self, "derivation_inputs", derivation_inputs)
-        object.__setattr__(
-            self,
-            "horizon_budget_fingerprint",
-            _fingerprint(self._semantic_payload()),
-        )
 
-    def _semantic_payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "semantics_version": self.semantics_version,
             "horizon_hours": self.horizon_hours,
             "horizon_activation_budget_hours": self.horizon_activation_budget_hours,
             "derivation_rule": self.derivation_rule,
-            "recovery_window_fingerprint": self.recovery_window_fingerprint,
             "derivation_inputs": _thaw(self.derivation_inputs),
             "unit": "h",
             "source_refs": [
                 "baselines/robust_storage_bidding/code/02_model.jl:293-305"
             ],
-        }
-
-    def to_dict(self) -> dict[str, object]:
-        return {
-            **self._semantic_payload(),
-            "horizon_budget_fingerprint": self.horizon_budget_fingerprint,
         }
 
 
@@ -744,7 +692,6 @@ def derive_non_intraday_horizon_budget(
         horizon_hours=horizon,
         horizon_activation_budget_hours=derived,
         derivation_rule=HORIZON_BUDGET_DERIVATION_RULE,
-        recovery_window_fingerprint=recovery_window.recovery_window_fingerprint,
         derivation_inputs={
             "horizon_hours": horizon,
             "recovery_window_hours": window,
@@ -761,7 +708,6 @@ class RobustFCRUncertaintyProfile:
     recovery_window: RecoveryWindowActivationBudget
     horizon_wide: HorizonWideActivationBudget
     semantics_version: str = ROBUST_FCR_UNCERTAINTY_PROFILE_VERSION
-    uncertainty_profile_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -778,8 +724,7 @@ class RobustFCRUncertaintyProfile:
             raise RobustFCRValidationError("horizon_wide has the wrong contract type")
         expected = derive_non_intraday_horizon_budget(self.recovery_window)
         if (
-            self.horizon_wide.recovery_window_fingerprint
-            != self.recovery_window.recovery_window_fingerprint
+            self.horizon_wide.derivation_inputs != expected.derivation_inputs
             or self.horizon_wide.horizon_activation_budget_hours
             != expected.horizon_activation_budget_hours
             or self.horizon_wide.derivation_rule != expected.derivation_rule
@@ -787,23 +732,12 @@ class RobustFCRUncertaintyProfile:
             raise RobustFCRValidationError(
                 "horizon_wide budget does not reconcile with recovery_window lineage"
             )
-        object.__setattr__(
-            self,
-            "uncertainty_profile_fingerprint",
-            _fingerprint(self._semantic_payload()),
-        )
 
-    def _semantic_payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "semantics_version": self.semantics_version,
             "recovery_window": self.recovery_window.to_dict(),
             "horizon_wide": self.horizon_wide.to_dict(),
-        }
-
-    def to_dict(self) -> dict[str, object]:
-        return {
-            **self._semantic_payload(),
-            "uncertainty_profile_fingerprint": self.uncertainty_profile_fingerprint,
         }
 
 
@@ -814,7 +748,6 @@ class TerminalStoredEnergyRule:
     shortfall_penalty_eur_per_kwh: float
     rule_id: str
     semantics_version: str = TERMINAL_STORED_ENERGY_RULE_VERSION
-    rule_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -841,9 +774,8 @@ class TerminalStoredEnergyRule:
         object.__setattr__(self, "minimum_terminal_stored_energy_kwh", target)
         object.__setattr__(self, "shortfall_penalty_eur_per_kwh", penalty)
         object.__setattr__(self, "rule_id", rule_id)
-        object.__setattr__(self, "rule_fingerprint", _fingerprint(self._semantic_payload()))
 
-    def _semantic_payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "semantics_version": self.semantics_version,
             "minimum_terminal_stored_energy_kwh": (
@@ -855,9 +787,6 @@ class TerminalStoredEnergyRule:
             "units": {"stored_energy": "kWh", "shortfall_penalty": "EUR/kWh"},
         }
 
-    def to_dict(self) -> dict[str, object]:
-        return {**self._semantic_payload(), "rule_fingerprint": self.rule_fingerprint}
-
 
 @dataclass(frozen=True, slots=True)
 class RobustFCRPriceInputs:
@@ -866,7 +795,6 @@ class RobustFCRPriceInputs:
     energy_interval_refs: tuple[str, ...]
     fcr_interval_refs: tuple[str, ...]
     semantics_version: str = ROBUST_FCR_PRICE_INPUTS_VERSION
-    price_input_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -901,13 +829,8 @@ class RobustFCRPriceInputs:
         object.__setattr__(self, "fcr_capacity_prices_eur_per_kw_block", fcr)
         object.__setattr__(self, "energy_interval_refs", energy_refs)
         object.__setattr__(self, "fcr_interval_refs", fcr_refs)
-        object.__setattr__(
-            self,
-            "price_input_fingerprint",
-            _fingerprint(self._semantic_payload()),
-        )
 
-    def _semantic_payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "semantics_version": self.semantics_version,
             "day_ahead_energy_prices_eur_per_kwh": list(
@@ -922,12 +845,6 @@ class RobustFCRPriceInputs:
                 "day_ahead_energy": "EUR/kWh",
                 "fcr_capacity": "EUR/kW/4h-block",
             },
-        }
-
-    def to_dict(self) -> dict[str, object]:
-        return {
-            **self._semantic_payload(),
-            "price_input_fingerprint": self.price_input_fingerprint,
         }
 
 
@@ -946,7 +863,6 @@ class RobustFCRSolvePolicy:
     allow_feasible_incumbent_plan: bool = False
     decision_canonicalization_id: str = DECISION_CANONICALIZATION_ID
     semantics_version: str = ROBUST_FCR_SOLVE_POLICY_VERSION
-    solve_policy_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -1016,11 +932,6 @@ class RobustFCRSolvePolicy:
             "objective_comparison_relative_tolerance",
             objective_relative,
         )
-        object.__setattr__(
-            self,
-            "solve_policy_fingerprint",
-            _fingerprint(self._semantic_payload()),
-        )
 
     def objective_comparison_allowance(self, a: float, b: float) -> float:
         left = _finite(a, field_name="objective comparison a")
@@ -1031,7 +942,7 @@ class RobustFCRSolvePolicy:
             * max(abs(left), abs(right), 1.0),
         )
 
-    def _semantic_payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "semantics_version": self.semantics_version,
             "solver_name": self.solver_name,
@@ -1050,12 +961,6 @@ class RobustFCRSolvePolicy:
             ),
             "allow_feasible_incumbent_plan": self.allow_feasible_incumbent_plan,
             "decision_canonicalization_id": self.decision_canonicalization_id,
-        }
-
-    def to_dict(self) -> dict[str, object]:
-        return {
-            **self._semantic_payload(),
-            "solve_policy_fingerprint": self.solve_policy_fingerprint,
         }
 
 
@@ -1107,8 +1012,6 @@ class RobustFCRBiddingProblem:
     provenance: Mapping[str, object]
     semantics_version: str = ROBUST_FCR_BIDDING_PROBLEM_VERSION
     problem_fingerprint: str = field(init=False)
-    comparison_problem_fingerprint: str = field(init=False)
-    objective_comparison_policy_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "problem_id", _non_empty(self.problem_id, field_name="problem_id"))
@@ -1189,27 +1092,6 @@ class RobustFCRBiddingProblem:
             "problem_fingerprint",
             _fingerprint(self._semantic_payload()),
         )
-        comparison_payload = self._semantic_payload()
-        comparison_payload.pop("solve_policy")
-        object.__setattr__(
-            self,
-            "comparison_problem_fingerprint",
-            _fingerprint(comparison_payload),
-        )
-        object.__setattr__(
-            self,
-            "objective_comparison_policy_fingerprint",
-            _fingerprint(
-                {
-                    "absolute_tolerance_eur": (
-                        self.solve_policy.objective_comparison_absolute_tolerance_eur
-                    ),
-                    "relative_tolerance": (
-                        self.solve_policy.objective_comparison_relative_tolerance
-                    ),
-                }
-            ),
-        )
 
     def _semantic_payload(self) -> dict[str, object]:
         return {
@@ -1230,11 +1112,14 @@ class RobustFCRBiddingProblem:
         return {
             **self._semantic_payload(),
             "problem_fingerprint": self.problem_fingerprint,
-            "comparison_problem_fingerprint": self.comparison_problem_fingerprint,
-            "objective_comparison_policy_fingerprint": (
-                self.objective_comparison_policy_fingerprint
-            ),
         }
+
+    def comparison_dict(self) -> dict[str, object]:
+        """Problem content that every formulation of one decision problem shares."""
+
+        payload = self._semantic_payload()
+        payload.pop("solve_policy")
+        return payload
 
 
 def build_robust_fcr_bidding_problem(
@@ -1274,7 +1159,6 @@ class RobustFCRFormulationProfile:
     deployability_role: str
     source_refs: tuple[str, ...]
     semantics_version: str = ROBUST_FCR_FORMULATION_PROFILE_VERSION
-    formulation_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         roles = {
@@ -1312,11 +1196,6 @@ class RobustFCRFormulationProfile:
                 expected=ROBUST_FCR_FORMULATION_PROFILE_VERSION,
             ),
         )
-        object.__setattr__(
-            self,
-            "formulation_fingerprint",
-            _fingerprint(self._semantic_payload()),
-        )
 
     @classmethod
     def for_kind(cls, kind: str) -> RobustFCRFormulationProfile:
@@ -1347,7 +1226,7 @@ class RobustFCRFormulationProfile:
             source_refs=(common, specific[kind]),
         )
 
-    def _semantic_payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "semantics_version": self.semantics_version,
             "kind": self.kind,
@@ -1357,21 +1236,12 @@ class RobustFCRFormulationProfile:
             "source_refs": list(self.source_refs),
         }
 
-    def to_dict(self) -> dict[str, object]:
-        return {
-            **self._semantic_payload(),
-            "formulation_fingerprint": self.formulation_fingerprint,
-        }
-
 
 @dataclass(frozen=True, slots=True)
 class RobustFCRDecisions:
     energy_baseline_charge_positive_kw: tuple[float, ...]
     fcr_capacity_kw: tuple[float, ...]
     canonicalization_id: str = DECISION_CANONICALIZATION_ID
-    energy_decision_content_fingerprint: str = field(init=False)
-    fcr_decision_content_fingerprint: str = field(init=False)
-    decision_vector_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         if self.canonicalization_id != DECISION_CANONICALIZATION_ID:
@@ -1390,35 +1260,6 @@ class RobustFCRDecisions:
             raise RobustFCRValidationError("fcr_capacity_kw must be non-negative")
         object.__setattr__(self, "energy_baseline_charge_positive_kw", energy)
         object.__setattr__(self, "fcr_capacity_kw", fcr)
-        energy_payload = {
-            "sign": "positive_is_charge",
-            "unit": "kW",
-            "resolution": "PT1H",
-            "values": list(energy),
-            "canonicalization_id": self.canonicalization_id,
-        }
-        fcr_payload = {
-            "sign": "non_negative_symmetric_capacity",
-            "unit": "kW",
-            "resolution": "PT4H",
-            "values": list(fcr),
-            "canonicalization_id": self.canonicalization_id,
-        }
-        object.__setattr__(
-            self,
-            "energy_decision_content_fingerprint",
-            _fingerprint(energy_payload),
-        )
-        object.__setattr__(
-            self,
-            "fcr_decision_content_fingerprint",
-            _fingerprint(fcr_payload),
-        )
-        object.__setattr__(
-            self,
-            "decision_vector_fingerprint",
-            _fingerprint({"energy": energy_payload, "fcr": fcr_payload}),
-        )
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -1427,11 +1268,6 @@ class RobustFCRDecisions:
             ),
             "fcr_capacity_kw": list(self.fcr_capacity_kw),
             "canonicalization_id": self.canonicalization_id,
-            "energy_decision_content_fingerprint": (
-                self.energy_decision_content_fingerprint
-            ),
-            "fcr_decision_content_fingerprint": self.fcr_decision_content_fingerprint,
-            "decision_vector_fingerprint": self.decision_vector_fingerprint,
             "units": {"energy_baseline": "kW", "fcr_capacity": "kW"},
             "signs": {
                 "energy_baseline": "positive_is_charge",
@@ -1564,8 +1400,6 @@ class ConstraintFamilyResidual:
 class FeasibilityAudit:
     constraint_families: tuple[ConstraintFamilyResidual, ...]
     modeled_slacks: Mapping[str, float]
-    raw_witness_fingerprint: str
-    canonical_witness_fingerprint: str
     deployability_threshold: float
     passes_deployability_audit: bool
     audit_fingerprint: str = field(init=False)
@@ -1600,19 +1434,6 @@ class FeasibilityAudit:
             "modeled_slacks",
             MappingProxyType(dict(sorted(slacks.items()))),
         )
-        object.__setattr__(
-            self,
-            "raw_witness_fingerprint",
-            _sha256(self.raw_witness_fingerprint, field_name="raw_witness_fingerprint"),
-        )
-        object.__setattr__(
-            self,
-            "canonical_witness_fingerprint",
-            _sha256(
-                self.canonical_witness_fingerprint,
-                field_name="canonical_witness_fingerprint",
-            ),
-        )
         if not isinstance(self.passes_deployability_audit, bool):
             raise RobustFCRValidationError(
                 "passes_deployability_audit must be a boolean"
@@ -1627,8 +1448,6 @@ class FeasibilityAudit:
         return {
             "constraint_families": [value.to_dict() for value in self.constraint_families],
             "modeled_slacks": dict(self.modeled_slacks),
-            "raw_witness_fingerprint": self.raw_witness_fingerprint,
-            "canonical_witness_fingerprint": self.canonical_witness_fingerprint,
             "deployability_threshold": self.deployability_threshold,
             "passes_deployability_audit": self.passes_deployability_audit,
         }
@@ -1792,9 +1611,7 @@ class SolverEvidence:
 
 @dataclass(frozen=True, slots=True)
 class RobustFCRSolveResult:
-    problem_fingerprint: str
-    comparison_problem_fingerprint: str
-    objective_comparison_policy_fingerprint: str
+    problem: RobustFCRBiddingProblem
     formulation: RobustFCRFormulationProfile
     solver: SolverEvidence
     raw_objective: ObjectiveBreakdown | None
@@ -1808,28 +1625,13 @@ class RobustFCRSolveResult:
     semantics_version: str = ROBUST_FCR_SOLVE_RESULT_VERSION
     semantic_result_fingerprint: str = field(init=False)
 
+    @property
+    def problem_fingerprint(self) -> str:
+        return self.problem.problem_fingerprint
+
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "problem_fingerprint",
-            _sha256(self.problem_fingerprint, field_name="problem_fingerprint"),
-        )
-        object.__setattr__(
-            self,
-            "comparison_problem_fingerprint",
-            _sha256(
-                self.comparison_problem_fingerprint,
-                field_name="comparison_problem_fingerprint",
-            ),
-        )
-        object.__setattr__(
-            self,
-            "objective_comparison_policy_fingerprint",
-            _sha256(
-                self.objective_comparison_policy_fingerprint,
-                field_name="objective_comparison_policy_fingerprint",
-            ),
-        )
+        if not isinstance(self.problem, RobustFCRBiddingProblem):
+            raise RobustFCRValidationError("problem has the wrong contract type")
         if not isinstance(self.formulation, RobustFCRFormulationProfile):
             raise RobustFCRValidationError("formulation has the wrong contract type")
         if not isinstance(self.solver, SolverEvidence):
@@ -1884,10 +1686,6 @@ class RobustFCRSolveResult:
         return {
             "semantics_version": self.semantics_version,
             "problem_fingerprint": self.problem_fingerprint,
-            "comparison_problem_fingerprint": self.comparison_problem_fingerprint,
-            "objective_comparison_policy_fingerprint": (
-                self.objective_comparison_policy_fingerprint
-            ),
             "formulation": self.formulation.to_dict(),
             "solver": self.solver.semantic_dict(),
             "value_semantics": {
@@ -1997,8 +1795,6 @@ class RobustFCRBoundInequality:
 
 @dataclass(frozen=True, slots=True)
 class RobustFCRBoundComparison:
-    comparison_problem_fingerprint: str
-    objective_comparison_policy_fingerprint: str
     restriction_result_fingerprint: str
     relaxation_result_fingerprint: str
     exact_result_fingerprint: str | None
@@ -2007,12 +1803,9 @@ class RobustFCRBoundComparison:
     exact_le_relaxation: RobustFCRBoundInequality | None
     exact_status: str
     overall_status: str
-    comparison_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         for name in (
-            "comparison_problem_fingerprint",
-            "objective_comparison_policy_fingerprint",
             "restriction_result_fingerprint",
             "relaxation_result_fingerprint",
         ):
@@ -2034,18 +1827,9 @@ class RobustFCRBoundComparison:
             raise RobustFCRValidationError("unsupported exact_status")
         if self.overall_status not in {"satisfied", "violated", "unavailable"}:
             raise RobustFCRValidationError("unsupported bound comparison status")
-        object.__setattr__(
-            self,
-            "comparison_fingerprint",
-            _fingerprint(self._semantic_payload()),
-        )
 
-    def _semantic_payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
-            "comparison_problem_fingerprint": self.comparison_problem_fingerprint,
-            "objective_comparison_policy_fingerprint": (
-                self.objective_comparison_policy_fingerprint
-            ),
             "restriction_result_fingerprint": self.restriction_result_fingerprint,
             "relaxation_result_fingerprint": self.relaxation_result_fingerprint,
             "exact_result_fingerprint": self.exact_result_fingerprint,
@@ -2062,12 +1846,6 @@ class RobustFCRBoundComparison:
             ),
             "exact_status": self.exact_status,
             "overall_status": self.overall_status,
-        }
-
-    def to_dict(self) -> dict[str, object]:
-        return {
-            **self._semantic_payload(),
-            "comparison_fingerprint": self.comparison_fingerprint,
         }
 
 
@@ -2128,10 +1906,6 @@ def compare_robust_fcr_bounds(
     if exact is not None and exact.formulation.kind != "exact":
         raise RobustFCRValidationError("exact result must use the exact formulation")
     results = (restriction, relaxation) + ((exact,) if exact is not None else ())
-    if len({value.objective_comparison_policy_fingerprint for value in results}) != 1:
-        raise RobustFCRValidationError(
-            "bound comparison requires an identical objective comparison policy"
-        )
     policies = {_comparison_policy(value) for value in results}
     if len(policies) != 1:
         raise RobustFCRValidationError(
@@ -2141,7 +1915,7 @@ def compare_robust_fcr_bounds(
         raise RobustFCRValidationError(
             "restriction and relaxation must solve the same complete problem"
         )
-    if len({value.comparison_problem_fingerprint for value in results}) != 1:
+    if any(value.problem.comparison_dict() != restriction.problem.comparison_dict() for value in results):
         raise RobustFCRValidationError(
             "all formulations must solve the same decision problem"
         )
@@ -2194,10 +1968,6 @@ def compare_robust_fcr_bounds(
         else "satisfied"
     )
     return RobustFCRBoundComparison(
-        comparison_problem_fingerprint=restriction.comparison_problem_fingerprint,
-        objective_comparison_policy_fingerprint=(
-            restriction.objective_comparison_policy_fingerprint
-        ),
         restriction_result_fingerprint=restriction.semantic_result_fingerprint,
         relaxation_result_fingerprint=relaxation.semantic_result_fingerprint,
         exact_result_fingerprint=(
@@ -2216,7 +1986,6 @@ class _WitnessAuditComputation:
     objective: ObjectiveBreakdown
     constraint_families: tuple[ConstraintFamilyResidual, ...]
     modeled_slacks: Mapping[str, float]
-    witness_fingerprint: str
     passes: bool
 
 
@@ -2645,7 +2414,6 @@ def _audit_witness(
         objective=objective,
         constraint_families=families,
         modeled_slacks=MappingProxyType(dict(sorted(modeled_slacks.items()))),
-        witness_fingerprint=_fingerprint(witness),
         passes=passes,
     )
 
@@ -2762,10 +2530,6 @@ def _build_solver_evidence(
             "objective_comparison_relative_tolerance": (
                 problem.solve_policy.objective_comparison_relative_tolerance
             ),
-            "objective_comparison_policy_fingerprint": (
-                problem.objective_comparison_policy_fingerprint
-            ),
-            "solve_policy_fingerprint": problem.solve_policy.solve_policy_fingerprint,
         },
         model_cardinality=raw.model_cardinality,
         runtime_seconds=raw.runtime_seconds,
@@ -2779,8 +2543,6 @@ def _make_feasibility_audit(
     return FeasibilityAudit(
         constraint_families=canonical_audit.constraint_families,
         modeled_slacks=canonical_audit.modeled_slacks,
-        raw_witness_fingerprint=raw_audit.witness_fingerprint,
-        canonical_witness_fingerprint=canonical_audit.witness_fingerprint,
         deployability_threshold=DEPLOYABILITY_THRESHOLD,
         passes_deployability_audit=raw_audit.passes and canonical_audit.passes,
     )
@@ -2934,14 +2696,7 @@ def _build_deployable_plan(
         information_cutoff_utc=problem.information_cutoff_utc,
         time_contract=problem.time_contract,
         decisions=decisions,
-        producer_input_fingerprints={
-            "robust_problem": problem.problem_fingerprint,
-            "uncertainty_profile": (
-                problem.uncertainty.uncertainty_profile_fingerprint
-            ),
-            "market_prices": problem.prices.price_input_fingerprint,
-            "solve_policy": problem.solve_policy.solve_policy_fingerprint,
-        },
+        producer_input_fingerprints={"robust_problem": problem.problem_fingerprint},
         solve_status=solver.solve_status,
         objective=OptimizationMetric(
             availability="available",
@@ -3064,11 +2819,7 @@ def _finalize_solve_result(
         status = "not_applicable" if profile.kind != "restriction" else "blocked"
         plan = None
     return RobustFCRSolveResult(
-        problem_fingerprint=problem.problem_fingerprint,
-        comparison_problem_fingerprint=problem.comparison_problem_fingerprint,
-        objective_comparison_policy_fingerprint=(
-            problem.objective_comparison_policy_fingerprint
-        ),
+        problem=problem,
         formulation=profile,
         solver=solver,
         raw_objective=objective,

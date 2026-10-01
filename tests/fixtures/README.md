@@ -70,7 +70,7 @@ Refresh policy: normalize only an explicit 6,653-byte source with SHA-256 8c13f8
 ```
 
 The committed fixture fingerprint is
-`d2d7d7430153d91c5c589fe8118005d01e02d70012bf5e8bbf4f419c13154ba4`.
+`4677ff94aee7f6e836d2429fe8aead10a4147fcb7c14231e87ee23253f0a6a9e`.
 It contains neither source JSON/baseline bytes nor activation samples, external
 CSV paths, Julia/Gurobi runtime state, credentials, or a native solve policy.
 The normalizer refuses direct committed-destination writes and performs no
