@@ -82,10 +82,7 @@ def test_complete_2023_06_18_reference_aggregate_parity() -> None:
     assert statuses["physical.minimum_stored_energy_kwh"] == (
         "source_precision_compatible"
     )
-    assert first.trace_fingerprint == repeated.trace_fingerprint
-    assert first.settlement_fingerprint == repeated.settlement_fingerprint
-    assert first.comparison_fingerprint == repeated.comparison_fingerprint
-    assert first.result_fingerprint == repeated.result_fingerprint
+    assert first.canonical_bytes() == repeated.canonical_bytes()
 
 
 def test_reference_fixture_refuses_unsupported_stepwise_claims() -> None:

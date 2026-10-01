@@ -81,9 +81,7 @@ def test_exact_resume_reuses_evidence_and_matches_uninterrupted_semantics(
     )
 
     assert evidence.status == "compatible"
-    assert evidence.reused_envelope_fingerprints == tuple(
-        item.envelope_fingerprint for item in uninterrupted.records
-    )
+    assert evidence.reused_dates == uninterrupted.requested_dates
     assert resumed.semantic_fingerprint == uninterrupted.semantic_fingerprint
     assert resumed.records is uninterrupted.records
     assert resumed.resume_lineage is not None
@@ -329,7 +327,7 @@ def test_resume_rejects_changed_day_input_activation_or_nested_record(
     assert assess_rolling_fcr_resume(manifest, tampered_result).status == "incompatible"
 
 
-def test_round_trip_loader_recomputes_every_nested_fingerprint(
+def test_round_trip_loader_recomputes_the_seal(
     completed_authored_study: tuple[object, tuple[object, ...], dict[date, object], object],
     tmp_path: object,
 ) -> None:
@@ -372,7 +370,7 @@ def test_loader_ignores_volatile_runtime_for_identity_but_detects_solver_version
     solver_path.write_text(json.dumps(changed_solver), encoding="utf-8")
     with pytest.raises(
         RollingFCRValidationError,
-        match="stable_runtime_evidence|revision_fingerprint",
+        match="semantic_fingerprint",
     ):
         load_rolling_fcr_study_result(solver_path)
 
@@ -390,10 +388,10 @@ def test_loader_rejects_unknown_schema_keys_and_nested_tampering(
         load_rolling_fcr_study_result(unknown_path)
 
     tampered = result.to_dict()
-    tampered["records"][0]["revisions"][0]["problem_fingerprint"] = "f" * 64
+    tampered["records"][0]["revisions"][0]["diagnostics"].append("tampered")
     tampered_path = tmp_path / "tampered.json"
     tampered_path.write_text(json.dumps(tampered), encoding="utf-8")
-    with pytest.raises(RollingFCRValidationError, match="revision_fingerprint"):
+    with pytest.raises(RollingFCRValidationError, match="semantic_fingerprint"):
         load_rolling_fcr_study_result(tampered_path)
 
 

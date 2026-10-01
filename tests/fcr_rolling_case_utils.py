@@ -463,8 +463,6 @@ def build_authored_day_input(manifest: Any, delivery_date: date) -> Any:
         cutoff = time_contract.delivery_period.start_utc - timedelta(hours=12)
     prices = build_authored_prices(delivery_date)
     return RollingFCRDayInput(
-        manifest_fingerprint=manifest.manifest_fingerprint,
-        profile_fingerprint=manifest.profile.profile_fingerprint,
         date_classification=classification,
         time_contract=time_contract,
         battery=manifest.battery_binding.optimization_battery,

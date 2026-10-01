@@ -194,8 +194,6 @@ def test_day_input_preserves_separate_cutoffs_and_rejects_evaluation_information
     original = build_authored_day_input(manifest, AUTHORED_DELIVERY_DATES[1])
     earlier_information = original.information_cutoff_utc - timedelta(hours=1)
     valid = RollingFCRDayInput(
-        manifest_fingerprint=original.manifest_fingerprint,
-        profile_fingerprint=original.profile_fingerprint,
         date_classification=original.date_classification,
         time_contract=original.time_contract,
         battery=original.battery,

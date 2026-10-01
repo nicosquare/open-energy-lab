@@ -323,12 +323,9 @@ def test_midnight_state_link_rejects_identity_unit_and_initial_mismatches() -> N
         carried_stored_energy_kwh=carry.carried_stored_energy_kwh,
         rounding_policy=carry.state_carry_policy,
         source_interval_kwh=carry.source_interval_kwh,
-        predecessor_plan_fingerprint="1" * 64,
-        replay_fingerprint="2" * 64,
         activation_fingerprint="3" * 64,
         continuity_segment_id="feature-015-segment-0",
         reconciles=True,
-        rounding_evidence_fingerprint=carry.evidence_fingerprint,
         successor_initial_stored_energy_kwh=carry.carried_stored_energy_kwh,
         reconciliation_tolerance_kwh=1e-7,
     )

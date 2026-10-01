@@ -17,6 +17,7 @@ from open_energy_lab.control import (
     run_rolling_fcr_study,
 )
 from open_energy_lab.control.fcr_rolling_backtest import (
+    _stable_runtime,
     AggregateMetricEvidence,
     ContinuitySegment,
     DeliveryDateClassification,
@@ -45,7 +46,6 @@ def _revision(
     bound: float | None = 10.5,
     metrics: dict[str, float] | None = None,
     runtime: dict[str, object] | None = None,
-    predecessor_revision_fingerprint: str | None = None,
 ) -> RollingFCRDayRevision:
     solved = objective is not None
     return RollingFCRDayRevision(
@@ -53,9 +53,6 @@ def _revision(
         revision_kind=kind,
         lifecycle_status=status,
         creation_cause=f"authored_{kind}",
-        input_fingerprint=_sha("1") if solved else None,
-        problem_fingerprint=_sha("2") if solved else None,
-        solve_result_fingerprint=_sha("3") if solved else None,
         plan_fingerprint=_sha("4") if solved else None,
         plan_classification="robust_candidate" if solved else None,
         solve_status="optimal" if solved else None,
@@ -68,15 +65,11 @@ def _revision(
             if objective is None or bound is None
             else (bound - objective) / max(abs(objective), abs(bound), 1.0)
         ),
-        feasibility_audit_fingerprint=_sha("5") if solved else None,
         feasibility_slacks={"headroom": 0.0} if solved else {},
         independent_residuals={"headroom": 0.0} if solved else {},
         energy_decisions_charge_positive_kw=(0.0,) * 24 if solved else None,
         fcr_capacity_kw=(1.0,) * 6 if solved else None,
         activation_fingerprint=_sha("6") if metrics else None,
-        replay_fingerprint=_sha("7") if metrics else None,
-        settlement_fingerprint=_sha("8") if metrics else None,
-        predecessor_revision_fingerprint=predecessor_revision_fingerprint,
         initial_stored_energy_kwh=10.0 if solved else None,
         realized_terminal_stored_energy_kwh=10.0 if metrics else None,
         carried_stored_energy_kwh=10.0 if metrics else None,
@@ -102,9 +95,6 @@ def _envelope(
 ) -> DeliveryDateRecordEnvelope:
     classification = manifest.dates[index]
     return DeliveryDateRecordEnvelope(
-        manifest_fingerprint=manifest.manifest_fingerprint,
-        profile_fingerprint=manifest.profile.profile_fingerprint,
-        profile_id=manifest.profile.profile_id,
         classification=classification,
         predecessor_date=(None if index == 0 else manifest.dates[index - 1].delivery_date),
         decision_cutoff_utc=None,
@@ -154,7 +144,7 @@ def test_result_contract_is_deeply_immutable_and_to_dict_is_detached() -> None:
     assert "host" not in result.runtime_metadata
 
 
-def test_study_result_schema_keys_match_the_strict_serialized_contract() -> None:
+def test_study_result_saved_keys_are_the_v2_contract() -> None:
     manifest = replace(
         build_authored_manifest("script-12-restriction-reset-midnight-v1"),
         dates=build_authored_manifest(
@@ -163,52 +153,48 @@ def test_study_result_schema_keys_match_the_strict_serialized_contract() -> None
     )
     result = _result(manifest, (_envelope(manifest, 0, _revision()),))
     payload = result.to_dict()
-    schema = json.loads(
-        Path(
-            "specs/015-fcr-rolling-backtest-parity/contracts/"
-            "fcr-rolling-study-result-v1.schema.json"
-        ).read_text(encoding="utf-8")
-    )
+    envelope = payload["records"][0]
+    revision = envelope["revisions"][0]
 
-    assert schema["properties"]["semantics_version"]["const"] == (
-        "oel.fcr-rolling-study-result.v1"
-    )
-    assert set(schema["required"]) == set(schema["properties"]) == set(payload)
-    nested = {
-        "dateEnvelope": payload["records"][0],
-        "dateClassification": payload["records"][0]["classification"],
-        "dayRevision": payload["records"][0]["revisions"][0],
-        "storedEnergy": payload["records"][0]["revisions"][0][
-            "stored_energy_kwh"
-        ],
-        "fingerprintEvidence": payload["records"][0]["revisions"][0][
-            "fingerprint_evidence"
-        ],
-        "continuitySegment": payload["continuity_segments"][0],
-        "aggregateMetric": payload["aggregate_metrics"][0],
-        "statusCounts": payload["status_counts"],
+    assert payload["semantics_version"] == "oel.fcr-rolling-study-result.v2"
+    assert set(payload) == {
+        "semantics_version", "study_id", "manifest_fingerprint", "profile_id",
+        "profile_fingerprint", "requested_dates", "records", "continuity_segments",
+        "state_links", "status_counts", "requested_day_input_fingerprints",
+        "supplied_activation_fingerprints", "aggregate_metrics", "completeness_status",
+        "diagnostics", "comparisons", "resume_lineage", "runtime_metadata",
+        "semantic_fingerprint",
     }
-    for definition_name, serialized in nested.items():
-        definition = schema["$defs"][definition_name]
-        assert set(definition["required"]) == set(definition["properties"])
-        assert set(definition["required"]) == set(serialized)
+    assert set(envelope) == {
+        "classification", "predecessor_date", "decision_cutoff_utc",
+        "information_cutoff_utc", "continuity_segment_id", "revisions",
+    }
+    assert set(envelope["classification"]) == {
+        "delivery_date", "execution_role", "comparison_eligible", "reason_codes",
+    }
+    assert set(revision) == {
+        "revision_number", "revision_kind", "lifecycle_status", "creation_cause",
+        "plan_fingerprint", "plan_classification", "solve_status", "termination_status",
+        "objective_value_eur", "best_upper_bound_eur", "absolute_gap_eur", "relative_gap",
+        "feasibility_slacks", "independent_residuals", "energy_decisions_charge_positive_kw",
+        "fcr_capacity_kw", "activation_fingerprint", "stored_energy_kwh",
+        "realized_metrics", "diagnostics", "runtime_metadata",
+    }
+    assert set(payload["continuity_segments"][0]) == {
+        "segment_id", "start_date", "end_date", "start_reason", "source_state_fingerprint",
+    }
+    assert set(payload["aggregate_metrics"][0]) == {
+        "metric_id", "unit", "value", "coverage_status", "aggregation_rule",
+        "eligible_dates", "contributing_dates", "omitted_dates_with_reasons",
+        "reconciliation_residual",
+    }
 
-    serialized_schema = json.dumps(schema, allow_nan=False, sort_keys=True)
-    assert '"date_records"' not in serialized_schema
-    assert '"aggregates"' not in serialized_schema
 
-
-def test_revision_reports_explicit_unavailable_fingerprint_evidence_and_gaps() -> None:
-    revision = _revision()
-    payload = revision.to_dict()
+def test_revision_reports_gaps() -> None:
+    payload = _revision().to_dict()
 
     assert payload["absolute_gap_eur"] == pytest.approx(0.5)
     assert payload["relative_gap"] == pytest.approx(0.5 / 10.5)
-    assert payload["fingerprint_evidence"]["activation_fingerprint"] == {
-        "status": "unavailable",
-        "reason_codes": ["activation_unavailable_for_optimization_only"],
-    }
-    assert payload["fingerprint_evidence"]["solve_result_fingerprint"] == _sha("3")
 
 
 def test_revision_runtime_duration_host_and_path_are_nonsemantic_but_solver_version_is_semantic() -> None:
@@ -233,8 +219,9 @@ def test_revision_runtime_duration_host_and_path_are_nonsemantic_but_solver_vers
         },
     )
 
-    assert original.revision_fingerprint == volatile.revision_fingerprint
-    assert original.revision_fingerprint != changed_solver.revision_fingerprint
+    stable = lambda revision: _stable_runtime(revision.to_dict())
+    assert stable(original) == stable(volatile)
+    assert stable(original) != stable(changed_solver)
 
 
 def test_envelope_rejects_noncontiguous_revisions_and_invalid_lifecycle_transition() -> None:
@@ -354,7 +341,6 @@ def test_aggregate_contract_rejects_inconsistent_coverage_or_omission_lineage() 
             contributing_dates=(date(2023, 6, 18),),
             omitted_dates_with_reasons={},
             aggregation_rule="sum-v1",
-            source_fingerprints=(_sha("a"),),
             reconciliation_residual=0.0,
         )
 

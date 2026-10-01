@@ -44,8 +44,8 @@ ROLLING_FCR_ACCEPTED_BID_POLICY_VERSION = "oel.fcr-accepted-bid-policy.v1"
 ROLLING_FCR_NUMERIC_POLICY_VERSION = "oel.fcr-rolling-numeric-policy.v1"
 ROLLING_FCR_BATTERY_BINDING_VERSION = "oel.fcr-rolling-battery-binding.v1"
 ROLLING_FCR_DAY_INPUT_VERSION = "oel.fcr-rolling-day-input.v1"
-ROLLING_FCR_STUDY_RESULT_VERSION = "oel.fcr-rolling-study-result.v1"
-ROLLING_FCR_RESUME_EVIDENCE_VERSION = "oel.fcr-rolling-resume-evidence.v1"
+ROLLING_FCR_STUDY_RESULT_VERSION = "oel.fcr-rolling-study-result.v2"
+ROLLING_FCR_RESUME_EVIDENCE_VERSION = "oel.fcr-rolling-resume-evidence.v2"
 ROLLING_FCR_PROFILE_VERSION = "oel.fcr-rolling-experiment-profile.v1"
 ROLLING_FCR_STATE_CARRY_EVIDENCE_VERSION = "oel.fcr-state-carry-evidence.v1"
 
@@ -276,6 +276,23 @@ def _semantic_runtime_metadata(value: Mapping[str, object]) -> dict[str, object]
     return result
 
 
+def _stable_runtime(value: object) -> object:
+    """Replace every ``runtime_metadata`` mapping with its stable part."""
+
+    if isinstance(value, dict):
+        return {
+            key: (
+                _semantic_runtime_metadata(inner)
+                if key == "runtime_metadata" and isinstance(inner, Mapping)
+                else _stable_runtime(inner)
+            )
+            for key, inner in value.items()
+        }
+    if isinstance(value, list):
+        return [_stable_runtime(inner) for inner in value]
+    return value
+
+
 def _verify_persisted_fingerprint(
     *,
     field_name: str,
@@ -450,7 +467,6 @@ class DeliveryDateClassification:
     execution_role: str
     comparison_eligible: bool
     reason_codes: tuple[str, ...] = ()
-    classification_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         if not isinstance(self.delivery_date, date) or isinstance(self.delivery_date, datetime):
@@ -463,18 +479,14 @@ class DeliveryDateClassification:
             raise RollingFCRValidationError("only included dates may be comparison eligible")
         reasons = _string_tuple(self.reason_codes, field_name="reason_codes")
         object.__setattr__(self, "reason_codes", tuple(sorted(reasons)))
-        object.__setattr__(self, "classification_fingerprint", _fingerprint(self._payload()))
 
-    def _payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "delivery_date": self.delivery_date.isoformat(),
             "execution_role": self.execution_role,
             "comparison_eligible": self.comparison_eligible,
             "reason_codes": list(self.reason_codes),
         }
-
-    def to_dict(self) -> dict[str, object]:
-        return {**self._payload(), "classification_fingerprint": self.classification_fingerprint}
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, object]) -> DeliveryDateClassification:
@@ -487,7 +499,6 @@ class DeliveryDateClassification:
                     "execution_role",
                     "comparison_eligible",
                     "reason_codes",
-                    "classification_fingerprint",
                 }
             ),
         )
@@ -503,11 +514,6 @@ class DeliveryDateClassification:
             execution_role=data["execution_role"],  # type: ignore[arg-type]
             comparison_eligible=data["comparison_eligible"],  # type: ignore[arg-type]
             reason_codes=tuple(reasons),  # type: ignore[arg-type]
-        )
-        _verify_persisted_fingerprint(
-            field_name="classification_fingerprint",
-            provided=data["classification_fingerprint"],
-            recomputed=result.classification_fingerprint,
         )
         return result
 
@@ -817,7 +823,6 @@ class RollingFCRExperimentProfile:
     table_a1_parity_claim: bool
     source_refs: tuple[str, ...]
     semantics_version: str = ROLLING_FCR_PROFILE_VERSION
-    profile_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         if self.profile_id not in _PROFILE_IDS:
@@ -837,7 +842,12 @@ class RollingFCRExperimentProfile:
             raise RollingFCRValidationError("profile carries unsupported state policy")
         object.__setattr__(self, "allowed_state_carry_policies", carry)
         object.__setattr__(self, "source_refs", _string_tuple(self.source_refs, field_name="source_refs"))
-        object.__setattr__(self, "profile_fingerprint", _fingerprint(self._payload()))
+
+    @property
+    def profile_fingerprint(self) -> str:
+        """Identity of this profile; saved with study results to check resume."""
+
+        return _fingerprint(self.to_dict())
 
     @property
     def is_independent(self) -> bool:
@@ -847,7 +857,7 @@ class RollingFCRExperimentProfile:
     def requires_accepted_fixings(self) -> bool:
         return self.state_mode == "rolling_0800"
 
-    def _payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "semantics_version": self.semantics_version,
             "profile_id": self.profile_id,
@@ -871,8 +881,6 @@ class RollingFCRExperimentProfile:
             "source_refs": list(self.source_refs),
         }
 
-    def to_dict(self) -> dict[str, object]:
-        return {**self._payload(), "profile_fingerprint": self.profile_fingerprint}
 
 
 _PROFILE_DEFINITIONS: dict[str, dict[str, object]] = {
@@ -1027,7 +1035,6 @@ class RollingFCRStudyManifest:
     caller_state_declarations: tuple[CallerSuppliedRollingState, ...] = ()
     reference_lineage: Mapping[str, object] | None = None
     semantics_version: str = ROLLING_FCR_STUDY_MANIFEST_VERSION
-    manifest_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "study_id", _non_empty(self.study_id, field_name="study_id"))
@@ -1113,7 +1120,12 @@ class RollingFCRStudyManifest:
         object.__setattr__(self, "settlement_profile", _non_empty(self.settlement_profile, field_name="settlement_profile"))
         object.__setattr__(self, "caller_state_declarations", caller_states)
         object.__setattr__(self, "reference_lineage", lineage)
-        object.__setattr__(self, "manifest_fingerprint", _fingerprint(self._payload()))
+
+    @property
+    def manifest_fingerprint(self) -> str:
+        """Identity of this manifest; saved with study results to check resume."""
+
+        return _fingerprint(self.to_dict())
 
     @property
     def decision_cutoff_rule(self) -> str:
@@ -1139,7 +1151,7 @@ class RollingFCRStudyManifest:
             ) from exc
         return None if index == 0 else ordered[index - 1]
 
-    def _payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "semantics_version": self.semantics_version,
             "study_id": self.study_id,
@@ -1167,8 +1179,6 @@ class RollingFCRStudyManifest:
             "reference_revision": SOURCE_REFERENCE_REVISION,
         }
 
-    def to_dict(self) -> dict[str, object]:
-        return {**self._payload(), "manifest_fingerprint": self.manifest_fingerprint}
 
 
 def build_rolling_fcr_study_manifest(**values: object) -> RollingFCRStudyManifest:
@@ -1179,8 +1189,6 @@ def build_rolling_fcr_study_manifest(**values: object) -> RollingFCRStudyManifes
 
 @dataclass(frozen=True, slots=True)
 class RollingFCRDayInput:
-    manifest_fingerprint: str
-    profile_fingerprint: str
     date_classification: DeliveryDateClassification
     time_contract: RobustFCRTimeContract
     battery: RobustFCRBatteryParameters
@@ -1193,11 +1201,8 @@ class RollingFCRDayInput:
     accepted_fixings: object | None = None
     predecessor_cutoff_utc: datetime | None = None
     semantics_version: str = ROLLING_FCR_DAY_INPUT_VERSION
-    day_input_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "manifest_fingerprint", _sha(self.manifest_fingerprint, field_name="manifest_fingerprint"))
-        object.__setattr__(self, "profile_fingerprint", _sha(self.profile_fingerprint, field_name="profile_fingerprint"))
         expected = (
             ("date_classification", self.date_classification, DeliveryDateClassification),
             ("time_contract", self.time_contract, RobustFCRTimeContract),
@@ -1243,16 +1248,19 @@ class RollingFCRDayInput:
         object.__setattr__(self, "producer_input_fingerprints", MappingProxyType(dict(sorted(inputs.items()))))
         object.__setattr__(self, "provenance", provenance)
         object.__setattr__(self, "predecessor_cutoff_utc", predecessor_cutoff)
-        object.__setattr__(self, "day_input_fingerprint", _fingerprint(self._payload()))
 
-    def _payload(self) -> dict[str, object]:
+    @property
+    def day_input_fingerprint(self) -> str:
+        """Identity of this day's inputs; saved with study results to check resume."""
+
+        return _fingerprint(self.to_dict())
+
+    def to_dict(self) -> dict[str, object]:
         fixings_payload = None
         if self.accepted_fixings is not None:
             fixings_payload = _contract_dict(self.accepted_fixings, field_name="accepted_fixings")
         return {
             "semantics_version": self.semantics_version,
-            "manifest_fingerprint": self.manifest_fingerprint,
-            "profile_fingerprint": self.profile_fingerprint,
             "date_classification": self.date_classification.to_dict(),
             "time_contract": self.time_contract.to_dict(),
             "battery": self.battery.to_dict(),
@@ -1266,8 +1274,6 @@ class RollingFCRDayInput:
             "predecessor_cutoff_utc": None if self.predecessor_cutoff_utc is None else _utc_text(self.predecessor_cutoff_utc),
         }
 
-    def to_dict(self) -> dict[str, object]:
-        return {**self._payload(), "day_input_fingerprint": self.day_input_fingerprint}
 
 
 @dataclass(frozen=True, slots=True)
@@ -1277,7 +1283,6 @@ class ContinuitySegment:
     end_date: date
     start_reason: str
     source_state_fingerprint: str | None = None
-    continuity_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "segment_id", _non_empty(self.segment_id, field_name="segment_id"))
@@ -1290,17 +1295,15 @@ class ContinuitySegment:
         object.__setattr__(self, "start_reason", _non_empty(self.start_reason, field_name="start_reason"))
         if self.source_state_fingerprint is not None:
             object.__setattr__(self, "source_state_fingerprint", _sha(self.source_state_fingerprint, field_name="source_state_fingerprint"))
-        object.__setattr__(self, "continuity_fingerprint", _fingerprint(self.to_dict(include_fingerprint=False)))
 
-    def to_dict(self, *, include_fingerprint: bool = True) -> dict[str, object]:
-        payload = {
+    def to_dict(self) -> dict[str, object]:
+        return {
             "segment_id": self.segment_id,
             "start_date": self.start_date.isoformat(),
             "end_date": self.end_date.isoformat(),
             "start_reason": self.start_reason,
             "source_state_fingerprint": self.source_state_fingerprint,
         }
-        return {**payload, **({"continuity_fingerprint": self.continuity_fingerprint} if include_fingerprint else {})}
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, object]) -> ContinuitySegment:
@@ -1314,7 +1317,6 @@ class ContinuitySegment:
                     "end_date",
                     "start_reason",
                     "source_state_fingerprint",
-                    "continuity_fingerprint",
                 }
             ),
         )
@@ -1324,11 +1326,6 @@ class ContinuitySegment:
             end_date=_date_from_text(data["end_date"], field_name="segment.end_date"),
             start_reason=data["start_reason"],  # type: ignore[arg-type]
             source_state_fingerprint=data["source_state_fingerprint"],  # type: ignore[arg-type]
-        )
-        _verify_persisted_fingerprint(
-            field_name="continuity_fingerprint",
-            provided=data["continuity_fingerprint"],
-            recomputed=result.continuity_fingerprint,
         )
         return result
 
@@ -1343,20 +1340,13 @@ class RollingFCRStateLink:
     carried_stored_energy_kwh: float
     rounding_policy: str
     source_interval_kwh: tuple[float, float]
-    predecessor_plan_fingerprint: str | None
-    replay_fingerprint: str | None
     activation_fingerprint: str | None
     continuity_segment_id: str
     reconciles: bool
-    accepted_fixings_fingerprint: str | None = None
-    successor_problem_fingerprint: str | None = None
-    causal_prefix_fingerprint: str | None = None
-    rounding_evidence_fingerprint: str | None = None
     successor_initial_stored_energy_kwh: float | None = None
     modeled_terminal_stored_energy_kwh: float | None = None
     reconciliation_tolerance_kwh: float = 1e-7
     unit: str = "kWh"
-    state_link_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         if not isinstance(self.predecessor_date, date) or isinstance(
@@ -1387,18 +1377,12 @@ class RollingFCRStateLink:
                 "closed source interval must contain replay and carried states"
             )
         object.__setattr__(self, "source_interval_kwh", interval)
-        for name in (
-            "predecessor_plan_fingerprint",
-            "replay_fingerprint",
-            "activation_fingerprint",
-            "accepted_fixings_fingerprint",
-            "successor_problem_fingerprint",
-            "causal_prefix_fingerprint",
-            "rounding_evidence_fingerprint",
-        ):
-            value = getattr(self, name)
-            if value is not None:
-                object.__setattr__(self, name, _sha(value, field_name=name))
+        if self.activation_fingerprint is not None:
+            object.__setattr__(
+                self,
+                "activation_fingerprint",
+                _sha(self.activation_fingerprint, field_name="activation_fingerprint"),
+            )
         successor_initial = (
             self.carried_stored_energy_kwh
             if self.successor_initial_stored_energy_kwh is None
@@ -1438,9 +1422,8 @@ class RollingFCRStateLink:
                 "state-link reconciliation flag disagrees with successor initial state"
             )
         object.__setattr__(self, "continuity_segment_id", _non_empty(self.continuity_segment_id, field_name="continuity_segment_id"))
-        object.__setattr__(self, "state_link_fingerprint", _fingerprint(self._payload()))
 
-    def _payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "predecessor_date": self.predecessor_date.isoformat(),
             "successor_date": self.successor_date.isoformat(),
@@ -1450,23 +1433,14 @@ class RollingFCRStateLink:
             "carried_stored_energy_kwh": self.carried_stored_energy_kwh,
             "rounding_policy": self.rounding_policy,
             "source_interval_kwh": list(self.source_interval_kwh),
-            "predecessor_plan_fingerprint": self.predecessor_plan_fingerprint,
-            "replay_fingerprint": self.replay_fingerprint,
             "activation_fingerprint": self.activation_fingerprint,
             "continuity_segment_id": self.continuity_segment_id,
             "reconciles": self.reconciles,
-            "accepted_fixings_fingerprint": self.accepted_fixings_fingerprint,
-            "successor_problem_fingerprint": self.successor_problem_fingerprint,
-            "causal_prefix_fingerprint": self.causal_prefix_fingerprint,
-            "rounding_evidence_fingerprint": self.rounding_evidence_fingerprint,
             "successor_initial_stored_energy_kwh": self.successor_initial_stored_energy_kwh,
             "modeled_terminal_stored_energy_kwh": self.modeled_terminal_stored_energy_kwh,
             "reconciliation_tolerance_kwh": self.reconciliation_tolerance_kwh,
             "unit": self.unit,
         }
-
-    def to_dict(self) -> dict[str, object]:
-        return {**self._payload(), "state_link_fingerprint": self.state_link_fingerprint}
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, object]) -> RollingFCRStateLink:
@@ -1480,20 +1454,13 @@ class RollingFCRStateLink:
                 "carried_stored_energy_kwh",
                 "rounding_policy",
                 "source_interval_kwh",
-                "predecessor_plan_fingerprint",
-                "replay_fingerprint",
                 "activation_fingerprint",
                 "continuity_segment_id",
                 "reconciles",
-                "accepted_fixings_fingerprint",
-                "successor_problem_fingerprint",
-                "causal_prefix_fingerprint",
-                "rounding_evidence_fingerprint",
                 "successor_initial_stored_energy_kwh",
                 "modeled_terminal_stored_energy_kwh",
                 "reconciliation_tolerance_kwh",
                 "unit",
-                "state_link_fingerprint",
             }
         )
         data = _strict_mapping(
@@ -1520,15 +1487,9 @@ class RollingFCRStateLink:
             carried_stored_energy_kwh=data["carried_stored_energy_kwh"],  # type: ignore[arg-type]
             rounding_policy=data["rounding_policy"],  # type: ignore[arg-type]
             source_interval_kwh=tuple(interval),  # type: ignore[arg-type]
-            predecessor_plan_fingerprint=data["predecessor_plan_fingerprint"],  # type: ignore[arg-type]
-            replay_fingerprint=data["replay_fingerprint"],  # type: ignore[arg-type]
             activation_fingerprint=data["activation_fingerprint"],  # type: ignore[arg-type]
             continuity_segment_id=data["continuity_segment_id"],  # type: ignore[arg-type]
             reconciles=data["reconciles"],  # type: ignore[arg-type]
-            accepted_fixings_fingerprint=data["accepted_fixings_fingerprint"],  # type: ignore[arg-type]
-            successor_problem_fingerprint=data["successor_problem_fingerprint"],  # type: ignore[arg-type]
-            causal_prefix_fingerprint=data["causal_prefix_fingerprint"],  # type: ignore[arg-type]
-            rounding_evidence_fingerprint=data["rounding_evidence_fingerprint"],  # type: ignore[arg-type]
             successor_initial_stored_energy_kwh=data[
                 "successor_initial_stored_energy_kwh"
             ],  # type: ignore[arg-type]
@@ -1537,11 +1498,6 @@ class RollingFCRStateLink:
             ],  # type: ignore[arg-type]
             reconciliation_tolerance_kwh=data["reconciliation_tolerance_kwh"],  # type: ignore[arg-type]
             unit=data["unit"],  # type: ignore[arg-type]
-        )
-        _verify_persisted_fingerprint(
-            field_name="state_link_fingerprint",
-            provided=data["state_link_fingerprint"],
-            recomputed=result.state_link_fingerprint,
         )
         return result
 
@@ -1552,9 +1508,6 @@ class RollingFCRDayRevision:
     revision_kind: str
     lifecycle_status: str
     creation_cause: str
-    input_fingerprint: str | None
-    problem_fingerprint: str | None
-    solve_result_fingerprint: str | None
     plan_fingerprint: str | None
     plan_classification: str | None
     solve_status: str | None
@@ -1563,18 +1516,11 @@ class RollingFCRDayRevision:
     best_upper_bound_eur: float | None
     absolute_gap_eur: float | None
     relative_gap: float | None
-    feasibility_audit_fingerprint: str | None
     feasibility_slacks: Mapping[str, float]
     energy_decisions_charge_positive_kw: tuple[float, ...] | None
     fcr_capacity_kw: tuple[float, ...] | None
     independent_residuals: Mapping[str, float] = field(default_factory=dict)
     activation_fingerprint: str | None = None
-    replay_fingerprint: str | None = None
-    settlement_fingerprint: str | None = None
-    state_link_fingerprint: str | None = None
-    predecessor_revision_fingerprint: str | None = None
-    finalizer_problem_fingerprint: str | None = None
-    finalizer_result_fingerprint: str | None = None
     initial_stored_energy_kwh: float | None = None
     realized_cutoff_stored_energy_kwh: float | None = None
     handed_off_cutoff_stored_energy_kwh: float | None = None
@@ -1584,7 +1530,6 @@ class RollingFCRDayRevision:
     realized_metrics: Mapping[str, float] = field(default_factory=dict)
     diagnostics: tuple[str, ...] = ()
     runtime_metadata: Mapping[str, object] = field(default_factory=dict)
-    revision_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         if isinstance(self.revision_number, bool) or not isinstance(self.revision_number, int) or self.revision_number < 0:
@@ -1619,20 +1564,7 @@ class RollingFCRDayRevision:
                 "an optimization_only revision has an incompatible lifecycle"
             )
         object.__setattr__(self, "creation_cause", _non_empty(self.creation_cause, field_name="creation_cause"))
-        for name in (
-            "input_fingerprint",
-            "problem_fingerprint",
-            "solve_result_fingerprint",
-            "plan_fingerprint",
-            "feasibility_audit_fingerprint",
-            "activation_fingerprint",
-            "replay_fingerprint",
-            "settlement_fingerprint",
-            "state_link_fingerprint",
-            "predecessor_revision_fingerprint",
-            "finalizer_problem_fingerprint",
-            "finalizer_result_fingerprint",
-        ):
+        for name in ("plan_fingerprint", "activation_fingerprint"):
             value = getattr(self, name)
             if value is not None:
                 object.__setattr__(self, name, _sha(value, field_name=name))
@@ -1777,17 +1709,13 @@ class RollingFCRDayRevision:
         )
         object.__setattr__(self, "diagnostics", tuple(sorted(_string_tuple(self.diagnostics, field_name="diagnostics"))))
         object.__setattr__(self, "runtime_metadata", _freeze_mapping(self.runtime_metadata, field_name="runtime_metadata"))
-        object.__setattr__(self, "revision_fingerprint", _fingerprint(self._semantic_payload()))
 
-    def _semantic_payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "revision_number": self.revision_number,
             "revision_kind": self.revision_kind,
             "lifecycle_status": self.lifecycle_status,
             "creation_cause": self.creation_cause,
-            "input_fingerprint": self.input_fingerprint,
-            "problem_fingerprint": self.problem_fingerprint,
-            "solve_result_fingerprint": self.solve_result_fingerprint,
             "plan_fingerprint": self.plan_fingerprint,
             "plan_classification": self.plan_classification,
             "solve_status": self.solve_status,
@@ -1796,18 +1724,11 @@ class RollingFCRDayRevision:
             "best_upper_bound_eur": self.best_upper_bound_eur,
             "absolute_gap_eur": self.absolute_gap_eur,
             "relative_gap": self.relative_gap,
-            "feasibility_audit_fingerprint": self.feasibility_audit_fingerprint,
             "feasibility_slacks": dict(self.feasibility_slacks),
             "independent_residuals": dict(self.independent_residuals),
             "energy_decisions_charge_positive_kw": None if self.energy_decisions_charge_positive_kw is None else list(self.energy_decisions_charge_positive_kw),
             "fcr_capacity_kw": None if self.fcr_capacity_kw is None else list(self.fcr_capacity_kw),
             "activation_fingerprint": self.activation_fingerprint,
-            "replay_fingerprint": self.replay_fingerprint,
-            "settlement_fingerprint": self.settlement_fingerprint,
-            "state_link_fingerprint": self.state_link_fingerprint,
-            "predecessor_revision_fingerprint": self.predecessor_revision_fingerprint,
-            "finalizer_problem_fingerprint": self.finalizer_problem_fingerprint,
-            "finalizer_result_fingerprint": self.finalizer_result_fingerprint,
             "stored_energy_kwh": {
                 "initial": self.initial_stored_energy_kwh,
                 "realized_cutoff": self.realized_cutoff_stored_energy_kwh,
@@ -1819,46 +1740,7 @@ class RollingFCRDayRevision:
             },
             "realized_metrics": dict(self.realized_metrics),
             "diagnostics": list(self.diagnostics),
-            "stable_runtime_evidence": _semantic_runtime_metadata(
-                self.runtime_metadata
-            ),
-        }
-
-    def _fingerprint_evidence(self) -> dict[str, object]:
-        values: dict[str, object] = {}
-        for name in (
-            "input_fingerprint",
-            "problem_fingerprint",
-            "solve_result_fingerprint",
-            "plan_fingerprint",
-            "activation_fingerprint",
-            "replay_fingerprint",
-            "settlement_fingerprint",
-            "state_link_fingerprint",
-            "predecessor_revision_fingerprint",
-            "finalizer_problem_fingerprint",
-            "finalizer_result_fingerprint",
-            "feasibility_audit_fingerprint",
-        ):
-            value = getattr(self, name)
-            if value is not None:
-                values[name] = value
-                continue
-            evidence_name = name.removesuffix("_fingerprint")
-            values[name] = {
-                "status": "unavailable",
-                "reason_codes": [
-                    f"{evidence_name}_unavailable_for_{self.lifecycle_status}"
-                ],
-            }
-        return values
-
-    def to_dict(self) -> dict[str, object]:
-        return {
-            **self._semantic_payload(),
-            "fingerprint_evidence": self._fingerprint_evidence(),
             "runtime_metadata": _thaw(self.runtime_metadata),
-            "revision_fingerprint": self.revision_fingerprint,
         }
 
     @classmethod
@@ -1869,9 +1751,6 @@ class RollingFCRDayRevision:
                 "revision_kind",
                 "lifecycle_status",
                 "creation_cause",
-                "input_fingerprint",
-                "problem_fingerprint",
-                "solve_result_fingerprint",
                 "plan_fingerprint",
                 "plan_classification",
                 "solve_status",
@@ -1880,35 +1759,21 @@ class RollingFCRDayRevision:
                 "best_upper_bound_eur",
                 "absolute_gap_eur",
                 "relative_gap",
-                "feasibility_audit_fingerprint",
                 "feasibility_slacks",
                 "independent_residuals",
                 "energy_decisions_charge_positive_kw",
                 "fcr_capacity_kw",
                 "activation_fingerprint",
-                "replay_fingerprint",
-                "settlement_fingerprint",
-                "state_link_fingerprint",
-                "predecessor_revision_fingerprint",
-                "finalizer_problem_fingerprint",
-                "finalizer_result_fingerprint",
                 "stored_energy_kwh",
                 "realized_metrics",
                 "diagnostics",
-                "stable_runtime_evidence",
+                "runtime_metadata",
             }
         )
         data = _strict_mapping(
             payload,
             field_name="day revision",
-            required_keys=semantic_keys
-            | frozenset(
-                {
-                    "fingerprint_evidence",
-                    "runtime_metadata",
-                    "revision_fingerprint",
-                }
-            ),
+            required_keys=semantic_keys,
         )
         stored = _strict_mapping(
             data["stored_energy_kwh"],
@@ -1944,9 +1809,6 @@ class RollingFCRDayRevision:
             revision_kind=data["revision_kind"],  # type: ignore[arg-type]
             lifecycle_status=data["lifecycle_status"],  # type: ignore[arg-type]
             creation_cause=data["creation_cause"],  # type: ignore[arg-type]
-            input_fingerprint=data["input_fingerprint"],  # type: ignore[arg-type]
-            problem_fingerprint=data["problem_fingerprint"],  # type: ignore[arg-type]
-            solve_result_fingerprint=data["solve_result_fingerprint"],  # type: ignore[arg-type]
             plan_fingerprint=data["plan_fingerprint"],  # type: ignore[arg-type]
             plan_classification=data["plan_classification"],  # type: ignore[arg-type]
             solve_status=data["solve_status"],  # type: ignore[arg-type]
@@ -1955,7 +1817,6 @@ class RollingFCRDayRevision:
             best_upper_bound_eur=data["best_upper_bound_eur"],  # type: ignore[arg-type]
             absolute_gap_eur=data["absolute_gap_eur"],  # type: ignore[arg-type]
             relative_gap=data["relative_gap"],  # type: ignore[arg-type]
-            feasibility_audit_fingerprint=data["feasibility_audit_fingerprint"],  # type: ignore[arg-type]
             feasibility_slacks=data["feasibility_slacks"],  # type: ignore[arg-type]
             independent_residuals=data["independent_residuals"],  # type: ignore[arg-type]
             energy_decisions_charge_positive_kw=(
@@ -1963,14 +1824,6 @@ class RollingFCRDayRevision:
             ),  # type: ignore[arg-type]
             fcr_capacity_kw=None if fcr is None else tuple(fcr),  # type: ignore[arg-type]
             activation_fingerprint=data["activation_fingerprint"],  # type: ignore[arg-type]
-            replay_fingerprint=data["replay_fingerprint"],  # type: ignore[arg-type]
-            settlement_fingerprint=data["settlement_fingerprint"],  # type: ignore[arg-type]
-            state_link_fingerprint=data["state_link_fingerprint"],  # type: ignore[arg-type]
-            predecessor_revision_fingerprint=data[
-                "predecessor_revision_fingerprint"
-            ],  # type: ignore[arg-type]
-            finalizer_problem_fingerprint=data["finalizer_problem_fingerprint"],  # type: ignore[arg-type]
-            finalizer_result_fingerprint=data["finalizer_result_fingerprint"],  # type: ignore[arg-type]
             initial_stored_energy_kwh=stored["initial"],  # type: ignore[arg-type]
             realized_cutoff_stored_energy_kwh=stored["realized_cutoff"],  # type: ignore[arg-type]
             handed_off_cutoff_stored_energy_kwh=stored["handed_off_cutoff"],  # type: ignore[arg-type]
@@ -1981,43 +1834,19 @@ class RollingFCRDayRevision:
             diagnostics=tuple(diagnostics),  # type: ignore[arg-type]
             runtime_metadata=data["runtime_metadata"],  # type: ignore[arg-type]
         )
-        if data["stable_runtime_evidence"] != _semantic_runtime_metadata(
-            result.runtime_metadata
-        ):
-            raise RollingFCRValidationError(
-                "stable_runtime_evidence does not match runtime metadata"
-            )
-        _verify_persisted_fingerprint(
-            field_name="revision_fingerprint",
-            provided=data["revision_fingerprint"],
-            recomputed=result.revision_fingerprint,
-        )
-        expected_evidence = result._fingerprint_evidence()
-        if data["fingerprint_evidence"] != expected_evidence:
-            raise RollingFCRValidationError(
-                "fingerprint_evidence does not match revision availability"
-            )
         return result
 
 
 @dataclass(frozen=True, slots=True)
 class DeliveryDateRecordEnvelope:
-    manifest_fingerprint: str
-    profile_fingerprint: str
-    profile_id: str
     classification: DeliveryDateClassification
     predecessor_date: date | None
     continuity_segment_id: str
     revisions: tuple[RollingFCRDayRevision, ...]
     decision_cutoff_utc: datetime | None = None
     information_cutoff_utc: datetime | None = None
-    envelope_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "manifest_fingerprint", _sha(self.manifest_fingerprint, field_name="manifest_fingerprint"))
-        object.__setattr__(self, "profile_fingerprint", _sha(self.profile_fingerprint, field_name="profile_fingerprint"))
-        if self.profile_id not in _PROFILE_IDS:
-            raise RollingFCRValidationError("envelope profile_id is unsupported")
         if not isinstance(self.classification, DeliveryDateClassification):
             raise RollingFCRValidationError("envelope classification has the wrong type")
         if self.predecessor_date is not None and (
@@ -2043,54 +1872,14 @@ class DeliveryDateRecordEnvelope:
             raise RollingFCRValidationError("envelope must retain immutable revisions")
         if tuple(item.revision_number for item in revisions) != tuple(range(len(revisions))):
             raise RollingFCRValidationError("revision numbers must be contiguous and monotonic")
-        for previous, current in zip(revisions, revisions[1:]):
-            if current.predecessor_revision_fingerprint != previous.revision_fingerprint:
-                raise RollingFCRValidationError(
-                    "revision lineage must reference the immediately preceding revision"
-                )
         object.__setattr__(self, "revisions", revisions)
-        object.__setattr__(
-            self,
-            "envelope_fingerprint",
-            _fingerprint(self._semantic_payload()),
-        )
 
     @property
     def latest_revision(self) -> RollingFCRDayRevision:
         return self.revisions[-1]
 
-    def _semantic_payload(self) -> dict[str, object]:
-        return {
-            "manifest_fingerprint": self.manifest_fingerprint,
-            "profile_fingerprint": self.profile_fingerprint,
-            "profile_id": self.profile_id,
-            "classification": self.classification.to_dict(),
-            "predecessor_date": None if self.predecessor_date is None else self.predecessor_date.isoformat(),
-            "decision_cutoff_utc": (
-                None
-                if self.decision_cutoff_utc is None
-                else _utc_text(self.decision_cutoff_utc)
-            ),
-            "information_cutoff_utc": (
-                None
-                if self.information_cutoff_utc is None
-                else _utc_text(self.information_cutoff_utc)
-            ),
-            "continuity_segment_id": self.continuity_segment_id,
-            "revisions": [
-                {
-                    **item._semantic_payload(),
-                    "revision_fingerprint": item.revision_fingerprint,
-                }
-                for item in self.revisions
-            ],
-        }
-
     def to_dict(self) -> dict[str, object]:
         return {
-            "manifest_fingerprint": self.manifest_fingerprint,
-            "profile_fingerprint": self.profile_fingerprint,
-            "profile_id": self.profile_id,
             "classification": self.classification.to_dict(),
             "predecessor_date": (
                 None
@@ -2109,7 +1898,6 @@ class DeliveryDateRecordEnvelope:
             ),
             "continuity_segment_id": self.continuity_segment_id,
             "revisions": [item.to_dict() for item in self.revisions],
-            "envelope_fingerprint": self.envelope_fingerprint,
         }
 
     @classmethod
@@ -2119,16 +1907,12 @@ class DeliveryDateRecordEnvelope:
             field_name="date envelope",
             required_keys=frozenset(
                 {
-                    "manifest_fingerprint",
-                    "profile_fingerprint",
-                    "profile_id",
                     "classification",
                     "predecessor_date",
                     "decision_cutoff_utc",
                     "information_cutoff_utc",
                     "continuity_segment_id",
                     "revisions",
-                    "envelope_fingerprint",
                 }
             ),
         )
@@ -2138,10 +1922,7 @@ class DeliveryDateRecordEnvelope:
         predecessor = data["predecessor_date"]
         decision_cutoff = data["decision_cutoff_utc"]
         information_cutoff = data["information_cutoff_utc"]
-        result = cls(
-            manifest_fingerprint=data["manifest_fingerprint"],  # type: ignore[arg-type]
-            profile_fingerprint=data["profile_fingerprint"],  # type: ignore[arg-type]
-            profile_id=data["profile_id"],  # type: ignore[arg-type]
+        return cls(
             classification=DeliveryDateClassification.from_dict(
                 data["classification"]  # type: ignore[arg-type]
             ),
@@ -2171,12 +1952,6 @@ class DeliveryDateRecordEnvelope:
                 )
             ),
         )
-        _verify_persisted_fingerprint(
-            field_name="envelope_fingerprint",
-            provided=data["envelope_fingerprint"],
-            recomputed=result.envelope_fingerprint,
-        )
-        return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -2189,9 +1964,7 @@ class AggregateMetricEvidence:
     contributing_dates: tuple[date, ...]
     omitted_dates_with_reasons: Mapping[str, tuple[str, ...]]
     aggregation_rule: str = "sum-v1"
-    source_fingerprints: tuple[str, ...] = ()
     reconciliation_residual: float | None = None
-    aggregate_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "metric_id", _non_empty(self.metric_id, field_name="metric_id"))
@@ -2260,14 +2033,6 @@ class AggregateMetricEvidence:
             raise RollingFCRValidationError(
                 "aggregate contributors require an available value"
             )
-        source_fingerprints = tuple(
-            _sha(value, field_name="source_fingerprints")
-            for value in self.source_fingerprints
-        )
-        if len(source_fingerprints) != len(contributors):
-            raise RollingFCRValidationError(
-                "aggregate source fingerprints must identify every contributor"
-            )
         residual = self.reconciliation_residual
         if residual is not None:
             residual = _finite(residual, field_name="reconciliation_residual")
@@ -2286,11 +2051,9 @@ class AggregateMetricEvidence:
             "omitted_dates_with_reasons",
             MappingProxyType(dict(sorted(omissions.items()))),
         )
-        object.__setattr__(self, "source_fingerprints", source_fingerprints)
         object.__setattr__(self, "reconciliation_residual", residual)
-        object.__setattr__(self, "aggregate_fingerprint", _fingerprint(self._payload()))
 
-    def _payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "metric_id": self.metric_id,
             "unit": self.unit,
@@ -2300,12 +2063,8 @@ class AggregateMetricEvidence:
             "eligible_dates": [item.isoformat() for item in self.eligible_dates],
             "contributing_dates": [item.isoformat() for item in self.contributing_dates],
             "omitted_dates_with_reasons": _thaw(self.omitted_dates_with_reasons),
-            "source_fingerprints": list(self.source_fingerprints),
             "reconciliation_residual": self.reconciliation_residual,
         }
-
-    def to_dict(self) -> dict[str, object]:
-        return {**self._payload(), "aggregate_fingerprint": self.aggregate_fingerprint}
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, object]) -> AggregateMetricEvidence:
@@ -2322,23 +2081,19 @@ class AggregateMetricEvidence:
                     "eligible_dates",
                     "contributing_dates",
                     "omitted_dates_with_reasons",
-                    "source_fingerprints",
                     "reconciliation_residual",
-                    "aggregate_fingerprint",
                 }
             ),
         )
         eligible = data["eligible_dates"]
         contributors = data["contributing_dates"]
-        fingerprints = data["source_fingerprints"]
         for name, values in (
             ("eligible_dates", eligible),
             ("contributing_dates", contributors),
-            ("source_fingerprints", fingerprints),
         ):
             if not isinstance(values, Sequence) or isinstance(values, (str, bytes)):
                 raise RollingFCRValidationError(f"aggregate {name} must be a sequence")
-        result = cls(
+        return cls(
             metric_id=data["metric_id"],  # type: ignore[arg-type]
             unit=data["unit"],  # type: ignore[arg-type]
             value=data["value"],  # type: ignore[arg-type]
@@ -2353,15 +2108,8 @@ class AggregateMetricEvidence:
                 for item in contributors
             ),
             omitted_dates_with_reasons=data["omitted_dates_with_reasons"],  # type: ignore[arg-type]
-            source_fingerprints=tuple(fingerprints),  # type: ignore[arg-type]
             reconciliation_residual=data["reconciliation_residual"],  # type: ignore[arg-type]
         )
-        _verify_persisted_fingerprint(
-            field_name="aggregate_fingerprint",
-            provided=data["aggregate_fingerprint"],
-            recomputed=result.aggregate_fingerprint,
-        )
-        return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -2371,43 +2119,26 @@ class RollingFCRResumeEvidence:
     prior_result_semantic_fingerprint: str
     manifest_fingerprint: str
     profile_fingerprint: str
-    reused_envelope_fingerprints: tuple[str, ...]
-    reused_revision_fingerprints: tuple[str, ...]
-    last_continuity_fingerprint: str | None
-    last_state_link_fingerprint: str | None
+    reused_dates: tuple[date, ...]
     checks: Mapping[str, bool]
     diagnostics: tuple[str, ...]
     status: str
     semantics_version: str = ROLLING_FCR_RESUME_EVIDENCE_VERSION
-    resume_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
+        if self.semantics_version != ROLLING_FCR_RESUME_EVIDENCE_VERSION:
+            raise RollingFCRValidationError("unsupported resume evidence version")
         for name in (
             "prior_result_semantic_fingerprint",
             "manifest_fingerprint",
             "profile_fingerprint",
         ):
             object.__setattr__(self, name, _sha(getattr(self, name), field_name=name))
-        for name in ("last_continuity_fingerprint", "last_state_link_fingerprint"):
-            value = getattr(self, name)
-            if value is not None:
-                object.__setattr__(self, name, _sha(value, field_name=name))
-        object.__setattr__(
-            self,
-            "reused_envelope_fingerprints",
-            tuple(
-                _sha(value, field_name="reused_envelope_fingerprints")
-                for value in self.reused_envelope_fingerprints
-            ),
-        )
-        object.__setattr__(
-            self,
-            "reused_revision_fingerprints",
-            tuple(
-                _sha(value, field_name="reused_revision_fingerprints")
-                for value in self.reused_revision_fingerprints
-            ),
-        )
+        reused = tuple(self.reused_dates)
+        if any(not isinstance(item, date) or isinstance(item, datetime) for item in reused):
+            raise RollingFCRValidationError("reused_dates must contain dates")
+        if reused != tuple(sorted(set(reused))):
+            raise RollingFCRValidationError("reused_dates must be ordered and unique")
         normalized_checks: dict[str, bool] = {}
         for key, value in self.checks.items():
             normalized_key = _non_empty(key, field_name="resume check")
@@ -2428,33 +2159,23 @@ class RollingFCRResumeEvidence:
             raise RollingFCRValidationError(
                 "incompatible resume evidence requires diagnostics"
             )
+        object.__setattr__(self, "reused_dates", reused)
         object.__setattr__(
             self, "checks", MappingProxyType(dict(sorted(normalized_checks.items())))
         )
         object.__setattr__(self, "diagnostics", diagnostics)
-        object.__setattr__(self, "resume_fingerprint", _fingerprint(self._payload()))
 
-    def _payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "semantics_version": self.semantics_version,
             "prior_result_semantic_fingerprint": self.prior_result_semantic_fingerprint,
             "manifest_fingerprint": self.manifest_fingerprint,
             "profile_fingerprint": self.profile_fingerprint,
-            "reused_envelope_fingerprints": list(
-                self.reused_envelope_fingerprints
-            ),
-            "reused_revision_fingerprints": list(
-                self.reused_revision_fingerprints
-            ),
-            "last_continuity_fingerprint": self.last_continuity_fingerprint,
-            "last_state_link_fingerprint": self.last_state_link_fingerprint,
+            "reused_dates": [item.isoformat() for item in self.reused_dates],
             "checks": dict(self.checks),
             "diagnostics": list(self.diagnostics),
             "status": self.status,
         }
-
-    def to_dict(self) -> dict[str, object]:
-        return {**self._payload(), "resume_fingerprint": self.resume_fingerprint}
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, object]) -> RollingFCRResumeEvidence:
@@ -2467,55 +2188,33 @@ class RollingFCRResumeEvidence:
                     "prior_result_semantic_fingerprint",
                     "manifest_fingerprint",
                     "profile_fingerprint",
-                    "reused_envelope_fingerprints",
-                    "reused_revision_fingerprints",
-                    "last_continuity_fingerprint",
-                    "last_state_link_fingerprint",
+                    "reused_dates",
                     "checks",
                     "diagnostics",
                     "status",
-                    "resume_fingerprint",
                 }
             ),
         )
-        for name in (
-            "reused_envelope_fingerprints",
-            "reused_revision_fingerprints",
-            "diagnostics",
-        ):
+        for name in ("reused_dates", "diagnostics"):
             if not isinstance(data[name], Sequence) or isinstance(
                 data[name], (str, bytes)
             ):
                 raise RollingFCRValidationError(f"resume {name} must be a sequence")
-        result = cls(
+        return cls(
             semantics_version=data["semantics_version"],  # type: ignore[arg-type]
             prior_result_semantic_fingerprint=data[
                 "prior_result_semantic_fingerprint"
             ],  # type: ignore[arg-type]
             manifest_fingerprint=data["manifest_fingerprint"],  # type: ignore[arg-type]
             profile_fingerprint=data["profile_fingerprint"],  # type: ignore[arg-type]
-            reused_envelope_fingerprints=tuple(
-                data["reused_envelope_fingerprints"]  # type: ignore[arg-type]
+            reused_dates=tuple(
+                _date_from_text(item, field_name="reused_dates")
+                for item in data["reused_dates"]  # type: ignore[union-attr]
             ),
-            reused_revision_fingerprints=tuple(
-                data["reused_revision_fingerprints"]  # type: ignore[arg-type]
-            ),
-            last_continuity_fingerprint=data[
-                "last_continuity_fingerprint"
-            ],  # type: ignore[arg-type]
-            last_state_link_fingerprint=data[
-                "last_state_link_fingerprint"
-            ],  # type: ignore[arg-type]
             checks=data["checks"],  # type: ignore[arg-type]
             diagnostics=tuple(data["diagnostics"]),  # type: ignore[arg-type]
             status=data["status"],  # type: ignore[arg-type]
         )
-        _verify_persisted_fingerprint(
-            field_name="resume_fingerprint",
-            provided=data["resume_fingerprint"],
-            recomputed=result.resume_fingerprint,
-        )
-        return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -2560,15 +2259,6 @@ class RollingFCRStudyResult:
         dates = tuple(item.classification.delivery_date for item in records)
         if dates != tuple(sorted(dates)) or len(set(dates)) != len(dates):
             raise RollingFCRValidationError("study records must retain ordered unique dates")
-        if any(
-            item.manifest_fingerprint != self.manifest_fingerprint
-            or item.profile_fingerprint != self.profile_fingerprint
-            or item.profile_id != self.profile_id
-            for item in records
-        ):
-            raise RollingFCRValidationError(
-                "study envelopes must retain the study manifest and profile identities"
-            )
         if self.completeness_status not in {
             "complete",
             "partial",
@@ -2688,7 +2378,9 @@ class RollingFCRStudyResult:
             raise RollingFCRValidationError(
                 "complete study cannot retain blocked, provisional, or unfinalized dates"
             )
-        object.__setattr__(self, "semantic_fingerprint", _fingerprint(self._semantic_payload()))
+        content = self._content()
+        content.pop("resume_lineage")
+        object.__setattr__(self, "semantic_fingerprint", _fingerprint(_stable_runtime(content)))
 
     @property
     def requested_dates(self) -> tuple[date, ...]:
@@ -2726,7 +2418,7 @@ class RollingFCRStudyResult:
             )
         return MappingProxyType(values)
 
-    def _semantic_payload(self) -> dict[str, object]:
+    def _content(self) -> dict[str, object]:
         return {
             "semantics_version": self.semantics_version,
             "study_id": self.study_id,
@@ -2734,13 +2426,7 @@ class RollingFCRStudyResult:
             "profile_id": self.profile_id,
             "profile_fingerprint": self.profile_fingerprint,
             "requested_dates": [item.isoformat() for item in self.requested_dates],
-            "records": [
-                {
-                    **item._semantic_payload(),
-                    "envelope_fingerprint": item.envelope_fingerprint,
-                }
-                for item in self.records
-            ],
+            "records": [item.to_dict() for item in self.records],
             "continuity_segments": [item.to_dict() for item in self.continuity_segments],
             "state_links": [item.to_dict() for item in self.state_links],
             "status_counts": dict(self.status_counts),
@@ -2754,9 +2440,10 @@ class RollingFCRStudyResult:
             "completeness_status": self.completeness_status,
             "diagnostics": list(self.diagnostics),
             "comparisons": [_thaw(item) for item in self.comparisons],
-            "stable_runtime_evidence": _semantic_runtime_metadata(
-                self.runtime_metadata
+            "resume_lineage": (
+                None if self.resume_lineage is None else self.resume_lineage.to_dict()
             ),
+            "runtime_metadata": _thaw(self.runtime_metadata),
         }
 
     @property
@@ -2792,18 +2479,10 @@ class RollingFCRStudyResult:
         return MappingProxyType(dict(sorted(values.items())))
 
     def to_dict(self) -> dict[str, object]:
-        payload = self._semantic_payload()
-        payload["records"] = [item.to_dict() for item in self.records]
-        return {
-            **payload,
-            "resume_lineage": (
-                None
-                if self.resume_lineage is None
-                else self.resume_lineage.to_dict()
-            ),
-            "runtime_metadata": _thaw(self.runtime_metadata),
-            "semantic_fingerprint": self.semantic_fingerprint,
-        }
+        """The saved form; ``semantic_fingerprint`` seals everything else except
+        ``resume_lineage`` and volatile runtime fields."""
+
+        return {**self._content(), "semantic_fingerprint": self.semantic_fingerprint}
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, object]) -> RollingFCRStudyResult:
@@ -2828,7 +2507,6 @@ class RollingFCRStudyResult:
                     "completeness_status",
                     "diagnostics",
                     "comparisons",
-                    "stable_runtime_evidence",
                     "resume_lineage",
                     "runtime_metadata",
                     "semantic_fingerprint",
@@ -2901,12 +2579,6 @@ class RollingFCRStudyResult:
             raise RollingFCRValidationError(
                 "status_counts do not reconcile retained records"
             )
-        if data["stable_runtime_evidence"] != _semantic_runtime_metadata(
-            result.runtime_metadata
-        ):
-            raise RollingFCRValidationError(
-                "stable_runtime_evidence does not match runtime metadata"
-            )
         _verify_persisted_fingerprint(
             field_name="semantic_fingerprint",
             provided=data["semantic_fingerprint"],
@@ -2966,14 +2638,6 @@ def aggregate_rolling_fcr_records(
         raise RollingFCRValidationError(
             "aggregate records must be an ordered manifest prefix"
         )
-    if any(
-        item.manifest_fingerprint != manifest.manifest_fingerprint
-        or item.profile_fingerprint != manifest.profile.profile_fingerprint
-        for item in ordered
-    ):
-        raise RollingFCRValidationError(
-            "aggregate records belong to another manifest or profile"
-        )
     eligible_records = tuple(
         item
         for item in ordered
@@ -2998,7 +2662,7 @@ def aggregate_rolling_fcr_records(
     )
     aggregates: list[AggregateMetricEvidence] = []
     for metric_id, unit in definitions:
-        contributor_rows: list[tuple[date, float, str]] = []
+        contributor_rows: list[tuple[date, float]] = []
         omissions: dict[str, tuple[str, ...]] = {}
         for envelope in eligible_records:
             revision = envelope.latest_revision
@@ -3010,9 +2674,7 @@ def aggregate_rolling_fcr_records(
                     f"lifecycle_status:{revision.lifecycle_status}",
                 )
             else:
-                contributor_rows.append(
-                    (delivery_date, float(value), revision.revision_fingerprint)
-                )
+                contributor_rows.append((delivery_date, float(value)))
         contributing_dates = tuple(item[0] for item in contributor_rows)
         values = tuple(item[1] for item in contributor_rows)
         value = None if not values else math.fsum(values)
@@ -3033,7 +2695,6 @@ def aggregate_rolling_fcr_records(
                 contributing_dates=contributing_dates,
                 omitted_dates_with_reasons=omissions,
                 aggregation_rule="ordered-math-fsum-v1",
-                source_fingerprints=tuple(item[2] for item in contributor_rows),
                 reconciliation_residual=(None if value is None else 0.0),
             )
         )
@@ -3077,7 +2738,6 @@ def assess_rolling_fcr_resume(
     state_link_evidence_matches = True
     for link in prior_result.state_links:
         successor = record_by_date.get(link.successor_date)
-        predecessor = record_by_date.get(link.predecessor_date)
         if successor is None:
             state_link_evidence_matches = False
             break
@@ -3089,24 +2749,11 @@ def assess_rolling_fcr_resume(
         ):
             state_link_evidence_matches = False
             break
-        linked_revisions = tuple(successor.revisions) + (
-            () if predecessor is None else tuple(predecessor.revisions)
-        )
-        if not any(
-            item.state_link_fingerprint == link.state_link_fingerprint
-            for item in linked_revisions
-        ):
-            state_link_evidence_matches = False
-            break
     try:
         expected_aggregates = aggregate_rolling_fcr_records(
             manifest, prior_result.records
         )
-        aggregate_match = tuple(
-            item.aggregate_fingerprint for item in expected_aggregates
-        ) == tuple(
-            item.aggregate_fingerprint for item in prior_result.aggregate_metrics
-        )
+        aggregate_match = expected_aggregates == prior_result.aggregate_metrics
     except RollingFCRValidationError:
         aggregate_match = False
     checks = {
@@ -3126,18 +2773,12 @@ def assess_rolling_fcr_resume(
             and prior_result.profile_id == manifest.profile.profile_id
         ),
         "record_classifications": all(
-            prior.classification.classification_fingerprint
-            == expected.classification_fingerprint
+            prior.classification == expected
             for prior, expected in zip(
                 prior_result.records,
                 manifest.dates,
                 strict=False,
             )
-        ),
-        "record_manifest_identity": all(
-            item.manifest_fingerprint == manifest.manifest_fingerprint
-            and item.profile_fingerprint == manifest.profile.profile_fingerprint
-            for item in prior_result.records
         ),
         "state_link_reconciliation": all(
             item.reconciles for item in prior_result.state_links
@@ -3154,24 +2795,7 @@ def assess_rolling_fcr_resume(
         prior_result_semantic_fingerprint=prior_result.semantic_fingerprint,
         manifest_fingerprint=manifest.manifest_fingerprint,
         profile_fingerprint=manifest.profile.profile_fingerprint,
-        reused_envelope_fingerprints=tuple(
-            item.envelope_fingerprint for item in prior_result.records
-        ),
-        reused_revision_fingerprints=tuple(
-            revision.revision_fingerprint
-            for item in prior_result.records
-            for revision in item.revisions
-        ),
-        last_continuity_fingerprint=(
-            None
-            if not prior_result.continuity_segments
-            else prior_result.continuity_segments[-1].continuity_fingerprint
-        ),
-        last_state_link_fingerprint=(
-            None
-            if not prior_result.state_links
-            else prior_result.state_links[-1].state_link_fingerprint
-        ),
+        reused_dates=prior_result.requested_dates,
         checks=checks,
         diagnostics=diagnostics,
         status="compatible" if all(checks.values()) else "incompatible",
@@ -3209,11 +2833,6 @@ def run_rolling_fcr_study(
     inputs = tuple(day_inputs)
     if any(not isinstance(item, RollingFCRDayInput) for item in inputs):
         raise RollingFCRValidationError("day_inputs contain an invalid contract")
-    for item in inputs:
-        if item.manifest_fingerprint != manifest.manifest_fingerprint:
-            raise RollingFCRValidationError("day input belongs to another manifest")
-        if item.profile_fingerprint != manifest.profile.profile_fingerprint:
-            raise RollingFCRValidationError("day input belongs to another profile")
     from ._fcr_rolling_orchestrator import run_initial_rolling_fcr_study
 
     return run_initial_rolling_fcr_study(

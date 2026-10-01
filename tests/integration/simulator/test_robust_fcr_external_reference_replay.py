@@ -164,9 +164,7 @@ def test_native_and_recorded_schedules_share_feature_012_external_replay() -> No
             "energy": 24,
             "fcr": 6,
         }
-        assert report.trace_fingerprint is not None
-        assert report.settlement_fingerprint is not None
-        assert report.result_fingerprint is not None
+        assert report.settlement is not None
 
     assert native_report.plan_fingerprint == native_plan.plan_fingerprint
     assert recorded_report.plan_fingerprint == recorded_request.plan.plan_fingerprint
@@ -182,16 +180,16 @@ def test_native_and_recorded_schedules_share_feature_012_external_replay() -> No
                     "optimization_objective_eur": native.solver.objective_value_eur,
                     "best_upper_bound_eur": native.solver.best_upper_bound_eur,
                     "plan_fingerprint": native_plan.plan_fingerprint,
-                    "trace_fingerprint": native_report.trace_fingerprint,
-                    "settlement_fingerprint": native_report.settlement_fingerprint,
-                    "result_fingerprint": native_report.result_fingerprint,
+                    "trace_fingerprint": _fingerprint(native_report.to_dict()["physical_trace"]),
+                    "settlement_fingerprint": _fingerprint(native_report.to_dict()["settlement"]),
+                    "result_fingerprint": _fingerprint(native_report.to_dict()),
                     "total_profit_eur": native_report.total_profit_eur,
                 },
                 "recorded": {
                     "plan_fingerprint": recorded_request.plan.plan_fingerprint,
-                    "trace_fingerprint": recorded_report.trace_fingerprint,
-                    "settlement_fingerprint": recorded_report.settlement_fingerprint,
-                    "result_fingerprint": recorded_report.result_fingerprint,
+                    "trace_fingerprint": _fingerprint(recorded_report.to_dict()["physical_trace"]),
+                    "settlement_fingerprint": _fingerprint(recorded_report.to_dict()["settlement"]),
+                    "result_fingerprint": _fingerprint(recorded_report.to_dict()),
                     "total_profit_eur": recorded_report.total_profit_eur,
                 },
             },

@@ -464,9 +464,7 @@ def test_four_day_source_and_native_plans_share_feature_012_external_replay() ->
                 "energy": 24,
                 "fcr": 6,
             }
-            assert report.trace_fingerprint is not None
-            assert report.settlement_fingerprint is not None
-            assert report.result_fingerprint is not None
+            assert report.settlement is not None
         source_reports.append(source_report)
         native_reports.append(native_report)
 
