@@ -16,7 +16,7 @@ NOTEBOOK_PATH = Path(
 )
 FIGURE_EXPORT_DIR = Path("tmp/fcr-rolling-backtest-notebook/figures")
 EXPECTED_DISPLAY_FINGERPRINT = (
-    "406f2f5b2472f9c86f4901a7065f6476e6b5e7541772ad922c82253ed9efe5ba"
+    "fbb2b7d4eedb916572f05f0f8839b554a7d8771efe112ac889ab499f57cf0134"
 )
 
 

@@ -28,6 +28,7 @@ from open_energy_lab.control.fcr_rolling_backtest import (
     RollingFCRStudyManifest,
     RollingFCRStudyResult,
     RollingFCRValidationError,
+    _stable_runtime,
 )
 from open_energy_lab.control.robust_fcr_bidding import _deep_freeze, _fingerprint, _sha256, _thaw
 
@@ -2110,12 +2111,24 @@ def _native_tolerance(manifest: RollingFCRStudyManifest) -> float:
     )
 
 
+def _revision_evidence_fingerprint(revision: RollingFCRDayRevision) -> str:
+    """Content hash of one native revision, ignoring volatile runtime fields."""
+
+    return _fingerprint(_stable_runtime(revision.to_dict()))
+
+
+def _audit_evidence_fingerprint(revision: RollingFCRDayRevision) -> str | None:
+    """The revision's evidence hash when it carries an independent audit."""
+
+    return _revision_evidence_fingerprint(revision) if revision.independent_residuals else None
+
+
 def _revision_is_independently_feasible(
     revision: RollingFCRDayRevision,
     *,
     tolerance: float,
 ) -> bool:
-    if revision.feasibility_audit_fingerprint is None:
+    if not revision.independent_residuals:
         return False
     maximum_slack = max(revision.feasibility_slacks.values(), default=math.inf)
     maximum_residual = max(
@@ -2184,16 +2197,14 @@ def _build_latent_certificate(
         revision.energy_decisions_charge_positive_kw is None
         or revision.fcr_capacity_kw is None
         or revision.objective_value_eur is None
-        or revision.feasibility_audit_fingerprint is None
+        or not revision.independent_residuals
     ):
         return RollingFCRReferenceLatentCertificate(
             profile_id=source.profile_id,
             delivery_date=source.delivery_date,
             status="unavailable",
             interval_audit_fingerprint=None,
-            native_feasibility_audit_fingerprint=(
-                revision.feasibility_audit_fingerprint
-            ),
+            native_feasibility_audit_fingerprint=_audit_evidence_fingerprint(revision),
             maximum_decision_residual=None,
             maximum_objective_residual=None,
             maximum_state_residual=None,
@@ -2279,7 +2290,7 @@ def _build_latent_certificate(
         delivery_date=source.delivery_date,
         status=status,
         interval_audit_fingerprint=interval_audit.audit_fingerprint,
-        native_feasibility_audit_fingerprint=revision.feasibility_audit_fingerprint,
+        native_feasibility_audit_fingerprint=_audit_evidence_fingerprint(revision),
         maximum_decision_residual=by_category["decision"],
         maximum_objective_residual=by_category["objective"],
         maximum_state_residual=by_category["state"],
@@ -2385,7 +2396,7 @@ def _numeric_field_result(
         allowed_envelope=envelope,
         outcome=outcome,
         reason_codes=reasons,
-        native_evidence_fingerprint=revision.revision_fingerprint,
+        native_evidence_fingerprint=_revision_evidence_fingerprint(revision),
         source_evidence_fingerprint=source.record_fingerprint,
         joint_certificate_fingerprint=certificate.certificate_fingerprint,
     )
@@ -2418,7 +2429,7 @@ def _categorical_field_result(
         allowed_envelope=None,
         outcome=outcome,
         reason_codes=reason_codes,
-        native_evidence_fingerprint=revision.revision_fingerprint,
+        native_evidence_fingerprint=_revision_evidence_fingerprint(revision),
         source_evidence_fingerprint=source.record_fingerprint,
         joint_certificate_fingerprint=(
             None if certificate is None else certificate.certificate_fingerprint

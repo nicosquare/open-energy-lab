@@ -210,17 +210,11 @@ def test_two_traces_equal_through_0800_produce_identical_successor_bids(
 
     first_successor = first.records[1].revisions[0]
     second_successor = second.records[1].revisions[0]
-    assert first.state_links[0].state_link_fingerprint == (
-        second.state_links[0].state_link_fingerprint
-    )
+    assert first.state_links[0] == second.state_links[0]
     assert first.state_links[0].replay_checkpoint_kwh == (
         second.state_links[0].replay_checkpoint_kwh
     )
-    assert first.state_links[0].accepted_fixings_fingerprint == (
-        second.state_links[0].accepted_fixings_fingerprint
-    )
-    assert first_successor.input_fingerprint == second_successor.input_fingerprint
-    assert first_successor.problem_fingerprint == second_successor.problem_fingerprint
+    assert first_successor.plan_fingerprint == second_successor.plan_fingerprint
     assert first_successor.energy_decisions_charge_positive_kw == (
         second_successor.energy_decisions_charge_positive_kw
     )
@@ -337,8 +331,7 @@ def test_missing_prefix_retains_optimization_and_blocks_successor(
     )
     assert result.state_links == ()
     assert result.records[0].latest_revision.activation_fingerprint is None
-    assert result.records[0].latest_revision.replay_fingerprint is None
-    assert result.records[0].latest_revision.settlement_fingerprint is None
+    assert result.records[0].latest_revision.realized_metrics == {}
     assert result.records[0].latest_revision.realized_metrics == {}
 
 
@@ -395,12 +388,10 @@ def test_independent_days_replay_and_settle_without_changing_plan_classification
         assert original.plan_fingerprint == finalized.plan_fingerprint
         assert finalized.plan_classification == expected_classification
         assert finalized.activation_fingerprint is not None
-        assert finalized.replay_fingerprint is not None
-        assert finalized.settlement_fingerprint is not None
+        assert finalized.realized_metrics
         assert finalized.initial_stored_energy_kwh == pytest.approx(10.0)
         assert finalized.realized_terminal_stored_energy_kwh is not None
         assert finalized.carried_stored_energy_kwh is None
-        assert finalized.state_link_fingerprint is None
         assert finalized.realized_metrics["throughput_kwh"] >= 0.0
         assert (
             finalized.realized_metrics[
@@ -493,8 +484,7 @@ def test_independent_days_without_activation_retain_explicit_optimization_only_e
     for envelope in result.records:
         revision = envelope.latest_revision
         assert revision.activation_fingerprint is None
-        assert revision.replay_fingerprint is None
-        assert revision.settlement_fingerprint is None
+        assert revision.realized_metrics == {}
         assert revision.realized_terminal_stored_energy_kwh is None
         assert revision.realized_metrics == {}
         assert revision.objective_value_eur is not None
@@ -562,7 +552,7 @@ def test_four_date_chain_retains_original_provisional_finalized_and_edges() -> N
         result.records[0].revisions[-1].plan_fingerprint
     )
     assert result.records[-1].classification.comparison_eligible is False
-    assert result.records[-1].latest_revision.replay_fingerprint is not None
+    assert result.records[-1].latest_revision.realized_metrics
     assert result.finalized_parity_eligible_dates == AUTHORED_DELIVERY_DATES[1:3]
     assert result.finalized_parity_exclusions["2023-06-17"] == (
         "execution_role:warm-up",
@@ -638,15 +628,10 @@ def test_three_day_midnight_chains_separate_source_rounding_and_native_precision
         and revision.latest_revision.modeled_terminal_stored_energy_kwh is None
         for revision in (*source.records, *native.records)
     )
-    assert tuple(item.revisions[0].problem_fingerprint for item in source.records) != (
-        tuple(item.revisions[0].problem_fingerprint for item in native.records)
-    )
     assert tuple(item.revisions[0].plan_fingerprint for item in source.records) != (
         tuple(item.revisions[0].plan_fingerprint for item in native.records)
     )
-    assert tuple(item.state_link_fingerprint for item in source.state_links) != (
-        tuple(item.state_link_fingerprint for item in native.state_links)
-    )
+    assert source.state_links != native.state_links
     assert source.semantic_fingerprint != native.semantic_fingerprint
 
     # Script 13 is replayed as an accepted arbitrage-only plan through the same
@@ -655,8 +640,7 @@ def test_three_day_midnight_chains_separate_source_rounding_and_native_precision
         item.latest_revision.plan_classification == "arbitrage_only"
         and item.latest_revision.fcr_capacity_kw == (0.0,) * 6
         and item.latest_revision.activation_fingerprint is not None
-        and item.latest_revision.replay_fingerprint is not None
-        and item.latest_revision.settlement_fingerprint is not None
+        and item.latest_revision.realized_metrics
         for item in source.records
     )
     source_aggregates = _aggregate_by_id(source)

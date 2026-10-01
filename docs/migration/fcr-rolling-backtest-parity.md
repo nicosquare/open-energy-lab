@@ -159,6 +159,14 @@ and plan fingerprint
 No optional source runtime, network, credentials, Julia, Gurobi, or external
 activation CSV was used by this checkpoint.
 
+> Note (2026-10-01, consolidation steps A5b–A5c): these values were later
+> regenerated when in-memory fingerprints were removed and the spec-numbered
+> strings were renamed (`docs/dev/consolidation.md`). The time-contract and
+> schedule hashes are unchanged. Current pins live in
+> `tests/unit/control/test_robust_fcr_problem.py`,
+> `tests/unit/control/test_robust_fcr_solver.py` and
+> `tests/integration/control/test_robust_fcr_highs.py`.
+
 ### Phase 3 — five executable profile families
 
 The pure manifest/crosswalk/oracle contracts, additive Pyomo formulations,

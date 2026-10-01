@@ -137,7 +137,6 @@ def test_0800_fixed_overlap_solves_with_40_160_10_frame_and_retains_edges(
     assert closeout_revision.lifecycle_status == "unfinalized"
     assert closeout_revision.plan_classification == "robust_candidate"
     assert closeout_revision.plan_fingerprint is not None
-    assert closeout_revision.feasibility_audit_fingerprint is not None
     assert max(closeout_revision.feasibility_slacks.values(), default=0.0) <= 1e-6
     assert tuple(item.revision_kind for item in result.records[0].revisions) == (
         "original",

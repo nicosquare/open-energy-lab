@@ -17,6 +17,7 @@ from .fcr_rolling_backtest import (
     RollingFCRValidationError,
     RollingFCRStateLink,
     _fingerprint,
+    _stable_runtime,
     aggregate_rolling_fcr_records,
     assess_rolling_fcr_resume,
     derive_rolling_fcr_state_carry,
@@ -438,23 +439,14 @@ def _solve_day(
 def _result_fields(result: object) -> dict[str, object]:
     solver = result.solver
     decisions = result.decisions
-    semantic_fingerprint = getattr(
-        result,
-        "semantic_result_fingerprint",
-        getattr(result, "semantic_fingerprint", None),
-    )
     audit = getattr(result, "feasibility_audit", None)
     return {
-        "solve_result_fingerprint": semantic_fingerprint,
         "solve_status": solver.solve_status,
         "termination_status": solver.termination_status,
         "objective_value_eur": solver.objective_value_eur,
         "best_upper_bound_eur": solver.best_upper_bound_eur,
         "absolute_gap_eur": solver.absolute_gap_eur,
         "relative_gap": solver.relative_gap,
-        "feasibility_audit_fingerprint": (
-            None if audit is None else audit.audit_fingerprint
-        ),
         "feasibility_slacks": (
             {} if audit is None else dict(audit.modeled_slacks)
         ),
@@ -491,12 +483,6 @@ def _solved_day_from_result(
         revision_kind="original",
         lifecycle_status=lifecycle_status,
         creation_cause="profile_optimization_completed",
-        input_fingerprint=day_input.day_input_fingerprint,
-        problem_fingerprint=getattr(
-            problem,
-            "problem_fingerprint",
-            getattr(problem, "rolling_problem_fingerprint", None),
-        ),
         plan_fingerprint=None if plan is None else plan.plan_fingerprint,
         plan_classification=plan_classification,
         initial_stored_energy_kwh=day_input.battery.initial_stored_energy_kwh,
@@ -527,9 +513,6 @@ def _append_revision(
             "appended revision number does not follow immutable history"
         )
     return DeliveryDateRecordEnvelope(
-        manifest_fingerprint=envelope.manifest_fingerprint,
-        profile_fingerprint=envelope.profile_fingerprint,
-        profile_id=envelope.profile_id,
         classification=envelope.classification,
         predecessor_date=envelope.predecessor_date,
         continuity_segment_id=envelope.continuity_segment_id,
@@ -547,9 +530,6 @@ def _envelope_for_solved_day(
     continuity_segment_id: str | None = None,
 ) -> DeliveryDateRecordEnvelope:
     return DeliveryDateRecordEnvelope(
-        manifest_fingerprint=manifest.manifest_fingerprint,
-        profile_fingerprint=manifest.profile.profile_fingerprint,
-        profile_id=manifest.profile.profile_id,
         classification=solved.day_input.date_classification,
         predecessor_date=predecessor_date,
         continuity_segment_id=(
@@ -577,9 +557,11 @@ def _build_0800_successor_problem(
         "problem_fingerprint",
         getattr(predecessor.problem, "rolling_problem_fingerprint", None),
     )
-    predecessor_result_fingerprint = _result_fields(predecessor.result)[
-        "solve_result_fingerprint"
-    ]
+    predecessor_result_fingerprint = getattr(
+        predecessor.result,
+        "semantic_result_fingerprint",
+        getattr(predecessor.result, "semantic_fingerprint", None),
+    )
     fixings = extract_accepted_predecessor_fixings(
         plan=predecessor.plan,
         predecessor_problem_fingerprint=predecessor_problem_fingerprint,
@@ -671,21 +653,11 @@ def _cutoff_state_link(
         carried_stored_energy_kwh=carried,
         rounding_policy=manifest.numeric_policy.state_carry_policy,
         source_interval_kwh=cutoff.state_carry_evidence.source_interval_kwh,
-        predecessor_plan_fingerprint=predecessor.plan.plan_fingerprint,
-        replay_fingerprint=cutoff.causal_replay_fingerprint,
         activation_fingerprint=cutoff.causal_activation_fingerprint,
         continuity_segment_id=f"{manifest.study_id}-segment-0",
         reconciles=(
             abs(successor_input.battery.initial_stored_energy_kwh - carried)
             <= manifest.numeric_policy.state_link_tolerance_kwh
-        ),
-        accepted_fixings_fingerprint=fixings.fixings_fingerprint,
-        successor_problem_fingerprint=(
-            successor_problem.rolling_problem_fingerprint
-        ),
-        causal_prefix_fingerprint=cutoff.causal_replay_fingerprint,
-        rounding_evidence_fingerprint=(
-            cutoff.state_carry_evidence.evidence_fingerprint
         ),
         successor_initial_stored_energy_kwh=(
             successor_input.battery.initial_stored_energy_kwh
@@ -907,17 +879,9 @@ def _midnight_state_link(
         carried_stored_energy_kwh=carry.carried_stored_energy_kwh,
         rounding_policy=carry.state_carry_policy,
         source_interval_kwh=carry.source_interval_kwh,
-        predecessor_plan_fingerprint=predecessor.plan.plan_fingerprint,
-        replay_fingerprint=replay.report.semantic_fingerprint,
         activation_fingerprint=replay.activation_fingerprint,
         continuity_segment_id=continuity_segment_id,
         reconciles=True,
-        successor_problem_fingerprint=getattr(
-            successor_problem,
-            "problem_fingerprint",
-            getattr(successor_problem, "rolling_problem_fingerprint", None),
-        ),
-        rounding_evidence_fingerprint=carry.evidence_fingerprint,
         successor_initial_stored_energy_kwh=(
             successor_input.battery.initial_stored_energy_kwh
         ),
@@ -973,17 +937,9 @@ def _caller_state_link(
         carried_stored_energy_kwh=value,
         rounding_policy="caller_supplied",
         source_interval_kwh=(value, value),
-        predecessor_plan_fingerprint=None,
-        replay_fingerprint=None,
         activation_fingerprint=None,
         continuity_segment_id=continuity_segment_id,
         reconciles=True,
-        successor_problem_fingerprint=getattr(
-            successor_problem,
-            "problem_fingerprint",
-            getattr(successor_problem, "rolling_problem_fingerprint", None),
-        ),
-        rounding_evidence_fingerprint=declaration.state_fingerprint,
         successor_initial_stored_energy_kwh=(
             successor_input.battery.initial_stored_energy_kwh
         ),
@@ -998,8 +954,6 @@ def _finalized_midnight_revision(
     replay: _MidnightReplayEvidence,
     *,
     revision_number: int,
-    predecessor_revision_fingerprint: str,
-    state_link_fingerprint: str | None,
 ) -> RollingFCRDayRevision:
     fields = _result_fields(solved.result)
     carry = replay.state_carry_evidence
@@ -1008,21 +962,9 @@ def _finalized_midnight_revision(
         revision_kind="finalized",
         lifecycle_status="finalized",
         creation_cause="same_day_replay_completed",
-        input_fingerprint=solved.day_input.day_input_fingerprint,
-        problem_fingerprint=getattr(
-            solved.problem,
-            "problem_fingerprint",
-            getattr(solved.problem, "rolling_problem_fingerprint", None),
-        ),
         plan_fingerprint=solved.plan.plan_fingerprint,
         plan_classification=solved.plan_classification,
         activation_fingerprint=replay.activation_fingerprint,
-        replay_fingerprint=replay.report.semantic_fingerprint,
-        settlement_fingerprint=_fingerprint(
-            dict(replay.report.settlement_components_eur)
-        ),
-        state_link_fingerprint=state_link_fingerprint,
-        predecessor_revision_fingerprint=predecessor_revision_fingerprint,
         initial_stored_energy_kwh=replay.report.initial_stored_energy_kwh,
         realized_terminal_stored_energy_kwh=(
             replay.report.terminal_stored_energy_kwh
@@ -1051,22 +993,9 @@ def _finalized_independent_revision(
         revision_kind="finalized",
         lifecycle_status="finalized",
         creation_cause="same_day_replay_completed",
-        input_fingerprint=solved.day_input.day_input_fingerprint,
-        problem_fingerprint=getattr(
-            solved.problem,
-            "problem_fingerprint",
-            getattr(solved.problem, "rolling_problem_fingerprint", None),
-        ),
         plan_fingerprint=solved.plan.plan_fingerprint,
         plan_classification=solved.plan_classification,
         activation_fingerprint=activation_fingerprint,
-        replay_fingerprint=report.semantic_fingerprint,
-        settlement_fingerprint=_fingerprint(
-            dict(report.settlement_components_eur)
-        ),
-        predecessor_revision_fingerprint=(
-            solved.original_revision.revision_fingerprint
-        ),
         initial_stored_energy_kwh=report.initial_stored_energy_kwh,
         realized_terminal_stored_energy_kwh=(
             report.terminal_stored_energy_kwh
@@ -1095,9 +1024,6 @@ def _failure_envelope(
         revision_kind="original",
         lifecycle_status=lifecycle_status,
         creation_cause=reason,
-        input_fingerprint=None,
-        problem_fingerprint=None,
-        solve_result_fingerprint=None,
         plan_fingerprint=None,
         plan_classification=manifest.profile.plan_classification,
         solve_status=None,
@@ -1106,16 +1032,12 @@ def _failure_envelope(
         best_upper_bound_eur=None,
         absolute_gap_eur=None,
         relative_gap=None,
-        feasibility_audit_fingerprint=None,
         feasibility_slacks={},
         energy_decisions_charge_positive_kw=None,
         fcr_capacity_kw=None,
         diagnostics=(reason,),
     )
     return DeliveryDateRecordEnvelope(
-        manifest_fingerprint=manifest.manifest_fingerprint,
-        profile_fingerprint=manifest.profile.profile_fingerprint,
-        profile_id=manifest.profile.profile_id,
         classification=classification,
         predecessor_date=predecessor_date,
         continuity_segment_id=(
@@ -1156,23 +1078,9 @@ def _provisional_revision(
         revision_kind="provisional",
         lifecycle_status="provisional",
         creation_cause="causal_0800_prefix_replayed_before_successor_solve",
-        input_fingerprint=solved.day_input.day_input_fingerprint,
-        problem_fingerprint=getattr(
-            solved.problem,
-            "problem_fingerprint",
-            getattr(solved.problem, "rolling_problem_fingerprint", None),
-        ),
         plan_fingerprint=solved.plan.plan_fingerprint,
         plan_classification=solved.plan_classification,
         activation_fingerprint=cutoff.prefix_activation_fingerprint,
-        replay_fingerprint=cutoff.report.semantic_fingerprint,
-        settlement_fingerprint=_fingerprint(
-            dict(cutoff.report.settlement_components_eur)
-        ),
-        state_link_fingerprint=state_link.state_link_fingerprint,
-        predecessor_revision_fingerprint=(
-            solved.original_revision.revision_fingerprint
-        ),
         initial_stored_energy_kwh=(
             cutoff.report.initial_stored_energy_kwh
         ),
@@ -1194,24 +1102,10 @@ def _finalized_revision(
     solved: _SolvedRollingDay,
     cutoff: _CausalCutoffEvidence,
     tail_report: object,
-    state_link: RollingFCRStateLink,
-    provisional_revision: RollingFCRDayRevision,
-    finalizer: _SolvedRollingDay,
     *,
     initialization_only: bool,
 ) -> RollingFCRDayRevision:
     fields = _result_fields(solved.result)
-    replay_fingerprint = _fingerprint(
-        {
-            "semantics": "immutable-0800-finalization-v1",
-            "unchanged_plan_fingerprint": solved.plan.plan_fingerprint,
-            "prefix_replay_fingerprint": cutoff.report.semantic_fingerprint,
-            "tail_replay_fingerprint": tail_report.semantic_fingerprint,
-            "rounded_tail_initial_stored_energy_kwh": (
-                cutoff.handed_off_checkpoint_kwh
-            ),
-        }
-    )
     activation_fingerprint = _fingerprint(
         {
             "prefix": cutoff.prefix_activation_fingerprint,
@@ -1219,18 +1113,6 @@ def _finalized_revision(
         }
     )
     realized_metrics = _combined_realized_metrics(cutoff.report, tail_report)
-    settlement_fingerprint = _fingerprint(
-        {
-            key: value
-            for key, value in realized_metrics.items()
-            if key.startswith("settlement.")
-        }
-    )
-    finalizer_problem_fingerprint = getattr(
-        finalizer.problem,
-        "problem_fingerprint",
-        getattr(finalizer.problem, "rolling_problem_fingerprint", None),
-    )
     return RollingFCRDayRevision(
         revision_number=2,
         revision_kind="finalized",
@@ -1238,25 +1120,9 @@ def _finalized_revision(
             "initialization_only" if initialization_only else "finalized"
         ),
         creation_cause="successor_solve_triggered_unchanged_plan_tail_replay",
-        input_fingerprint=solved.day_input.day_input_fingerprint,
-        problem_fingerprint=getattr(
-            solved.problem,
-            "problem_fingerprint",
-            getattr(solved.problem, "rolling_problem_fingerprint", None),
-        ),
         plan_fingerprint=solved.plan.plan_fingerprint,
         plan_classification=solved.plan_classification,
         activation_fingerprint=activation_fingerprint,
-        replay_fingerprint=replay_fingerprint,
-        settlement_fingerprint=settlement_fingerprint,
-        state_link_fingerprint=state_link.state_link_fingerprint,
-        predecessor_revision_fingerprint=(
-            provisional_revision.revision_fingerprint
-        ),
-        finalizer_problem_fingerprint=finalizer_problem_fingerprint,
-        finalizer_result_fingerprint=_result_fields(finalizer.result)[
-            "solve_result_fingerprint"
-        ],
         initial_stored_energy_kwh=cutoff.report.initial_stored_energy_kwh,
         realized_cutoff_stored_energy_kwh=cutoff.replay_checkpoint_kwh,
         handed_off_cutoff_stored_energy_kwh=(
@@ -1285,27 +1151,10 @@ def _unfinalized_revision(
         revision_kind=("provisional" if cutoff is not None else "optimization_only"),
         lifecycle_status="unfinalized",
         creation_cause="following_0800_closeout_solve_unavailable",
-        input_fingerprint=solved.day_input.day_input_fingerprint,
-        problem_fingerprint=getattr(
-            solved.problem,
-            "problem_fingerprint",
-            getattr(solved.problem, "rolling_problem_fingerprint", None),
-        ),
         plan_fingerprint=solved.plan.plan_fingerprint,
         plan_classification=solved.plan_classification,
-        predecessor_revision_fingerprint=(
-            solved.original_revision.revision_fingerprint
-        ),
         activation_fingerprint=(
             None if cutoff is None else cutoff.prefix_activation_fingerprint
-        ),
-        replay_fingerprint=(
-            None if cutoff is None else cutoff.report.semantic_fingerprint
-        ),
-        settlement_fingerprint=(
-            None
-            if cutoff is None
-            else _fingerprint(dict(cutoff.report.settlement_components_eur))
         ),
         initial_stored_energy_kwh=(
             solved.day_input.battery.initial_stored_energy_kwh
@@ -1491,9 +1340,6 @@ def _run_causal_0800_study(
                         pending_solved,
                         pending_cutoff,
                         tail_report,
-                        state_link,
-                        provisional_revision,
-                        solved,
                         initialization_only=(
                             pending_solved.day_input.date_classification.execution_role
                             == "warm-up"
@@ -1711,7 +1557,6 @@ def _run_midnight_carry_study(
             continue
 
         incoming_link: RollingFCRStateLink | None = None
-        incoming_predecessor_revision: str | None = None
         try:
             if pending_solved is not None and pending_replay is not None:
                 if declaration is not None:
@@ -1742,16 +1587,11 @@ def _run_midnight_carry_study(
                     pending_solved,
                     pending_replay,
                     revision_number=len(predecessor_envelope.revisions),
-                    predecessor_revision_fingerprint=(
-                        predecessor_envelope.latest_revision.revision_fingerprint
-                    ),
-                    state_link_fingerprint=incoming_link.state_link_fingerprint,
                 )
                 records[predecessor_delivery_date] = _append_revision(
                     predecessor_envelope,
                     finalized,
                 )
-                incoming_predecessor_revision = finalized.revision_fingerprint
             elif declaration is not None:
                 active_segment = f"{manifest.study_id}-segment-{len(segment_members)}"
                 segment_members[active_segment] = []
@@ -1808,15 +1648,6 @@ def _run_midnight_carry_study(
                 successor_input,
                 problem,
             )
-            if incoming_link is not None:
-                original = replace(
-                    solved.original_revision,
-                    state_link_fingerprint=incoming_link.state_link_fingerprint,
-                    predecessor_revision_fingerprint=(
-                        incoming_predecessor_revision
-                    ),
-                )
-                solved = replace(solved, original_revision=original)
             if solved.plan is None or solved.result.solver.solve_status not in {
                 "optimal",
                 "feasible",
@@ -1847,10 +1678,6 @@ def _run_midnight_carry_study(
                         solved,
                         replay,
                         revision_number=len(envelope.revisions),
-                        predecessor_revision_fingerprint=(
-                            envelope.latest_revision.revision_fingerprint
-                        ),
-                        state_link_fingerprint=None,
                     ),
                 )
                 pending_solved = None
@@ -1881,10 +1708,6 @@ def _run_midnight_carry_study(
                 pending_solved,
                 pending_replay,
                 revision_number=len(envelope.revisions),
-                predecessor_revision_fingerprint=(
-                    envelope.latest_revision.revision_fingerprint
-                ),
-                state_link_fingerprint=None,
             ),
         )
     ordered_records = tuple(records[item.delivery_date] for item in manifest.dates)
@@ -2183,8 +2006,8 @@ def run_initial_rolling_fcr_study(
                 "resume contains more dates than the requested study"
             )
         fresh_prefix = fresh.records[: len(resume_from.records)]
-        if tuple(item.envelope_fingerprint for item in fresh_prefix) != tuple(
-            item.envelope_fingerprint for item in resume_from.records
+        if tuple(_stable_runtime(item.to_dict()) for item in fresh_prefix) != tuple(
+            _stable_runtime(item.to_dict()) for item in resume_from.records
         ):
             raise RollingFCRValidationError(
                 "resume day input, activation, revision, or carried-state evidence changed"

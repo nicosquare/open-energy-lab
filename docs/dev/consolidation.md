@@ -250,7 +250,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     **Python >= 3.12** (agreed 2026-10-01; caveat: `tpm_for_sp` pins
     < 3.12). CI on GitHub: tests 3.12–3.14 about 3 min each, slow about
     6 min, notebooks about 3 min, all green.
-- [ ] **A5 provenance trim** (D2). Keep fingerprints on persisted artifacts
+- [x] **A5 provenance trim** (D2). Keep fingerprints on persisted artifacts
   and results only. Add one versioned JSON artifact base shared by weather,
   demand, market, and the planning dataset. Settle one loading behavior for
   the coercing helpers left in weather, demand, and planning, and decide the
@@ -303,9 +303,22 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     hash values. Only the remaining `feature-016` mention is a tpm
     docstring (Track B). Checks: `pytest` 2174 passed + 4 xfailed,
     `-m slow` 34, `-m notebook` 7.
-  - [ ] A5c-2: slim the persisted rolling-result format (field-by-field
-    proposal first); also the rolling-backtest hashes deferred from A5b
-    and the stale pins in `docs/migration/fcr-rolling-backtest-parity.md`.
+  - [x] A5c-2 (scope agreed 2026-10-01 from a field-by-field map): the
+    saved `RollingFCRStudyResult` (now v2) keeps one seal, the resume
+    identity (manifest, profile, requested day inputs, supplied
+    activations) and the `plan_fingerprint`/`activation_fingerprint`
+    links. Nested seals, links to unsaved objects, `fingerprint_evidence`,
+    aggregate `source_fingerprints`, `stable_runtime_evidence` and
+    per-record identity copies are gone. A two-day test study goes from
+    28.7 KB / 124 hashes to 15.5 KB / 14. Resume compares content.
+    Manifest, profile and day-input hashes are computed properties. src
+    −558 lines net. Evidence (commit `ba4d380`): every saved result lost
+    exactly those paths, gained none, and changed no other value besides
+    `semantics_version`. Kept on purpose: producer lineage maps (fixings,
+    cutoff checkpoint, numeric policy, caller state, carry evidence,
+    battery binding), as decided in A5b. The stale pins in
+    `docs/migration/fcr-rolling-backtest-parity.md` carry a dated note.
+    Checks: `pytest` 2174 passed + 4 xfailed, `-m slow` 34, `-m notebook` 7.
 - [ ] **A6 merge variants**, one PR per package:
   - [ ] market: one `MarketArtifact`, one activation sign convention, a shared
     HTTP layer for ENTSO-E and RTE.

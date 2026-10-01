@@ -544,8 +544,6 @@ def build_day_inputs(
             cutoff = time_contract.delivery_period.start_utc - timedelta(hours=12)
         values.append(
             RollingFCRDayInput(
-                manifest_fingerprint=manifest.manifest_fingerprint,
-                profile_fingerprint=manifest.profile.profile_fingerprint,
                 date_classification=classification,
                 time_contract=time_contract,
                 battery=battery,
@@ -635,8 +633,6 @@ def build_explicit_day_inputs(
         )
         values.append(
             RollingFCRDayInput(
-                manifest_fingerprint=manifest.manifest_fingerprint,
-                profile_fingerprint=manifest.profile.profile_fingerprint,
                 date_classification=manifest.dates[len(values)],
                 time_contract=contract,
                 battery=manifest.battery_binding.optimization_battery,
