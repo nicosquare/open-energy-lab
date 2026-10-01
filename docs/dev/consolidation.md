@@ -288,8 +288,9 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     resume (accepted). Evidence: a `to_dict()` snapshot of the control,
     simulator and parity tests is identical to `main` apart from the
     removed keys and hash values (tooling kept in history,
-    commit `daa4287`). Deferred: stacked-service replay hashes (they feed
-    restoration settlement, A6); producer lineage
+    commit `daa4287`). Deferred: stacked-service replay hashes (A6; the
+    stated reason, feeding restoration settlement, was wrong, see A6
+    simulator); producer lineage
     (`producer_input_fingerprints`, `configuration_fingerprint`), which is
     caller-supplied provenance with a look-ahead guard; and the rolling
     backtest's acceptance policy, battery binding, numeric policy and day
@@ -343,8 +344,19 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
       HTTPS-to-HTTP redirects and oversized Content-Length before reading
       (new tests pin both). Net +25 src lines: one implementation of the
       transport safety checks rather than fewer lines.
-  - [ ] simulator: one replay driver for stacked FCR, aFRR, and mFRR; one step
-    loop; one FCR settlement path.
+  - [x] simulator (mapped and scoped 2026-10-01). Two tracker items were
+    already true: stacked FCR has one replay kernel shared by the stacked
+    replay, bid evaluation and rolling evaluation, and
+    `battery.apply_power_request` is the only step. Merging stacked with
+    aFRR/mFRR, or unifying their saturation rules, would change pinned
+    results for little gain. Done: one price-alignment loop for both FCR
+    settlements (each keeps its own arithmetic and `sum()`/`+=`, so bits
+    are identical), the dead `_directional_energy` deleted, and the stacked
+    replay result hashes its own `to_dict()` (values unchanged). Correction
+    to A5b: the stacked replay hashes never fed the restoration settlement
+    (that reads the aFRR/mFRR results' own hash). Correction to A5b/A5c:
+    the opt-in `external_reference_data` tests do run on this machine; one
+    still read a hash removed in A5b and is fixed; all 6 pass.
   - [ ] control: aFRR and mFRR combined with a product parameter; one rolling
     orchestrator with a cutoff strategy; the rolling problem folded into the
     base robust problem.
