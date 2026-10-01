@@ -1,0 +1,63 @@
+groups: 2953 -> 2992
+dropped AggregateMetricEvidence: ['aggregate_fingerprint', 'source_fingerprints']
+dropped ContinuitySegment: ['continuity_fingerprint']
+dropped DeliveryDateClassification: ['classification_fingerprint']
+dropped DeliveryDateRecordEnvelope: ['classification_fingerprint', 'envelope_fingerprint', 'feasibility_audit_fingerprint', 'finalizer_problem_fingerprint', 'finalizer_result_fingerprint', 'fingerprint_evidence', 'input_fingerprint', 'manifest_fingerprint', 'predecessor_revision_fingerprint', 'problem_fingerprint', 'profile_fingerprint', 'replay_fingerprint', 'revision_fingerprint', 'settlement_fingerprint', 'solve_result_fingerprint', 'state_link_fingerprint']
+dropped RobustFCRRollingBiddingProblem: ['profile_fingerprint']
+dropped RollingFCRDayRevision: ['feasibility_audit_fingerprint', 'finalizer_problem_fingerprint', 'finalizer_result_fingerprint', 'fingerprint_evidence', 'input_fingerprint', 'predecessor_revision_fingerprint', 'problem_fingerprint', 'replay_fingerprint', 'revision_fingerprint', 'settlement_fingerprint', 'solve_result_fingerprint', 'state_link_fingerprint']
+dropped RollingFCRExperimentProfile: ['profile_fingerprint']
+dropped RollingFCRStateLink: ['accepted_fixings_fingerprint', 'causal_prefix_fingerprint', 'predecessor_plan_fingerprint', 'replay_fingerprint', 'rounding_evidence_fingerprint', 'state_link_fingerprint', 'successor_problem_fingerprint']
+dropped RollingFCRStudyManifest: ['classification_fingerprint', 'manifest_fingerprint', 'profile_fingerprint']
+dropped RollingFCRStudyResult: ['accepted_fixings_fingerprint', 'aggregate_fingerprint', 'causal_prefix_fingerprint', 'classification_fingerprint', 'continuity_fingerprint', 'envelope_fingerprint', 'feasibility_audit_fingerprint', 'finalizer_problem_fingerprint', 'finalizer_result_fingerprint', 'fingerprint_evidence', 'input_fingerprint', 'manifest_fingerprint', 'predecessor_plan_fingerprint', 'predecessor_revision_fingerprint', 'problem_fingerprint', 'profile_fingerprint', 'replay_fingerprint', 'revision_fingerprint', 'rounding_evidence_fingerprint', 'settlement_fingerprint', 'solve_result_fingerprint', 'source_fingerprints', 'state_link_fingerprint', 'successor_problem_fingerprint']
+new caller: 152
+    ('tests/integration/control/test_fcr_rolling_highs.py::test_0800_fixed_overlap_solves_with_40_160_10_frame_and_retains_edges', 'DeliveryDateRecordEnvelope')
+    ('tests/integration/control/test_fcr_rolling_highs.py::test_0800_fixed_overlap_solves_with_40_160_10_frame_and_retains_edges', 'RollingFCRDayInput')
+    ('tests/integration/control/test_fcr_rolling_highs.py::test_0800_fixed_overlap_solves_with_40_160_10_frame_and_retains_edges', 'RollingFCRDayRevision')
+    ('tests/integration/control/test_fcr_rolling_highs.py::test_0800_fixed_overlap_solves_with_40_160_10_frame_and_retains_edges', 'RollingFCRStudyManifest')
+    ('tests/integration/control/test_fcr_rolling_highs.py::test_bounded_profile_solves_return_ordered_classified_evidence[script-11-relaxation-reset-midnight-v1-diagnostic_non_robust]', 'DeliveryDateRecordEnvelope')
+    ('tests/integration/control/test_fcr_rolling_highs.py::test_bounded_profile_solves_return_ordered_classified_evidence[script-11-relaxation-reset-midnight-v1-diagnostic_non_robust]', 'RollingFCRDayInput')
+    ('tests/integration/control/test_fcr_rolling_highs.py::test_bounded_profile_solves_return_ordered_classified_evidence[script-11-relaxation-reset-midnight-v1-diagnostic_non_robust]', 'RollingFCRDayRevision')
+    ('tests/integration/control/test_fcr_rolling_highs.py::test_bounded_profile_solves_return_ordered_classified_evidence[script-11-relaxation-reset-midnight-v1-diagnostic_non_robust]', 'RollingFCRStudyManifest')
+    ('tests/integration/control/test_fcr_rolling_highs.py::test_bounded_profile_solves_return_ordered_classified_evidence[script-12-restriction-reset-midnight-v1-robust_candidate]', 'DeliveryDateRecordEnvelope')
+    ('tests/integration/control/test_fcr_rolling_highs.py::test_bounded_profile_solves_return_ordered_classified_evidence[script-12-restriction-reset-midnight-v1-robust_candidate]', 'RollingFCRDayInput')
+    ('tests/integration/control/test_fcr_rolling_highs.py::test_bounded_profile_solves_return_ordered_classified_evidence[script-12-restriction-reset-midnight-v1-robust_candidate]', 'RollingFCRDayRevision')
+    ('tests/integration/control/test_fcr_rolling_highs.py::test_bounded_profile_solves_return_ordered_classified_evidence[script-12-restriction-reset-midnight-v1-robust_candidate]', 'RollingFCRStudyManifest')
+    ('tests/integration/control/test_fcr_rolling_highs.py::test_bounded_profile_solves_return_ordered_classified_evidence[script-13-arbitrage-only-midnight-v1-arbitrage_only]', 'DeliveryDateRecordEnvelope')
+    ('tests/integration/control/test_fcr_rolling_highs.py::test_bounded_profile_solves_return_ordered_classified_evidence[script-13-arbitrage-only-midnight-v1-arbitrage_only]', 'RollingFCRDayInput')
+    ('tests/integration/control/test_fcr_rolling_highs.py::test_bounded_profile_solves_return_ordered_classified_evidence[script-13-arbitrage-only-midnight-v1-arbitrage_only]', 'RollingFCRDayRevision')
+content differs: 14
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_authored_command_checkpoint_retains_full_manifest_identity_and_resumes', 'DeliveryDateRecordEnvelope')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_authored_command_checkpoint_retains_full_manifest_identity_and_resumes', 'RollingFCRDayRevision')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_authored_command_checkpoint_retains_full_manifest_identity_and_resumes', 'RollingFCRStudyResult')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_loader_ignores_volatile_runtime_for_identity_but_detects_solver_version', 'DeliveryDateRecordEnvelope')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_loader_ignores_volatile_runtime_for_identity_but_detects_solver_version', 'RollingFCRDayRevision')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_loader_ignores_volatile_runtime_for_identity_but_detects_solver_version', 'RollingFCRStudyResult')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_loader_rejects_unknown_schema_keys_and_nested_tampering', 'DeliveryDateRecordEnvelope')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_loader_rejects_unknown_schema_keys_and_nested_tampering', 'RollingFCRDayRevision')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_loader_rejects_unknown_schema_keys_and_nested_tampering', 'RollingFCRStudyResult')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_resume_rejects_changed_day_input_activation_or_nested_record', 'RobustFCRPriceInputs')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_resume_rejects_changed_day_input_activation_or_nested_record', 'RobustFCRTimeContract')
+    ('tests/unit/control/test_fcr_rolling_results.py::test_result_contract_is_deeply_immutable_and_to_dict_is_detached', 'DeliveryDateRecordEnvelope')
+    ('tests/unit/control/test_fcr_rolling_results.py::test_result_contract_is_deeply_immutable_and_to_dict_is_detached', 'RollingFCRDayRevision')
+    ('tests/unit/control/test_fcr_rolling_results.py::test_result_contract_is_deeply_immutable_and_to_dict_is_detached', 'RollingFCRStudyResult')
+PERSISTED CHANGED: 4
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_authored_command_checkpoint_retains_full_manifest_identity_and_resumes', 'RollingFCRStudyResult')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_loader_ignores_volatile_runtime_for_identity_but_detects_solver_version', 'RollingFCRStudyResult')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_loader_rejects_unknown_schema_keys_and_nested_tampering', 'RollingFCRStudyResult')
+    ('tests/unit/control/test_fcr_rolling_results.py::test_result_contract_is_deeply_immutable_and_to_dict_is_detached', 'RollingFCRStudyResult')
+no longer called: 113
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_process_integrity_errors_are_not_normalized_as_failed_dates', 'AcceptedBidPolicy')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_process_integrity_errors_are_not_normalized_as_failed_dates', 'DeliveryDateClassification')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_process_integrity_errors_are_not_normalized_as_failed_dates', 'RobustFCRSolvePolicy')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_process_integrity_errors_are_not_normalized_as_failed_dates', 'RobustFCRTimeContract')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_process_integrity_errors_are_not_normalized_as_failed_dates', 'RollingFCRBatteryBinding')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_process_integrity_errors_are_not_normalized_as_failed_dates', 'RollingFCRDataDescriptor')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_process_integrity_errors_are_not_normalized_as_failed_dates', 'RollingFCRExperimentProfile')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_process_integrity_errors_are_not_normalized_as_failed_dates', 'RollingFCRNumericPolicy')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_process_integrity_errors_are_not_normalized_as_failed_dates', 'TerminalStoredEnergyRule')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_round_trip_loader_recomputes_every_nested_fingerprint', 'AggregateMetricEvidence')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_round_trip_loader_recomputes_every_nested_fingerprint', 'ContinuitySegment')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_round_trip_loader_recomputes_every_nested_fingerprint', 'DeliveryDateClassification')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_round_trip_loader_recomputes_every_nested_fingerprint', 'DeliveryDateRecordEnvelope')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_round_trip_loader_recomputes_every_nested_fingerprint', 'RollingFCRDayRevision')
+    ('tests/integration/control/test_fcr_rolling_resume.py::test_round_trip_loader_recomputes_every_nested_fingerprint', 'RollingFCRStateLink')
