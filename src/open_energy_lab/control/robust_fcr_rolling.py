@@ -1039,7 +1039,7 @@ def _build_plan(
         producer=BidPlanProducer(
             producer_id="open-energy-lab-fcr-rolling-bidder",
             producer_kind=producer_kind,
-            producer_version=f"feature-015-{classification}-v1",
+            producer_version=f"rolling-fcr-{classification}-v1",
             configuration_fingerprint=problem.rolling_problem_fingerprint,
             configuration_unavailable_reason=None,
         ),
@@ -1067,7 +1067,7 @@ def _build_plan(
         ),
         diagnostics=(
             PlanDiagnostic(
-                code="feature_015_plan_classification",
+                code="rolling_plan_classification",
                 severity="info",
                 field_path="plan_classification",
                 message=f"rolling output is classified {classification}",

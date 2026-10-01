@@ -11,13 +11,12 @@ from dataclasses import dataclass, field, fields, is_dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal, ROUND_HALF_EVEN
 from functools import partial
-import hashlib
-import json
 import math
 from types import MappingProxyType
 from typing import Any, TypeVar
 
 from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.serialization import fingerprint
 from open_energy_lab.core.time import format_utc, utc_datetime
 from open_energy_lab.core.validation import (
     finite,
@@ -142,23 +141,8 @@ def _thaw(value: Any) -> Any:
     return value
 
 
-def _canonical_json(value: object) -> bytes:
-    try:
-        return json.dumps(
-            _thaw(value),
-            allow_nan=False,
-            ensure_ascii=False,
-            separators=(",", ":"),
-            sort_keys=True,
-        ).encode("utf-8")
-    except (TypeError, ValueError) as exc:
-        raise RobustFCRValidationError(
-            f"robust FCR data must be finite canonical JSON: {exc}"
-        ) from exc
-
-
 def _fingerprint(value: object) -> str:
-    return hashlib.sha256(_canonical_json(value)).hexdigest()
+    return fingerprint(_thaw(value), error=RobustFCRValidationError)
 
 
 def _validate_semantics_version(
@@ -1707,12 +1691,12 @@ class RobustFCRSolveResult:
                     ),
                     "meaning": "ex_ante_solver_bound_for_maximization",
                 },
-                "feature_012_realized_settlement_eur": {
+                "realized_settlement_eur": {
                     "value": None,
                     "availability": "evaluation_only_not_in_bid_result",
                     "meaning": "ex_post_realized_settlement",
                 },
-                "feature_012_realized_profit_eur": {
+                "realized_profit_eur": {
                     "value": None,
                     "availability": "evaluation_only_not_in_bid_result",
                     "meaning": "ex_post_realized_profit",
@@ -2666,7 +2650,7 @@ def _build_deployable_plan(
                 code="robust_fcr_solve_evidence",
                 severity="info",
                 field_path=None,
-                message="plan passed the Feature 013 independent deployability audit",
+                message="plan passed the independent deployability audit",
                 evidence_refs=(f"sha256:{solve_evidence_fingerprint}",),
             )
         ]
@@ -2689,7 +2673,7 @@ def _build_deployable_plan(
         producer=BidPlanProducer(
             producer_id="open-energy-lab-robust-fcr-bidder",
             producer_kind="robust",
-            producer_version="feature-013-v1",
+            producer_version="robust-fcr-bidder-v1",
             configuration_fingerprint=problem.problem_fingerprint,
             configuration_unavailable_reason=None,
         ),

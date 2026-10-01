@@ -294,10 +294,18 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     caller-supplied provenance with a look-ahead guard; and the rolling
     backtest's acceptance policy, battery binding, numeric policy and day
     input hashes, which are woven into saved evidence (A5c).
-  - [ ] A5c: slim the persisted rolling-result format, rename the persisted
-    `feature-0NN` strings, fold the robust canonical form into core,
-    regenerate fixtures; also the rolling-backtest hashes deferred from
-    A5b and the stale pins in `docs/migration/fcr-rolling-backtest-parity.md`.
+  - [x] A5c-1 (agreed 2026-10-01 to split A5c in two): robust FCR hashes
+    use core canonical JSON (bytes unchanged: every robust golden pin
+    passes untouched). The 33 persisted `feature-0NN` strings now describe
+    what they are (e.g. `feature-013-v1` -> `robust-fcr-bidder-v1`,
+    `feature_010_market_artifact` -> `market_artifact`); a `to_dict()`
+    snapshot matches `main` once the same renames are applied, apart from
+    hash values. Only the remaining `feature-016` mention is a tpm
+    docstring (Track B). Checks: `pytest` 2174 passed + 4 xfailed,
+    `-m slow` 34, `-m notebook` 7.
+  - [ ] A5c-2: slim the persisted rolling-result format (field-by-field
+    proposal first); also the rolling-backtest hashes deferred from A5b
+    and the stale pins in `docs/migration/fcr-rolling-backtest-parity.md`.
 - [ ] **A6 merge variants**, one PR per package:
   - [ ] market: one `MarketArtifact`, one activation sign convention, a shared
     HTTP layer for ENTSO-E and RTE.

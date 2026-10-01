@@ -102,7 +102,7 @@ def _supplied_activation_fingerprints(
 def _causal_activation_fingerprint(trace: object) -> str:
     return _fingerprint(
         {
-            "semantics": "feature-015-causal-prefix-activation-v1",
+            "semantics": "causal-prefix-activation-v1",
             "covered_period": trace.covered_period.to_dict(),
             "resolution": trace.resolution,
             "value_semantics": trace.value_semantics,
@@ -258,7 +258,7 @@ def _derive_causal_0800_checkpoint(
     causal_activation = _causal_activation_fingerprint(prefix_activation_trace)
     causal_replay = _fingerprint(
         {
-            "semantics": "feature-015-causal-prefix-replay-v1",
+            "semantics": "causal-prefix-replay-v1",
             "plan_fingerprint": solved.plan.plan_fingerprint,
             "activation_prefix_fingerprint": causal_activation,
             "battery_binding_fingerprint": (
@@ -306,7 +306,7 @@ def _diagnostic_relaxation_plan(
         producer=BidPlanProducer(
             producer_id="open-energy-lab-fcr-rolling-relaxation",
             producer_kind="other",
-            producer_version="feature-015-diagnostic-non-robust-v1",
+            producer_version="rolling-diagnostic-non-robust-v1",
             configuration_fingerprint=result.problem_fingerprint,
             configuration_unavailable_reason=None,
         ),
@@ -1007,7 +1007,7 @@ def _finalized_midnight_revision(
         revision_number=revision_number,
         revision_kind="finalized",
         lifecycle_status="finalized",
-        creation_cause="same_day_feature_012_replay_completed",
+        creation_cause="same_day_replay_completed",
         input_fingerprint=solved.day_input.day_input_fingerprint,
         problem_fingerprint=getattr(
             solved.problem,
@@ -1050,7 +1050,7 @@ def _finalized_independent_revision(
         revision_number=1,
         revision_kind="finalized",
         lifecycle_status="finalized",
-        creation_cause="same_day_feature_012_replay_completed",
+        creation_cause="same_day_replay_completed",
         input_fingerprint=solved.day_input.day_input_fingerprint,
         problem_fingerprint=getattr(
             solved.problem,
@@ -1073,7 +1073,7 @@ def _finalized_independent_revision(
         ),
         realized_metrics=_flatten_realized_metrics(report),
         diagnostics=(
-            "accepted_plan_evaluated_by_feature_012",
+            "accepted_plan_evaluated_by_bid_evaluation",
             "independent_day_resets_after_delivery",
             f"plan_classification_preserved:{solved.plan_classification}",
         ),
@@ -1203,7 +1203,7 @@ def _finalized_revision(
     fields = _result_fields(solved.result)
     replay_fingerprint = _fingerprint(
         {
-            "semantics": "feature-015-immutable-0800-finalization-v1",
+            "semantics": "immutable-0800-finalization-v1",
             "unchanged_plan_fingerprint": solved.plan.plan_fingerprint,
             "prefix_replay_fingerprint": cutoff.report.semantic_fingerprint,
             "tail_replay_fingerprint": tail_report.semantic_fingerprint,
@@ -2045,10 +2045,10 @@ def _run_independent_study(
                 failed = replace(
                     solved.original_revision,
                     lifecycle_status="failed",
-                    creation_cause="same_day_feature_012_replay_failed",
+                    creation_cause="same_day_replay_failed",
                     diagnostics=(
                         *solved.original_revision.diagnostics,
-                        _normalized_date_failure("feature_012_replay", exc),
+                        _normalized_date_failure("bid_evaluation_replay", exc),
                     ),
                 )
                 solved = replace(solved, original_revision=failed)
@@ -2114,7 +2114,7 @@ def _run_independent_study(
         ),
         supplied_activation_fingerprints=supplied_activation_fingerprints,
         runtime_metadata={
-            "phase": "independent-feature-012-replay-v1",
+            "phase": "independent-bid-evaluation-replay-v1",
             "bidder_received_activation": False,
             "state_semantics": "reset_after_each_delivery_day",
         },

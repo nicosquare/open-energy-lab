@@ -32,12 +32,12 @@ from .stacked_service import (
 
 FCR_BID_EVALUATION_SEMANTICS_VERSION = "oel.fcr-bid-evaluation.v1"
 FCR_BID_EVALUATION_REPORT_SCHEMA_VERSION = "oel.fcr-bid-evaluation-report.v1"
-STACKED_SERVICE_SETTLEMENT_PROFILE = "feature-010-default-v1"
+STACKED_SERVICE_SETTLEMENT_PROFILE = "stacked-service-default-v1"
 REFERENCE_SETTLEMENT_PROFILE = "robust-storage-bidding-reference-settlement-v1"
 
 _CONTEXT_KINDS = {
     "accepted_plan",
-    "feature_010_market_artifact",
+    "market_artifact",
     "reference_result",
 }
 _SETTLEMENT_PROFILES = {
@@ -212,7 +212,7 @@ class EvaluationMarketContext:
     def __post_init__(self) -> None:
         if self.context_kind not in _CONTEXT_KINDS:
             raise FCRBidEvaluationValidationError(
-                "context kind must be accepted_plan, feature_010_market_artifact, "
+                "context kind must be accepted_plan, market_artifact, "
                 "or reference_result"
             )
         object.__setattr__(
@@ -327,7 +327,7 @@ def build_market_data_context(
             source_unit=day_series.canonical_unit,
             canonical_value=observation.value,
             canonical_unit="EUR/MWh",
-            conversion_id="feature-010-canonical-identity-v1",
+            conversion_id="market-artifact-canonical-identity-v1",
             source_ref=f"day_ahead_price:{index}",
         )
         for index, observation in enumerate(day_observations)
@@ -340,7 +340,7 @@ def build_market_data_context(
             source_unit=fcr_series.canonical_unit,
             canonical_value=observation.value,
             canonical_unit="EUR/MW/h",
-            conversion_id="feature-010-canonical-identity-v1",
+            conversion_id="market-artifact-canonical-identity-v1",
             source_ref=f"fcr_capacity_price:{index}",
         )
         for index, observation in enumerate(fcr_observations)
@@ -355,8 +355,8 @@ def build_market_data_context(
         for index, observation in enumerate(volume_observations)
     }
     return EvaluationMarketContext(
-        context_kind="feature_010_market_artifact",
-        semantics_version="feature-010-market-artifact-context-v1",
+        context_kind="market_artifact",
+        semantics_version="market-artifact-context-v1",
         period=period,
         day_ahead_prices=day_prices,
         fcr_capacity_prices=fcr_prices,
@@ -557,7 +557,7 @@ def build_accepted_plan_market_context(
     }
     return EvaluationMarketContext(
         context_kind="accepted_plan",
-        semantics_version="feature-015-accepted-plan-market-context-v1",
+        semantics_version="accepted-plan-market-context-v1",
         period=period,
         day_ahead_prices=day_prices,
         fcr_capacity_prices=fcr_prices,
