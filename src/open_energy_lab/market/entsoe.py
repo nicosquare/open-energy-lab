@@ -18,7 +18,7 @@ import os
 from pathlib import Path, PurePosixPath
 import time
 from types import MappingProxyType
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -31,6 +31,7 @@ from open_energy_lab.core.serialization import write_bytes_atomically
 from open_energy_lab.core.time import format_utc, utc_datetime
 from open_energy_lab.core.validation import non_empty_str
 
+from ._http import ResponseTooLarge, header, is_transient_status, open_bounded
 from .artifact import (
     FRANCE_AREA_EIC,
     FRANCE_PROFILE_ID,
@@ -299,11 +300,7 @@ class EntsoeTransportResponse:
         object.__setattr__(self, "headers", MappingProxyType(normalized_headers))
 
     def header(self, name: str) -> str | None:
-        target = name.casefold()
-        for candidate, value in self.headers.items():
-            if candidate.casefold() == target:
-                return value
-        return None
+        return header(self.headers, name)
 
     @property
     def media_type(self) -> str:
@@ -325,12 +322,6 @@ class EntsoeTransport(Protocol):
     ) -> EntsoeTransportResponse: ...
 
 
-class _TransportBodyTooLarge(Exception):
-    def __init__(self, observed_bytes: int) -> None:
-        super().__init__("bounded transport response exceeded the byte ceiling")
-        self.observed_bytes = observed_bytes
-
-
 class UrllibEntsoeTransport:
     """Standard-library HTTPS transport with bounded response reads."""
 
@@ -338,21 +329,6 @@ class UrllibEntsoeTransport:
         if timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive")
         self._timeout_seconds = float(timeout_seconds)
-
-    @staticmethod
-    def _read_bounded(response: Any, max_response_bytes: int) -> bytes:
-        content_length = response.headers.get("Content-Length")
-        if content_length is not None:
-            try:
-                declared_size = int(content_length)
-            except (TypeError, ValueError):
-                declared_size = -1
-            if declared_size > max_response_bytes:
-                raise _TransportBodyTooLarge(declared_size)
-        body = response.read(max_response_bytes + 1)
-        if len(body) > max_response_bytes:
-            raise _TransportBodyTooLarge(len(body))
-        return body
 
     def request(
         self,
@@ -374,29 +350,12 @@ class UrllibEntsoeTransport:
             },
             method="GET",
         )
-        try:
-            response = urllib.request.urlopen(
-                wire_request,
-                timeout=self._timeout_seconds,
-            )
-        except urllib.error.HTTPError as error:
-            with error:
-                body = self._read_bounded(error, max_response_bytes)
-                return EntsoeTransportResponse(
-                    status_code=error.code,
-                    body=body,
-                    headers=dict(error.headers.items()),
-                )
-        with response:
-            final_url = response.geturl()
-            if urllib.parse.urlsplit(final_url).scheme.casefold() != "https":
-                raise RuntimeError("transport refused a non-HTTPS redirect")
-            body = self._read_bounded(response, max_response_bytes)
-            return EntsoeTransportResponse(
-                status_code=response.status,
-                body=body,
-                headers=dict(response.headers.items()),
-            )
+        response = open_bounded(
+            wire_request, timeout=self._timeout_seconds, max_bytes=max_response_bytes
+        )
+        return EntsoeTransportResponse(
+            status_code=response.status, body=response.body, headers=response.headers
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -570,10 +529,6 @@ def _retry_after(response: EntsoeTransportResponse, attempt: int) -> tuple[float
     return float(parsed), "retry-after", ""
 
 
-def _is_transient_status(status_code: int) -> bool:
-    return status_code in (408, 429) or 500 <= status_code <= 599
-
-
 def request_entsoe_window(
     *,
     request: EntsoeMarketDataRequest,
@@ -614,7 +569,7 @@ def request_entsoe_window(
                 api_token=api_token,
                 max_response_bytes=max_response_bytes,
             )
-        except _TransportBodyTooLarge as exc:
+        except ResponseTooLarge:
             diagnostic = _diagnostic(
                 request,
                 window,
@@ -722,7 +677,7 @@ def request_entsoe_window(
                 attempt_count=attempt,
                 diagnostics=tuple(diagnostics),
             )
-        if _is_transient_status(response.status_code):
+        if is_transient_status(response.status_code):
             if attempt < MAX_TRANSPORT_ATTEMPTS:
                 delay, delay_source, detail = _retry_after(response, attempt)
                 diagnostic = _diagnostic(
