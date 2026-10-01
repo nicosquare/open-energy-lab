@@ -552,7 +552,6 @@ def solve_assembled_model(
         configured_options={
             **options,
             "load_solutions": False,
-            "solve_policy_fingerprint": policy.solve_policy_fingerprint,
         },
         model_cardinality=assembled.handoff.cardinality,
         diagnostics=tuple(diagnostics),
@@ -719,7 +718,6 @@ def solve_gurobi_assembled_model(
         configured_options={
             **options,
             "load_solutions": False,
-            "solve_policy_fingerprint": policy.solve_policy_fingerprint,
         },
         model_cardinality=assembled.handoff.cardinality,
         diagnostics=tuple(diagnostics),

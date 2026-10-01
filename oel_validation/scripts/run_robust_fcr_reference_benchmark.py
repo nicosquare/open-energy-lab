@@ -7,6 +7,7 @@ from collections.abc import Mapping
 import json
 from pathlib import Path
 
+from open_energy_lab.core.serialization import fingerprint
 from open_energy_lab.control import (
     RobustFCRSolvePolicy,
     solve_robust_fcr_bid,
@@ -104,13 +105,8 @@ def main() -> int:
         "Native problem identity",
         {
             "problem_fingerprint": problem.problem_fingerprint,
-            "comparison_problem_fingerprint": (
-                problem.comparison_problem_fingerprint
-            ),
-            "objective_comparison_policy_fingerprint": (
-                problem.objective_comparison_policy_fingerprint
-            ),
-            "solve_policy_fingerprint": policy.solve_policy_fingerprint,
+            "comparison_problem_fingerprint": fingerprint(problem.comparison_dict()),
+            "solve_policy_fingerprint": fingerprint(policy.to_dict()),
         },
     )
 

@@ -519,7 +519,6 @@ class DeliveryDateClassification:
 
 @dataclass(frozen=True, slots=True)
 class RollingFCRNumericPolicy:
-    solve_policy_fingerprint: str
     state_carry_policy: str
     decimal_places: int
     rounding_mode: str = "ROUND_HALF_EVEN"
@@ -531,7 +530,6 @@ class RollingFCRNumericPolicy:
     numeric_policy_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "solve_policy_fingerprint", _sha(self.solve_policy_fingerprint, field_name="solve_policy_fingerprint"))
         if self.state_carry_policy not in {"source_three_decimal", "native_full_precision"}:
             raise RollingFCRValidationError("unsupported state_carry_policy")
         if isinstance(self.decimal_places, bool) or not isinstance(self.decimal_places, int):
@@ -555,7 +553,6 @@ class RollingFCRNumericPolicy:
     def _payload(self) -> dict[str, object]:
         return {
             "semantics_version": self.semantics_version,
-            "solve_policy_fingerprint": self.solve_policy_fingerprint,
             "state_carry_policy": self.state_carry_policy,
             "decimal_places": self.decimal_places,
             "rounding_mode": self.rounding_mode,
@@ -1079,8 +1076,6 @@ class RollingFCRStudyManifest:
                 raise RollingFCRValidationError("08:00 source profile requires three-decimal carry")
         if self.numeric_policy.state_carry_policy not in self.profile.allowed_state_carry_policies:
             raise RollingFCRValidationError("numeric state-carry policy is incompatible with profile")
-        if self.numeric_policy.solve_policy_fingerprint != self.solve_policy.solve_policy_fingerprint:
-            raise RollingFCRValidationError("numeric and solve policies do not reconcile")
         expected_failure = FAILURE_POLICY_INDEPENDENT if self.profile.is_independent else FAILURE_POLICY_COUPLED
         if self.failure_policy != expected_failure:
             raise RollingFCRValidationError("failure policy does not match profile coupling")

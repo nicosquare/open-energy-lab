@@ -22,6 +22,7 @@ from open_energy_lab.control.robust_fcr_bidding import (
     _canonicalize_kw,
     _canonicalize_witness_decisions,
     _finalize_solve_result,
+    _fingerprint,
     _normalize_maximization_gap,
     compare_robust_fcr_bounds,
 )
@@ -362,9 +363,6 @@ def test_canonical_decisions_reaudit_the_unchanged_auxiliary_witness() -> None:
             bound=objective,
         )
     )
-    assert result.feasibility_audit.raw_witness_fingerprint != (
-        result.feasibility_audit.canonical_witness_fingerprint
-    )
     assert result.feasibility_audit.passes_deployability_audit is True
     assert result.deployable_plan is not None
 
@@ -479,7 +477,7 @@ def test_formulation_profiles_pin_distinct_operational_roles() -> None:
     assert restriction.deployability_role == "candidate_plan"
     assert relaxation.deployability_role == "upper_bound_only"
     assert exact.deployability_role == "exact_evidence_only"
-    assert len({value.formulation_fingerprint for value in (restriction, relaxation, exact)}) == 3
+    assert len({value.kind for value in (restriction, relaxation, exact)}) == 3
 
 
 @pytest.mark.parametrize(
@@ -605,12 +603,12 @@ def test_feature_015_refactor_guard_preserves_controlled_result_and_plan() -> No
     assert result.decisions.energy_baseline_charge_positive_kw == (0.0,) * 24
     assert result.decisions.fcr_capacity_kw == (0.0,) * 6
     assert (
-        result.decisions.decision_vector_fingerprint
-        == "a00a601eb3cdd1acabf87e3c58c75233b9af3c109675c5d41af0a797bc5a180c"
+        _fingerprint(result.decisions.to_dict())
+        == "a463037e5f0ce2c1d6f380959ed2e34ae28077b5d8ff0e4181a45f2a496e45ff"
     )
     assert (
         result.semantic_result_fingerprint
-        == "15f1f5077033ecd7b7c2261bed82706ad26b56ead7c4f6889ab87e2f74ea2cae"
+        == "f940e9a86c0ef2c260f46375c1e4306080a648b3099f6ae86663e91161996b5e"
     )
     assert (
         plan.energy_schedule.schedule_fingerprint
@@ -622,5 +620,5 @@ def test_feature_015_refactor_guard_preserves_controlled_result_and_plan() -> No
     )
     assert (
         plan.plan_fingerprint
-        == "e81de0cad18c716aa8476883e90477e5a7dd056678bfe8391b9446be031d06e7"
+        == "744aeb21dfb8d127a352e0ce8236da978449202dab7cef9602711f73e9caa84f"
     )

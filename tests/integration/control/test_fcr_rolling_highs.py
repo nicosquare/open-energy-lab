@@ -6,6 +6,7 @@ from dataclasses import replace
 
 import pytest
 
+from open_energy_lab.core.serialization import fingerprint
 from open_energy_lab.control import (
     RobustFCRBatteryParameters,
     TerminalStoredEnergyRule,
@@ -43,7 +44,7 @@ def _zero_price_day_input(manifest, delivery_date):
         prices=prices,
         producer_input_fingerprints={
             **original.producer_input_fingerprints,
-            "market_prices": prices.price_input_fingerprint,
+            "market_prices": fingerprint(prices.to_dict()),
         },
     )
 
@@ -306,7 +307,7 @@ def test_feasible_incumbent_requires_the_fingerprinted_pre_solve_opt_in() -> Non
         has_incumbent=True,
         solve_policy=enabled,
     ) is True
-    assert blocked.solve_policy_fingerprint != enabled.solve_policy_fingerprint
+    assert blocked != enabled
     assert _rolling_incumbent_is_accepted(
         solve_status="optimal",
         has_incumbent=True,

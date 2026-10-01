@@ -148,9 +148,8 @@ def test_horizon_budget_rejects_tampered_value_and_derivation_inputs() -> None:
     with pytest.raises(ValueError, match="lineage"):
         RobustFCRUncertaintyProfile(
             recovery_window=recovery,
-            horizon_wide=replace(
-                horizon,
-                recovery_window_fingerprint="0" * 64,
+            horizon_wide=derive_non_intraday_horizon_budget(
+                replace(recovery, recovery_activation_budget_hours=0.5)
             ),
         )
 
