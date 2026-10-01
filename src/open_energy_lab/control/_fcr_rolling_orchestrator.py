@@ -587,8 +587,7 @@ def _build_0800_successor_problem(
     )
     if (
         base_input.accepted_fixings is not None
-        and base_input.accepted_fixings.fixings_fingerprint
-        != fixings.fixings_fingerprint
+        and base_input.accepted_fixings != fixings
     ):
         raise RollingFCRValidationError(
             "caller-provided predecessor fixings differ from the accepted plan"
