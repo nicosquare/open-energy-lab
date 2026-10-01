@@ -7,7 +7,7 @@ Python dependency resolution to uv.
 ## Base Environment
 
 - Create the local research environment with conda.
-- Keep the environment minimal: Python 3.11, uv, and pip are the bootstrap
+- Keep the environment minimal: Python 3.12, uv, and pip are the bootstrap
   tools for the foundation.
 - Keep research stacks out of the conda bootstrap; uv owns Python runtime
   dependencies, including the required SPFlow, Pyomo, and HiGHS packages.

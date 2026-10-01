@@ -190,7 +190,7 @@ licensed Gurobi), `live_entsoe` / `live_rte` (API credentials), and
 `reference_benchmark` / `external_reference_data` (the private
 `baselines/` reference data). Select them with `-m`, for example
 `uv run pytest -m "reference_benchmark or external_reference_data"`. CI runs
-the routine suite on Python 3.11–3.14 plus the `slow` and `notebook` groups;
+the routine suite on Python 3.12–3.14 plus the `slow` and `notebook` groups;
 see `.github/workflows/ci.yml`.
 
 Do not add new reusable code to `legacy/*` unless a future migration,

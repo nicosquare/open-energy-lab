@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -68,20 +68,20 @@ jobs:
         run: uv run --locked --no-sync pytest -m "slow and ${OPT_IN}"
 
   notebooks:
-    name: Notebooks (Python 3.11)
+    name: Notebooks (Python 3.12)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.11"
+          python-version: "3.12"
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           version: "0.12.5"
           enable-cache: true
           cache-dependency-glob: uv.lock
-          cache-suffix: notebooks-py3.11
+          cache-suffix: notebooks-py3.12
       - name: Install locked notebook environment
         run: uv sync --locked --group dev --group notebook
       - name: Verify required and notebook backends

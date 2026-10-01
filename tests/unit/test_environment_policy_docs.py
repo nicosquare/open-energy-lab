@@ -21,7 +21,7 @@ def test_environment_files_define_conda_base_and_uv_python_workflow() -> None:
 
     assert "name: open-energy-lab" in environment_yml
     assert "conda-forge" in environment_yml
-    assert "python=3.11" in environment_yml
+    assert "python=3.12" in environment_yml
     assert "uv" in environment_yml
     assert '"pvlib"' in pyproject_toml
     assert '"timezonefinder"' in pyproject_toml

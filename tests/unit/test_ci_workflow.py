@@ -41,7 +41,7 @@ def _deselected(expression: str) -> set[str]:
 def test_ci_has_one_job_per_marker_group() -> None:
     assert set(WORKFLOW["jobs"]) == {"tests", "slow", "notebooks"}
     assert WORKFLOW["jobs"]["tests"]["strategy"]["matrix"]["python-version"] == [
-        "3.11", "3.12", "3.13", "3.14",
+        "3.12", "3.13", "3.14",
     ]
 
 

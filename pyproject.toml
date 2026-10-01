@@ -7,7 +7,7 @@ name = "open-energy-lab"
 version = "0.1.0"
 description = "Unified research library foundation for Open Energy Lab."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 # Required workflow backends remain lazily imported by their package adapters.
 dependencies = [
     "highspy==1.15.1",
