@@ -1691,12 +1691,12 @@ class RobustFCRSolveResult:
                     ),
                     "meaning": "ex_ante_solver_bound_for_maximization",
                 },
-                "feature_012_realized_settlement_eur": {
+                "realized_settlement_eur": {
                     "value": None,
                     "availability": "evaluation_only_not_in_bid_result",
                     "meaning": "ex_post_realized_settlement",
                 },
-                "feature_012_realized_profit_eur": {
+                "realized_profit_eur": {
                     "value": None,
                     "availability": "evaluation_only_not_in_bid_result",
                     "meaning": "ex_post_realized_profit",
@@ -2650,7 +2650,7 @@ def _build_deployable_plan(
                 code="robust_fcr_solve_evidence",
                 severity="info",
                 field_path=None,
-                message="plan passed the Feature 013 independent deployability audit",
+                message="plan passed the independent deployability audit",
                 evidence_refs=(f"sha256:{solve_evidence_fingerprint}",),
             )
         ]
@@ -2673,7 +2673,7 @@ def _build_deployable_plan(
         producer=BidPlanProducer(
             producer_id="open-energy-lab-robust-fcr-bidder",
             producer_kind="robust",
-            producer_version="feature-013-v1",
+            producer_version="robust-fcr-bidder-v1",
             configuration_fingerprint=problem.problem_fingerprint,
             configuration_unavailable_reason=None,
         ),

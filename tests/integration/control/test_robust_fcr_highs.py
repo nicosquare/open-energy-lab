@@ -183,7 +183,7 @@ def test_feature_015_refactor_guard_preserves_real_highs_golden_evidence() -> No
     )
     assert (
         result.semantic_result_fingerprint
-        == "d25758b087492b7ad55378bdcf1fc22529828b3a2862f27135d9145be401fcef"
+        == "fcae3de50a4d901f3c878bebe82aef4f1116361a7abb4088a1e32a865a6a1491"
     )
     assert (
         plan.energy_schedule.schedule_fingerprint
@@ -195,5 +195,5 @@ def test_feature_015_refactor_guard_preserves_real_highs_golden_evidence() -> No
     )
     assert (
         plan.plan_fingerprint
-        == "aceb9053076b71c3f592cd5fbfd64a9ad1df6d902058a5d0357a0b9fd822d6b6"
+        == "7efedcd0e075ba9363cc8e3973f69f6e74fb5f6d241d4c370dab70af11420a42"
     )

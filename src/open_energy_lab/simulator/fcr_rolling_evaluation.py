@@ -231,7 +231,7 @@ class FCRSegmentedEvaluationReport:
             "activation_trace_fingerprint": self.activation_trace_fingerprint,
             "battery_binding_fingerprint": self.battery_binding_fingerprint,
             "segments": [item.to_dict() for item in self.segments],
-            "feature_012_report_fingerprints": [
+            "report_fingerprints": [
                 _fingerprint(item.to_dict()) for item in self.reports
             ],
             "stored_energy_checkpoints_kwh": list(
@@ -297,7 +297,7 @@ def _fresh_battery(
                     isinstance(binding, Mapping) and "component_name" in binding
                 )
                 or hasattr(binding, "component_name")
-                else "feature-015-segment-battery"
+                else "rolling-segment-battery"
             ),
             capacity_kwh=capacity,
             max_charge_kw=_finite(

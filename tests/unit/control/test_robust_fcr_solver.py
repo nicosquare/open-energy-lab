@@ -416,11 +416,11 @@ def test_serialized_bid_values_are_distinct_from_feature_012_realized_values() -
         "availability": "available",
         "meaning": "ex_ante_solver_bound_for_maximization",
     }
-    assert semantics["feature_012_realized_settlement_eur"]["value"] is None
-    assert semantics["feature_012_realized_profit_eur"]["value"] is None
+    assert semantics["realized_settlement_eur"]["value"] is None
+    assert semantics["realized_profit_eur"]["value"] is None
     assert {
-        semantics["feature_012_realized_settlement_eur"]["availability"],
-        semantics["feature_012_realized_profit_eur"]["availability"],
+        semantics["realized_settlement_eur"]["availability"],
+        semantics["realized_profit_eur"]["availability"],
     } == {"evaluation_only_not_in_bid_result"}
 
 
@@ -608,7 +608,7 @@ def test_feature_015_refactor_guard_preserves_controlled_result_and_plan() -> No
     )
     assert (
         result.semantic_result_fingerprint
-        == "f940e9a86c0ef2c260f46375c1e4306080a648b3099f6ae86663e91161996b5e"
+        == "f93f6af456b7484a30815283c027c39880f9bd52c02fdbe7f234948d6a909231"
     )
     assert (
         plan.energy_schedule.schedule_fingerprint
@@ -620,5 +620,5 @@ def test_feature_015_refactor_guard_preserves_controlled_result_and_plan() -> No
     )
     assert (
         plan.plan_fingerprint
-        == "744aeb21dfb8d127a352e0ce8236da978449202dab7cef9602711f73e9caa84f"
+        == "eb92b8650d6d7464acd8029bec94c65188082ff16f64a70198d64371501dc27c"
     )

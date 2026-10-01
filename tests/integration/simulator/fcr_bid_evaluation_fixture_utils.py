@@ -346,7 +346,7 @@ def build_test_evaluation_case(
     fcr_capacity_prices_eur_per_kw_block: Sequence[float] = (0.08,),
     time_contract: MultiRateTimeContract | None = None,
     battery: BatteryComponent | None = None,
-    settlement_profile: str = "feature-010-default-v1",
+    settlement_profile: str = "stacked-service-default-v1",
     producer_kind: str = "manual",
     penalty_rule: object | None = None,
     comparison_fixture: object | None = None,

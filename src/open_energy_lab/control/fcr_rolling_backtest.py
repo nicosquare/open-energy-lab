@@ -735,7 +735,7 @@ class RollingFCRBatteryBinding:
     component_name: str
     replay_timestep_seconds: int
     power_sign_mapping: str = "source-positive-discharge-to-public-charge-positive-negation-v1"
-    efficiency_lineage: str = "identical-feature-013-feature-012-efficiencies-v1"
+    efficiency_lineage: str = "identical-bidding-and-evaluation-efficiencies-v1"
     semantics_version: str = ROLLING_FCR_BATTERY_BINDING_VERSION
     binding_fingerprint: str = field(init=False)
 
@@ -751,7 +751,7 @@ class RollingFCRBatteryBinding:
             raise RollingFCRValidationError("replay_timestep_seconds must be positive")
         if self.power_sign_mapping != "source-positive-discharge-to-public-charge-positive-negation-v1":
             raise RollingFCRValidationError("unsupported battery power-sign mapping")
-        if self.efficiency_lineage != "identical-feature-013-feature-012-efficiencies-v1":
+        if self.efficiency_lineage != "identical-bidding-and-evaluation-efficiencies-v1":
             raise RollingFCRValidationError("unsupported battery efficiency lineage")
         if self.semantics_version != ROLLING_FCR_BATTERY_BINDING_VERSION:
             raise RollingFCRValidationError("unsupported rolling battery binding version")
@@ -899,7 +899,7 @@ _PROFILE_DEFINITIONS: dict[str, dict[str, object]] = {
         "predecessor_fixing_rule": "none-independent-reset-v1",
         "finalization_rule": "same-day-original-v1",
         "allowed_state_carry_policies": ("source_three_decimal",),
-        "feasible_incumbent_rule": "feature-013-solve-policy-v1",
+        "feasible_incumbent_rule": "robust-fcr-solve-policy-v1",
         "plan_classification": "robust_candidate",
         "paper_experiment": 2,
         "workbook_column": 12,
@@ -927,7 +927,7 @@ _PROFILE_DEFINITIONS: dict[str, dict[str, object]] = {
         "predecessor_fixing_rule": "accepted-hours-09-24-and-blocks-3-6-v1",
         "finalization_rule": "successor-0800-closes-predecessor-v1",
         "allowed_state_carry_policies": ("source_three_decimal",),
-        "feasible_incumbent_rule": "feature-013-solve-policy-v1",
+        "feasible_incumbent_rule": "robust-fcr-solve-policy-v1",
         "plan_classification": "robust_candidate",
         "paper_experiment": 5,
         "workbook_column": 15,
@@ -941,7 +941,7 @@ _PROFILE_DEFINITIONS: dict[str, dict[str, object]] = {
         "predecessor_fixing_rule": "realized-midnight-state-only-v1",
         "finalization_rule": "same-day-after-replay-v1",
         "allowed_state_carry_policies": ("source_three_decimal", "native_full_precision"),
-        "feasible_incumbent_rule": "feature-013-solve-policy-v1",
+        "feasible_incumbent_rule": "robust-fcr-solve-policy-v1",
         "plan_classification": "robust_candidate",
         "paper_experiment": 3,
         "workbook_column": 13,

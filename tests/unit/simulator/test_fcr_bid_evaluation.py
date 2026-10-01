@@ -53,7 +53,7 @@ def _request(**overrides: object):
         "activation_trace": _activation_trace(),
         "battery": _battery(),
         "time_contract": _time_contract(),
-        "settlement_profile": "feature-010-default-v1",
+        "settlement_profile": "stacked-service-default-v1",
         "penalty_rule": None,
         "terminal_soc_target": None,
         "comparison_fixture": None,
@@ -73,7 +73,7 @@ def test_market_context_is_source_independent_and_discriminated() -> None:
         semantics_version="robust-storage-bidding-reference-context-v1",
     )
 
-    assert feature_010.context_kind == "feature_010_market_artifact"
+    assert feature_010.context_kind == "market_artifact"
     assert reference.context_kind == "reference_result"
     assert feature_010.day_ahead_prices == reference.day_ahead_prices
     assert feature_010.fcr_capacity_prices == reference.fcr_capacity_prices
