@@ -6,8 +6,26 @@ import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 from typing import Any
+
+from open_energy_lab.core.artifact import read_artifact_source
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.serialization import write_bytes_atomically
+from open_energy_lab.core.time import format_utc, utc_timestamp_text
+from open_energy_lab.core.validation import (
+    boolean,
+    finite,
+    integer,
+    mapping,
+    non_empty_str,
+    non_negative_int,
+    positive,
+    positive_int,
+    require_fields,
+    sequence,
+)
 
 
 FEATURE_NAME = "009-tpm-planning"
@@ -30,7 +48,11 @@ PLANNING_DATASET_REQUIRED_KEYS = (
 _WRAPPED_PAYLOAD_HINT_KEYS = ("metadata", "table", "dataframe", "dataset")
 
 
-class UnsupportedPlanningDatasetVersionError(ValueError):
+class PlanningDatasetValidationError(ValidationError):
+    """Raised when a planning dataset artifact is malformed."""
+
+
+class UnsupportedPlanningDatasetVersionError(PlanningDatasetValidationError):
     """Raised when planning dataset loading sees an unsupported schema version."""
 
 
@@ -57,6 +79,11 @@ class PlanningDatasetArtifact:
             raise UnsupportedPlanningDatasetVersionError(
                 f"unsupported planning dataset schema_version {self.schema_version!r}"
             )
+        if self.created_at:
+            created_at = _validate_timestamp(self.created_at, field_name="created_at")
+        else:
+            created_at = format_utc(datetime.now(UTC).replace(microsecond=0))
+        object.__setattr__(self, "created_at", created_at)
 
     def to_dict(self) -> dict[str, object]:
         """Serialize the dataset artifact into its persisted JSON shape."""
@@ -64,7 +91,7 @@ class PlanningDatasetArtifact:
         return {
             "dataset_id": self.dataset_id,
             "schema_version": self.schema_version,
-            "created_at": _persisted_created_at(self.created_at),
+            "created_at": self.created_at,
             "row_count": self.row_count,
             "horizon_steps": self.horizon_steps,
             "timestep_hours": self.timestep_hours,
@@ -83,10 +110,8 @@ class PlanningDatasetArtifact:
         """Persist the artifact as human-inspectable JSON."""
 
         output_path = Path(path)
-        output_path.write_text(
-            json.dumps(self.to_dict(), indent=2) + "\n",
-            encoding="utf-8",
-        )
+        document = json.dumps(self.to_dict(), indent=2, allow_nan=False) + "\n"
+        write_bytes_atomically(output_path, document.encode("utf-8"))
         return output_path
 
     @classmethod
@@ -95,53 +120,47 @@ class PlanningDatasetArtifact:
 
         _reject_wrapped_dataset_payloads(data)
 
-        missing = [key for key in PLANNING_DATASET_REQUIRED_KEYS if key not in data]
-        if missing:
-            raise ValueError(
-                "planning dataset artifact is missing required keys: "
-                + ", ".join(missing)
-            )
+        _require_fields(data, PLANNING_DATASET_REQUIRED_KEYS, field_name="planning dataset artifact")
 
-        schema_version = str(data["schema_version"])
+        schema_version = _non_empty(data["schema_version"], field_name="schema_version")
         if schema_version not in SUPPORTED_PLANNING_DATASET_SCHEMA_VERSIONS:
             raise UnsupportedPlanningDatasetVersionError(
                 f"unsupported planning dataset schema_version {schema_version!r}"
             )
 
-        dataset_id = str(data["dataset_id"])
-        if not dataset_id:
-            raise ValueError("dataset_id must be non-empty")
-
-        created_at = str(data["created_at"])
-        _validate_timestamp(created_at, field_name="created_at")
+        dataset_id = _non_empty(data["dataset_id"], field_name="dataset_id")
+        created_at = _validate_timestamp(data["created_at"], field_name="created_at")
 
         row_count = _non_negative_int(data["row_count"], field_name="row_count")
         horizon_steps = _positive_int(data["horizon_steps"], field_name="horizon_steps")
         timestep_hours = _positive_float(data["timestep_hours"], field_name="timestep_hours")
         column_order = _string_sequence(data["column_order"], field_name="column_order")
         if not column_order:
-            raise ValueError("column_order must not be empty")
+            raise PlanningDatasetValidationError("column_order must not be empty")
         if len(set(column_order)) != len(column_order):
-            raise ValueError("column_order must not contain duplicates")
+            raise PlanningDatasetValidationError("column_order must not contain duplicates")
 
         export_configuration = _mapping(data["export_configuration"], field_name="export_configuration")
         numeric_tolerance = _positive_float(
             export_configuration.get("numeric_tolerance"),
             field_name="export_configuration.numeric_tolerance",
         )
-        row_order_policy = str(export_configuration.get("row_order_policy", ""))
-        if not row_order_policy:
-            raise ValueError("export_configuration.row_order_policy must be non-empty")
+        row_order_policy = _non_empty(
+            export_configuration.get("row_order_policy"),
+            field_name="export_configuration.row_order_policy",
+        )
         flattened_series_fields = _string_sequence(
             export_configuration.get("flattened_series_fields"),
             field_name="export_configuration.flattened_series_fields",
         )
         if not flattened_series_fields:
-            raise ValueError(
+            raise PlanningDatasetValidationError(
                 "export_configuration.flattened_series_fields must not be empty"
             )
-        if not isinstance(export_configuration.get("include_provenance"), bool):
-            raise TypeError("export_configuration.include_provenance must be a bool")
+        _boolean(
+            export_configuration.get("include_provenance"),
+            field_name="export_configuration.include_provenance",
+        )
 
         series_field_schema = {
             str(key): _mapping(value, field_name=f"series_field_schema.{key}")
@@ -150,7 +169,7 @@ class PlanningDatasetArtifact:
             ).items()
         }
         if not series_field_schema:
-            raise ValueError("series_field_schema must not be empty")
+            raise PlanningDatasetValidationError("series_field_schema must not be empty")
         _validate_series_field_schema(
             series_field_schema,
             flattened_series_fields=flattened_series_fields,
@@ -164,7 +183,7 @@ class PlanningDatasetArtifact:
         provenance = _mapping(data["provenance"], field_name="provenance")
         _validate_seed_lineage(provenance)
         if export_configuration["include_provenance"] and not provenance:
-            raise ValueError(
+            raise PlanningDatasetValidationError(
                 "provenance must not be empty when include_provenance is enabled"
             )
 
@@ -224,11 +243,9 @@ class PlanningDatasetArtifact:
 def load_planning_dataset(source: str | Path | Mapping[str, Any]) -> PlanningDatasetArtifact:
     """Load and validate a persisted planning dataset artifact."""
 
-    if isinstance(source, Mapping):
-        raw_payload = source
-    else:
-        raw_payload = json.loads(Path(source).read_text(encoding="utf-8"))
-
+    raw_payload, _, _ = read_artifact_source(
+        source, label="planning dataset artifact", error=PlanningDatasetValidationError
+    )
     return PlanningDatasetArtifact.from_dict(raw_payload)
 
 
@@ -236,62 +253,32 @@ __all__ = [
     "FEATURE_NAME",
     "PLANNING_DATASET_REQUIRED_KEYS",
     "PlanningDatasetArtifact",
+    "PlanningDatasetValidationError",
     "SUPPORTED_PLANNING_DATASET_SCHEMA_VERSIONS",
     "UnsupportedPlanningDatasetVersionError",
     "load_planning_dataset",
 ]
 
 
-def _mapping(value: object, *, field_name: str) -> dict[str, object]:
-    if not isinstance(value, Mapping):
-        raise TypeError(f"{field_name} must be a mapping")
-    return {str(key): inner_value for key, inner_value in value.items()}
+_E = PlanningDatasetValidationError
+_mapping = partial(mapping, error=_E)
+_non_empty = partial(non_empty_str, error=_E)
+_finite = partial(finite, error=_E)
+_integer = partial(integer, error=_E)
+_boolean = partial(boolean, error=_E)
+_positive_int = partial(positive_int, error=_E)
+_non_negative_int = partial(non_negative_int, error=_E)
+_positive_float = partial(positive, error=_E)
+_require_fields = partial(require_fields, error=_E)
+_sequence = partial(sequence, error=_E)
+_validate_timestamp = partial(utc_timestamp_text, error=_E)
 
 
 def _string_sequence(value: object, *, field_name: str) -> tuple[str, ...]:
-    if isinstance(value, str) or not isinstance(value, Sequence):
-        raise TypeError(f"{field_name} must be a sequence of strings")
-    normalized = tuple(str(item) for item in value)
-    if any(not item for item in normalized):
-        raise ValueError(f"{field_name} must not contain empty strings")
-    return normalized
-
-
-def _positive_int(value: object, *, field_name: str) -> int:
-    normalized = int(value)
-    if normalized <= 0:
-        raise ValueError(f"{field_name} must be positive")
-    return normalized
-
-
-def _non_negative_int(value: object, *, field_name: str) -> int:
-    normalized = int(value)
-    if normalized < 0:
-        raise ValueError(f"{field_name} must be non-negative")
-    return normalized
-
-
-def _positive_float(value: object, *, field_name: str) -> float:
-    normalized = float(value)
-    if normalized <= 0:
-        raise ValueError(f"{field_name} must be positive")
-    return normalized
-
-
-def _validate_timestamp(value: object, *, field_name: str) -> None:
-    if not isinstance(value, str) or not value:
-        raise ValueError(f"{field_name} must be a non-empty ISO-8601 timestamp")
-    try:
-        datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as exc:
-        raise ValueError(f"{field_name} must be a valid ISO-8601 timestamp") from exc
-
-
-def _persisted_created_at(created_at: str) -> str:
-    if created_at:
-        _validate_timestamp(created_at, field_name="created_at")
-        return created_at
-    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    items = _sequence(value, field_name=field_name)
+    return tuple(
+        _non_empty(item, field_name=f"{field_name}[{index}]") for index, item in enumerate(items)
+    )
 
 
 def _reject_wrapped_dataset_payloads(data: Mapping[str, Any]) -> None:
@@ -299,7 +286,7 @@ def _reject_wrapped_dataset_payloads(data: Mapping[str, Any]) -> None:
     if has_required_top_level_shape:
         return
     if any(key in data for key in _WRAPPED_PAYLOAD_HINT_KEYS):
-        raise ValueError(
+        raise PlanningDatasetValidationError(
             "planning dataset payload must store rows directly at the top level; "
             "wrapped metadata/table payloads are unsupported"
         )
@@ -315,32 +302,32 @@ def _validate_series_field_schema(
     flattened_field_set = set(flattened_series_fields)
     seen_source_fields: set[str] = set()
     for prefix, schema in series_field_schema.items():
-        source_field = str(schema.get("source_field", ""))
-        column_prefix = str(schema.get("column_prefix", ""))
-        if not source_field:
-            raise ValueError(f"series_field_schema.{prefix}.source_field must be non-empty")
-        if not column_prefix:
-            raise ValueError(f"series_field_schema.{prefix}.column_prefix must be non-empty")
+        source_field = _non_empty(
+            schema.get("source_field"), field_name=f"series_field_schema.{prefix}.source_field"
+        )
+        column_prefix = _non_empty(
+            schema.get("column_prefix"), field_name=f"series_field_schema.{prefix}.column_prefix"
+        )
         if column_prefix != prefix:
-            raise ValueError(
+            raise PlanningDatasetValidationError(
                 f"series_field_schema.{prefix}.column_prefix must match its key"
             )
         if source_field not in flattened_field_set:
-            raise ValueError(
+            raise PlanningDatasetValidationError(
                 f"series_field_schema.{prefix}.source_field must appear in "
                 "export_configuration.flattened_series_fields"
             )
         if source_field in seen_source_fields:
-            raise ValueError("series_field_schema source_field values must be unique")
+            raise PlanningDatasetValidationError("series_field_schema source_field values must be unique")
         seen_source_fields.add(source_field)
         expected_columns = {f"{column_prefix}_{step}" for step in range(horizon_steps)}
         if not expected_columns.issubset(column_order):
-            raise ValueError(
+            raise PlanningDatasetValidationError(
                 f"column_order must contain all expected series columns for prefix {column_prefix!r}"
             )
 
     if seen_source_fields != flattened_field_set:
-        raise ValueError(
+        raise PlanningDatasetValidationError(
             "series_field_schema must describe every flattened series field exactly once"
         )
 
@@ -357,44 +344,40 @@ def _validate_target_metadata(target_metadata: Mapping[str, object]) -> None:
         "event_threshold_comparison",
         "supported_query_mode",
     )
-    missing = [key for key in required_keys if key not in target_metadata]
-    if missing:
-        raise ValueError(
-            "target_metadata is missing required keys: " + ", ".join(missing)
-        )
+    _require_fields(target_metadata, required_keys, field_name="target_metadata")
     target_name = str(target_metadata["target_name"])
     if target_name != "shortfall":
-        raise ValueError("target_metadata.target_name must be 'shortfall'")
+        raise PlanningDatasetValidationError("target_metadata.target_name must be 'shortfall'")
     event_target_name = str(target_metadata["event_target_name"])
     if event_target_name != "shortfall_exceeds_threshold":
-        raise ValueError(
+        raise PlanningDatasetValidationError(
             "target_metadata.event_target_name must be 'shortfall_exceeds_threshold'"
         )
-    if "timestep_hours" not in str(target_metadata["aggregation_rule"]):
-        raise ValueError(
+    if "timestep_hours" not in _non_empty(target_metadata["aggregation_rule"], field_name="target_metadata.aggregation_rule"):
+        raise PlanningDatasetValidationError(
             "target_metadata.aggregation_rule must document timestep_hours weighting"
         )
-    float(target_metadata["threshold_default"])
+    _finite(target_metadata["threshold_default"], field_name="target_metadata.threshold_default")
     if str(target_metadata["event_threshold_source"]) != "threshold_default":
-        raise ValueError(
+        raise PlanningDatasetValidationError(
             "target_metadata.event_threshold_source must be 'threshold_default'"
         )
     if str(target_metadata["event_threshold_comparison"]) != ">":
-        raise ValueError(
+        raise PlanningDatasetValidationError(
             "target_metadata.event_threshold_comparison must be '>'"
         )
-    if not str(target_metadata["supported_query_mode"]):
-        raise ValueError("target_metadata.supported_query_mode must be non-empty")
+    _non_empty(target_metadata["supported_query_mode"], field_name="target_metadata.supported_query_mode")
 
 
 def _validate_seed_lineage(provenance: Mapping[str, object]) -> None:
-    if "family_seed" in provenance:
-        int(provenance["family_seed"])
-    if "paired_family_seed" in provenance:
-        int(provenance["paired_family_seed"])
-    if "family_seed" in provenance and "paired_family_seed" in provenance:
-        if int(provenance["family_seed"]) != int(provenance["paired_family_seed"]):
-            raise ValueError("family_seed and paired_family_seed must align")
+    seeds = {
+        name: _integer(provenance[name], field_name=f"provenance.{name}")
+        for name in ("family_seed", "paired_family_seed")
+        if name in provenance
+    }
+    if len(seeds) == 2:
+        if seeds["family_seed"] != seeds["paired_family_seed"]:
+            raise PlanningDatasetValidationError("family_seed and paired_family_seed must align")
 
 
 def _design_feature_schema(
@@ -402,29 +385,26 @@ def _design_feature_schema(
     *,
     column_order: tuple[str, ...],
 ) -> tuple[Mapping[str, object], ...]:
-    if isinstance(value, str) or not isinstance(value, Sequence):
-        raise TypeError("design_feature_schema must be a sequence of mappings")
-
+    value = _sequence(value, field_name="design_feature_schema")
     features: list[Mapping[str, object]] = []
     seen_feature_names: set[str] = set()
     for index, raw_feature in enumerate(value):
         feature = _mapping(raw_feature, field_name=f"design_feature_schema[{index}]")
         for required_key in ("feature_name", "feature_role", "feature_type"):
-            if required_key not in feature or not str(feature[required_key]):
-                raise ValueError(
-                    f"design_feature_schema[{index}].{required_key} must be non-empty"
-                )
-        feature_name = str(feature["feature_name"])
+            _non_empty(
+                feature.get(required_key), field_name=f"design_feature_schema[{index}].{required_key}"
+            )
+        feature_name = feature["feature_name"]
         if feature_name not in column_order:
-            raise ValueError(
+            raise PlanningDatasetValidationError(
                 f"design_feature_schema[{index}].feature_name must appear in column_order"
             )
         if feature_name in {"scenario_index", "shortfall", "shortfall_exceeds_threshold"}:
-            raise ValueError(
+            raise PlanningDatasetValidationError(
                 "design_feature_schema must describe decision/design columns only"
             )
         if feature_name in seen_feature_names:
-            raise ValueError("design_feature_schema feature_name values must be unique")
+            raise PlanningDatasetValidationError("design_feature_schema feature_name values must be unique")
         seen_feature_names.add(feature_name)
         features.append(feature)
     return tuple(features)
@@ -436,9 +416,7 @@ def _ordered_rows(
     column_order: tuple[str, ...],
     row_count: int,
 ) -> tuple[Mapping[str, object], ...]:
-    if isinstance(value, str) or not isinstance(value, Sequence):
-        raise TypeError("rows must be a sequence of mappings")
-
+    value = _sequence(value, field_name="rows")
     rows: list[Mapping[str, object]] = []
     for index, raw_row in enumerate(value):
         row = _mapping(raw_row, field_name=f"rows[{index}]")
@@ -452,11 +430,11 @@ def _ordered_rows(
                 details.append("missing " + ", ".join(sorted(missing)))
             if extra:
                 details.append("unexpected " + ", ".join(sorted(extra)))
-            raise ValueError(f"rows[{index}] must match column_order exactly: {'; '.join(details)}")
+            raise PlanningDatasetValidationError(f"rows[{index}] must match column_order exactly: {'; '.join(details)}")
         rows.append({column_name: row[column_name] for column_name in column_order})
 
     if len(rows) != row_count:
-        raise ValueError("row_count must match the number of persisted rows")
+        raise PlanningDatasetValidationError("row_count must match the number of persisted rows")
     return tuple(rows)
 
 
@@ -469,7 +447,7 @@ def _validate_row_order(
         return
     scenario_indices = [int(row["scenario_index"]) for row in rows]
     if scenario_indices != sorted(scenario_indices):
-        raise ValueError("rows must preserve scenario_index_ascending order")
+        raise PlanningDatasetValidationError("rows must preserve scenario_index_ascending order")
 
 
 def _validate_shortfall_rows(
@@ -491,19 +469,23 @@ def _validate_shortfall_rows(
     numerator_prefix = prefix_by_source_field.get(numerator_source_field)
     denominator_prefix = prefix_by_source_field.get(denominator_source_field)
     if numerator_prefix is None or denominator_prefix is None:
-        raise ValueError(
+        raise PlanningDatasetValidationError(
             "series_field_schema must include prefixes for the shortfall numerator and denominator"
         )
 
     event_target_name = str(target_metadata["event_target_name"])
-    threshold_default = float(target_metadata["threshold_default"])
+    threshold_default = _finite(
+        target_metadata["threshold_default"], field_name="target_metadata.threshold_default"
+    )
 
     for index, row in enumerate(rows):
         load_series = tuple(
-            float(row[f"{denominator_prefix}_{step}"]) for step in range(horizon_steps)
+            _finite(row[name], field_name=f"rows[{index}].{name}")
+            for name in (f"{denominator_prefix}_{step}" for step in range(horizon_steps))
         )
         unmet_load_series = tuple(
-            float(row[f"{numerator_prefix}_{step}"]) for step in range(horizon_steps)
+            _finite(row[name], field_name=f"rows[{index}].{name}")
+            for name in (f"{numerator_prefix}_{step}" for step in range(horizon_steps))
         )
         expected_shortfall = _derive_shortfall(
             load_series=load_series,
@@ -511,15 +493,15 @@ def _validate_shortfall_rows(
             timestep_hours=timestep_hours,
             numeric_tolerance=numeric_tolerance,
         )
-        actual_shortfall = float(row["shortfall"])
+        actual_shortfall = _finite(row["shortfall"], field_name=f"rows[{index}].shortfall")
         if abs(actual_shortfall - expected_shortfall) > numeric_tolerance:
-            raise ValueError(
+            raise PlanningDatasetValidationError(
                 f"rows[{index}].shortfall must match the documented energy-ratio target"
             )
         actual_event = int(row[event_target_name])
         expected_event = int(expected_shortfall > threshold_default)
         if actual_event != expected_event:
-            raise ValueError(
+            raise PlanningDatasetValidationError(
                 f"rows[{index}].{event_target_name} must match the documented event target"
             )
 
@@ -536,5 +518,5 @@ def _derive_shortfall(
     if abs(load_energy) <= numeric_tolerance:
         if abs(unmet_energy) <= numeric_tolerance:
             return 0.0
-        raise ValueError("shortfall target cannot be derived from zero total load energy")
+        raise PlanningDatasetValidationError("shortfall target cannot be derived from zero total load energy")
     return unmet_energy / load_energy
