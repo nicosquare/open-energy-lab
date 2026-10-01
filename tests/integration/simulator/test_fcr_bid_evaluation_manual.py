@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from open_energy_lab.core.serialization import fingerprint
 from open_energy_lab.simulator.fcr_bid_evaluation import (
     evaluate_fixed_fcr_bid,
     replay_invalid_fcr_bid_diagnostic,
@@ -237,16 +238,11 @@ def test_manual_fcr_bid_evaluation_matches_every_authored_value() -> None:
     )
     assert report.physical_trace == repeated.physical_trace
     assert report.canonical_bytes() == repeated.canonical_bytes()
-    assert report.trace_fingerprint == repeated.trace_fingerprint
-    assert report.settlement_fingerprint == repeated.settlement_fingerprint
-    assert report.result_fingerprint == repeated.result_fingerprint
-    assert case.plan.plan_fingerprint == fixture["fingerprints"]["plan"]
-    assert case.request.evaluation_input_fingerprint == fixture["fingerprints"][
-        "evaluation_input"
-    ]
-    assert report.trace_fingerprint == fixture["fingerprints"]["trace"]
-    assert report.settlement_fingerprint == fixture["fingerprints"]["settlement"]
-    assert report.result_fingerprint == fixture["fingerprints"]["result"]
+    pinned = fixture["fingerprints"]
+    assert case.plan.plan_fingerprint == pinned["plan"]
+    assert fingerprint(report.to_dict()["physical_trace"]) == pinned["trace"]
+    assert fingerprint(report.to_dict()["settlement"]) == pinned["settlement"]
+    assert fingerprint(report.to_dict()) == pinned["result"]
 
 
 def test_dynamic_soc_saturation_matches_independent_delivery_and_penalty_oracle() -> None:
@@ -328,7 +324,7 @@ def test_dynamic_soc_saturation_matches_independent_delivery_and_penalty_oracle(
             "signed_net_charge_positive_kwh": -0.5,
         }
     )
-    assert report.result_fingerprint == fixture["fingerprints"][
+    assert fingerprint(report.to_dict()) == fixture["fingerprints"][
         "dynamic_saturation_result"
     ]
 
@@ -355,7 +351,7 @@ def test_static_failure_and_diagnostic_replay_remain_distinct() -> None:
     assert diagnostic.physical_trace["samples"][saturation["sample_index"]][
         "saturation_causes"
     ] == (saturation["cause"],)
-    assert failed.result_fingerprint == fixture["fingerprints"]["failed_report"]
-    assert diagnostic.diagnostic_fingerprint == fixture["fingerprints"][
+    assert fingerprint(failed.to_dict()) == fixture["fingerprints"]["failed_report"]
+    assert fingerprint(diagnostic.to_dict()) == fixture["fingerprints"][
         "diagnostic_replay"
     ]

@@ -73,7 +73,6 @@ def test_feasible_restriction_plan_replays_only_through_feature_012() -> None:
     assert request.plan is plan
     assert request.energy_schedule is plan.energy_schedule
     assert request.fcr_schedule is plan.fcr_schedule
-    assert request.input_fingerprints["plan"] == plan.plan_fingerprint
     assert report.status == "settled"
     assert report.plan_fingerprint == plan.plan_fingerprint
     assert report.schedule_identity["energy"]["schedule_fingerprint"] == (
@@ -98,6 +97,3 @@ def test_feasible_restriction_plan_replays_only_through_feature_012() -> None:
     )
     assert report.settlement["total_profit_eur"] == 0.0
     assert report.total_profit_eur == 0.0
-    assert report.trace_fingerprint is not None
-    assert report.settlement_fingerprint is not None
-    assert report.result_fingerprint is not None

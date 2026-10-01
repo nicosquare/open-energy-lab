@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from functools import partial
-import hashlib
 from typing import TYPE_CHECKING
 
 from open_energy_lab.core.errors import ValidationError
@@ -204,10 +203,9 @@ class FixedFCRBidSettlement:
     total_profit_eur: float
     reconciliation_error_eur: float
     numeric_tolerance: float = field(repr=False, compare=False)
-    settlement_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
-        from .fcr_bid_evaluation import ComponentAvailability, canonical_json_bytes
+        from .fcr_bid_evaluation import ComponentAvailability
 
         if self.profile_id != "robust-storage-bidding-reference-settlement-v1":
             raise FCRSettlementValidationError(
@@ -311,10 +309,8 @@ class FixedFCRBidSettlement:
             "penalty_rule_id",
             _non_empty(self.penalty_rule_id, field_name="penalty_rule_id"),
         )
-        fingerprint = hashlib.sha256(canonical_json_bytes(self._payload())).hexdigest()
-        object.__setattr__(self, "settlement_fingerprint", fingerprint)
 
-    def _payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "profile_id": self.profile_id,
             "day_ahead_revenue": self.day_ahead_revenue.to_dict(),
@@ -337,11 +333,6 @@ class FixedFCRBidSettlement:
             "reconciliation_error_eur": self.reconciliation_error_eur,
         }
 
-    def to_dict(self) -> dict[str, object]:
-        return {
-            **self._payload(),
-            "settlement_fingerprint": self.settlement_fingerprint,
-        }
 
 
 def _same_interval(left: CanonicalInterval, right: CanonicalInterval) -> bool:

@@ -181,12 +181,11 @@
   "fingerprints": {
     "status": "pinned_after_independent_numeric_oracle_passed",
     "plan": "a8475b98eeb31f1d7e4b1b1863682a2a24e134a17efc251909248a7ce2ccd3d2",
-    "evaluation_input": "0be7a2ad901320c2a4150633aa51cf5c1ff60a55d566545b048e77a599278b17",
     "trace": "30970a8c93c623f5ce52cff87dc41b4ec0af5b36db2a40819db6b8fde589159b",
     "settlement": "efacd60ecb9a697ad73df90cbb5b6bfccf8ad35b25d63346152d5b7437362c1c",
-    "result": "4c0ce836577a4fde5eef704429ee7cfb8d065099c2ac6556a4bfb7556de20c6f",
-    "dynamic_saturation_result": "80d1545156e42299bc175a963cb7dff11661c99316d24415190b0609e1a83fef",
-    "failed_report": "c0e4106ffcdef627ddc503bed0c0bec966480c154cb001220b4dd11feb94e745",
-    "diagnostic_replay": "8a72f85034ca57338dc2b895695369b538d6a29f9bd48b1ad809ee18356f62ef"
+    "result": "9e8f1ea364ebb6f751b80f3558b9a5972f2bf0dbe0ecb2bfa2ecca08c0cf9119",
+    "dynamic_saturation_result": "04504958ca68aba1a300762c4b7f587ec1382b0e4091661d7c9c1bbec8ec7744",
+    "failed_report": "d841a140dac6558fe97840d23ae05f4557e6d26a83e750a46a224de85fd7cd1e",
+    "diagnostic_replay": "d7506888a70ababffcd3d9f6a7395024f83941833a4ad792254d9b40657e4d99"
   }
 }

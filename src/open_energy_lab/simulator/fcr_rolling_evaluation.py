@@ -251,7 +251,7 @@ class FCRSegmentedEvaluationReport:
             "battery_binding_fingerprint": self.battery_binding_fingerprint,
             "segment_fingerprints": [item.segment_fingerprint for item in self.segments],
             "feature_012_report_fingerprints": [
-                item.result_fingerprint for item in self.reports
+                _fingerprint(item.to_dict()) for item in self.reports
             ],
             "stored_energy_checkpoints_kwh": list(
                 self.stored_energy_checkpoints_kwh
@@ -638,7 +638,7 @@ def evaluate_fixed_fcr_bid_segments(
             parent_plan_fingerprint=plan.plan_fingerprint,
             period=period,
             plan=segment_plan,
-            market_context_fingerprint=context.context_fingerprint,
+            market_context_fingerprint=_fingerprint(context.to_dict()),
         )
         segment_trace = slice_regulation_activation_trace(
             activation_trace,

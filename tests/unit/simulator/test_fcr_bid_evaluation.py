@@ -77,7 +77,7 @@ def test_market_context_is_source_independent_and_discriminated() -> None:
     assert reference.context_kind == "reference_result"
     assert feature_010.day_ahead_prices == reference.day_ahead_prices
     assert feature_010.fcr_capacity_prices == reference.fcr_capacity_prices
-    assert feature_010.context_fingerprint != reference.context_fingerprint
+    assert feature_010 != reference
     with pytest.raises(module.FCRBidEvaluationValidationError, match="context kind"):
         replace(feature_010, context_kind="synthetic_market")
 
@@ -87,12 +87,6 @@ def test_evaluation_request_binds_plan_schedules_exactly() -> None:
 
     assert request.plan.energy_schedule is request.energy_schedule
     assert request.plan.fcr_schedule is request.fcr_schedule
-    assert request.input_fingerprints["energy_schedule"] == (
-        request.plan.energy_schedule.schedule_fingerprint
-    )
-    assert request.input_fingerprints["fcr_schedule"] == (
-        request.plan.fcr_schedule.schedule_fingerprint
-    )
 
 
 def test_evaluation_request_rejects_plan_context_period_mismatch() -> None:
@@ -120,10 +114,6 @@ def test_request_detects_battery_mutation_after_binding() -> None:
 def test_activation_is_evaluation_only_lineage() -> None:
     request = _request()
 
-    assert "activation_trace" in request.input_fingerprints
-    assert request.input_fingerprints["activation_trace"] == (
-        request.activation_trace.artifact_fingerprint
-    )
     assert all(
         "activation" not in key.casefold()
         for key in request.plan.producer_input_fingerprints
@@ -174,10 +164,7 @@ def test_successful_and_failed_reports_have_disjoint_shapes() -> None:
         physical_metrics={"throughput_kwh": 2.0},
         settlement={"total_profit_eur": 0.13},
         total_profit_eur=0.13,
-        trace_fingerprint="d" * 64,
-        settlement_fingerprint="e" * 64,
         comparison=None,
-        comparison_fingerprint=None,
     )
     failed = module.build_validation_failed_evaluation_report(
         request=request,
@@ -201,11 +188,9 @@ def test_successful_and_failed_reports_have_disjoint_shapes() -> None:
     assert failed.physical_metrics is None
     assert failed.settlement is None
     assert failed.total_profit_eur is None
-    assert failed.trace_fingerprint is None
-    assert failed.settlement_fingerprint is None
 
 
-def test_request_and_report_canonical_bytes_and_fingerprints_are_stable() -> None:
+def test_request_and_report_canonical_bytes_are_stable() -> None:
     module = _module()
     first_request = _request()
     repeated_request = _request()
@@ -228,13 +213,9 @@ def test_request_and_report_canonical_bytes_and_fingerprints_are_stable() -> Non
         diagnostics=diagnostics,
     )
 
-    assert first_request.evaluation_input_fingerprint == (
-        repeated_request.evaluation_input_fingerprint
-    )
+    assert first_request.to_dict() == repeated_request.to_dict()
     assert first.to_dict() == repeated.to_dict()
     assert first.canonical_bytes() == repeated.canonical_bytes()
-    assert first.result_fingerprint == repeated.result_fingerprint
-    assert len(first.result_fingerprint) == 64
 
 
 def _us1_case(*, producer_kind: str = "manual", **overrides: object):
@@ -264,9 +245,7 @@ def test_valid_fixed_plan_preflight_returns_a_settled_report() -> None:
     assert report.status == "settled"
     assert report.diagnostics[0].code == "preflight_valid"
     assert report.plan_fingerprint == case.plan.plan_fingerprint
-    assert report.evaluation_input_fingerprint == (
-        case.request.evaluation_input_fingerprint
-    )
+    assert report.evaluation_id == case.request.evaluation_id
 
 
 def test_identical_values_are_physically_invariant_across_producer_kinds() -> None:
@@ -280,12 +259,7 @@ def test_identical_values_are_physically_invariant_across_producer_kinds() -> No
     assert all(report.physical_metrics == reports[0].physical_metrics for report in reports)
     assert all(report.physical_trace == reports[0].physical_trace for report in reports)
     assert all(report.settlement == reports[0].settlement for report in reports)
-    assert all(report.trace_fingerprint == reports[0].trace_fingerprint for report in reports)
-    assert all(
-        report.settlement_fingerprint == reports[0].settlement_fingerprint
-        for report in reports
-    )
-    assert len({report.result_fingerprint for report in reports}) == 4
+    assert len({report.canonical_bytes() for report in reports}) == 4
 
 
 def test_manual_plan_retains_explicit_unavailable_objective_reasons_and_no_activation() -> None:
@@ -324,7 +298,7 @@ def test_zero_fcr_and_zero_energy_use_the_same_evaluation_path() -> None:
     assert energy_report.settlement["day_ahead_revenue"]["value_eur"] == 0.0
 
 
-def test_repeated_evaluation_has_identical_trace_settlement_and_result_fingerprints() -> None:
+def test_repeated_evaluation_has_identical_trace_settlement_and_result() -> None:
     module = _module()
     case = _us1_case()
 
@@ -332,9 +306,8 @@ def test_repeated_evaluation_has_identical_trace_settlement_and_result_fingerpri
     repeated = module.evaluate_fixed_fcr_bid(case.request)
 
     assert first.physical_trace == repeated.physical_trace
-    assert first.trace_fingerprint == repeated.trace_fingerprint
-    assert first.settlement_fingerprint == repeated.settlement_fingerprint
-    assert first.result_fingerprint == repeated.result_fingerprint
+    assert first.settlement == repeated.settlement
+    assert first.canonical_bytes() == repeated.canonical_bytes()
 
 
 def _audit_battery(**overrides: object):
@@ -411,7 +384,7 @@ def test_invalid_commitment_diagnostic_is_explicitly_non_economic() -> None:
     assert diagnostic.physical_trace["samples"][6]["saturation_causes"] == (
         "discharge_power_limit",
     )
-    assert diagnostic.diagnostic_fingerprint == repeated.diagnostic_fingerprint
+    assert diagnostic.to_dict() == repeated.to_dict()
 
 
 def test_diagnostic_replay_refuses_valid_or_integrity_failed_requests() -> None:
@@ -480,7 +453,7 @@ def test_daily_report_exposes_schedule_optimization_and_input_lineage() -> None:
         "objective": case.plan.objective.to_dict(),
         "objective_bound": case.plan.objective_bound.to_dict(),
     }
-    assert report.input_fingerprints == case.request.input_fingerprints
+    assert report.plan_fingerprint == case.plan.plan_fingerprint
     assert report.to_dict()["comparison"] is None
 
 
