@@ -13,19 +13,29 @@ from datetime import datetime
 from enum import Enum
 from functools import partial
 import hashlib
-import json
 import os
-from pathlib import Path, PurePosixPath
-import re
+from pathlib import Path
 from typing import Any
 
+from open_energy_lab.core.artifact import (
+    PLACEHOLDER_FINGERPRINT,
+    immutable_filename,
+    payload_without,
+    publish_write_once,
+    read_artifact_source,
+    recorded_fingerprints,
+    resolve_sidecar,
+    safe_sidecar_locator,
+    seal_fingerprints,
+    verify_fingerprints,
+    verify_sidecar_bytes,
+)
 from open_energy_lab.core.errors import ValidationError
 from open_energy_lab.core.serialization import (
     canonical_json_bytes,
     freeze,
     json_document_bytes,
     thaw,
-    write_bytes_atomically,
 )
 from open_energy_lab.core.time import utc_timestamp_text
 from open_energy_lab.core.validation import (
@@ -293,11 +303,8 @@ class RestorationMarketArtifact:
     def from_dict(cls, payload: Mapping[str, Any]) -> RestorationMarketArtifact:
         """Load and verify all persisted semantic and identity fields."""
 
-        recorded_content = _sha256(
-            payload.get("content_fingerprint"), field_name="content_fingerprint"
-        )
-        recorded_artifact = _sha256(
-            payload.get("artifact_fingerprint"), field_name="artifact_fingerprint"
+        recorded = recorded_fingerprints(
+            payload, ("content_fingerprint", "artifact_fingerprint"), error=RestorationArtifactValidationError
         )
         recorded_series = {
             str(item.get("series_id")): _sha256(
@@ -313,10 +320,7 @@ class RestorationMarketArtifact:
                 raise RestorationArtifactIntegrityError(
                     f"series_fingerprint mismatch for {series.series_id}"
                 )
-        if artifact.content_fingerprint != recorded_content:
-            raise RestorationArtifactIntegrityError("content_fingerprint mismatch")
-        if artifact.artifact_fingerprint != recorded_artifact:
-            raise RestorationArtifactIntegrityError("artifact_fingerprint mismatch")
+        verify_fingerprints(artifact, recorded, integrity_error=RestorationArtifactIntegrityError)
         return artifact
 
 
@@ -549,20 +553,10 @@ def _market_series(
             )
         ),
         observations=observations,
-        series_fingerprint="0" * 64,
+        series_fingerprint=PLACEHOLDER_FINGERPRINT,
     )
-    fingerprint = hashlib.sha256(
-        canonical_restoration_json_bytes(_series_payload_without_fingerprint(provisional))
-    ).hexdigest()
-    return RestorationMarketSeries(
-        **{
-            **{
-                field: getattr(provisional, field)
-                for field in provisional.__dataclass_fields__
-                if field != "series_fingerprint"
-            },
-            "series_fingerprint": fingerprint,
-        }
+    return seal_fingerprints(
+        provisional, (("series_fingerprint", _series_payload_without_fingerprint),), error=RestorationArtifactValidationError
     )
 
 
@@ -621,16 +615,7 @@ def _request_evidence(payload: object, *, index: int) -> SourceRequestEvidence:
 
 def _safe_sidecar_locator(value: object, *, field_name: str) -> str:
     locator = _non_empty_string(value, field_name=field_name)
-    path = PurePosixPath(locator)
-    if (
-        path.is_absolute()
-        or any(part in {"", ".", ".."} for part in path.parts)
-        or "\\" in locator
-    ):
-        raise RestorationArtifactValidationError(
-            f"{field_name} must be a safe relative sidecar path without traversal"
-        )
-    return locator
+    return safe_sidecar_locator(locator, field_name=field_name, error=RestorationArtifactValidationError)
 
 
 def _validate_raw_retention(
@@ -748,14 +733,6 @@ def _content_payload(artifact: RestorationMarketArtifact) -> dict[str, object]:
         "series_manifest": _thaw(artifact.series_manifest),
         "series": [item.to_dict() for item in artifact.series],
     }
-
-
-def _artifact_payload_without_fingerprint(
-    artifact: RestorationMarketArtifact,
-) -> dict[str, object]:
-    payload = artifact.to_dict()
-    payload.pop("artifact_fingerprint")
-    return payload
 
 
 def _build_restoration_market_artifact(
@@ -939,37 +916,16 @@ def _build_restoration_market_artifact(
         raw_retention=_validate_raw_retention(data["raw_retention"], evidence),
         redistribution_policy=_validate_policy(data["redistribution_policy"]),
         predecessor_artifact_fingerprint=predecessor,
-        content_fingerprint="0" * 64,
-        artifact_fingerprint="0" * 64,
+        content_fingerprint=PLACEHOLDER_FINGERPRINT,
+        artifact_fingerprint=PLACEHOLDER_FINGERPRINT,
     )
-    content_fingerprint = hashlib.sha256(
-        canonical_restoration_json_bytes(_content_payload(provisional))
-    ).hexdigest()
-    with_content = RestorationMarketArtifact(
-        **{
-            **{
-                field: getattr(provisional, field)
-                for field in provisional.__dataclass_fields__
-                if field not in {"content_fingerprint", "artifact_fingerprint"}
-            },
-            "content_fingerprint": content_fingerprint,
-            "artifact_fingerprint": "0" * 64,
-        }
-    )
-    artifact_fingerprint = hashlib.sha256(
-        canonical_restoration_json_bytes(
-            _artifact_payload_without_fingerprint(with_content)
-        )
-    ).hexdigest()
-    return RestorationMarketArtifact(
-        **{
-            **{
-                field: getattr(with_content, field)
-                for field in with_content.__dataclass_fields__
-                if field != "artifact_fingerprint"
-            },
-            "artifact_fingerprint": artifact_fingerprint,
-        }
+    return seal_fingerprints(
+        provisional,
+        (
+            ("content_fingerprint", _content_payload),
+            ("artifact_fingerprint", partial(payload_without, field="artifact_fingerprint")),
+        ),
+        error=RestorationArtifactValidationError,
     )
 
 
@@ -988,63 +944,12 @@ def restoration_market_artifact_filename(
 
     if not isinstance(artifact, RestorationMarketArtifact):
         raise TypeError("artifact must be a RestorationMarketArtifact")
-    artifact_id = _non_empty_string(artifact.artifact_id, field_name="artifact_id")
-    if any(
-        fragment in artifact_id.casefold()
-        for fragment in ("token", "credential", "secret", "client-id")
-    ):
-        raise RestorationArtifactValidationError(
-            "artifact_id must not contain credential labels"
-        )
-    safe_id = re.sub(r"[^A-Za-z0-9._-]+", "-", artifact_id).strip("-.")
-    if not safe_id:
-        raise RestorationArtifactValidationError(
-            "artifact_id contains no filename-safe identity"
-        )
-    return f"{safe_id}-{_sha256(artifact.artifact_fingerprint, field_name='artifact_fingerprint')}.json"
-
-
-def _decode_json(text: str, *, source_name: str) -> dict[str, Any]:
-    def _reject_non_finite(value: str) -> object:
-        raise RestorationArtifactValidationError(
-            f"{source_name} contains non-finite JSON number {value}"
-        )
-
-    try:
-        payload = json.loads(text, parse_constant=_reject_non_finite)
-    except RestorationArtifactValidationError:
-        raise
-    except (json.JSONDecodeError, TypeError, ValueError) as exc:
-        raise RestorationArtifactValidationError(
-            f"malformed JSON in restoration artifact {source_name}: {exc}"
-        ) from exc
-    if not isinstance(payload, dict):
-        raise RestorationArtifactValidationError(
-            f"restoration artifact {source_name} must contain a JSON object"
-        )
-    return payload
-
-
-def _resolve_sidecar(root: Path, locator: str) -> Path:
-    _safe_sidecar_locator(locator, field_name="sidecar_locator")
-    try:
-        resolved_root = root.resolve(strict=True)
-        candidate = resolved_root.joinpath(*PurePosixPath(locator).parts).resolve(
-            strict=True
-        )
-    except OSError as exc:
-        raise RestorationArtifactIntegrityError(
-            f"retained sidecar is missing or unreadable: {locator}"
-        ) from exc
-    if not candidate.is_relative_to(resolved_root):
-        raise RestorationArtifactValidationError(
-            f"sidecar locator escapes the artifact root: {locator}"
-        )
-    if not candidate.is_file():
-        raise RestorationArtifactIntegrityError(
-            f"retained sidecar is not a regular file: {locator}"
-        )
-    return candidate
+    return immutable_filename(
+        artifact.artifact_id,
+        artifact.artifact_fingerprint,
+        error=RestorationArtifactValidationError,
+        banned_labels=("token", "credential", "secret", "client-id"),
+    )
 
 
 def _verify_sidecars(
@@ -1068,22 +973,17 @@ def _verify_sidecars(
         locator = retention["sidecar_locator"]
         digest = retention["sidecar_sha256"]
         assert isinstance(locator, str) and isinstance(digest, str)
-        path = _resolve_sidecar(artifact_root, locator)
-        try:
-            content = path.read_bytes()
-        except OSError as exc:
-            raise RestorationArtifactIntegrityError(
-                f"retained sidecar cannot be read: {locator}"
-            ) from exc
-        observed = hashlib.sha256(content).hexdigest()
-        if (
-            observed != digest
-            or observed != evidence[request_id].raw_sha256
-            or len(content) != evidence[request_id].response_bytes
-        ):
-            raise RestorationArtifactIntegrityError(
-                f"retained sidecar digest or byte count mismatch: {locator}"
-            )
+        if digest != evidence[request_id].raw_sha256:
+            raise RestorationArtifactIntegrityError(f"retained sidecar digest or byte count mismatch: {locator}")
+        verify_sidecar_bytes(
+            resolve_sidecar(
+                artifact_root, locator, validation_error=RestorationArtifactValidationError, integrity_error=RestorationArtifactIntegrityError
+            ),
+            locator=locator,
+            expected_sha256=digest,
+            expected_byte_count=evidence[request_id].response_bytes,
+            integrity_error=RestorationArtifactIntegrityError,
+        )
 
 
 def load_restoration_market_artifact(
@@ -1093,20 +993,9 @@ def load_restoration_market_artifact(
 ) -> RestorationMarketArtifact:
     """Load and fully verify one artifact without source or credential access."""
 
-    inferred_root: Path | None = None
-    if isinstance(source, Mapping):
-        payload = dict(source)
-        source_name = "in-memory restoration manifest"
-    else:
-        path = Path(source)
-        source_name = str(path)
-        try:
-            payload = _decode_json(path.read_text(encoding="utf-8"), source_name=source_name)
-        except OSError as exc:
-            raise RestorationArtifactValidationError(
-                f"restoration artifact cannot be read: {path}"
-            ) from exc
-        inferred_root = path.parent
+    payload, source_name, inferred_root = read_artifact_source(
+        source, label="restoration artifact", error=RestorationArtifactValidationError
+    )
     try:
         artifact = RestorationMarketArtifact.from_dict(payload)
     except (
@@ -1147,35 +1036,16 @@ def write_restoration_market_artifact(
     _verify_sidecars(verified, artifact_root=destination)
     output_path = destination / restoration_market_artifact_filename(verified)
     desired_bytes = _manifest_bytes(verified)
-    if output_path.exists():
-        try:
-            existing = load_restoration_market_artifact(
-                output_path, artifact_root=destination
-            )
-            existing_bytes = output_path.read_bytes()
-        except (OSError, RestorationArtifactValidationError) as exc:
-            raise RestorationArtifactIntegrityError(
-                "immutable existing restoration artifact failed integrity validation"
-            ) from exc
-        if (
-            existing.artifact_fingerprint != verified.artifact_fingerprint
-            or existing_bytes != desired_bytes
-        ):
-            raise RestorationArtifactIntegrityError(
-                "immutable existing restoration artifact differs from requested bytes"
-            )
-        return output_path
-    try:
-        write_bytes_atomically(output_path, desired_bytes, fail_if_exists=True)
-    except FileExistsError as exc:
-        raise RestorationArtifactIntegrityError(
-            "immutable restoration artifact appeared during publication"
-        ) from exc
-    except OSError as exc:
-        raise RestorationArtifactPublicationError(
-            f"atomic restoration artifact publication failed: {output_path}"
-        ) from exc
-    return output_path
+    return publish_write_once(
+        output_path,
+        desired_bytes,
+        load_existing=partial(load_restoration_market_artifact, artifact_root=destination),
+        same_identity=lambda existing: existing.artifact_fingerprint == verified.artifact_fingerprint,
+        label="restoration artifact",
+        validation_error=RestorationArtifactValidationError,
+        integrity_error=RestorationArtifactIntegrityError,
+        publication_error=RestorationArtifactPublicationError,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1492,18 +1362,9 @@ def load_restoration_study_bundle(
 ) -> RestorationStudyBundle:
     """Load a bundle and re-resolve every exact artifact and series offline."""
 
-    if isinstance(source, Mapping):
-        payload = dict(source)
-    else:
-        path = Path(source)
-        try:
-            payload = _decode_json(
-                path.read_text(encoding="utf-8"), source_name=str(path)
-            )
-        except OSError as exc:
-            raise RestorationArtifactValidationError(
-                f"restoration study bundle cannot be read: {path}"
-            ) from exc
+    payload, _, _ = read_artifact_source(
+        source, label="restoration study bundle", error=RestorationArtifactValidationError
+    )
     recorded = _sha256(
         payload.get("bundle_fingerprint"), field_name="bundle_fingerprint"
     )
