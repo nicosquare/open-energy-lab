@@ -1020,11 +1020,7 @@ def _afrr_directional_performance(
         for _, replay_sample in selected
     ]
     delivered_powers = [
-        (
-            max(0.0, -replay_sample.delivered_balancing_power_kw)
-            if direction is RestorationDirection.UPWARD
-            else max(0.0, replay_sample.delivered_balancing_power_kw)
-        )
+        direction.magnitude_of(replay_sample.delivered_balancing_power_kw)
         for _, replay_sample in selected
     ]
     causes = _ordered_causes(
@@ -1595,14 +1591,10 @@ def _mfrr_event_performance(
         (item.interval.end_utc - item.interval.start_utc).total_seconds()
         for item in active_samples
     )
-    if event.direction is RestorationDirection.UPWARD:
-        delivered_powers = [
-            max(0.0, -item.delivered_balancing_power_kw) for item in selected
-        ]
-    else:
-        delivered_powers = [
-            max(0.0, item.delivered_balancing_power_kw) for item in selected
-        ]
+    delivered_powers = [
+        event.direction.magnitude_of(item.delivered_balancing_power_kw)
+        for item in selected
+    ]
     causes = _ordered_causes(
         tuple(cause for item in selected for cause in item.causes)
     )

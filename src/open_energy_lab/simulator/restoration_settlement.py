@@ -1234,9 +1234,8 @@ def settle_restoration_services(
                 if abs(activation_sample.requested_balancing_power_kw) <= normalized_tolerance:
                     continue
                 direction = (
-                    RestorationDirection.UPWARD
-                    if activation_sample.requested_balancing_power_kw < 0.0
-                    else RestorationDirection.DOWNWARD
+                    RestorationDirection.of_signed(activation_sample.requested_balancing_power_kw)
+                    or RestorationDirection.DOWNWARD
                 )
                 candidates = _identity_candidates(
                     activation,
@@ -1415,9 +1414,8 @@ def settle_restoration_services(
             if abs(activation_sample.requested_balancing_power_kw) <= normalized_tolerance:
                 continue
             direction = (
-                RestorationDirection.UPWARD
-                if activation_sample.requested_balancing_power_kw < 0.0
-                else RestorationDirection.DOWNWARD
+                RestorationDirection.of_signed(activation_sample.requested_balancing_power_kw)
+                or RestorationDirection.DOWNWARD
             )
             price = activation_matches[index]
             assert price.price is not None
