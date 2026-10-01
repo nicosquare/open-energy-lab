@@ -242,6 +242,14 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     routine local runs. The 4 v1 `spn_mip` TPM tests are
     `xfail(strict=True)` until B3. Still open: `AGENTS.md` "Useful Checks"
     lists the old commands (rewritten in A7).
+    The first CI run found two issues local 3.14 runs could not: the
+    boundary tests forbade all of `urllib`, but `pathlib` imports
+    `urllib.parse` on Python <= 3.12 (now only `urllib.request` and
+    `urllib.response` are forbidden); and float `sum()` differs on Python
+    3.11, so pinned fingerprints failed there. OEL now requires
+    **Python >= 3.12** (agreed 2026-10-01; caveat: `tpm_for_sp` pins
+    < 3.12). CI on GitHub: tests 3.12–3.14 about 3 min each, slow about
+    6 min, notebooks about 3 min, all green.
 - [ ] **A5 provenance trim** (D2). Keep fingerprints on persisted artifacts
   and results only. Add one versioned JSON artifact base shared by weather,
   demand, market, and the planning dataset. Settle one loading behavior for
