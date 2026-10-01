@@ -10,6 +10,7 @@ import pytest
 from open_energy_lab.planning.dataset import (
     PLANNING_DATASET_REQUIRED_KEYS,
     PlanningDatasetArtifact,
+    PlanningDatasetValidationError,
     SUPPORTED_PLANNING_DATASET_SCHEMA_VERSIONS,
     UnsupportedPlanningDatasetVersionError,
     load_planning_dataset,
@@ -263,3 +264,41 @@ def test_load_planning_dataset_preserves_export_reproducibility_metadata() -> No
         "unmet_load_kw",
     ]
     assert loaded.export_configuration["numeric_tolerance"] == pytest.approx(1e-9)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("row_count", "1"),
+        ("horizon_steps", 2.0),
+        ("timestep_hours", float("nan")),
+        ("created_at", "2026-07-12T00:00:00"),
+        ("dataset_id", 7),
+        ("column_order", ["scenario_index", 3]),
+    ],
+)
+def test_load_planning_dataset_rejects_coercible_but_wrong_types(field: str, value: object) -> None:
+    payload = _dataset_payload()
+    payload[field] = value
+
+    with pytest.raises(PlanningDatasetValidationError, match=field):
+        load_planning_dataset(payload)
+
+
+def test_planning_dataset_created_at_is_fixed_at_construction() -> None:
+    artifact = PlanningDatasetArtifact(dataset_id="d", schema_version="v1")
+
+    assert artifact.created_at.endswith("Z")
+    assert artifact.to_dict()["created_at"] == artifact.to_dict()["created_at"] == artifact.created_at
+
+
+def test_planning_dataset_fixture_round_trips_its_artifact_fields(tmp_path) -> None:
+    from pathlib import Path
+
+    fixture = Path(__file__).parents[2] / "fixtures" / "tpm" / "planning_dataset_v1.json"
+    artifact = load_planning_dataset(fixture)
+
+    written = artifact.write_json(tmp_path / "copy.json")
+
+    original = json.loads(fixture.read_text())
+    assert json.loads(written.read_text()) == {key: original[key] for key in PLANNING_DATASET_REQUIRED_KEYS}

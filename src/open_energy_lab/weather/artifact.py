@@ -5,9 +5,22 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+from open_energy_lab.core.artifact import read_artifact_source
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.serialization import write_bytes_atomically
+from open_energy_lab.core.time import utc_timestamp_text
+from open_energy_lab.core.validation import (
+    finite,
+    mapping,
+    non_empty_str,
+    positive_int,
+    require_fields,
+    sequence,
+)
 
 from ._canonical import CANONICAL_WEATHER_FIELD_ORDER, LOCAL_CIVIL_TIME_BASIS
 
@@ -23,7 +36,11 @@ _IRRADIANCE_FIELDS = {
 }
 
 
-class UnsupportedWeatherArtifactVersionError(ValueError):
+class WeatherArtifactValidationError(ValidationError):
+    """Raised when a weather artifact violates its schema."""
+
+
+class UnsupportedWeatherArtifactVersionError(WeatherArtifactValidationError):
     """Raised when artifact loading sees an unsupported schema version."""
 
 
@@ -49,6 +66,15 @@ class WeatherArtifact:
     supported_load_modes: tuple[str, ...]
 
     def __post_init__(self) -> None:
+        for name in ("artifact_id", "feature_name", "timezone_name", "base_model_kind"):
+            _non_empty(getattr(self, name), field_name=name)
+        _validate_timestamp(self.created_at, field_name="created_at")
+        for name in ("latitude", "longitude", "timestep_hours"):
+            object.__setattr__(self, name, _finite(getattr(self, name), field_name=name))
+        for name in ("canonical_field_order", "supported_load_modes"):
+            object.__setattr__(self, name, _string_sequence(getattr(self, name), field_name=name))
+        for name in ("training_record_summary", "base_model_parameters", "cloud_event_model", "provenance"):
+            object.__setattr__(self, name, _mapping(getattr(self, name), field_name=name))
         if self.schema_version not in SUPPORTED_ARTIFACT_SCHEMA_VERSIONS:
             raise UnsupportedWeatherArtifactVersionError(
                 f"unsupported weather artifact schema_version {self.schema_version!r}"
@@ -104,10 +130,8 @@ class WeatherArtifact:
         """Persist the artifact as human-inspectable JSON."""
 
         output_path = Path(path)
-        output_path.write_text(
-            json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
+        document = json.dumps(self.to_dict(), indent=2, sort_keys=True, allow_nan=False) + "\n"
+        write_bytes_atomically(output_path, document.encode("utf-8"))
         return output_path
 
     def sample_family(
@@ -148,28 +172,8 @@ class WeatherArtifact:
             "provenance",
             "supported_load_modes",
         )
-        missing = [key for key in required_keys if key not in data]
-        if missing:
-            raise ValueError(f"weather artifact is missing required keys: {', '.join(missing)}")
-
-        return cls(
-            artifact_id=str(data["artifact_id"]),
-            schema_version=str(data["schema_version"]),
-            feature_name=str(data["feature_name"]),
-            created_at=str(data["created_at"]),
-            latitude=float(data["latitude"]),
-            longitude=float(data["longitude"]),
-            timezone_name=str(data["timezone_name"]),
-            time_basis=str(data["time_basis"]),
-            timestep_hours=float(data["timestep_hours"]),
-            canonical_field_order=tuple(data["canonical_field_order"]),
-            training_record_summary=dict(data["training_record_summary"]),
-            base_model_kind=str(data["base_model_kind"]),
-            base_model_parameters=dict(data["base_model_parameters"]),
-            cloud_event_model=dict(data["cloud_event_model"]),
-            provenance=dict(data["provenance"]),
-            supported_load_modes=tuple(data["supported_load_modes"]),
-        )
+        _require_fields(data, required_keys, field_name="weather artifact")
+        return cls(**{key: data[key] for key in required_keys})
 
 
 def load_weather_artifact(
@@ -179,10 +183,7 @@ def load_weather_artifact(
 ) -> WeatherArtifact:
     """Load and validate a persisted weather artifact."""
 
-    if isinstance(source, Mapping):
-        raw_payload = source
-    else:
-        raw_payload = json.loads(Path(source).read_text(encoding="utf-8"))
+    raw_payload, _, _ = read_artifact_source(source, label="weather artifact", error=WeatherArtifactValidationError)
 
     artifact = WeatherArtifact.from_dict(raw_payload)
     if expected_timestep_hours is not None and artifact.timestep_hours != expected_timestep_hours:
@@ -195,6 +196,7 @@ def load_weather_artifact(
 
 __all__ = [
     "SUPPORTED_ARTIFACT_SCHEMA_VERSIONS",
+    "WeatherArtifactValidationError",
     "UnsupportedWeatherArtifactVersionError",
     "WeatherArtifact",
     "load_weather_artifact",
@@ -373,34 +375,26 @@ def _validate_empirical_distribution(
         )
 
 
-def _validate_timestamp(value: object, *, field_name: str) -> None:
-    if not isinstance(value, str):
-        raise ValueError(f"{field_name} must be an ISO 8601 UTC timestamp string")
-    try:
-        datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as exc:
-        raise ValueError(f"{field_name} must be an ISO 8601 UTC timestamp string") from exc
-
-
-def _positive_int(value: object, *, field_name: str) -> int:
-    if isinstance(value, bool) or value is None:
-        raise ValueError(f"{field_name} must be a positive integer")
-    integer_value = int(value)
-    if integer_value <= 0:
-        raise ValueError(f"{field_name} must be positive")
-    return integer_value
+_validate_timestamp = partial(utc_timestamp_text, error=WeatherArtifactValidationError)
+_positive_int = partial(positive_int, error=WeatherArtifactValidationError)
+_finite = partial(finite, error=WeatherArtifactValidationError)
+_non_empty = partial(non_empty_str, error=WeatherArtifactValidationError)
+_mapping = partial(mapping, error=WeatherArtifactValidationError)
+_require_fields = partial(require_fields, error=WeatherArtifactValidationError)
 
 
 def _string_sequence(value: object, *, field_name: str) -> tuple[str, ...]:
-    if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)):
-        raise ValueError(f"{field_name} must be a sequence")
-    return tuple(str(item) for item in value)
+    return tuple(
+        _non_empty(item, field_name=f"{field_name}[{index}]")
+        for index, item in enumerate(sequence(value, field_name=field_name, error=WeatherArtifactValidationError))
+    )
 
 
 def _numeric_vector(value: object, *, field_name: str) -> tuple[float, ...]:
-    if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)):
-        raise ValueError(f"{field_name} must be a numeric sequence")
-    return tuple(float(item) for item in value)
+    return tuple(
+        _finite(item, field_name=f"{field_name}[{index}]")
+        for index, item in enumerate(sequence(value, field_name=field_name, error=WeatherArtifactValidationError))
+    )
 
 
 def _covariance_matrix(
@@ -411,11 +405,10 @@ def _covariance_matrix(
     if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)):
         raise ValueError("covariance_matrix must be a square numeric sequence")
 
-    rows: list[tuple[float, ...]] = []
-    for row in value:
-        if not isinstance(row, Sequence) or isinstance(row, (str, bytes, bytearray)):
-            raise ValueError("covariance_matrix rows must be numeric sequences")
-        rows.append(tuple(float(item) for item in row))
+    rows = [
+        _numeric_vector(row, field_name=f"covariance_matrix[{index}]")
+        for index, row in enumerate(value)
+    ]
 
     if len(rows) != expected_size:
         raise ValueError("covariance_matrix row count must match mean_vector length")

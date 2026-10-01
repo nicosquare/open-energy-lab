@@ -6,8 +6,6 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from functools import partial
-import hashlib
-import json
 import os
 from pathlib import Path
 import re
@@ -15,13 +13,22 @@ from types import MappingProxyType
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from open_energy_lab.core.artifact import (
+    PLACEHOLDER_FINGERPRINT,
+    immutable_filename,
+    payload_without,
+    publish_write_once,
+    read_artifact_source,
+    recorded_fingerprints,
+    seal_fingerprints,
+    verify_fingerprints,
+)
 from open_energy_lab.core.errors import ValidationError
 from open_energy_lab.core.serialization import (
     canonical_json_bytes,
     freeze,
     json_document_bytes,
     thaw,
-    write_bytes_atomically,
 )
 from open_energy_lab.core.time import format_utc
 from open_energy_lab.core.validation import finite, mapping, non_empty_str, sequence
@@ -236,17 +243,11 @@ class RegulationActivationTrace:
             raise UnsupportedActivationSchemaError(
                 f"unsupported activation schema version {schema!r}"
             )
-        expected_content = payload.get("content_fingerprint")
-        expected_artifact = payload.get("artifact_fingerprint")
-        if not isinstance(expected_content, str) or _SHA256.fullmatch(expected_content) is None:
-            raise ActivationIntegrityError("content fingerprint is malformed")
-        if not isinstance(expected_artifact, str) or _SHA256.fullmatch(expected_artifact) is None:
-            raise ActivationIntegrityError("artifact fingerprint is malformed")
+        recorded = recorded_fingerprints(
+            payload, ("content_fingerprint", "artifact_fingerprint"), error=ActivationIntegrityError
+        )
         trace = _trace_from_payload(payload)
-        if trace.content_fingerprint != expected_content:
-            raise ActivationIntegrityError("content fingerprint mismatch")
-        if trace.artifact_fingerprint != expected_artifact:
-            raise ActivationIntegrityError("artifact fingerprint mismatch")
+        verify_fingerprints(trace, recorded, integrity_error=ActivationIntegrityError)
         return trace
 
 
@@ -470,12 +471,6 @@ def _content_payload(trace: RegulationActivationTrace) -> dict[str, object]:
     }
 
 
-def _artifact_payload(trace: RegulationActivationTrace) -> dict[str, object]:
-    payload = trace.to_dict()
-    payload.pop("artifact_fingerprint")
-    return payload
-
-
 def _build_trace(
     *,
     trace_id: str,
@@ -498,32 +493,17 @@ def _build_trace(
         source=_freeze(source),
         normalization=_freeze(normalization),
         samples=samples,
-        content_fingerprint="0" * 64,
-        artifact_fingerprint="0" * 64,
+        content_fingerprint=PLACEHOLDER_FINGERPRINT,
+        artifact_fingerprint=PLACEHOLDER_FINGERPRINT,
         retention_and_license=_freeze(retention_and_license),
     )
-    content = hashlib.sha256(_canonical_json(_content_payload(provisional))).hexdigest()
-    with_content = RegulationActivationTrace(
-        **{
-            **{
-                name: getattr(provisional, name)
-                for name in provisional.__dataclass_fields__
-                if name not in {"content_fingerprint", "artifact_fingerprint"}
-            },
-            "content_fingerprint": content,
-            "artifact_fingerprint": "0" * 64,
-        }
-    )
-    artifact = hashlib.sha256(_canonical_json(_artifact_payload(with_content))).hexdigest()
-    return RegulationActivationTrace(
-        **{
-            **{
-                name: getattr(with_content, name)
-                for name in with_content.__dataclass_fields__
-                if name != "artifact_fingerprint"
-            },
-            "artifact_fingerprint": artifact,
-        }
+    return seal_fingerprints(
+        provisional,
+        (
+            ("content_fingerprint", _content_payload),
+            ("artifact_fingerprint", partial(payload_without, field="artifact_fingerprint")),
+        ),
+        error=ActivationValidationError,
     )
 
 
@@ -745,10 +725,7 @@ def _manifest_bytes(trace: RegulationActivationTrace) -> bytes:
 
 
 def _filename(trace: RegulationActivationTrace) -> str:
-    safe_id = re.sub(r"[^A-Za-z0-9._-]+", "-", trace.trace_id).strip("-.")
-    if not safe_id or any(word in safe_id.casefold() for word in ("token", "credential", "secret")):
-        raise ActivationValidationError("trace_id is not safe for an immutable filename")
-    return f"{safe_id}-{trace.artifact_fingerprint}.json"
+    return immutable_filename(trace.trace_id, trace.artifact_fingerprint, error=ActivationValidationError)
 
 
 def write_regulation_activation_trace(
@@ -768,48 +745,24 @@ def write_regulation_activation_trace(
         raise ActivationPublicationError("cannot create activation destination") from exc
     path = destination / _filename(verified)
     desired = _manifest_bytes(verified)
-    if path.exists():
-        try:
-            loaded = load_regulation_activation_trace(path)
-            existing = path.read_bytes()
-        except (OSError, ActivationValidationError) as exc:
-            raise ActivationIntegrityError(
-                "existing immutable activation trace failed integrity validation"
-            ) from exc
-        if loaded.artifact_fingerprint != verified.artifact_fingerprint or existing != desired:
-            raise ActivationIntegrityError(
-                "existing immutable activation trace differs from requested bytes"
-            )
-        return path
-    try:
-        write_bytes_atomically(path, desired)
-    except OSError as exc:
-        raise ActivationPublicationError("cannot atomically publish activation trace") from exc
-    return path
+    return publish_write_once(
+        path,
+        desired,
+        load_existing=load_regulation_activation_trace,
+        same_identity=lambda existing: existing.artifact_fingerprint == verified.artifact_fingerprint,
+        label="activation trace",
+        validation_error=ActivationValidationError,
+        integrity_error=ActivationIntegrityError,
+        publication_error=ActivationPublicationError,
+    )
 
 
 def load_regulation_activation_trace(
-    path: str | os.PathLike[str],
+    source: str | os.PathLike[str] | Mapping[str, Any],
 ) -> RegulationActivationTrace:
     """Load and verify a regulation activation trace entirely offline."""
 
-    source = Path(path)
-    try:
-        text = source.read_text(encoding="utf-8")
-        payload = json.loads(
-            text,
-            parse_constant=lambda value: (_ for _ in ()).throw(
-                ActivationValidationError(
-                    f"activation artifact contains non-finite JSON number {value}"
-                )
-            ),
-        )
-    except ActivationValidationError:
-        raise
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        raise ActivationValidationError("activation artifact is not valid UTF-8 JSON") from exc
-    if not isinstance(payload, Mapping):
-        raise ActivationValidationError("activation artifact root must be a mapping")
+    payload, _, _ = read_artifact_source(source, label="activation artifact", error=ActivationValidationError)
     return RegulationActivationTrace.from_dict(payload)
 
 

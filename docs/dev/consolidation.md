@@ -255,6 +255,29 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
   demand, market, and the planning dataset. Settle one loading behavior for
   the coercing helpers left in weather, demand, and planning, and decide the
   fate of the robust-FCR canonical form kept in control.
+  Plan (agreed 2026-10-01): three PRs. Existing saved rolling results may
+  break (D3); restoration fingerprints are trimmed in A6.
+  - [x] A5a artifact base: new `core/artifact.py` (JSON decode without
+    NaN, path-or-mapping reader, staged fingerprint sealing and
+    verification, immutable filenames, write-once publication, sidecar
+    checks). The four market artifacts use it (market −365 lines net; core +258).
+    Weather, demand, the planning dataset and the study manifest now load
+    strictly with core checks (no `int()`/`float()`/`str()` coercion; NaN,
+    bools as numbers and naive timestamps are refused), each with its own
+    `ValidationError` subclass, and write atomically. Planning `created_at`
+    is filled once at construction instead of inside `to_dict()`.
+    Persisted bytes are unchanged: the SHA-256-locked market fixtures pass
+    and key order is kept. Small behavior changes: sidecar locators with
+    `:` are refused; activation traces are written once, with a race check;
+    study shard locators must be safe relative paths. Follow-up: planning
+    validation still lives in `from_dict`, not the constructor.
+    Checks: `pytest` 2174 passed + 4 xfailed, `-m slow` 34 passed,
+    `-m notebook` 7 passed.
+  - [ ] A5b: drop the in-memory fingerprints (about 23 in control, 9 in
+    simulator FCR).
+  - [ ] A5c: slim the persisted rolling-result format, rename the persisted
+    `feature-0NN` strings, fold the robust canonical form into core,
+    regenerate fixtures.
 - [ ] **A6 merge variants**, one PR per package:
   - [ ] market: one `MarketArtifact`, one activation sign convention, a shared
     HTTP layer for ENTSO-E and RTE.

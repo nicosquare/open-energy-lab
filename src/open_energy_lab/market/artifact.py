@@ -6,21 +6,30 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
-import hashlib
-import json
 import os
-from pathlib import Path, PurePosixPath
-import re
+from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
+from open_energy_lab.core.artifact import (
+    PLACEHOLDER_FINGERPRINT,
+    immutable_filename,
+    payload_without,
+    publish_write_once,
+    read_artifact_source,
+    recorded_fingerprints,
+    resolve_sidecar,
+    safe_sidecar_locator,
+    seal_fingerprints,
+    verify_fingerprints,
+    verify_sidecar_bytes,
+)
 from open_energy_lab.core.errors import ValidationError
 from open_energy_lab.core.serialization import (
     canonical_json_bytes as _canonical_json_bytes,
     freeze,
     json_document_bytes,
     thaw,
-    write_bytes_atomically,
 )
 from open_energy_lab.core.time import utc_timestamp_text
 from open_energy_lab.core.validation import (
@@ -344,17 +353,11 @@ class MarketDataArtifact:
     def from_dict(cls, payload: Mapping[str, Any]) -> MarketDataArtifact:
         """Construct and verify one complete persisted manifest."""
 
-        content_fingerprint = _sha256(
-            payload.get("content_fingerprint"), field_name="content_fingerprint"
-        )
-        artifact_fingerprint = _sha256(
-            payload.get("artifact_fingerprint"), field_name="artifact_fingerprint"
+        recorded = recorded_fingerprints(
+            payload, ("content_fingerprint", "artifact_fingerprint"), error=MarketArtifactValidationError
         )
         artifact = _build_market_data_artifact(payload)
-        if artifact.content_fingerprint != content_fingerprint:
-            raise MarketArtifactIntegrityError("content_fingerprint mismatch")
-        if artifact.artifact_fingerprint != artifact_fingerprint:
-            raise MarketArtifactIntegrityError("artifact_fingerprint mismatch")
+        verify_fingerprints(artifact, recorded, integrity_error=MarketArtifactIntegrityError)
         return artifact
 
 
@@ -605,17 +608,7 @@ def _query_window(payload: object, *, index: int) -> SourceQueryWindow:
     )
 
 
-def _safe_sidecar_locator(value: str, *, field_name: str) -> str:
-    if "\\" in value or ":" in value:
-        raise MarketArtifactValidationError(
-            f"{field_name} must be a portable safe relative sidecar path"
-        )
-    path = PurePosixPath(value)
-    if path.is_absolute() or not path.parts or any(part in {"", ".", ".."} for part in path.parts):
-        raise MarketArtifactValidationError(
-            f"{field_name} must be a safe relative sidecar path without traversal"
-        )
-    return value
+_safe_sidecar_locator = partial(safe_sidecar_locator, error=MarketArtifactValidationError)
 
 
 def _raw_response(payload: object, *, index: int) -> RawResponseEvidence:
@@ -898,12 +891,6 @@ def _content_payload(artifact: MarketDataArtifact) -> dict[str, object]:
     }
 
 
-def _artifact_payload_without_fingerprint(artifact: MarketDataArtifact) -> dict[str, object]:
-    payload = artifact.to_dict()
-    payload.pop("artifact_fingerprint")
-    return payload
-
-
 def _build_market_data_artifact(payload: Mapping[str, Any]) -> MarketDataArtifact:
     data = _mapping(payload, field_name="market artifact")
     required = (
@@ -1025,39 +1012,20 @@ def _build_market_data_artifact(payload: Mapping[str, Any]) -> MarketDataArtifac
         query_windows=query_windows,
         raw_responses=raw_responses,
         source_documents=source_documents,
-        content_fingerprint="0" * 64,
-        artifact_fingerprint="0" * 64,
+        content_fingerprint=PLACEHOLDER_FINGERPRINT,
+        artifact_fingerprint=PLACEHOLDER_FINGERPRINT,
         predecessor_artifact_fingerprint=predecessor,
         retention_and_license=_freeze(
             _mapping(data["retention_and_license"], field_name="retention_and_license")
         ),
     )
-    content_fingerprint = hashlib.sha256(
-        canonical_json_bytes(_content_payload(provisional))
-    ).hexdigest()
-    with_content = MarketDataArtifact(
-        **{
-            **{
-                field: getattr(provisional, field)
-                for field in provisional.__dataclass_fields__
-                if field not in {"content_fingerprint", "artifact_fingerprint"}
-            },
-            "content_fingerprint": content_fingerprint,
-            "artifact_fingerprint": "0" * 64,
-        }
-    )
-    artifact_fingerprint = hashlib.sha256(
-        canonical_json_bytes(_artifact_payload_without_fingerprint(with_content))
-    ).hexdigest()
-    return MarketDataArtifact(
-        **{
-            **{
-                field: getattr(with_content, field)
-                for field in with_content.__dataclass_fields__
-                if field != "artifact_fingerprint"
-            },
-            "artifact_fingerprint": artifact_fingerprint,
-        }
+    return seal_fingerprints(
+        provisional,
+        (
+            ("content_fingerprint", _content_payload),
+            ("artifact_fingerprint", partial(payload_without, field="artifact_fingerprint")),
+        ),
+        error=MarketArtifactValidationError,
     )
 
 
@@ -1070,68 +1038,7 @@ def build_market_data_artifact(payload: Mapping[str, Any]) -> MarketDataArtifact
 def market_data_artifact_filename(artifact: MarketDataArtifact) -> str:
     """Derive an immutable, credential-independent manifest filename."""
 
-    artifact_id = _non_empty_string(artifact.artifact_id, field_name="artifact_id")
-    if any(fragment in artifact_id.casefold() for fragment in ("token", "credential", "secret")):
-        raise MarketArtifactValidationError(
-            "artifact_id must not contain credential or token labels"
-        )
-    safe_id = re.sub(r"[^A-Za-z0-9._-]+", "-", artifact_id).strip("-.")
-    if not safe_id:
-        raise MarketArtifactValidationError(
-            "artifact_id does not contain any filename-safe identity characters"
-        )
-    fingerprint = _sha256(
-        artifact.artifact_fingerprint,
-        field_name="artifact_fingerprint",
-    )
-    return f"{safe_id}-{fingerprint}.json"
-
-
-def _decode_manifest_text(text: str, *, source_name: str) -> dict[str, Any]:
-    def _reject_non_finite(value: str) -> object:
-        raise MarketArtifactValidationError(
-            f"{source_name} contains non-finite JSON number {value}"
-        )
-
-    try:
-        payload = json.loads(text, parse_constant=_reject_non_finite)
-    except MarketArtifactValidationError:
-        raise
-    except (json.JSONDecodeError, TypeError, ValueError) as exc:
-        raise MarketArtifactValidationError(
-            f"malformed JSON in market artifact {source_name}: {exc}"
-        ) from exc
-    if not isinstance(payload, dict):
-        raise MarketArtifactValidationError(
-            f"market artifact {source_name} must contain a top-level JSON object"
-        )
-    return payload
-
-
-def _resolve_sidecar(root: Path, locator: str) -> Path:
-    _safe_sidecar_locator(locator, field_name="sidecar_locator")
-    try:
-        resolved_root = root.resolve(strict=True)
-    except OSError as exc:
-        raise MarketArtifactIntegrityError(
-            f"artifact root cannot be resolved for sidecar verification: {root}"
-        ) from exc
-    candidate = resolved_root.joinpath(*PurePosixPath(locator).parts)
-    try:
-        resolved_candidate = candidate.resolve(strict=True)
-    except OSError as exc:
-        raise MarketArtifactIntegrityError(
-            f"retained sidecar is missing or unreadable: {locator}"
-        ) from exc
-    if not resolved_candidate.is_relative_to(resolved_root):
-        raise MarketArtifactValidationError(
-            f"sidecar locator escapes the declared artifact root: {locator}"
-        )
-    if not resolved_candidate.is_file():
-        raise MarketArtifactIntegrityError(
-            f"retained sidecar is not a regular file: {locator}"
-        )
-    return resolved_candidate
+    return immutable_filename(artifact.artifact_id, artifact.artifact_fingerprint, error=MarketArtifactValidationError)
 
 
 def _verify_retained_sidecars(
@@ -1153,22 +1060,22 @@ def _verify_retained_sidecars(
     for evidence in retained:
         assert evidence.sidecar_locator is not None
         assert evidence.sidecar_sha256 is not None
-        sidecar_path = _resolve_sidecar(artifact_root, evidence.sidecar_locator)
-        try:
-            sidecar_bytes = sidecar_path.read_bytes()
-        except OSError as exc:
-            raise MarketArtifactIntegrityError(
-                f"retained sidecar cannot be read: {evidence.sidecar_locator}"
-            ) from exc
-        observed_digest = hashlib.sha256(sidecar_bytes).hexdigest()
-        if len(sidecar_bytes) != evidence.byte_count:
-            raise MarketArtifactIntegrityError(
-                f"retained sidecar byte count mismatch: {evidence.sidecar_locator}"
-            )
-        if observed_digest != evidence.sidecar_sha256 or observed_digest != evidence.sha256:
+        if evidence.sidecar_sha256 != evidence.sha256:
             raise MarketArtifactIntegrityError(
                 f"retained sidecar SHA-256 digest mismatch: {evidence.sidecar_locator}"
             )
+        verify_sidecar_bytes(
+            resolve_sidecar(
+                artifact_root,
+                evidence.sidecar_locator,
+                validation_error=MarketArtifactValidationError,
+                integrity_error=MarketArtifactIntegrityError,
+            ),
+            locator=evidence.sidecar_locator,
+            expected_sha256=evidence.sidecar_sha256,
+            expected_byte_count=evidence.byte_count,
+            integrity_error=MarketArtifactIntegrityError,
+        )
 
 
 def load_market_data_artifact(
@@ -1178,21 +1085,9 @@ def load_market_data_artifact(
 ) -> MarketDataArtifact:
     """Load and fully verify one canonical artifact without any source access."""
 
-    inferred_root: Path | None = None
-    if isinstance(source, Mapping):
-        payload = dict(source)
-        source_name = "in-memory manifest"
-    else:
-        path = Path(source)
-        source_name = str(path)
-        try:
-            text = path.read_text(encoding="utf-8")
-        except OSError as exc:
-            raise MarketArtifactValidationError(
-                f"market artifact cannot be read: {path}"
-            ) from exc
-        payload = _decode_manifest_text(text, source_name=source_name)
-        inferred_root = path.parent
+    payload, source_name, inferred_root = read_artifact_source(
+        source, label="market artifact", error=MarketArtifactValidationError
+    )
     try:
         artifact = MarketDataArtifact.from_dict(payload)
     except UnsupportedMarketArtifactVersionError:
@@ -1233,37 +1128,18 @@ def write_market_data_artifact(
     output_path = destination / market_data_artifact_filename(verified_artifact)
     desired_bytes = _manifest_bytes(verified_artifact)
 
-    if output_path.exists():
-        try:
-            existing = load_market_data_artifact(
-                output_path,
-                artifact_root=destination,
-            )
-            existing_bytes = output_path.read_bytes()
-        except (OSError, MarketArtifactValidationError) as exc:
-            raise MarketArtifactIntegrityError(
-                "immutable existing market artifact failed integrity validation"
-            ) from exc
-        if (
-            existing.artifact_fingerprint != verified_artifact.artifact_fingerprint
-            or existing_bytes != desired_bytes
-        ):
-            raise MarketArtifactIntegrityError(
-                "immutable existing market artifact differs from requested bytes"
-            )
-        return output_path
-
-    try:
-        write_bytes_atomically(output_path, desired_bytes, fail_if_exists=True)
-    except FileExistsError as exc:
-        raise MarketArtifactIntegrityError(
-            "immutable market artifact appeared during publication"
-        ) from exc
-    except OSError as exc:
-        raise MarketArtifactPublicationError(
-            f"atomic market artifact publication failed during replace: {output_path}"
-        ) from exc
-    return output_path
+    return publish_write_once(
+        output_path,
+        desired_bytes,
+        load_existing=partial(load_market_data_artifact, artifact_root=destination),
+        same_identity=lambda existing: (
+            existing.artifact_fingerprint == verified_artifact.artifact_fingerprint
+        ),
+        label="market artifact",
+        validation_error=MarketArtifactValidationError,
+        integrity_error=MarketArtifactIntegrityError,
+        publication_error=MarketArtifactPublicationError,
+    )
 
 
 __all__ = [
