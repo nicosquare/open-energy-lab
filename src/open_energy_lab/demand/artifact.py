@@ -5,16 +5,27 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from functools import partial
 from pathlib import Path
 from typing import Any
 
+from open_energy_lab.core.artifact import read_artifact_source
+from open_energy_lab.core.errors import ValidationError
+from open_energy_lab.core.serialization import write_bytes_atomically
+from open_energy_lab.core.time import utc_timestamp_text
+from open_energy_lab.core.validation import (
+    finite,
+    mapping,
+    non_empty_str,
+    positive_int,
+    require_fields,
+    sequence,
+)
 from open_energy_lab.weather._canonical import (
     CANONICAL_WEATHER_FIELD_ORDER,
     LOCAL_CIVIL_TIME_BASIS,
 )
 
-from ._aligned_history import _numeric_sequence
 
 
 SUPPORTED_DEMAND_ARTIFACT_SCHEMA_VERSIONS = ("v1",)
@@ -27,7 +38,11 @@ EXPECTED_OUTPUT_ORDER = (
 )
 
 
-class UnsupportedDemandArtifactVersionError(ValueError):
+class DemandArtifactValidationError(ValidationError):
+    """Raised when a demand artifact violates its schema."""
+
+
+class UnsupportedDemandArtifactVersionError(DemandArtifactValidationError):
     """Raised when artifact loading sees an unsupported schema version."""
 
 
@@ -52,6 +67,19 @@ class DemandArtifact:
     supported_sampling_modes: tuple[str, ...]
 
     def __post_init__(self) -> None:
+        for name in ("artifact_id", "feature_name", "timezone_name", "double_counting_policy"):
+            _non_empty(getattr(self, name), field_name=name)
+        object.__setattr__(self, "timestep_hours", _finite(self.timestep_hours, field_name="timestep_hours"))
+        for name in ("required_weather_field_order", "supported_sampling_modes"):
+            object.__setattr__(self, name, _string_sequence(getattr(self, name), field_name=name))
+        for name in (
+            "training_record_summary",
+            "non_thermal_electric_model",
+            "cooling_demand_model",
+            "shared_residual_model",
+            "provenance",
+        ):
+            object.__setattr__(self, name, _mapping(getattr(self, name), field_name=name))
         if self.schema_version not in SUPPORTED_DEMAND_ARTIFACT_SCHEMA_VERSIONS:
             raise UnsupportedDemandArtifactVersionError(
                 f"unsupported demand artifact schema_version {self.schema_version!r}"
@@ -113,10 +141,8 @@ class DemandArtifact:
         """Persist the artifact as human-inspectable JSON."""
 
         output_path = Path(path)
-        output_path.write_text(
-            json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
+        document = json.dumps(self.to_dict(), indent=2, sort_keys=True, allow_nan=False) + "\n"
+        write_bytes_atomically(output_path, document.encode("utf-8"))
         return output_path
 
     @classmethod
@@ -140,39 +166,8 @@ class DemandArtifact:
             "provenance",
             "supported_sampling_modes",
         )
-        missing = [key for key in required_keys if key not in data]
-        if missing:
-            raise ValueError(
-                "demand artifact is missing required keys: " + ", ".join(missing)
-            )
-
-        provenance = data["provenance"]
-        if not isinstance(provenance, Mapping):
-            raise TypeError("provenance must be a mapping")
-
-        return cls(
-            artifact_id=str(data["artifact_id"]),
-            schema_version=str(data["schema_version"]),
-            feature_name=str(data["feature_name"]),
-            created_at=str(data["created_at"]),
-            timezone_name=str(data["timezone_name"]),
-            time_basis=str(data["time_basis"]),
-            timestep_hours=float(data["timestep_hours"]),
-            required_weather_field_order=_string_sequence(
-                data["required_weather_field_order"],
-                field_name="required_weather_field_order",
-            ),
-            training_record_summary=dict(data["training_record_summary"]),
-            non_thermal_electric_model=dict(data["non_thermal_electric_model"]),
-            cooling_demand_model=dict(data["cooling_demand_model"]),
-            shared_residual_model=dict(data["shared_residual_model"]),
-            double_counting_policy=str(data["double_counting_policy"]),
-            provenance=dict(provenance),
-            supported_sampling_modes=_string_sequence(
-                data["supported_sampling_modes"],
-                field_name="supported_sampling_modes",
-            ),
-        )
+        _require_fields(data, required_keys, field_name="demand artifact")
+        return cls(**{key: data[key] for key in required_keys})
 
 
 def load_demand_artifact(
@@ -182,10 +177,7 @@ def load_demand_artifact(
 ) -> DemandArtifact:
     """Load and validate a persisted demand artifact."""
 
-    if isinstance(source, Mapping):
-        raw_payload = source
-    else:
-        raw_payload = json.loads(Path(source).read_text(encoding="utf-8"))
+    raw_payload, _, _ = read_artifact_source(source, label="demand artifact", error=DemandArtifactValidationError)
 
     artifact = DemandArtifact.from_dict(raw_payload)
     if expected_timestep_hours is not None and artifact.timestep_hours != expected_timestep_hours:
@@ -198,6 +190,7 @@ def load_demand_artifact(
 
 __all__ = [
     "SUPPORTED_DEMAND_ARTIFACT_SCHEMA_VERSIONS",
+    "DemandArtifactValidationError",
     "UnsupportedDemandArtifactVersionError",
     "DemandArtifact",
     "load_demand_artifact",
@@ -269,10 +262,7 @@ def _validate_output_model(
             f"output model is missing required keys: {', '.join(missing)}"
         )
 
-    baseline = _numeric_sequence(
-        output_model[baseline_field_name],
-        field_name=baseline_field_name,
-    )
+    baseline = _numeric_values(output_model[baseline_field_name], field_name=baseline_field_name)
     if not baseline:
         raise ValueError(f"{baseline_field_name} must not be empty")
 
@@ -286,7 +276,7 @@ def _validate_output_model(
     for field_name, value in weather_response_terms.items():
         if field_name not in required_weather_field_order:
             raise ValueError("weather_response_terms keys must be supported weather drivers")
-        float(value)
+        _finite(value, field_name=f"weather_response_terms.{field_name}")
 
     supported_weather_drivers = _string_sequence(
         output_model["supported_weather_drivers"],
@@ -307,11 +297,13 @@ def _validate_output_model(
     if not isinstance(residual_scale_summary, Mapping) or not residual_scale_summary:
         raise ValueError("residual_scale_summary must be a non-empty mapping")
     for metric_name, metric_value in residual_scale_summary.items():
-        _ = metric_name
-        float(metric_value)
+        _finite(metric_value, field_name=f"residual_scale_summary.{metric_name}")
 
     if require_explicit_training_requirement:
-        explicit_training_requirement = str(output_model["explicit_training_requirement"])
+        explicit_training_requirement = _non_empty(
+            output_model["explicit_training_requirement"],
+            field_name="explicit_training_requirement",
+        )
         if explicit_training_requirement != "historical_cooling_demand_rt_required":
             raise ValueError(
                 "cooling demand model explicit_training_requirement must be "
@@ -384,24 +376,39 @@ def _validate_shared_residual_model(shared_residual_model: Mapping[str, object])
         if len(row) != len(output_order):
             raise ValueError("correlation_matrix must be square")
         for column_index, value in enumerate(row):
-            numeric_value = float(value)
+            numeric_value = _finite(value, field_name=f"correlation_matrix[{row_index}][{column_index}]")
             if row_index == column_index and numeric_value != 1.0:
                 raise ValueError("correlation_matrix diagonal entries must equal 1.0")
 
 
-def _validate_timestamp(value: object, *, field_name: str) -> None:
-    if not isinstance(value, str):
-        raise TypeError(f"{field_name} must be an ISO timestamp string")
-    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    if parsed.tzinfo is None:
-        raise ValueError(f"{field_name} must be timezone-aware")
+_validate_timestamp = partial(utc_timestamp_text, error=DemandArtifactValidationError)
+_positive_int = partial(positive_int, error=DemandArtifactValidationError)
+_finite = partial(finite, error=DemandArtifactValidationError)
+_non_empty = partial(non_empty_str, error=DemandArtifactValidationError)
+_mapping = partial(mapping, error=DemandArtifactValidationError)
+_require_fields = partial(require_fields, error=DemandArtifactValidationError)
 
 
-def _positive_int(value: object, *, field_name: str) -> int:
-    normalized = int(value)
-    if normalized <= 0:
-        raise ValueError(f"{field_name} must be positive")
-    return normalized
+def _string_sequence(value: object, *, field_name: str) -> tuple[str, ...]:
+    items = tuple(
+        _non_empty(item, field_name=f"{field_name}[{index}]")
+        for index, item in enumerate(sequence(value, field_name=field_name, error=DemandArtifactValidationError))
+    )
+    if not items:
+        raise DemandArtifactValidationError(f"{field_name} must not be empty")
+    if len(set(items)) != len(items):
+        raise DemandArtifactValidationError(f"{field_name} must not contain duplicates")
+    return items
+
+
+def _numeric_values(value: object, *, field_name: str) -> tuple[float, ...]:
+    items = tuple(
+        _finite(item, field_name=f"{field_name}[{index}]")
+        for index, item in enumerate(sequence(value, field_name=field_name, error=DemandArtifactValidationError))
+    )
+    if not items:
+        raise DemandArtifactValidationError(f"{field_name} must not be empty")
+    return items
 
 
 def validate_sampling_weather_family(
@@ -488,16 +495,5 @@ def validate_sampling_weather_family(
         normalized_traces.append(trace)
 
     return tuple(normalized_traces)
-
-
-def _string_sequence(value: object, *, field_name: str) -> tuple[str, ...]:
-    if isinstance(value, str) or not isinstance(value, Sequence):
-        raise TypeError(f"{field_name} must be a sequence of strings")
-    normalized = tuple(str(item) for item in value)
-    if not normalized:
-        raise ValueError(f"{field_name} must not be empty")
-    if len(set(normalized)) != len(normalized):
-        raise ValueError(f"{field_name} must not contain duplicates")
-    return normalized
 
 

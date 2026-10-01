@@ -172,6 +172,6 @@ def test_load_demand_artifact_rejects_missing_required_schema_keys() -> None:
 
     with pytest.raises(
         ValueError,
-        match="demand artifact is missing required keys: double_counting_policy",
+        match="demand artifact is missing required fields: double_counting_policy",
     ):
         _load_demand_artifact(payload)
