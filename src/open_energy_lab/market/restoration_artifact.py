@@ -1338,20 +1338,12 @@ def build_restoration_study_bundle(
         references=tuple(references),
         redistribution_policy=_merge_policies(referenced_artifacts),
         source_disagreements=disagreements,
-        bundle_fingerprint="0" * 64,
+        bundle_fingerprint=PLACEHOLDER_FINGERPRINT,
     )
-    fingerprint = hashlib.sha256(
-        canonical_restoration_json_bytes(_bundle_payload_without_fingerprint(provisional))
-    ).hexdigest()
-    return RestorationStudyBundle(
-        **{
-            **{
-                field: getattr(provisional, field)
-                for field in provisional.__dataclass_fields__
-                if field != "bundle_fingerprint"
-            },
-            "bundle_fingerprint": fingerprint,
-        }
+    return seal_fingerprints(
+        provisional,
+        (("bundle_fingerprint", _bundle_payload_without_fingerprint),),
+        error=RestorationArtifactValidationError,
     )
 
 

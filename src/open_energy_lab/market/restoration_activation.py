@@ -7,9 +7,13 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from functools import partial
-import hashlib
 from typing import Any
 
+from open_energy_lab.core.artifact import (
+    PLACEHOLDER_FINGERPRINT,
+    payload_without,
+    seal_fingerprints,
+)
 from open_energy_lab.core.errors import ValidationError
 from open_energy_lab.core.time import format_utc, utc_timestamp_text
 from open_energy_lab.core.validation import (
@@ -22,7 +26,6 @@ from open_energy_lab.core.validation import (
     sha256_digest,
 )
 
-from .restoration_artifact import canonical_restoration_json_bytes
 from .time import (
     CanonicalInterval,
     MarketTimeValidationError,
@@ -319,23 +322,12 @@ def _build_mapping(payload: Mapping[str, Any]) -> DerivedSimulationMapping:
         ),
         source_kind=source_kind,
         output_label=output_label,
-        mapping_fingerprint="0" * 64,
+        mapping_fingerprint=PLACEHOLDER_FINGERPRINT,
     )
-    try:
-        fingerprint = hashlib.sha256(
-            canonical_restoration_json_bytes(_fingerprint_payload(provisional))
-        ).hexdigest()
-    except ValueError as exc:
-        raise RestorationActivationValidationError(str(exc)) from exc
-    return DerivedSimulationMapping(
-        **{
-            **{
-                field: getattr(provisional, field)
-                for field in provisional.__dataclass_fields__
-                if field != "mapping_fingerprint"
-            },
-            "mapping_fingerprint": fingerprint,
-        }
+    return seal_fingerprints(
+        provisional,
+        (("mapping_fingerprint", _fingerprint_payload),),
+        error=RestorationActivationValidationError,
     )
 
 
@@ -647,25 +639,12 @@ def _build_afrr_activation_trajectory(
         ),
         mapping_fingerprint=mapping_fingerprint,
         samples=samples,
-        trajectory_fingerprint="0" * 64,
+        trajectory_fingerprint=PLACEHOLDER_FINGERPRINT,
     )
-    fingerprint_payload = provisional.to_dict()
-    fingerprint_payload.pop("trajectory_fingerprint")
-    try:
-        fingerprint = hashlib.sha256(
-            canonical_restoration_json_bytes(fingerprint_payload)
-        ).hexdigest()
-    except ValueError as exc:
-        raise RestorationActivationValidationError(str(exc)) from exc
-    return AFRRActivationTrajectory(
-        **{
-            **{
-                field_name: getattr(provisional, field_name)
-                for field_name in provisional.__dataclass_fields__
-                if field_name != "trajectory_fingerprint"
-            },
-            "trajectory_fingerprint": fingerprint,
-        }
+    return seal_fingerprints(
+        provisional,
+        (("trajectory_fingerprint", partial(payload_without, field="trajectory_fingerprint")),),
+        error=RestorationActivationValidationError,
     )
 
 
@@ -1067,25 +1046,12 @@ def _build_mfrr_event(value: object, *, index: int | None = None) -> MFRRActivat
             data["source_observation_refs"],
             field_name=f"{prefix}.source_observation_refs",
         ),
-        event_fingerprint="0" * 64,
+        event_fingerprint=PLACEHOLDER_FINGERPRINT,
     )
-    payload = provisional.to_dict()
-    payload.pop("event_fingerprint")
-    try:
-        fingerprint = hashlib.sha256(
-            canonical_restoration_json_bytes(payload)
-        ).hexdigest()
-    except ValueError as exc:
-        raise RestorationActivationValidationError(str(exc)) from exc
-    return MFRRActivationEvent(
-        **{
-            **{
-                field_name: getattr(provisional, field_name)
-                for field_name in provisional.__dataclass_fields__
-                if field_name != "event_fingerprint"
-            },
-            "event_fingerprint": fingerprint,
-        }
+    return seal_fingerprints(
+        provisional,
+        (("event_fingerprint", partial(payload_without, field="event_fingerprint")),),
+        error=RestorationActivationValidationError,
     )
 
 
@@ -1253,25 +1219,12 @@ def _build_mfrr_activation_sequence(
             field_name="created_or_retrieved_at_utc",
         ),
         events=events,
-        sequence_fingerprint="0" * 64,
+        sequence_fingerprint=PLACEHOLDER_FINGERPRINT,
     )
-    payload_for_fingerprint = provisional.to_dict()
-    payload_for_fingerprint.pop("sequence_fingerprint")
-    try:
-        fingerprint = hashlib.sha256(
-            canonical_restoration_json_bytes(payload_for_fingerprint)
-        ).hexdigest()
-    except ValueError as exc:
-        raise RestorationActivationValidationError(str(exc)) from exc
-    return MFRRActivationSequence(
-        **{
-            **{
-                field_name: getattr(provisional, field_name)
-                for field_name in provisional.__dataclass_fields__
-                if field_name != "sequence_fingerprint"
-            },
-            "sequence_fingerprint": fingerprint,
-        }
+    return seal_fingerprints(
+        provisional,
+        (("sequence_fingerprint", partial(payload_without, field="sequence_fingerprint")),),
+        error=RestorationActivationValidationError,
     )
 
 
