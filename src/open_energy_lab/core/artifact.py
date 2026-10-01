@@ -71,8 +71,8 @@ def read_artifact_source(
     path = Path(source)
     try:
         text = path.read_text(encoding="utf-8")
-    except OSError as exc:
-        raise error(f"{label} cannot be read: {path}") from exc
+    except (OSError, UnicodeError) as exc:
+        raise error(f"{label} cannot be read as UTF-8: {path}") from exc
     return decode_json_document(text, source_name=str(path), label=label, error=error), str(path), path.parent
 
 
