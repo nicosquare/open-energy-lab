@@ -26,6 +26,7 @@ from open_energy_lab.core.errors import ValidationError
 from open_energy_lab.core.time import utc_datetime
 from open_energy_lab.core.validation import enum_member, non_empty_str
 
+from ._http import ResponseTooLarge, header, is_transient_status, open_bounded
 from .restoration_artifact import (
     ObservationValueState,
     RawRetentionPolicy,
@@ -508,7 +509,7 @@ def execute_rte_request(
             or retrieved.utcoffset() != timedelta(0)
         ):
             raise RTETransportError("acquisition clock must return an aware UTC time")
-        revision = _header(response.headers, "ETag") or _header(
+        revision = header(response.headers, "ETag") or header(
             response.headers, "Last-Modified"
         )
         responses.append(
@@ -528,14 +529,6 @@ def execute_rte_request(
             )
         )
     return tuple(responses)
-
-
-def _header(headers: Mapping[str, str], name: str) -> str | None:
-    target = name.casefold()
-    for key, value in headers.items():
-        if str(key).casefold() == target:
-            return str(value)
-    return None
 
 
 def _is_json_media_type(value: object) -> bool:
@@ -578,24 +571,19 @@ def _stdlib_transport(request: RTETransportRequest) -> RTEHTTPResponse:
         method=request.method,
     )
     try:
-        with urllib.request.urlopen(transport_request, timeout=30.0) as response:
-            body = response.read(request.maximum_response_bytes + 1)
-            headers = {str(key): str(value) for key, value in response.headers.items()}
-            return RTEHTTPResponse(
-                status=int(response.status),
-                media_type=response.headers.get_content_type(),
-                body=body,
-                headers=headers,
-            )
-    except urllib.error.HTTPError as exc:
-        body = exc.read(request.maximum_response_bytes + 1)
-        headers = {str(key): str(value) for key, value in exc.headers.items()}
-        return RTEHTTPResponse(
-            status=int(exc.code),
-            media_type=exc.headers.get_content_type(),
-            body=body,
-            headers=headers,
+        response = open_bounded(
+            transport_request, timeout=30.0, max_bytes=request.maximum_response_bytes
         )
+    except ResponseTooLarge:
+        raise RTETransportError(
+            "RTE response body exceeds the configured maximum bytes"
+        ) from None
+    return RTEHTTPResponse(
+        status=response.status,
+        media_type=response.media_type,
+        body=response.body,
+        headers=response.headers,
+    )
 
 
 def _obtain_oauth_session(
@@ -678,7 +666,7 @@ def _data_url(request: RestorationMarketDataRequest, window: RTEQueryWindow) -> 
 
 def _retry_delay(response: RTEHTTPResponse | None, *, attempt: int) -> float:
     if response is not None:
-        value = _header(response.headers, "Retry-After")
+        value = header(response.headers, "Retry-After")
         if value is not None:
             try:
                 parsed = float(value)
@@ -748,8 +736,7 @@ def _retrieve_window(
             )
             renewed = True
             continue
-        transient = response.status in {408, 429} or 500 <= response.status <= 599
-        if transient:
+        if is_transient_status(response.status):
             if attempt == 3:
                 raise RTETransportError(
                     f"RTE market data status {response.status} remained transient after 3 attempts"

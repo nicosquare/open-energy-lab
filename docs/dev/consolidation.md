@@ -320,7 +320,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     `docs/migration/fcr-rolling-backtest-parity.md` carry a dated note.
     Checks: `pytest` 2174 passed + 4 xfailed, `-m slow` 34, `-m notebook` 7.
 - [ ] **A6 merge variants**, one PR per package:
-  - [ ] market. Mapped 2026-10-01; decided not to merge the two artifact
+  - [x] market. Mapped 2026-10-01; decided not to merge the two artifact
     formats or the FCR/restoration sign conventions: the data is genuinely
     different (fixed three-series ENTSO-E artifact vs open-ended RTE
     series with value states; unitless upward-positive FCR activation vs
@@ -335,9 +335,14 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
       results are unchanged. Net +26 src lines: a structure change, not a
       size one. The baseline configuration hashes stay (they hash build
       inputs the configs do not keep).
-    - [ ] market-2: a shared HTTP layer for the ENTSO-E and RTE clients,
-      with their different timeouts, redirect/size checks, OAuth renewal
-      and error reporting as parameters.
+    - [x] market-2: after reading both clients, only about 30-50 lines
+      were really shared (agreed 2026-10-01 to keep it small).
+      `market/_http.py` holds the header lookup, the transient-status test
+      and one bounded open/read helper; each client keeps its own retry
+      loop, Retry-After rule and error reporting. RTE now also refuses
+      HTTPS-to-HTTP redirects and oversized Content-Length before reading
+      (new tests pin both). Net +25 src lines: one implementation of the
+      transport safety checks rather than fewer lines.
   - [ ] simulator: one replay driver for stacked FCR, aFRR, and mFRR; one step
     loop; one FCR settlement path.
   - [ ] control: aFRR and mFRR combined with a product parameter; one rolling
