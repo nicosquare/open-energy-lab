@@ -79,7 +79,6 @@ def test_data_descriptors_have_exact_units_temporal_mappings_and_fingerprints(
     assert descriptor.unit == unit
     assert descriptor.temporal_resolution == resolution
     assert descriptor.mapping_rule_id == mapping
-    assert len(descriptor.descriptor_fingerprint) == 64
     assert "path" not in descriptor.to_dict()["provenance"]
 
 

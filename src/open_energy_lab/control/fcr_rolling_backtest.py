@@ -310,7 +310,6 @@ class RollingFCRDataDescriptor:
     normalized_data_fingerprint: str
     provenance: Mapping[str, object]
     semantics_version: str = ROLLING_FCR_DATA_DESCRIPTOR_VERSION
-    descriptor_fingerprint: str = field(init=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "descriptor_id", _non_empty(self.descriptor_id, field_name="descriptor_id"))
@@ -355,9 +354,8 @@ class RollingFCRDataDescriptor:
         object.__setattr__(self, "content_sha256", _sha(self.content_sha256, field_name="content_sha256"))
         object.__setattr__(self, "normalized_data_fingerprint", _sha(self.normalized_data_fingerprint, field_name="normalized_data_fingerprint"))
         object.__setattr__(self, "provenance", provenance)
-        object.__setattr__(self, "descriptor_fingerprint", _fingerprint(self._payload()))
 
-    def _payload(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "semantics_version": self.semantics_version,
             "descriptor_id": self.descriptor_id,
@@ -377,9 +375,6 @@ class RollingFCRDataDescriptor:
             "normalized_data_fingerprint": self.normalized_data_fingerprint,
             "provenance": _thaw(self.provenance),
         }
-
-    def to_dict(self) -> dict[str, object]:
-        return {**self._payload(), "descriptor_fingerprint": self.descriptor_fingerprint}
 
 
 @dataclass(frozen=True, slots=True)
