@@ -136,14 +136,12 @@ class RestorationIntegrationGrid:
     period: CanonicalInterval
     resolution: str
     intervals: tuple[CanonicalInterval, ...]
-    grid_fingerprint: str
 
     def to_dict(self) -> dict[str, object]:
         return {
             "period": self.period.to_dict(),
             "resolution": self.resolution,
             "intervals": [item.to_dict() for item in self.intervals],
-            "grid_fingerprint": self.grid_fingerprint,
         }
 
 
@@ -184,16 +182,10 @@ def build_restoration_integration_grid(
         raise RestorationReplayValidationError(
             "integration grid coverage is incomplete"
         )
-    payload = {
-        "period": period.to_dict(),
-        "resolution": normalized_resolution,
-        "intervals": [item.to_dict() for item in normalized],
-    }
     return RestorationIntegrationGrid(
         period=period,
         resolution=normalized_resolution,
         intervals=normalized,
-        grid_fingerprint=_fingerprint(payload),
     )
 
 
@@ -330,7 +322,7 @@ def build_restoration_replay_request_core(
         "capability_fingerprint": capability.capability_fingerprint,
         "commitments_fingerprint": commitments.schedule_fingerprint,
         "baseline_fingerprint": baseline.schedule_fingerprint,
-        "integration_grid_fingerprint": integration_grid.grid_fingerprint,
+        "integration_grid_fingerprint": _fingerprint(integration_grid.to_dict()),
         "tolerance": normalized_tolerance,
         "input_fingerprints": dict(fingerprints),
     }
@@ -1020,11 +1012,7 @@ def _afrr_directional_performance(
         for _, replay_sample in selected
     ]
     delivered_powers = [
-        (
-            max(0.0, -replay_sample.delivered_balancing_power_kw)
-            if direction is RestorationDirection.UPWARD
-            else max(0.0, replay_sample.delivered_balancing_power_kw)
-        )
+        direction.magnitude_of(replay_sample.delivered_balancing_power_kw)
         for _, replay_sample in selected
     ]
     causes = _ordered_causes(
@@ -1595,14 +1583,10 @@ def _mfrr_event_performance(
         (item.interval.end_utc - item.interval.start_utc).total_seconds()
         for item in active_samples
     )
-    if event.direction is RestorationDirection.UPWARD:
-        delivered_powers = [
-            max(0.0, -item.delivered_balancing_power_kw) for item in selected
-        ]
-    else:
-        delivered_powers = [
-            max(0.0, item.delivered_balancing_power_kw) for item in selected
-        ]
+    delivered_powers = [
+        event.direction.magnitude_of(item.delivered_balancing_power_kw)
+        for item in selected
+    ]
     causes = _ordered_causes(
         tuple(cause for item in selected for cause in item.causes)
     )

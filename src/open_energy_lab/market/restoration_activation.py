@@ -55,10 +55,44 @@ class RestorationProduct(str, Enum):
 
 
 class RestorationDirection(str, Enum):
-    """Directional restoration commitment and delivery identity."""
+    """Directional restoration commitment and delivery identity.
+
+    Battery power is positive for charge, so an upward (discharge) request is
+    negative and a downward (charge) request is positive.
+    """
 
     UPWARD = "UPWARD"
     DOWNWARD = "DOWNWARD"
+
+    def signed(self, magnitude: float) -> float:
+        """Battery-signed power or energy for a non-negative magnitude."""
+
+        return -magnitude if self is RestorationDirection.UPWARD else magnitude
+
+    def magnitude_of(self, signed_value: float) -> float:
+        """The part of a battery-signed value that goes in this direction."""
+
+        return max(0.0, -signed_value if self is RestorationDirection.UPWARD else signed_value)
+
+    @classmethod
+    def of_signed(cls, signed_value: float) -> RestorationDirection | None:
+        """Direction of a battery-signed value; ``None`` for zero."""
+
+        if signed_value < 0.0:
+            return cls.UPWARD
+        if signed_value > 0.0:
+            return cls.DOWNWARD
+        return None
+
+    @classmethod
+    def of_two_sided(cls, upward: float, downward: float) -> RestorationDirection | None:
+        """Direction of a source that reports upward and downward volumes separately."""
+
+        if upward > 0.0:
+            return cls.UPWARD
+        if downward > 0.0:
+            return cls.DOWNWARD
+        return None
 
 
 class MFRRActivationKind(str, Enum):
@@ -167,7 +201,7 @@ class DerivedSimulationMapping:
         )
         if magnitude == 0.0:
             return 0.0
-        return -magnitude if self.direction is RestorationDirection.UPWARD else magnitude
+        return self.direction.signed(magnitude)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -468,11 +502,7 @@ class AFRRActivationTrajectory:
 
 
 def _afrr_direction_for_power(power_kw: float) -> RestorationDirection | None:
-    if power_kw < 0.0:
-        return RestorationDirection.UPWARD
-    if power_kw > 0.0:
-        return RestorationDirection.DOWNWARD
-    return None
+    return RestorationDirection.of_signed(power_kw)
 
 
 def _afrr_sample(value: object, *, index: int) -> AFRRActivationSample:
@@ -728,13 +758,7 @@ def build_afrr_trajectory_from_rte_requested_need(
                 f"ambiguous opposing upward and downward aFRR requested need at interval {index}"
             )
         source_value = upward_mw if upward_mw > 0.0 else downward_mw
-        source_direction = (
-            RestorationDirection.UPWARD
-            if upward_mw > 0.0
-            else RestorationDirection.DOWNWARD
-            if downward_mw > 0.0
-            else None
-        )
+        source_direction = RestorationDirection.of_two_sided(upward_mw, downward_mw)
         if source_direction is not None and source_direction is not mapping.direction:
             raise RestorationActivationValidationError(
                 f"RTE requested need direction at interval {index} does not match "
@@ -854,8 +878,7 @@ class MFRRActivationEvent:
 
     @property
     def signed_requested_energy_kwh(self) -> float:
-        sign = -1.0 if self.direction is RestorationDirection.UPWARD else 1.0
-        return sign * self.requested_energy_kwh
+        return self.direction.signed(self.requested_energy_kwh)
 
     def _cumulative_magnitude_kw_seconds(self, elapsed_seconds: float) -> float:
         elapsed = min(max(elapsed_seconds, 0.0), self.total_duration_seconds)
@@ -904,11 +927,7 @@ class MFRRActivationEvent:
         ) - self._cumulative_magnitude_kw_seconds(start_elapsed)
         interval_seconds = (interval.end_utc - interval.start_utc).total_seconds()
         magnitude = magnitude_kw_seconds / interval_seconds
-        return (
-            -magnitude
-            if self.direction is RestorationDirection.UPWARD
-            else magnitude
-        )
+        return self.direction.signed(magnitude)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -1324,13 +1343,7 @@ def build_mfrr_sequence_from_rte_sa_requested_volume(
             raise RestorationActivationValidationError(
                 f"opposing upward and downward mFRR SA volume at interval {index}"
             )
-        source_direction = (
-            RestorationDirection.UPWARD
-            if upward_value > 0.0
-            else RestorationDirection.DOWNWARD
-            if downward_value > 0.0
-            else None
-        )
+        source_direction = RestorationDirection.of_two_sided(upward_value, downward_value)
         if source_direction is None:
             continue
         if source_direction is not mapping.direction:

@@ -91,7 +91,6 @@ def test_integration_grid_requires_exact_gap_free_native_resolution() -> None:
     assert grid.period == CanonicalInterval.from_utc(START, END)
     assert grid.resolution == "PT15M"
     assert len(grid.intervals) == 4
-    assert re.fullmatch(r"[0-9a-f]{64}", grid.grid_fingerprint)
 
     with pytest.raises(RestorationReplayValidationError, match="gap|coverage"):
         build_restoration_integration_grid(

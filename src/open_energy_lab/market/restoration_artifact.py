@@ -21,7 +21,6 @@ from open_energy_lab.core.artifact import (
     PLACEHOLDER_FINGERPRINT,
     immutable_filename,
     payload_without,
-    publish_write_once,
     read_artifact_source,
     recorded_fingerprints,
     resolve_sidecar,
@@ -34,7 +33,6 @@ from open_energy_lab.core.errors import ValidationError
 from open_energy_lab.core.serialization import (
     canonical_json_bytes,
     freeze,
-    json_document_bytes,
     thaw,
 )
 from open_energy_lab.core.time import utc_timestamp_text
@@ -52,6 +50,7 @@ from open_energy_lab.core.validation import (
     sha256_digest,
 )
 
+from ._artifact_io import ArtifactErrors, interval_field, load_artifact, write_artifact
 from .time import CanonicalInterval, MarketTimeValidationError, parse_iso8601_duration
 
 
@@ -141,11 +140,13 @@ _utc_timestamp = partial(utc_timestamp_text, error=RestorationArtifactValidation
 _enum_value = partial(enum_member, error=RestorationArtifactValidationError)
 
 
-def _interval(value: object, *, field_name: str) -> CanonicalInterval:
-    try:
-        return CanonicalInterval.from_dict(_mapping(value, field_name=field_name))
-    except MarketTimeValidationError as exc:
-        raise RestorationArtifactValidationError(f"{field_name}: {exc}") from exc
+_interval = partial(interval_field, error=RestorationArtifactValidationError)
+_ERRORS = ArtifactErrors(
+    validation=RestorationArtifactValidationError,
+    unsupported=UnsupportedRestorationArtifactVersionError,
+    integrity=RestorationArtifactIntegrityError,
+    publication=RestorationArtifactPublicationError,
+)
 
 
 def canonical_restoration_json_bytes(value: object) -> bytes:
@@ -993,27 +994,14 @@ def load_restoration_market_artifact(
 ) -> RestorationMarketArtifact:
     """Load and fully verify one artifact without source or credential access."""
 
-    payload, source_name, inferred_root = read_artifact_source(
-        source, label="restoration artifact", error=RestorationArtifactValidationError
+    return load_artifact(
+        source,
+        artifact_root=artifact_root,
+        label="restoration artifact",
+        from_dict=RestorationMarketArtifact.from_dict,
+        verify_sidecars=_verify_sidecars,
+        errors=_ERRORS,
     )
-    try:
-        artifact = RestorationMarketArtifact.from_dict(payload)
-    except (
-        UnsupportedRestorationArtifactVersionError,
-        RestorationArtifactValidationError,
-    ):
-        raise
-    except (KeyError, TypeError, ValueError) as exc:
-        raise RestorationArtifactValidationError(
-            f"invalid restoration artifact {source_name}: {exc}"
-        ) from exc
-    root = Path(artifact_root) if artifact_root is not None else inferred_root
-    _verify_sidecars(artifact, artifact_root=root)
-    return artifact
-
-
-def _manifest_bytes(artifact: RestorationMarketArtifact) -> bytes:
-    return json_document_bytes(artifact.to_dict(), error=RestorationArtifactValidationError)
 
 
 def write_restoration_market_artifact(
@@ -1023,28 +1011,15 @@ def write_restoration_market_artifact(
 ) -> Path:
     """Verify sidecars first, then publish a manifest through atomic replace."""
 
-    if not isinstance(artifact, RestorationMarketArtifact):
-        raise TypeError("artifact must be a RestorationMarketArtifact")
-    verified = RestorationMarketArtifact.from_dict(artifact.to_dict())
-    destination = Path(destination_dir)
-    try:
-        destination.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        raise RestorationArtifactPublicationError(
-            f"cannot create restoration artifact directory: {destination}"
-        ) from exc
-    _verify_sidecars(verified, artifact_root=destination)
-    output_path = destination / restoration_market_artifact_filename(verified)
-    desired_bytes = _manifest_bytes(verified)
-    return publish_write_once(
-        output_path,
-        desired_bytes,
-        load_existing=partial(load_restoration_market_artifact, artifact_root=destination),
-        same_identity=lambda existing: existing.artifact_fingerprint == verified.artifact_fingerprint,
+    return write_artifact(
+        artifact,
+        artifact_type=RestorationMarketArtifact,
+        destination_dir=destination_dir,
+        filename=restoration_market_artifact_filename,
+        verify_sidecars=_verify_sidecars,
+        load=load_restoration_market_artifact,
         label="restoration artifact",
-        validation_error=RestorationArtifactValidationError,
-        integrity_error=RestorationArtifactIntegrityError,
-        publication_error=RestorationArtifactPublicationError,
+        errors=_ERRORS,
     )
 
 

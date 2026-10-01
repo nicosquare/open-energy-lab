@@ -155,7 +155,6 @@ class DayAheadEnergyPrice:
     currency: str
     source_or_assumption_ref: str
     source_field: str
-    price_fingerprint: str
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -169,7 +168,6 @@ class DayAheadEnergyPrice:
             "currency": self.currency,
             "source_or_assumption_ref": self.source_or_assumption_ref,
             "source_field": self.source_field,
-            "price_fingerprint": self.price_fingerprint,
         }
 
 
@@ -212,7 +210,6 @@ def build_day_ahead_energy_price(
         currency=str(payload["currency"]),
         source_or_assumption_ref=str(payload["source_or_assumption_ref"]),
         source_field=str(payload["source_field"]),
-        price_fingerprint=_fingerprint(payload),
     )
 
 
@@ -230,7 +227,6 @@ class DirectionalCapacityPrice:
     eligibility: bool
     source_or_assumption_ref: str
     source_field: str
-    price_fingerprint: str
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -246,7 +242,6 @@ class DirectionalCapacityPrice:
             "eligibility": self.eligibility,
             "source_or_assumption_ref": self.source_or_assumption_ref,
             "source_field": self.source_field,
-            "price_fingerprint": self.price_fingerprint,
         }
 
 
@@ -300,7 +295,6 @@ def build_directional_capacity_price(
         eligibility=eligibility,
         source_or_assumption_ref=str(payload["source_or_assumption_ref"]),
         source_field=str(payload["source_field"]),
-        price_fingerprint=_fingerprint(payload),
     )
 
 
@@ -320,7 +314,6 @@ class AreaPriceProxyMapping:
     transformation: str
     assumptions: tuple[str, ...]
     output_label: str
-    mapping_fingerprint: str
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -340,7 +333,6 @@ class AreaPriceProxyMapping:
             "transformation": self.transformation,
             "assumptions": list(self.assumptions),
             "output_label": self.output_label,
-            "mapping_fingerprint": self.mapping_fingerprint,
         }
 
 
@@ -422,7 +414,6 @@ def build_area_price_proxy_mapping(
         transformation=str(payload["transformation"]),
         assumptions=normalized_assumptions,
         output_label=normalized_label,
-        mapping_fingerprint=_fingerprint(payload),
     )
 
 
@@ -443,7 +434,6 @@ class DirectionalActivationPrice:
     source_field: str
     area_price_proxy_mapping: AreaPriceProxyMapping | None
     result_label: str
-    price_fingerprint: str
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -463,10 +453,9 @@ class DirectionalActivationPrice:
             "area_price_proxy_mapping_fingerprint": (
                 None
                 if self.area_price_proxy_mapping is None
-                else self.area_price_proxy_mapping.mapping_fingerprint
+                else _fingerprint(self.area_price_proxy_mapping.to_dict())
             ),
             "result_label": self.result_label,
-            "price_fingerprint": self.price_fingerprint,
         }
 
 
@@ -558,7 +547,7 @@ def build_directional_activation_price(
         "area_price_proxy_mapping_fingerprint": (
             None
             if area_price_proxy_mapping is None
-            else area_price_proxy_mapping.mapping_fingerprint
+            else _fingerprint(area_price_proxy_mapping.to_dict())
         ),
         "result_label": result_label,
     }
@@ -578,7 +567,6 @@ def build_directional_activation_price(
         source_field=normalized_field,
         area_price_proxy_mapping=area_price_proxy_mapping,
         result_label=result_label,
-        price_fingerprint=_fingerprint(payload),
     )
 
 
@@ -594,7 +582,6 @@ class RestorationPenaltyRule:
     rate: float
     rate_unit: str
     application: str
-    rule_fingerprint: str
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -608,7 +595,6 @@ class RestorationPenaltyRule:
             "rate": self.rate,
             "rate_unit": self.rate_unit,
             "application": self.application,
-            "rule_fingerprint": self.rule_fingerprint,
         }
 
 
@@ -669,7 +655,6 @@ def build_restoration_penalty_rule(
         rate=float(payload["rate"]),
         rate_unit="EUR/kWh",
         application="sum_eligible_shortfall",
-        rule_fingerprint=_fingerprint(payload),
     )
 
 
@@ -680,7 +665,6 @@ class ThroughputDegradationRule:
     cost_per_kwh: float
     unit: str
     description: str
-    rule_fingerprint: str
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -689,7 +673,6 @@ class ThroughputDegradationRule:
             "cost_per_kwh": self.cost_per_kwh,
             "unit": self.unit,
             "description": self.description,
-            "rule_fingerprint": self.rule_fingerprint,
         }
 
 
@@ -726,7 +709,6 @@ def build_throughput_degradation_rule(
         cost_per_kwh=float(payload["cost_per_kwh"]),
         unit=normalized_unit,
         description=normalized_description,
-        rule_fingerprint=_fingerprint(payload),
     )
 
 
@@ -1234,9 +1216,8 @@ def settle_restoration_services(
                 if abs(activation_sample.requested_balancing_power_kw) <= normalized_tolerance:
                     continue
                 direction = (
-                    RestorationDirection.UPWARD
-                    if activation_sample.requested_balancing_power_kw < 0.0
-                    else RestorationDirection.DOWNWARD
+                    RestorationDirection.of_signed(activation_sample.requested_balancing_power_kw)
+                    or RestorationDirection.DOWNWARD
                 )
                 candidates = _identity_candidates(
                     activation,
@@ -1326,14 +1307,14 @@ def settle_restoration_services(
     )
     input_fingerprints = {
         "replay": replay_result.result_fingerprint,
-        "day_ahead_prices": [item.price_fingerprint for item in day_ahead],
-        "capacity_prices": [item.price_fingerprint for item in capacity],
-        "activation_prices": [item.price_fingerprint for item in activation],
+        "day_ahead_prices": [_fingerprint(item.to_dict()) for item in day_ahead],
+        "capacity_prices": [_fingerprint(item.to_dict()) for item in capacity],
+        "activation_prices": [_fingerprint(item.to_dict()) for item in activation],
         "penalty_rule": (
-            None if penalty_rule is None else penalty_rule.rule_fingerprint
+            None if penalty_rule is None else _fingerprint(penalty_rule.to_dict())
         ),
         "degradation_rule": (
-            None if degradation_rule is None else degradation_rule.rule_fingerprint
+            None if degradation_rule is None else _fingerprint(degradation_rule.to_dict())
         ),
     }
     if diagnostics:
@@ -1415,9 +1396,8 @@ def settle_restoration_services(
             if abs(activation_sample.requested_balancing_power_kw) <= normalized_tolerance:
                 continue
             direction = (
-                RestorationDirection.UPWARD
-                if activation_sample.requested_balancing_power_kw < 0.0
-                else RestorationDirection.DOWNWARD
+                RestorationDirection.of_signed(activation_sample.requested_balancing_power_kw)
+                or RestorationDirection.DOWNWARD
             )
             price = activation_matches[index]
             assert price.price is not None

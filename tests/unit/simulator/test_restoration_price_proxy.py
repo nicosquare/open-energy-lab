@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-import re
 
 import pytest
 
@@ -54,7 +53,6 @@ def test_area_price_proxy_pins_source_series_activation_mapping_and_label() -> N
         "upward_weighted_average_price_afrr_activated_for_fr"
     )
     assert mapping.output_label == "scenario_proxy"
-    assert re.fullmatch(r"[0-9a-f]{64}", mapping.mapping_fingerprint)
 
 
 def test_rte_proxy_price_requires_exact_product_direction_interval_and_unit() -> None:
@@ -77,7 +75,6 @@ def test_rte_proxy_price_requires_exact_product_direction_interval_and_unit() ->
 
     assert price.area_price_proxy_mapping is mapping
     assert price.result_label == "scenario_proxy"
-    assert price.price_fingerprint != mapping.mapping_fingerprint
 
     with pytest.raises(
         RestorationSettlementValidationError,

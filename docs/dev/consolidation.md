@@ -320,8 +320,24 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     `docs/migration/fcr-rolling-backtest-parity.md` carry a dated note.
     Checks: `pytest` 2174 passed + 4 xfailed, `-m slow` 34, `-m notebook` 7.
 - [ ] **A6 merge variants**, one PR per package:
-  - [ ] market: one `MarketArtifact`, one activation sign convention, a shared
-    HTTP layer for ENTSO-E and RTE.
+  - [ ] market. Mapped 2026-10-01; decided not to merge the two artifact
+    formats or the FCR/restoration sign conventions: the data is genuinely
+    different (fixed three-series ENTSO-E artifact vs open-ended RTE
+    series with value states; unitless upward-positive FCR activation vs
+    battery-signed kW restoration requests) and the real-data fixtures pin
+    their bytes. Two PRs instead:
+    - [x] market-1: one load/publish sequence for both artifacts
+      (`market/_artifact_io.py`); the restoration sign convention lives on
+      `RestorationDirection` (`signed`, `magnitude_of`, `of_signed`,
+      `of_two_sided`); restoration grid, price, proxy-mapping and rule
+      self-hashes are gone, with hashes that feed saved values computed
+      from `to_dict()`, so every saved value and the real-replay expected
+      results are unchanged. Net +26 src lines: a structure change, not a
+      size one. The baseline configuration hashes stay (they hash build
+      inputs the configs do not keep).
+    - [ ] market-2: a shared HTTP layer for the ENTSO-E and RTE clients,
+      with their different timeouts, redirect/size checks, OAuth renewal
+      and error reporting as parameters.
   - [ ] simulator: one replay driver for stacked FCR, aFRR, and mFRR; one step
     loop; one FCR settlement path.
   - [ ] control: aFRR and mFRR combined with a product parameter; one rolling

@@ -15,8 +15,6 @@ from open_energy_lab.core.artifact import (
     PLACEHOLDER_FINGERPRINT,
     immutable_filename,
     payload_without,
-    publish_write_once,
-    read_artifact_source,
     recorded_fingerprints,
     resolve_sidecar,
     safe_sidecar_locator,
@@ -28,7 +26,6 @@ from open_energy_lab.core.errors import ValidationError
 from open_energy_lab.core.serialization import (
     canonical_json_bytes as _canonical_json_bytes,
     freeze,
-    json_document_bytes,
     thaw,
 )
 from open_energy_lab.core.time import utc_timestamp_text
@@ -42,7 +39,8 @@ from open_energy_lab.core.validation import (
     sha256_digest,
 )
 
-from .time import CanonicalInterval, MarketTimeValidationError, parse_iso8601_duration
+from ._artifact_io import ArtifactErrors, interval_field, load_artifact, write_artifact
+from .time import CanonicalInterval, parse_iso8601_duration
 
 
 MARKET_DATA_SCHEMA_VERSION = "oel.market-data.v1"
@@ -144,11 +142,13 @@ def _non_negative_int(value: object, *, field_name: str) -> int:
     return normalized
 
 
-def _interval(value: object, *, field_name: str) -> CanonicalInterval:
-    try:
-        return CanonicalInterval.from_dict(_mapping(value, field_name=field_name))
-    except MarketTimeValidationError as exc:
-        raise MarketArtifactValidationError(f"{field_name}: {exc}") from exc
+_interval = partial(interval_field, error=MarketArtifactValidationError)
+_ERRORS = ArtifactErrors(
+    validation=MarketArtifactValidationError,
+    unsupported=UnsupportedMarketArtifactVersionError,
+    integrity=MarketArtifactIntegrityError,
+    publication=MarketArtifactPublicationError,
+)
 
 
 def canonical_json_bytes(value: object) -> bytes:
@@ -1085,26 +1085,14 @@ def load_market_data_artifact(
 ) -> MarketDataArtifact:
     """Load and fully verify one canonical artifact without any source access."""
 
-    payload, source_name, inferred_root = read_artifact_source(
-        source, label="market artifact", error=MarketArtifactValidationError
+    return load_artifact(
+        source,
+        artifact_root=artifact_root,
+        label="market artifact",
+        from_dict=MarketDataArtifact.from_dict,
+        verify_sidecars=_verify_retained_sidecars,
+        errors=_ERRORS,
     )
-    try:
-        artifact = MarketDataArtifact.from_dict(payload)
-    except UnsupportedMarketArtifactVersionError:
-        raise
-    except MarketArtifactValidationError:
-        raise
-    except (KeyError, TypeError, ValueError) as exc:
-        raise MarketArtifactValidationError(
-            f"invalid market artifact {source_name}: {exc}"
-        ) from exc
-    root = Path(artifact_root) if artifact_root is not None else inferred_root
-    _verify_retained_sidecars(artifact, artifact_root=root)
-    return artifact
-
-
-def _manifest_bytes(artifact: MarketDataArtifact) -> bytes:
-    return json_document_bytes(artifact.to_dict(), error=MarketArtifactValidationError)
 
 
 def write_market_data_artifact(
@@ -1114,31 +1102,15 @@ def write_market_data_artifact(
 ) -> Path:
     """Publish a validated immutable manifest through a sibling atomic replace."""
 
-    if not isinstance(artifact, MarketDataArtifact):
-        raise TypeError("artifact must be a MarketDataArtifact")
-    verified_artifact = MarketDataArtifact.from_dict(artifact.to_dict())
-    destination = Path(destination_dir)
-    try:
-        destination.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        raise MarketArtifactPublicationError(
-            f"cannot create artifact destination directory: {destination}"
-        ) from exc
-    _verify_retained_sidecars(verified_artifact, artifact_root=destination)
-    output_path = destination / market_data_artifact_filename(verified_artifact)
-    desired_bytes = _manifest_bytes(verified_artifact)
-
-    return publish_write_once(
-        output_path,
-        desired_bytes,
-        load_existing=partial(load_market_data_artifact, artifact_root=destination),
-        same_identity=lambda existing: (
-            existing.artifact_fingerprint == verified_artifact.artifact_fingerprint
-        ),
+    return write_artifact(
+        artifact,
+        artifact_type=MarketDataArtifact,
+        destination_dir=destination_dir,
+        filename=market_data_artifact_filename,
+        verify_sidecars=_verify_retained_sidecars,
+        load=load_market_data_artifact,
         label="market artifact",
-        validation_error=MarketArtifactValidationError,
-        integrity_error=MarketArtifactIntegrityError,
-        publication_error=MarketArtifactPublicationError,
+        errors=_ERRORS,
     )
 
 
