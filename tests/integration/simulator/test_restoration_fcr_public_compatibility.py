@@ -254,6 +254,7 @@ def test_feature_010_dataclass_constructor_and_stored_field_snapshots_are_exact(
             simulator.StackedServiceReplayRequest: (
                 "commitment_validation_errors",
             ),
+            StackedServiceReplayResult: ("result_fingerprint",),
         }.get(contract, ())
         assert constructor_fields == tuple(
             name for name in expected_fields if name not in stored_only
@@ -305,4 +306,8 @@ def test_feature_010_builders_return_exact_closed_types_and_serialization_shapes
 
     assert not hasattr(baseline, "to_dict")
     assert not hasattr(request, "to_dict")
-    assert not hasattr(replay, "to_dict")
+    assert set(replay.to_dict()) == {
+        "simulation_semantics_version", "validation_status", "input_fingerprints",
+        "trace_fingerprint", "checkpoint_summaries", "energy_summaries", "fcr_summaries",
+        "tracking_summary", "throughput_kwh", "settlement", "terminal_soc_report",
+    }

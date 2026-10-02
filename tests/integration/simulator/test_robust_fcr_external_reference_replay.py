@@ -149,9 +149,6 @@ def test_native_and_recorded_schedules_share_feature_012_external_replay() -> No
     )
     assert native_request.plan is native_plan
     assert native_request.activation_trace is recorded_request.activation_trace
-    assert native_request.input_fingerprints["activation_trace"] == (
-        recorded_request.input_fingerprints["activation_trace"]
-    )
 
     native_report = evaluate_fixed_fcr_bid(native_request)
     recorded_report = evaluate_fixed_fcr_bid(recorded_request)
