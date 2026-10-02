@@ -401,8 +401,17 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
     history). Core dependencies numpy, scipy, torch, `spflow==1.1.0`;
     Pyomo, HiGHS and Gurobi are extras (tpm_for_sp excludes Pyomo/HiGHS).
     All `open_energy_lab.tpm` references now use `tpm`; no shim.
-  - [ ] B3b: move the tpm tests and fixtures into the package (tests that
-    need planning stay in OEL) and add a Python 3.11 CI job for them.
+  - [x] B3b standalone tests: `tests/{unit,integration}/tpm` now run with
+    only sp-tpm installed. The 5 notebook and fitting test files that need
+    OEL moved to the planning test folders, and the 3 `test_mio.py` tests
+    built on planning's piecewise terms moved to
+    `tests/unit/planning/test_spn_chance_model_planning_terms.py`. TPM
+    fixture paths live in `tests/integration/tpm/fixture_paths.py`, so
+    planning imports them, not the reverse. `test_standalone_imports.py`
+    also forbids OEL imports in the tpm tests. New CI job `sp-tpm`:
+    Python 3.11, sp-tpm[highs] only, `src/` off the path (583 passed,
+    1 Gurobi skip). Tests stay in the repo-level `tests/` tree; moving them
+    under `packages/sp-tpm/` can wait for B6.
 - [ ] **B4 internal consolidation.** One circuit representation, one DAG
   traversal and evaluator. Split `mio.py` into compile, condition, encode, and
   solve. One checkpoint helper. Merge `product_mixture` into `native`.
