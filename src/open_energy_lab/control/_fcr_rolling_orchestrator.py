@@ -1181,6 +1181,52 @@ def _unfinalized_revision(
     )
 
 
+def _single_segment(manifest: RollingFCRStudyManifest) -> ContinuitySegment:
+    return ContinuitySegment(
+        segment_id=f"{manifest.study_id}-segment-0",
+        start_date=manifest.dates[0].delivery_date,
+        end_date=manifest.dates[-1].delivery_date,
+        start_reason="manifest_start",
+    )
+
+
+def _study_result(
+    manifest: RollingFCRStudyManifest,
+    day_inputs: tuple[RollingFCRDayInput, ...],
+    records: tuple[DeliveryDateRecordEnvelope, ...],
+    *,
+    partial_statuses: frozenset[str],
+    continuity_segments: tuple[ContinuitySegment, ...],
+    state_links: tuple[RollingFCRStateLink, ...],
+    supplied_activation_fingerprints: Mapping[str, str],
+    runtime_metadata: Mapping[str, object],
+) -> RollingFCRStudyResult:
+    """Assemble a study result; any failed date fails it, ``partial_statuses`` make it partial."""
+
+    statuses = tuple(item.latest_revision.lifecycle_status for item in records)
+    completeness = (
+        "failed"
+        if "failed" in statuses
+        else "partial"
+        if any(item in partial_statuses for item in statuses)
+        else "complete"
+    )
+    return RollingFCRStudyResult(
+        study_id=manifest.study_id,
+        manifest_fingerprint=manifest.manifest_fingerprint,
+        profile_id=manifest.profile.profile_id,
+        profile_fingerprint=manifest.profile.profile_fingerprint,
+        records=records,
+        continuity_segments=continuity_segments,
+        state_links=state_links,
+        aggregate_metrics=aggregate_rolling_fcr_records(manifest, records),
+        completeness_status=completeness,
+        requested_day_input_fingerprints=_requested_day_input_fingerprints(day_inputs),
+        supplied_activation_fingerprints=supplied_activation_fingerprints,
+        runtime_metadata=runtime_metadata,
+    )
+
+
 def _run_causal_0800_study(
     manifest: RollingFCRStudyManifest,
     day_inputs: tuple[RollingFCRDayInput, ...],
@@ -1430,49 +1476,21 @@ def _run_causal_0800_study(
             pending_cutoff = None
             pending_full_trace = None
 
-    ordered_records = tuple(
-        records[item.delivery_date] for item in manifest.dates
-    )
-    dates = tuple(item.delivery_date for item in manifest.dates)
-    segment = ContinuitySegment(
-        segment_id=f"{manifest.study_id}-segment-0",
-        start_date=dates[0],
-        end_date=dates[-1],
-        start_reason="manifest_start",
-    )
-    statuses = tuple(item.latest_revision.lifecycle_status for item in ordered_records)
-    completeness = (
-        "failed"
-        if any(item == "failed" for item in statuses)
-        else "partial"
-        if any(
-            item
-            in {
+    return _study_result(
+        manifest,
+        day_inputs,
+        tuple(records[item.delivery_date] for item in manifest.dates),
+        partial_statuses=frozenset(
+            {
                 "initialization_only",
                 "blocked_by_predecessor",
                 "optimization_only",
                 "provisional",
                 "unfinalized",
             }
-            for item in statuses
-        )
-        else "complete"
-    )
-    return RollingFCRStudyResult(
-        study_id=manifest.study_id,
-        manifest_fingerprint=manifest.manifest_fingerprint,
-        profile_id=manifest.profile.profile_id,
-        profile_fingerprint=manifest.profile.profile_fingerprint,
-        records=ordered_records,
-        continuity_segments=(segment,),
+        ),
+        continuity_segments=(_single_segment(manifest),),
         state_links=tuple(state_links),
-        aggregate_metrics=aggregate_rolling_fcr_records(
-            manifest, ordered_records
-        ),
-        completeness_status=completeness,
-        requested_day_input_fingerprints=_requested_day_input_fingerprints(
-            day_inputs
-        ),
         supplied_activation_fingerprints=_supplied_activation_fingerprints(
             activation_traces
         ),
@@ -1726,32 +1744,13 @@ def _run_midnight_carry_study(
         )
         for segment_id, members in record_dates_by_segment.items()
     )
-    statuses = tuple(item.latest_revision.lifecycle_status for item in ordered_records)
-    completeness = (
-        "failed"
-        if any(item == "failed" for item in statuses)
-        else "partial"
-        if any(
-            item in {"blocked_by_predecessor", "optimization_only"}
-            for item in statuses
-        )
-        else "complete"
-    )
-    return RollingFCRStudyResult(
-        study_id=manifest.study_id,
-        manifest_fingerprint=manifest.manifest_fingerprint,
-        profile_id=manifest.profile.profile_id,
-        profile_fingerprint=manifest.profile.profile_fingerprint,
-        records=ordered_records,
+    return _study_result(
+        manifest,
+        day_inputs,
+        ordered_records,
+        partial_statuses=frozenset({"blocked_by_predecessor", "optimization_only"}),
         continuity_segments=continuity_segments,
         state_links=tuple(state_links),
-        aggregate_metrics=aggregate_rolling_fcr_records(
-            manifest, ordered_records
-        ),
-        completeness_status=completeness,
-        requested_day_input_fingerprints=_requested_day_input_fingerprints(
-            day_inputs
-        ),
         supplied_activation_fingerprints=_supplied_activation_fingerprints(
             activation_traces
         ),
@@ -1904,37 +1903,13 @@ def _run_independent_study(
                 )
             )
 
-    dates = tuple(item.delivery_date for item in manifest.dates)
-    segment = ContinuitySegment(
-        segment_id=f"{manifest.study_id}-segment-0",
-        start_date=dates[0],
-        end_date=dates[-1],
-        start_reason="manifest_start",
-    )
-    statuses = tuple(item.latest_revision.lifecycle_status for item in records)
-    completeness = (
-        "failed"
-        if any(item == "failed" for item in statuses)
-        else "partial"
-        if any(item == "optimization_only" for item in statuses)
-        else "complete"
-    )
-    ordered_records = tuple(records)
-    return RollingFCRStudyResult(
-        study_id=manifest.study_id,
-        manifest_fingerprint=manifest.manifest_fingerprint,
-        profile_id=manifest.profile.profile_id,
-        profile_fingerprint=manifest.profile.profile_fingerprint,
-        records=ordered_records,
-        continuity_segments=(segment,),
+    return _study_result(
+        manifest,
+        day_inputs,
+        tuple(records),
+        partial_statuses=frozenset({"optimization_only"}),
+        continuity_segments=(_single_segment(manifest),),
         state_links=(),
-        aggregate_metrics=aggregate_rolling_fcr_records(
-            manifest, ordered_records
-        ),
-        completeness_status=completeness,
-        requested_day_input_fingerprints=_requested_day_input_fingerprints(
-            day_inputs
-        ),
         supplied_activation_fingerprints=supplied_activation_fingerprints,
         runtime_metadata={
             "phase": "independent-bid-evaluation-replay-v1",
