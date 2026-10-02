@@ -353,287 +353,6 @@ class RestorationBaselineBundle:
     bundle_fingerprint: str
 
 
-def _afrr_grid(
-    period: CanonicalInterval, resolution: str
-) -> tuple[CanonicalInterval, ...]:
-    try:
-        duration = parse_iso8601_duration(resolution)
-    except MarketTimeValidationError as exc:
-        raise RestorationControlValidationError(str(exc)) from exc
-    intervals: list[CanonicalInterval] = []
-    cursor = period.start_utc
-    while cursor < period.end_utc:
-        end = cursor + duration
-        if end > period.end_utc:
-            raise RestorationControlValidationError(
-                "aFRR period must be exactly divisible by resolution"
-            )
-        intervals.append(
-            CanonicalInterval.from_utc(
-                cursor,
-                end,
-                market_timezone=period.market_timezone,
-            )
-        )
-        cursor = end
-    if not intervals:
-        raise RestorationControlValidationError(
-            "aFRR baseline grid must be non-empty"
-        )
-    return tuple(intervals)
-
-
-def _afrr_fixed_values(
-    value: float | Sequence[float] | None,
-    *,
-    count: int,
-    mode: AFRRBaselineMode,
-) -> tuple[float, ...] | None:
-    if mode is AFRRBaselineMode.FIXED:
-        if value is None:
-            raise RestorationControlValidationError(
-                "FIXED aFRR baseline requires fixed_power_kw"
-            )
-        if isinstance(value, bool):
-            raise RestorationControlValidationError(
-                "fixed_power_kw must be finite fixed values"
-            )
-        if isinstance(value, (int, float)):
-            normalized = (_finite(value, field_name="fixed_power_kw"),) * count
-        else:
-            normalized = tuple(
-                _finite(item, field_name=f"fixed_power_kw[{index}]")
-                for index, item in enumerate(
-                    _sequence(value, field_name="fixed_power_kw")
-                )
-            )
-        if len(normalized) != count:
-            raise RestorationControlValidationError(
-                "fixed_power_kw length must align exactly with the aFRR grid"
-            )
-        return normalized
-    if value is not None:
-        raise RestorationControlValidationError(
-            f"{mode.value} aFRR baseline cannot declare fixed_power_kw"
-        )
-    return None
-
-
-def build_afrr_baseline_config(
-    *,
-    config_id: str,
-    semantics_version: str,
-    period: CanonicalInterval,
-    resolution: str,
-    commitments: DirectionalCapacitySchedule,
-    battery: BatteryComponent,
-    capability: RestorationCapability,
-    mode: AFRRBaselineMode | str,
-    fixed_power_kw: float | Sequence[float] | None,
-    headroom_bias: float = 0.0,
-    tolerance: float = DEFAULT_RESTORATION_TOLERANCE,
-) -> AFRRBaselineConfig:
-    """Validate product, time, power, ramp, delay, and native-grid inputs."""
-
-    normalized_period = _interval(period, field_name="period")
-    normalized_resolution = _non_empty(resolution, field_name="resolution")
-    try:
-        normalized_mode = AFRRBaselineMode(mode)
-    except (TypeError, ValueError) as exc:
-        raise RestorationControlValidationError(
-            "aFRR baseline mode must be ZERO, FIXED, or DETERMINISTIC_HEADROOM"
-        ) from exc
-    if type(commitments) is not DirectionalCapacitySchedule:
-        raise RestorationControlValidationError(
-            "commitments must be exactly a DirectionalCapacitySchedule"
-        )
-    if commitments.product is not RestorationProduct.AFRR:
-        raise RestorationControlValidationError(
-            "aFRR baseline commitments must have product AFRR"
-        )
-    if commitments.period != normalized_period:
-        raise RestorationControlValidationError(
-            "aFRR commitment period must match the baseline period"
-        )
-    if not isinstance(battery, BatteryComponent):
-        raise RestorationControlValidationError("battery must be a BatteryComponent")
-    if not isinstance(capability, RestorationCapability):
-        raise RestorationControlValidationError(
-            "capability must be a RestorationCapability"
-        )
-    normalized_tolerance = _positive(tolerance, field_name="tolerance")
-    bias = _finite(headroom_bias, field_name="headroom_bias")
-    if not -1.0 <= bias <= 1.0:
-        raise RestorationControlValidationError(
-            "headroom_bias must be finite and in [-1, 1]"
-        )
-    if normalized_mode is not AFRRBaselineMode.DETERMINISTIC_HEADROOM and bias != 0.0:
-        raise RestorationControlValidationError(
-            "headroom_bias is valid only for DETERMINISTIC_HEADROOM mode"
-        )
-    grid = _afrr_grid(normalized_period, normalized_resolution)
-    fixed_values = _afrr_fixed_values(
-        fixed_power_kw,
-        count=len(grid),
-        mode=normalized_mode,
-    )
-    interval_seconds = (
-        grid[0].end_utc - grid[0].start_utc
-    ).total_seconds()
-    minimum_duration = capability.min_supported_duration_seconds[
-        RestorationProduct.AFRR
-    ]
-    maximum_duration = capability.max_supported_duration_seconds[
-        RestorationProduct.AFRR
-    ]
-    if not minimum_duration <= interval_seconds <= maximum_duration:
-        raise RestorationControlValidationError(
-            f"AFRR grid duration {interval_seconds} seconds is outside supported "
-            f"duration [{minimum_duration}, {maximum_duration}]"
-        )
-    activation_delay = capability.max_activation_delay_seconds[
-        RestorationProduct.AFRR
-    ]
-    upward_reachable = capability.max_ramp_down_kw_per_second * activation_delay
-    downward_reachable = capability.max_ramp_up_kw_per_second * activation_delay
-    commitment_pairs = commitments.commitment_pairs_covering(grid)
-    for index, (interval, commitment_pair) in enumerate(
-        zip(grid, commitment_pairs, strict=True)
-    ):
-        upward, downward = commitment_pair
-        if upward.committed_capacity_kw > battery.max_discharge_kw + normalized_tolerance:
-            raise RestorationControlValidationError(
-                f"UPWARD commitment at interval {index} exceeds battery discharge power"
-            )
-        if downward.committed_capacity_kw > battery.max_charge_kw + normalized_tolerance:
-            raise RestorationControlValidationError(
-                f"DOWNWARD commitment at interval {index} exceeds battery charge power"
-            )
-        if upward.committed_capacity_kw > upward_reachable + normalized_tolerance:
-            raise RestorationControlValidationError(
-                f"UPWARD commitment {upward.committed_capacity_kw} kW at interval "
-                f"{index} exceeds ramp/activation-time reach {upward_reachable} kW"
-            )
-        if downward.committed_capacity_kw > downward_reachable + normalized_tolerance:
-            raise RestorationControlValidationError(
-                f"DOWNWARD commitment {downward.committed_capacity_kw} kW at interval "
-                f"{index} exceeds ramp/activation-time reach {downward_reachable} kW"
-            )
-    payload = {
-        "schema_version": AFRR_BASELINE_CONFIG_SCHEMA_VERSION,
-        "config_id": _non_empty(config_id, field_name="config_id"),
-        "semantics_version": _non_empty(
-            semantics_version, field_name="semantics_version"
-        ),
-        "product": RestorationProduct.AFRR.value,
-        "period": normalized_period.to_dict(),
-        "resolution": normalized_resolution,
-        "grid": [interval.to_dict() for interval in grid],
-        "commitments_fingerprint": commitments.schedule_fingerprint,
-        "battery": battery.to_dict(),
-        "capability_fingerprint": capability.capability_fingerprint,
-        "mode": normalized_mode.value,
-        "fixed_power_kw": None if fixed_values is None else list(fixed_values),
-        "headroom_bias": bias,
-        "tolerance": normalized_tolerance,
-    }
-    return AFRRBaselineConfig(
-        schema_version=AFRR_BASELINE_CONFIG_SCHEMA_VERSION,
-        config_id=str(payload["config_id"]),
-        semantics_version=str(payload["semantics_version"]),
-        period=normalized_period,
-        resolution=normalized_resolution,
-        grid_intervals=grid,
-        commitments=commitments,
-        battery=battery,
-        capability=capability,
-        mode=normalized_mode,
-        fixed_power_kw=fixed_values,
-        headroom_bias=bias,
-        tolerance=normalized_tolerance,
-        configuration_fingerprint=_fingerprint(payload),
-    )
-
-
-def build_afrr_baseline(config: AFRRBaselineConfig) -> RestorationBaselineBundle:
-    """Construct and validate one aFRR baseline without activation lookahead."""
-
-    if type(config) is not AFRRBaselineConfig:
-        raise RestorationControlValidationError(
-            "config must be exactly an AFRRBaselineConfig"
-        )
-    powers: list[float] = []
-    commitment_pairs = (
-        config.commitments.commitment_pairs_covering(config.grid_intervals)
-        if config.mode is AFRRBaselineMode.DETERMINISTIC_HEADROOM
-        else ()
-    )
-    for index, interval in enumerate(config.grid_intervals):
-        if config.mode is AFRRBaselineMode.ZERO:
-            power = 0.0
-        elif config.mode is AFRRBaselineMode.FIXED:
-            assert config.fixed_power_kw is not None
-            power = config.fixed_power_kw[index]
-        else:
-            upward, downward = commitment_pairs[index]
-            lower = -config.battery.max_discharge_kw + upward.committed_capacity_kw
-            upper = config.battery.max_charge_kw - downward.committed_capacity_kw
-            if lower > upper + config.tolerance:
-                raise RestorationControlValidationError(
-                    f"aFRR interval {index} has no baseline power after reserved headroom"
-                )
-            midpoint = (lower + upper) / 2.0
-            power = midpoint + config.headroom_bias * (upper - lower) / 2.0
-        powers.append(power)
-    baseline = build_restoration_energy_baseline_schedule(
-        schedule_id=f"{config.config_id}-accepted",
-        semantics_version=RESTORATION_BASELINE_SEMANTICS_VERSION,
-        product=RestorationProduct.AFRR,
-        period=config.period,
-        source=f"afrr_{config.mode.value.lower()}",
-        intervals=[
-            {
-                "interval": interval,
-                "accepted_baseline_power_kw": power,
-            }
-            for interval, power in zip(config.grid_intervals, powers, strict=True)
-        ],
-    )
-    validation = build_restoration_baseline_config(
-        config_id=config.config_id,
-        semantics_version=config.semantics_version,
-        product=RestorationProduct.AFRR,
-        period=config.period,
-        resolution=config.resolution,
-        commitments=config.commitments,
-        baseline=baseline,
-        battery=config.battery,
-        capability=config.capability,
-        parameters={
-            "mode": config.mode.value,
-            "headroom_bias": config.headroom_bias,
-        },
-        tolerance=config.tolerance,
-    )
-    payload = {
-        "schema_version": RESTORATION_BASELINE_BUNDLE_SCHEMA_VERSION,
-        "product": RestorationProduct.AFRR.value,
-        "source_configuration_fingerprint": config.configuration_fingerprint,
-        "commitments_fingerprint": config.commitments.schedule_fingerprint,
-        "baseline_fingerprint": baseline.schedule_fingerprint,
-        "validation_fingerprint": validation.configuration_fingerprint,
-    }
-    return RestorationBaselineBundle(
-        schema_version=RESTORATION_BASELINE_BUNDLE_SCHEMA_VERSION,
-        product=RestorationProduct.AFRR,
-        source_configuration_fingerprint=config.configuration_fingerprint,
-        commitments=config.commitments,
-        baseline=baseline,
-        validation=validation,
-        bundle_fingerprint=_fingerprint(payload),
-    )
-
-
 def build_mfrr_directional_capacity_schedule(
     *,
     schedule_id: str,
@@ -673,9 +392,14 @@ class MFRRBaselineConfig:
     configuration_fingerprint: str
 
 
-def _mfrr_grid(
-    period: CanonicalInterval, resolution: str
+_PRODUCT_LABELS = {RestorationProduct.AFRR: "aFRR", RestorationProduct.MFRR: "mFRR"}
+_BaselineMode = AFRRBaselineMode | MFRRBaselineMode
+
+
+def _baseline_grid(
+    period: CanonicalInterval, resolution: str, *, product: RestorationProduct
 ) -> tuple[CanonicalInterval, ...]:
+    label = _PRODUCT_LABELS[product]
     try:
         duration = parse_iso8601_duration(resolution)
     except MarketTimeValidationError as exc:
@@ -686,7 +410,7 @@ def _mfrr_grid(
         end = cursor + duration
         if end > period.end_utc:
             raise RestorationControlValidationError(
-                "mFRR period must be exactly divisible by resolution"
+                f"{label} period must be exactly divisible by resolution"
             )
         intervals.append(
             CanonicalInterval.from_utc(
@@ -698,21 +422,23 @@ def _mfrr_grid(
         cursor = end
     if not intervals:
         raise RestorationControlValidationError(
-            "mFRR baseline grid must be non-empty"
+            f"{label} baseline grid must be non-empty"
         )
     return tuple(intervals)
 
 
-def _mfrr_fixed_values(
+def _fixed_values(
     value: float | Sequence[float] | None,
     *,
     count: int,
-    mode: MFRRBaselineMode,
+    mode: _BaselineMode,
+    product: RestorationProduct,
 ) -> tuple[float, ...] | None:
-    if mode is MFRRBaselineMode.FIXED:
+    label = _PRODUCT_LABELS[product]
+    if mode.value == "FIXED":
         if value is None:
             raise RestorationControlValidationError(
-                "FIXED mFRR baseline requires fixed_power_kw"
+                f"FIXED {label} baseline requires fixed_power_kw"
             )
         if isinstance(value, bool):
             raise RestorationControlValidationError(
@@ -729,18 +455,33 @@ def _mfrr_fixed_values(
             )
         if len(normalized) != count:
             raise RestorationControlValidationError(
-                "fixed_power_kw length must align exactly with the mFRR grid"
+                f"fixed_power_kw length must align exactly with the {label} grid"
             )
         return normalized
     if value is not None:
         raise RestorationControlValidationError(
-            f"{mode.value} mFRR baseline cannot declare fixed_power_kw"
+            f"{mode.value} {label} baseline cannot declare fixed_power_kw"
         )
     return None
 
 
-def build_mfrr_baseline_config(
+@dataclass(frozen=True, slots=True)
+class _ValidatedBaselineInputs:
+    period: CanonicalInterval
+    resolution: str
+    grid: tuple[CanonicalInterval, ...]
+    mode: _BaselineMode
+    fixed_values: tuple[float, ...] | None
+    headroom_bias: float
+    tolerance: float
+    payload: dict[str, object]
+
+
+def _validate_baseline_inputs(
     *,
+    product: RestorationProduct,
+    mode_type: type[_BaselineMode],
+    schema_version: str,
     config_id: str,
     semantics_version: str,
     period: CanonicalInterval,
@@ -748,33 +489,34 @@ def build_mfrr_baseline_config(
     commitments: DirectionalCapacitySchedule,
     battery: BatteryComponent,
     capability: RestorationCapability,
-    mode: MFRRBaselineMode | str,
+    mode: object,
     fixed_power_kw: float | Sequence[float] | None,
-    declared_service_duration_seconds: float,
-    headroom_bias: float = 0.0,
-    tolerance: float = DEFAULT_RESTORATION_TOLERANCE,
-) -> MFRRBaselineConfig:
-    """Validate mFRR product, grid, headroom, timing, and duration inputs."""
+    headroom_bias: float,
+    tolerance: float,
+    declared_service_duration_seconds: float | None,
+) -> _ValidatedBaselineInputs:
+    """Checks shared by the aFRR and mFRR baseline configurations."""
 
+    label = _PRODUCT_LABELS[product]
     normalized_period = _interval(period, field_name="period")
     normalized_resolution = _non_empty(resolution, field_name="resolution")
     try:
-        normalized_mode = MFRRBaselineMode(mode)
+        normalized_mode = mode_type(mode)
     except (TypeError, ValueError) as exc:
         raise RestorationControlValidationError(
-            "mFRR baseline mode must be ZERO, FIXED, or DETERMINISTIC_HEADROOM"
+            f"{label} baseline mode must be ZERO, FIXED, or DETERMINISTIC_HEADROOM"
         ) from exc
     if type(commitments) is not DirectionalCapacitySchedule:
         raise RestorationControlValidationError(
             "commitments must be exactly a DirectionalCapacitySchedule"
         )
-    if commitments.product is not RestorationProduct.MFRR:
+    if commitments.product is not product:
         raise RestorationControlValidationError(
-            "mFRR baseline commitments must have product MFRR"
+            f"{label} baseline commitments must have product {product.value}"
         )
     if commitments.period != normalized_period:
         raise RestorationControlValidationError(
-            "mFRR commitment period must match the baseline period"
+            f"{label} commitment period must match the baseline period"
         )
     if not isinstance(battery, BatteryComponent):
         raise RestorationControlValidationError("battery must be a BatteryComponent")
@@ -788,34 +530,34 @@ def build_mfrr_baseline_config(
         raise RestorationControlValidationError(
             "headroom_bias must be finite and in [-1, 1]"
         )
-    if normalized_mode is not MFRRBaselineMode.DETERMINISTIC_HEADROOM and bias != 0.0:
+    if normalized_mode.value != "DETERMINISTIC_HEADROOM" and bias != 0.0:
         raise RestorationControlValidationError(
             "headroom_bias is valid only for DETERMINISTIC_HEADROOM mode"
         )
-    grid = _mfrr_grid(normalized_period, normalized_resolution)
-    fixed_values = _mfrr_fixed_values(
+    grid = _baseline_grid(normalized_period, normalized_resolution, product=product)
+    fixed_values = _fixed_values(
         fixed_power_kw,
         count=len(grid),
         mode=normalized_mode,
+        product=product,
     )
-    declared_duration = _positive(
-        declared_service_duration_seconds,
-        field_name="declared_service_duration_seconds",
-    )
-    minimum_duration = capability.min_supported_duration_seconds[
-        RestorationProduct.MFRR
-    ]
-    maximum_duration = capability.max_supported_duration_seconds[
-        RestorationProduct.MFRR
-    ]
-    if not minimum_duration <= declared_duration <= maximum_duration:
+    minimum_duration = capability.min_supported_duration_seconds[product]
+    maximum_duration = capability.max_supported_duration_seconds[product]
+    if declared_service_duration_seconds is None:
+        checked_duration = (grid[0].end_utc - grid[0].start_utc).total_seconds()
+        duration_label = "grid duration"
+    else:
+        checked_duration = _positive(
+            declared_service_duration_seconds,
+            field_name="declared_service_duration_seconds",
+        )
+        duration_label = "declared duration"
+    if not minimum_duration <= checked_duration <= maximum_duration:
         raise RestorationControlValidationError(
-            f"MFRR declared duration {declared_duration} seconds is outside "
+            f"{product.value} {duration_label} {checked_duration} seconds is outside "
             f"supported duration [{minimum_duration}, {maximum_duration}]"
         )
-    activation_delay = capability.max_activation_delay_seconds[
-        RestorationProduct.MFRR
-    ]
+    activation_delay = capability.max_activation_delay_seconds[product]
     upward_reachable = capability.max_ramp_down_kw_per_second * activation_delay
     downward_reachable = capability.max_ramp_up_kw_per_second * activation_delay
     commitment_pairs = commitments.commitment_pairs_covering(grid)
@@ -841,13 +583,13 @@ def build_mfrr_baseline_config(
                 f"DOWNWARD commitment {downward.committed_capacity_kw} kW at interval "
                 f"{index} exceeds ramp/activation-time reach {downward_reachable} kW"
             )
-    payload = {
-        "schema_version": MFRR_BASELINE_CONFIG_SCHEMA_VERSION,
+    payload: dict[str, object] = {
+        "schema_version": schema_version,
         "config_id": _non_empty(config_id, field_name="config_id"),
         "semantics_version": _non_empty(
             semantics_version, field_name="semantics_version"
         ),
-        "product": RestorationProduct.MFRR.value,
+        "product": product.value,
         "period": normalized_period.to_dict(),
         "resolution": normalized_resolution,
         "grid": [interval.to_dict() for interval in grid],
@@ -856,26 +598,229 @@ def build_mfrr_baseline_config(
         "capability_fingerprint": capability.capability_fingerprint,
         "mode": normalized_mode.value,
         "fixed_power_kw": None if fixed_values is None else list(fixed_values),
-        "declared_service_duration_seconds": declared_duration,
         "headroom_bias": bias,
         "tolerance": normalized_tolerance,
     }
-    return MFRRBaselineConfig(
-        schema_version=MFRR_BASELINE_CONFIG_SCHEMA_VERSION,
-        config_id=str(payload["config_id"]),
-        semantics_version=str(payload["semantics_version"]),
+    if declared_service_duration_seconds is not None:
+        payload["declared_service_duration_seconds"] = checked_duration
+    return _ValidatedBaselineInputs(
         period=normalized_period,
         resolution=normalized_resolution,
-        grid_intervals=grid,
+        grid=grid,
+        mode=normalized_mode,
+        fixed_values=fixed_values,
+        headroom_bias=bias,
+        tolerance=normalized_tolerance,
+        payload=payload,
+    )
+
+
+def _build_product_baseline(
+    config: AFRRBaselineConfig | MFRRBaselineConfig,
+    *,
+    product: RestorationProduct,
+    extra_parameters: Mapping[str, object],
+    required_duration_seconds: float | None,
+) -> RestorationBaselineBundle:
+    """Construct and validate one product baseline without activation lookahead."""
+
+    label = _PRODUCT_LABELS[product]
+    mode = config.mode.value
+    powers: list[float] = []
+    commitment_pairs = (
+        config.commitments.commitment_pairs_covering(config.grid_intervals)
+        if mode == "DETERMINISTIC_HEADROOM"
+        else ()
+    )
+    for index, interval in enumerate(config.grid_intervals):
+        if mode == "ZERO":
+            power = 0.0
+        elif mode == "FIXED":
+            assert config.fixed_power_kw is not None
+            power = config.fixed_power_kw[index]
+        else:
+            upward, downward = commitment_pairs[index]
+            lower = -config.battery.max_discharge_kw + upward.committed_capacity_kw
+            upper = config.battery.max_charge_kw - downward.committed_capacity_kw
+            if lower > upper + config.tolerance:
+                raise RestorationControlValidationError(
+                    f"{label} interval {index} has no baseline power after reserved headroom"
+                )
+            midpoint = (lower + upper) / 2.0
+            power = midpoint + config.headroom_bias * (upper - lower) / 2.0
+        powers.append(power)
+    baseline = build_restoration_energy_baseline_schedule(
+        schedule_id=f"{config.config_id}-accepted",
+        semantics_version=RESTORATION_BASELINE_SEMANTICS_VERSION,
+        product=product,
+        period=config.period,
+        source=f"{product.value.lower()}_{mode.lower()}",
+        intervals=[
+            {
+                "interval": interval,
+                "accepted_baseline_power_kw": power,
+            }
+            for interval, power in zip(config.grid_intervals, powers, strict=True)
+        ],
+    )
+    validation_options: dict[str, object] = {}
+    if required_duration_seconds is not None:
+        validation_options["required_duration_seconds"] = required_duration_seconds
+    validation = build_restoration_baseline_config(
+        config_id=config.config_id,
+        semantics_version=config.semantics_version,
+        product=product,
+        period=config.period,
+        resolution=config.resolution,
+        commitments=config.commitments,
+        baseline=baseline,
+        battery=config.battery,
+        capability=config.capability,
+        parameters={
+            "mode": mode,
+            "headroom_bias": config.headroom_bias,
+            **extra_parameters,
+        },
+        tolerance=config.tolerance,
+        **validation_options,
+    )
+    payload = {
+        "schema_version": RESTORATION_BASELINE_BUNDLE_SCHEMA_VERSION,
+        "product": product.value,
+        "source_configuration_fingerprint": config.configuration_fingerprint,
+        "commitments_fingerprint": config.commitments.schedule_fingerprint,
+        "baseline_fingerprint": baseline.schedule_fingerprint,
+        "validation_fingerprint": validation.configuration_fingerprint,
+    }
+    return RestorationBaselineBundle(
+        schema_version=RESTORATION_BASELINE_BUNDLE_SCHEMA_VERSION,
+        product=product,
+        source_configuration_fingerprint=config.configuration_fingerprint,
+        commitments=config.commitments,
+        baseline=baseline,
+        validation=validation,
+        bundle_fingerprint=_fingerprint(payload),
+    )
+
+
+def build_afrr_baseline_config(
+    *,
+    config_id: str,
+    semantics_version: str,
+    period: CanonicalInterval,
+    resolution: str,
+    commitments: DirectionalCapacitySchedule,
+    battery: BatteryComponent,
+    capability: RestorationCapability,
+    mode: AFRRBaselineMode | str,
+    fixed_power_kw: float | Sequence[float] | None,
+    headroom_bias: float = 0.0,
+    tolerance: float = DEFAULT_RESTORATION_TOLERANCE,
+) -> AFRRBaselineConfig:
+    """Validate product, time, power, ramp, delay, and native-grid inputs."""
+
+    checked = _validate_baseline_inputs(
+        product=RestorationProduct.AFRR,
+        mode_type=AFRRBaselineMode,
+        schema_version=AFRR_BASELINE_CONFIG_SCHEMA_VERSION,
+        config_id=config_id,
+        semantics_version=semantics_version,
+        period=period,
+        resolution=resolution,
         commitments=commitments,
         battery=battery,
         capability=capability,
-        mode=normalized_mode,
-        fixed_power_kw=fixed_values,
-        declared_service_duration_seconds=declared_duration,
-        headroom_bias=bias,
-        tolerance=normalized_tolerance,
-        configuration_fingerprint=_fingerprint(payload),
+        mode=mode,
+        fixed_power_kw=fixed_power_kw,
+        headroom_bias=headroom_bias,
+        tolerance=tolerance,
+        declared_service_duration_seconds=None,
+    )
+    return AFRRBaselineConfig(
+        schema_version=AFRR_BASELINE_CONFIG_SCHEMA_VERSION,
+        config_id=str(checked.payload["config_id"]),
+        semantics_version=str(checked.payload["semantics_version"]),
+        period=checked.period,
+        resolution=checked.resolution,
+        grid_intervals=checked.grid,
+        commitments=commitments,
+        battery=battery,
+        capability=capability,
+        mode=checked.mode,
+        fixed_power_kw=checked.fixed_values,
+        headroom_bias=checked.headroom_bias,
+        tolerance=checked.tolerance,
+        configuration_fingerprint=_fingerprint(checked.payload),
+    )
+
+
+def build_afrr_baseline(config: AFRRBaselineConfig) -> RestorationBaselineBundle:
+    """Construct and validate one aFRR baseline without activation lookahead."""
+
+    if type(config) is not AFRRBaselineConfig:
+        raise RestorationControlValidationError(
+            "config must be exactly an AFRRBaselineConfig"
+        )
+    return _build_product_baseline(
+        config,
+        product=RestorationProduct.AFRR,
+        extra_parameters={},
+        required_duration_seconds=None,
+    )
+
+
+def build_mfrr_baseline_config(
+    *,
+    config_id: str,
+    semantics_version: str,
+    period: CanonicalInterval,
+    resolution: str,
+    commitments: DirectionalCapacitySchedule,
+    battery: BatteryComponent,
+    capability: RestorationCapability,
+    mode: MFRRBaselineMode | str,
+    fixed_power_kw: float | Sequence[float] | None,
+    declared_service_duration_seconds: float,
+    headroom_bias: float = 0.0,
+    tolerance: float = DEFAULT_RESTORATION_TOLERANCE,
+) -> MFRRBaselineConfig:
+    """Validate mFRR product, grid, headroom, timing, and duration inputs."""
+
+    checked = _validate_baseline_inputs(
+        product=RestorationProduct.MFRR,
+        mode_type=MFRRBaselineMode,
+        schema_version=MFRR_BASELINE_CONFIG_SCHEMA_VERSION,
+        config_id=config_id,
+        semantics_version=semantics_version,
+        period=period,
+        resolution=resolution,
+        commitments=commitments,
+        battery=battery,
+        capability=capability,
+        mode=mode,
+        fixed_power_kw=fixed_power_kw,
+        headroom_bias=headroom_bias,
+        tolerance=tolerance,
+        declared_service_duration_seconds=declared_service_duration_seconds,
+    )
+    return MFRRBaselineConfig(
+        schema_version=MFRR_BASELINE_CONFIG_SCHEMA_VERSION,
+        config_id=str(checked.payload["config_id"]),
+        semantics_version=str(checked.payload["semantics_version"]),
+        period=checked.period,
+        resolution=checked.resolution,
+        grid_intervals=checked.grid,
+        commitments=commitments,
+        battery=battery,
+        capability=capability,
+        mode=checked.mode,
+        fixed_power_kw=checked.fixed_values,
+        declared_service_duration_seconds=float(
+            checked.payload["declared_service_duration_seconds"]  # type: ignore[arg-type]
+        ),
+        headroom_bias=checked.headroom_bias,
+        tolerance=checked.tolerance,
+        configuration_fingerprint=_fingerprint(checked.payload),
     )
 
 
@@ -886,79 +831,13 @@ def build_mfrr_baseline(config: MFRRBaselineConfig) -> RestorationBaselineBundle
         raise RestorationControlValidationError(
             "config must be exactly an MFRRBaselineConfig"
         )
-    powers: list[float] = []
-    commitment_pairs = (
-        config.commitments.commitment_pairs_covering(config.grid_intervals)
-        if config.mode is MFRRBaselineMode.DETERMINISTIC_HEADROOM
-        else ()
-    )
-    for index, interval in enumerate(config.grid_intervals):
-        if config.mode is MFRRBaselineMode.ZERO:
-            power = 0.0
-        elif config.mode is MFRRBaselineMode.FIXED:
-            assert config.fixed_power_kw is not None
-            power = config.fixed_power_kw[index]
-        else:
-            upward, downward = commitment_pairs[index]
-            lower = -config.battery.max_discharge_kw + upward.committed_capacity_kw
-            upper = config.battery.max_charge_kw - downward.committed_capacity_kw
-            if lower > upper + config.tolerance:
-                raise RestorationControlValidationError(
-                    f"mFRR interval {index} has no baseline power after reserved headroom"
-                )
-            midpoint = (lower + upper) / 2.0
-            power = midpoint + config.headroom_bias * (upper - lower) / 2.0
-        powers.append(power)
-    baseline = build_restoration_energy_baseline_schedule(
-        schedule_id=f"{config.config_id}-accepted",
-        semantics_version=RESTORATION_BASELINE_SEMANTICS_VERSION,
+    return _build_product_baseline(
+        config,
         product=RestorationProduct.MFRR,
-        period=config.period,
-        source=f"mfrr_{config.mode.value.lower()}",
-        intervals=[
-            {
-                "interval": interval,
-                "accepted_baseline_power_kw": power,
-            }
-            for interval, power in zip(config.grid_intervals, powers, strict=True)
-        ],
-    )
-    validation = build_restoration_baseline_config(
-        config_id=config.config_id,
-        semantics_version=config.semantics_version,
-        product=RestorationProduct.MFRR,
-        period=config.period,
-        resolution=config.resolution,
-        commitments=config.commitments,
-        baseline=baseline,
-        battery=config.battery,
-        capability=config.capability,
-        parameters={
-            "mode": config.mode.value,
-            "headroom_bias": config.headroom_bias,
-            "declared_service_duration_seconds": (
-                config.declared_service_duration_seconds
-            ),
+        extra_parameters={
+            "declared_service_duration_seconds": config.declared_service_duration_seconds
         },
-        tolerance=config.tolerance,
         required_duration_seconds=config.declared_service_duration_seconds,
-    )
-    payload = {
-        "schema_version": RESTORATION_BASELINE_BUNDLE_SCHEMA_VERSION,
-        "product": RestorationProduct.MFRR.value,
-        "source_configuration_fingerprint": config.configuration_fingerprint,
-        "commitments_fingerprint": config.commitments.schedule_fingerprint,
-        "baseline_fingerprint": baseline.schedule_fingerprint,
-        "validation_fingerprint": validation.configuration_fingerprint,
-    }
-    return RestorationBaselineBundle(
-        schema_version=RESTORATION_BASELINE_BUNDLE_SCHEMA_VERSION,
-        product=RestorationProduct.MFRR,
-        source_configuration_fingerprint=config.configuration_fingerprint,
-        commitments=config.commitments,
-        baseline=baseline,
-        validation=validation,
-        bundle_fingerprint=_fingerprint(payload),
     )
 
 
