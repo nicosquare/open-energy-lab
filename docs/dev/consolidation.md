@@ -320,7 +320,7 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     battery binding), as decided in A5b. The stale pins in
     `docs/migration/fcr-rolling-backtest-parity.md` carry a dated note.
     Checks: `pytest` 2174 passed + 4 xfailed, `-m slow` 34, `-m notebook` 7.
-- [ ] **A6 merge variants**, one PR per package:
+- [x] **A6 merge variants**, one PR per package:
   - [x] market. Mapped 2026-10-01; decided not to merge the two artifact
     formats or the FCR/restoration sign conventions: the data is genuinely
     different (fixed three-series ENTSO-E artifact vs open-ended RTE
@@ -357,9 +357,16 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
     (that reads the aFRR/mFRR results' own hash). Correction to A5b/A5c:
     the opt-in `external_reference_data` tests do run on this machine; one
     still read a hash removed in A5b and is fixed; all 6 pass.
-  - [ ] control: aFRR and mFRR combined with a product parameter; one rolling
-    orchestrator with a cutoff strategy; the rolling problem folded into the
-    base robust problem.
+  - [x] control (mapped and scoped 2026-10-02). aFRR and mFRR now share one
+    baseline path with a product parameter (public names, the two config
+    classes and mode enums stay; payloads unchanged, so the restoration
+    expected results match byte-for-byte; -121 lines). The three rolling
+    loops share one study-result assembly (-25 lines); a cutoff-strategy
+    object was not built, because the per-mode lifecycle rules are what
+    differs. The rolling problem was not folded into the base problem: its
+    fields, fingerprint, solver path and witness audit are genuinely
+    different, and sharing the formulation core (~80 lines) would change
+    constraint order and could change HiGHS solve paths and golden hashes.
 - [ ] **A7 docs and rules.** Write concept docs, archive `docs/migration/` and
   `specs/` as history, and rewrite `AGENTS.md`.
 
