@@ -386,11 +386,15 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
   query reads the dataset JSON itself. `build_spn_chance_model` stays in
   `tpm`: it does not import OEL. src -118 lines. tpm tests that use planning
   fixtures move out in B3.
-- [ ] **B2 retire old paths.** The v1 `spn_mip` payload (`build_spn_mip_payload`,
-  `supports_spn_mip`, the two `*_from_artifact` solvers, about 300-500 lines,
-  plus the `planning/problem.py` call sites and the 4 strict-xfail tests),
-  `planning-v1` mode, MIO compiler v1, `fixture_replay`, `FEATURE_NAME`, and
-  the v1 fixtures.
+- [x] **B2 retire dead paths** (scope agreed 2026-10-02). Removed the v1
+  serialized `spn_mip` path (`build_spn_mip_payload`, `supports_spn_mip`,
+  the two `*_from_artifact` helpers), its `planning/problem.py` branch, the
+  `supports_spn_mip_serialization` capability flag, the tpm `FEATURE_NAME`,
+  the 4 strict-xfail tests and one synthetic planning test. src -229 lines.
+  Kept because they are live: `planning-v1` MIO mode (planning payloads),
+  MIO compiler v1 (every schema-v2 artifact, incl. the production SPFlow
+  fixture), `fixture_replay` (6 fixtures, 8 test files), and the exact
+  categorical lookup in `build_spn_chance_model`; revisit in B4/B5.
 - [ ] **B3 workspace package.** Move to `packages/<name>/` with its own
   `pyproject.toml` and tests; `open_energy_lab.tpm` re-exports it for now.
   Decisions due: package name; Python floor (`tpm_for_sp` pins 3.11).
