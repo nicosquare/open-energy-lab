@@ -9,7 +9,8 @@ import pytest
 
 from open_energy_lab.planning import load_planning_dataset
 from open_energy_lab.tpm.artifact import load_tpm_artifact
-from open_energy_lab.tpm.fit import TPMFitConfig, fit_tpm_artifact
+from open_energy_lab.planning import fit_tpm_artifact
+from open_energy_lab.tpm.fit import TPMFitConfig
 from open_energy_lab.tpm.query import TPMQueryRequest, query_tpm_artifact
 from tests.integration.planning.fixture_utils import PLANNING_DATASET_ARTIFACT_FIXTURE_PATH
 

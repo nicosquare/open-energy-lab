@@ -41,10 +41,10 @@ from open_energy_lab.tpm import (
     TPMQueryRequest,
     compile_spflow_model_to_mio,
     detect_spflow_backend_capabilities,
-    fit_tpm_artifact,
     load_tpm_artifact,
     query_tpm_artifact,
 )
+from open_energy_lab.planning import fit_tpm_artifact
 from open_energy_lab.tpm.optional_spflow import load_spflow_payload
 from open_energy_lab.weather import (
     WeatherSamplingRequest,

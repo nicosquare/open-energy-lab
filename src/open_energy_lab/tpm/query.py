@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -665,17 +666,25 @@ def _evaluate_empirical_query(
     }
 
 
-def _load_empirical_dataset(artifact: TPMArtifact) -> Any | None:
+@dataclass(frozen=True, slots=True)
+class _EmpiricalRows:
+    column_order: tuple[str, ...]
+    rows: tuple[Mapping[str, object], ...]
+
+
+def _load_empirical_dataset(artifact: TPMArtifact) -> _EmpiricalRows | None:
+    """Rows and column order of the training dataset file the artifact records."""
+
     dataset_path = _resolved_dataset_path(artifact.provenance)
     if dataset_path is None:
         return None
-
-    from open_energy_lab.planning.dataset import load_planning_dataset
-
     try:
-        return load_planning_dataset(dataset_path)
-    except (FileNotFoundError, TypeError, ValueError):
+        payload = json.loads(dataset_path.read_text(encoding="utf-8"))
+        column_order = tuple(str(name) for name in payload["column_order"])
+        rows = tuple(dict(row) for row in payload["rows"])
+    except (OSError, KeyError, TypeError, ValueError):
         return None
+    return _EmpiricalRows(column_order=column_order, rows=rows)
 
 
 def _resolved_dataset_path(provenance: Mapping[str, object]) -> Path | None:

@@ -9,9 +9,9 @@ import pyomo.environ as pyo
 import pytest
 
 from open_energy_lab.planning import load_planning_dataset
+from open_energy_lab.planning import fit_tpm_artifact
 from open_energy_lab.tpm import (
     SPNSolveConfig,
-    fit_tpm_artifact,
     query_tpm_artifact,
     register_spflow_backend_adapter,
     solve_spn_chance_model_from_artifact,

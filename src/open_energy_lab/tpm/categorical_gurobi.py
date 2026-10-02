@@ -11,7 +11,7 @@ import itertools
 import numpy as np
 
 def curves(k,points=9):
-    from open_energy_lab.tpm.piecewise import PiecewiseBreakpointPolicy,resolve_guarded_exponential_spec
+    from .piecewise import PiecewiseBreakpointPolicy,resolve_guarded_exponential_spec
     policy=PiecewiseBreakpointPolicy(piecewise_breakpoint_count=points)
     guard=resolve_guarded_exponential_spec(base_x_points=policy.exp_breakpoints(),base_y_points=policy.exp_values())
     return dict(ex=list(guard['exp_x_points']),ey=list(guard['exp_y_points']),
