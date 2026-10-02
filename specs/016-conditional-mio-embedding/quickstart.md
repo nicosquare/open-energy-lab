@@ -55,8 +55,8 @@ current-SPFlow checks retain compiler-fidelity differences separately.
 
 ```bash
 uv run --offline --locked --no-sync pytest \
-  tests/unit/tpm/test_conditional_mio_notebook.py \
-  tests/integration/tpm/test_conditional_mio_notebook_execution.py
+  tests/unit/planning/test_conditional_mio_notebook.py \
+  tests/integration/planning/test_conditional_mio_notebook_execution.py
 ```
 
 The source notebook remains output-free. The headless copy executes with network access blocked and

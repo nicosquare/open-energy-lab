@@ -7,23 +7,22 @@ from pathlib import Path
 from typing import Any
 
 
+from tests.integration.tpm.fixture_paths import (
+    TPM_ARTIFACT_FIXTURE_PATH,
+    TPM_ARTIFACT_V1_FIXTURE_PATH,
+    TPM_FIXTURE_DIR,
+    TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH,
+    TPM_QUERY_FIXTURE_PATH,
+    UNSUPPORTED_TPM_ARTIFACT_FIXTURE_PATH,
+)
+
 PLANNING_FIXTURE_DIR = Path("tests/fixtures/planning")
-TPM_FIXTURE_DIR = Path("tests/fixtures/tpm")
 
 PLANNING_DATASET_EXPORT_FIXTURE_PATH = (
     PLANNING_FIXTURE_DIR / "planning_dataset_export_case.json"
 )
 PLANNING_PROBLEM_FIXTURE_PATH = PLANNING_FIXTURE_DIR / "planning_problem_case.json"
 PLANNING_DATASET_ARTIFACT_FIXTURE_PATH = TPM_FIXTURE_DIR / "planning_dataset_v1.json"
-TPM_ARTIFACT_FIXTURE_PATH = TPM_FIXTURE_DIR / "tpm_artifact_v2.json"
-TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH = (
-    TPM_FIXTURE_DIR / "tpm_artifact_spflow_v1.json"
-)
-TPM_ARTIFACT_V1_FIXTURE_PATH = TPM_FIXTURE_DIR / "tpm_artifact_v1.json"
-UNSUPPORTED_TPM_ARTIFACT_FIXTURE_PATH = (
-    TPM_FIXTURE_DIR / "tpm_artifact_unsupported_version.json"
-)
-TPM_QUERY_FIXTURE_PATH = TPM_FIXTURE_DIR / "tpm_query_case.json"
 
 PLANNING_FIXTURE_PATHS = (
     PLANNING_DATASET_EXPORT_FIXTURE_PATH,

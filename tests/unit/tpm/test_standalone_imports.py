@@ -1,4 +1,4 @@
-"""The standalone tpm package (sp-tpm) must not depend on open_energy_lab."""
+"""sp-tpm and its tests must not depend on open_energy_lab."""
 
 from __future__ import annotations
 
@@ -26,18 +26,38 @@ def _imported_modules(path: Path) -> set[str]:
     return modules
 
 
-def test_tpm_only_imports_itself_from_open_energy_lab() -> None:
+def test_tpm_never_imports_open_energy_lab() -> None:
     offenders = {
         f"{path.name}: {module}"
         for path in sorted(TPM_ROOT.glob("*.py"))
         for module in _imported_modules(path)
-        if module.startswith("open_energy_lab") and not module.startswith("tpm")
+        if module.split(".")[0] == "open_energy_lab"
     }
     absolute_self = {
         f"{path.name}: {module}"
         for path in sorted(TPM_ROOT.glob("*.py"))
         for module in _imported_modules(path)
-        if module.startswith("tpm")
+        if module == "tpm" or module.startswith("tpm.")
     }
     assert not offenders, sorted(offenders)
     assert not absolute_self, f"use relative imports inside tpm: {sorted(absolute_self)}"
+
+
+TPM_TESTS = (
+    Path(__file__).resolve().parents[2] / "unit" / "tpm",
+    Path(__file__).resolve().parents[2] / "integration" / "tpm",
+)
+
+
+def test_tpm_tests_never_import_open_energy_lab() -> None:
+    """tests/{unit,integration}/tpm must run with only sp-tpm installed (the Python 3.11 job)."""
+
+    offenders = {
+        f"{path.parent.name}/{path.name}: {module}"
+        for folder in TPM_TESTS
+        for path in sorted(folder.glob("*.py"))
+        for module in _imported_modules(path)
+        if module.split(".")[0] == "open_energy_lab"
+        or module.startswith(("tests.unit.planning", "tests.integration.planning"))
+    }
+    assert not offenders, sorted(offenders)

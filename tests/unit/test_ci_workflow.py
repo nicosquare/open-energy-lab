@@ -18,6 +18,7 @@ PYTEST_CONFIG = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-
 
 OPT_IN = {"licensed_gurobi", "live_entsoe", "live_rte", "reference_benchmark", "external_reference_data"}
 OWN_JOB = {"slow", "notebook"}
+MARKER_JOBS = {"tests", "slow", "notebooks"}
 
 
 def _run_steps(job: str) -> list[str]:
@@ -25,7 +26,7 @@ def _run_steps(job: str) -> list[str]:
 
 
 def _pytest_command(job: str) -> str:
-    commands = [run for run in _run_steps(job) if "pytest" in run]
+    commands = [run for run in _run_steps(job) if "pytest" in run and "install" not in run]
     assert len(commands) == 1, commands
     return commands[0]
 
@@ -39,14 +40,14 @@ def _deselected(expression: str) -> set[str]:
 
 
 def test_ci_has_one_job_per_marker_group() -> None:
-    assert set(WORKFLOW["jobs"]) == {"tests", "slow", "notebooks"}
+    assert set(WORKFLOW["jobs"]) == MARKER_JOBS | {"sp-tpm"}
     assert WORKFLOW["jobs"]["tests"]["strategy"]["matrix"]["python-version"] == [
         "3.12", "3.13", "3.14",
     ]
 
 
-def test_no_ci_job_selects_tests_by_path() -> None:
-    for job in WORKFLOW["jobs"]:
+def test_no_marker_group_job_selects_tests_by_path() -> None:
+    for job in MARKER_JOBS:
         command = _pytest_command(job)
         assert "tests/" not in command and "--ignore" not in command, (job, command)
 
@@ -71,3 +72,15 @@ def test_slow_and_notebook_jobs_select_their_group_and_exclude_opt_in_checks() -
 def test_every_job_verifies_the_required_backends() -> None:
     for job in WORKFLOW["jobs"]:
         assert any("tools/verify_backends.py" in run for run in _run_steps(job)), job
+
+
+def test_sp_tpm_job_runs_the_tpm_tests_on_python_3_11_without_open_energy_lab() -> None:
+    """The one path-selected job: sp-tpm installed alone, src/ off the path."""
+    install = "\n".join(_run_steps("sp-tpm"))
+    assert "uv venv -p 3.11" in install
+    assert '-e "packages/sp-tpm[highs]"' in install
+    assert "uv sync" not in install
+    command = _pytest_command("sp-tpm")
+    assert "-o pythonpath=." in command
+    assert "tests/unit/tpm tests/integration/tpm" in command
+    assert '-m "${OPT_IN}"' in command

@@ -98,8 +98,8 @@ def test_notebook_is_documented_as_offline_and_thin() -> None:
     assert "optional post-feature documentation extension" in readme.lower()
     assert "optional post-feature documentation extension" in migration.lower()
     assert "## Optional post-feature notebook validation" in quickstart
-    assert "--ignore=tests/unit/tpm/test_declared_domains_notebook.py" in quickstart
+    assert "--ignore=tests/unit/planning/test_declared_domains_notebook.py" in quickstart
     assert (
-        "--ignore=tests/integration/tpm/test_declared_domains_notebook_execution.py"
+        "--ignore=tests/integration/planning/test_declared_domains_notebook_execution.py"
         in quickstart
     )

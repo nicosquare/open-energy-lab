@@ -11,7 +11,7 @@ from tpm.artifact import (
     TPMArtifactIntegrityError,
     load_tpm_artifact,
 )
-from tests.integration.planning.fixture_utils import (
+from tests.integration.tpm.fixture_paths import (
     TPM_ARTIFACT_V1_FIXTURE_PATH,
     TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH,
 )

@@ -17,7 +17,7 @@ from tests.integration.tpm.spflow_v1_test_support import (
     normalized_training_tensor,
     valid_query_request,
 )
-from tests.integration.planning.fixture_utils import (
+from tests.integration.tpm.fixture_paths import (
     TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH,
 )
 

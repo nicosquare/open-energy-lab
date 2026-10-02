@@ -6,11 +6,11 @@ import pytest
 
 from tpm.artifact import load_tpm_artifact
 from tpm.query import TPMQueryRequest, query_tpm_artifact
-from tests.integration.planning.fixture_utils import (
+from tests.integration.tpm.fixture_paths import (
     TPM_ARTIFACT_FIXTURE_PATH,
     TPM_QUERY_FIXTURE_PATH,
-    load_planning_fixture,
 )
+from tests.integration.tpm.fixture_paths import load_fixture as load_planning_fixture
 
 
 def _request_from_fixture(*, execution_mode: str) -> TPMQueryRequest:
