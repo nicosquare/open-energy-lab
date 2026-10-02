@@ -23,9 +23,7 @@ from open_energy_lab.tpm.artifact import TPMArtifact, load_tpm_artifact
 from open_energy_lab.tpm.domains import TPMApproximationDomain
 from open_energy_lab.tpm.mio import compile_spflow_model_to_mio, infer_max_sum_terms
 from open_energy_lab.tpm.optional_spflow import (
-    build_spn_mip_payload,
     load_spflow_payload,
-    supports_spn_mip,
 )
 from open_energy_lab.tpm.query import marginalize_spflow_model
 
@@ -469,9 +467,7 @@ def _resolved_risk_evaluation_mode(
 ) -> str:
     if problem_definition.risk_evaluation_mode == "empirical_dataset":
         return "empirical_dataset"
-    if (
-        supports_spn_mip(artifact) or _has_current_spflow_compiler_payload(artifact)
-    ) and _pyomo_is_available():
+    if _has_current_spflow_compiler_payload(artifact) and _pyomo_is_available():
         return "spn_mip"
     return "empirical_dataset"
 
@@ -489,14 +485,6 @@ def _build_solver_facing_spn_payload(
     *,
     artifact: TPMArtifact,
 ) -> dict[str, object] | None:
-    legacy_payload = build_spn_mip_payload(
-        artifact,
-        decision_features=problem_definition.decision_features,
-        chance_limit_epsilon=problem_definition.chance_limit_epsilon,
-        shortfall_threshold=problem_definition.shortfall_threshold,
-    )
-    if legacy_payload is not None:
-        return legacy_payload
     if not _has_current_spflow_compiler_payload(artifact):
         return None
 

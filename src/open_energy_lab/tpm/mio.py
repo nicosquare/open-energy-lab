@@ -21,7 +21,6 @@ from .features import TPMFeatureSpec, dump_feature_schema, load_feature_schema
 from .optional_spflow import (
     CURRENT_SPFLOW_BACKEND_GENERATION,
     REQUIRED_SPFLOW_VERSION,
-    build_spn_mip_payload,
     require_spflow_backend,
 )
 from .piecewise import build_histogram_piecewise_points
@@ -2089,61 +2088,6 @@ def _evaluate_serialized_categorical_spn(
     return evaluate(int(spn_model["root_id"]))
 
 
-def build_spn_chance_model_from_artifact(
-    backend: Any,
-    *,
-    artifact: TPMArtifact | str | Path | Mapping[str, object],
-    problem_id: str,
-    decision_features: Sequence[str],
-    cost_terms: Mapping[str, float],
-    option_costs: Mapping[str, Mapping[object, float]] | None = None,
-    chance_limit_epsilon: float,
-    target_threshold: float | None = None,
-    numeric_tolerance: float = 1e-9,
-    piecewise_terms: object | None = None,
-) -> object:
-    """Build one generic SPN chance-constrained model directly from a TPM artifact."""
-
-    resolved_artifact = _load_artifact(artifact)
-    resolved_decision_features = tuple(str(name) for name in decision_features)
-    if target_threshold is None:
-        resolved_target_threshold = float(
-            resolved_artifact.target_definition.get("threshold_default", 0.0)
-        )
-    else:
-        resolved_target_threshold = float(target_threshold)
-
-    spn_payload = build_spn_mip_payload(
-        resolved_artifact,
-        decision_features=resolved_decision_features,
-        chance_limit_epsilon=float(chance_limit_epsilon),
-        target_threshold=resolved_target_threshold,
-    )
-    if spn_payload is None:
-        raise ValueError(
-            "TPM artifact does not expose a serialized SPN MIO payload for direct chance-model assembly"
-        )
-
-    resolved_piecewise_terms = (
-        piecewise_terms
-        if piecewise_terms is not None
-        else build_spn_modeling_terms(
-            resolved_artifact.approximation_metadata,
-            max_terms=infer_max_sum_terms(spn_payload),
-        )
-    )
-    return build_spn_chance_model(
-        backend,
-        problem_id=problem_id,
-        spn_payload=spn_payload,
-        cost_terms=cost_terms,
-        option_costs=option_costs,
-        chance_limit_epsilon=float(chance_limit_epsilon),
-        numeric_tolerance=float(numeric_tolerance),
-        piecewise_terms=resolved_piecewise_terms,
-    )
-
-
 def solve_spn_chance_model(
     model: object,
     *,
@@ -2220,42 +2164,6 @@ def solve_spn_chance_model(
             "risk_encoding_strategy": risk_encoding_strategy,
             **diagnostics,
         },
-    )
-
-
-def solve_spn_chance_model_from_artifact(
-    *,
-    artifact: TPMArtifact | str | Path | Mapping[str, object],
-    problem_id: str,
-    decision_features: Sequence[str],
-    cost_terms: Mapping[str, float],
-    option_costs: Mapping[str, Mapping[object, float]] | None = None,
-    chance_limit_epsilon: float,
-    target_threshold: float | None = None,
-    numeric_tolerance: float = 1e-9,
-    piecewise_terms: object | None = None,
-    backend: Any | None = None,
-    solve_config: SPNSolveConfig | None = None,
-) -> SPNSolveSummary:
-    """Build and solve one generic SPN chance-constrained model from a TPM artifact."""
-
-    resolved_backend = backend if backend is not None else require_pyomo_backend()
-    model = build_spn_chance_model_from_artifact(
-        resolved_backend,
-        artifact=artifact,
-        problem_id=problem_id,
-        decision_features=decision_features,
-        cost_terms=cost_terms,
-        option_costs=option_costs,
-        chance_limit_epsilon=chance_limit_epsilon,
-        target_threshold=target_threshold,
-        numeric_tolerance=numeric_tolerance,
-        piecewise_terms=piecewise_terms,
-    )
-    return solve_spn_chance_model(
-        model,
-        backend=resolved_backend,
-        solve_config=solve_config,
     )
 
 
@@ -3601,7 +3509,6 @@ __all__ = [
     "SPNSolverUnavailableError",
     "UnsupportedSPFlowModuleError",
     "build_compiled_spflow_decision_link_model",
-    "build_spn_chance_model_from_artifact",
     "build_spn_modeling_terms",
     "build_spn_chance_model",
     "compile_spflow_model_to_mio",
@@ -3611,5 +3518,4 @@ __all__ = [
     "infer_max_sum_terms",
     "require_pyomo_backend",
     "solve_spn_chance_model",
-    "solve_spn_chance_model_from_artifact",
 ]

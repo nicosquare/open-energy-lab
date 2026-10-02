@@ -56,7 +56,6 @@ class _FakeAdapter(SimpleNamespace):
             "legacy_spn_api_available": True,
             "supports_real_spn_training": True,
             "supports_real_spn_query": True,
-            "supports_spn_mip_serialization": True,
             "fallback_query_strategy": None,
             "reason": "fake adapter available",
         }

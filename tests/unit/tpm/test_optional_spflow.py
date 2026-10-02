@@ -35,7 +35,6 @@ class _FakeAdapter(SimpleNamespace):
             "legacy_spn_api_available": True,
             "supports_real_spn_training": True,
             "supports_real_spn_query": True,
-            "supports_spn_mip_serialization": True,
             "fallback_query_strategy": None,
             "reason": "fake adapter available",
         }
@@ -62,7 +61,6 @@ def test_detect_spflow_backend_capabilities_reports_current_runtime_state() -> N
         "legacy_api_module_prefix",
         "supports_real_spn_training",
         "supports_real_spn_query",
-        "supports_spn_mip_serialization",
         "fallback_query_strategy",
         "reason",
     }
@@ -80,7 +78,6 @@ def test_detect_spflow_backend_capabilities_reports_current_runtime_state() -> N
     assert capabilities["legacy_api_module_prefix"] is None
     assert capabilities["supports_real_spn_training"] is True
     assert capabilities["supports_real_spn_query"] is True
-    assert capabilities["supports_spn_mip_serialization"] is False
     assert capabilities["fallback_query_strategy"] is None
     assert "current" in str(capabilities["reason"])
 

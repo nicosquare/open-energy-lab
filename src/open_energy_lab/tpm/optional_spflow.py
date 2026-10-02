@@ -127,7 +127,6 @@ class _CurrentSPFlowBackendAdapter:
             "legacy_api_module_prefix": None,
             "supports_real_spn_training": backend_compatible,
             "supports_real_spn_query": backend_compatible,
-            "supports_spn_mip_serialization": False,
             "fallback_query_strategy": None,
             "reason": reason,
         }
@@ -501,91 +500,6 @@ def evaluate_spflow_query(
     }
 
 
-def build_spn_mip_payload(
-    artifact: TPMArtifact,
-    *,
-    decision_features: tuple[str, ...],
-    chance_limit_epsilon: float,
-    target_threshold: float | None = None,
-    shortfall_threshold: float | None = None,
-) -> dict[str, object] | None:
-    """Build one solver-facing SPN handoff payload from a persisted sidecar."""
-
-    from .features import load_feature_schema
-
-    if target_threshold is None and shortfall_threshold is None:
-        raise ValueError("target_threshold must be provided")
-    if target_threshold is not None and shortfall_threshold is not None:
-        if float(target_threshold) != float(shortfall_threshold):
-            raise ValueError(
-                "target_threshold and shortfall_threshold must match when both are provided"
-            )
-    resolved_target_threshold = float(
-        target_threshold if target_threshold is not None else shortfall_threshold
-    )
-
-    runtime_payload = load_spflow_payload(artifact)
-    if runtime_payload is None:
-        return None
-    if not _runtime_payload_supports_spn_mip(runtime_payload):
-        return None
-
-    feature_specs = {
-        spec.feature_name: spec
-        for spec in load_feature_schema(
-            runtime_payload["feature_schema"],
-            schema_version=str(
-                runtime_payload.get(
-                    "artifact_schema_version",
-                    artifact.schema_version,
-                )
-            ),
-        )
-    }
-    decision_domains = {
-        feature_name: list(
-            feature_specs[feature_name].ordering
-            or feature_specs[feature_name].discrete_values
-        )
-        for feature_name in decision_features
-    }
-    conditional_models = runtime_payload.get("conditional_models")
-    return {
-        "source": "spflow_backend",
-        "payload_locator": (
-            resolve_spflow_payload_path(artifact).as_posix()
-            if resolve_spflow_payload_path(artifact) is not None
-            else None
-        ),
-        "decision_features": list(decision_features),
-        "decision_domains": decision_domains,
-        "chance_limit_epsilon": float(chance_limit_epsilon),
-        "target_threshold": resolved_target_threshold,
-        "shortfall_threshold": resolved_target_threshold,
-        "canonical_target_name": runtime_payload["canonical_target_name"],
-        "event_target_name": runtime_payload["event_target_name"],
-        "feature_schema": list(runtime_payload["feature_schema"]),
-        "sum_encoding_mode": str(
-            artifact.approximation_metadata.get("sum_encoding_mode", "piecewise")
-        ),
-        "query_strategy": runtime_payload["query_strategy"],
-        "row_count": int(
-            runtime_payload.get(
-                "training_row_count",
-                len(runtime_payload.get("raw_rows", ())),
-            )
-        ),
-        "conditional_models": conditional_models,
-    }
-
-
-def supports_spn_mip(artifact: TPMArtifact) -> bool:
-    """Return whether one artifact exposes a serialized SPN MIO payload."""
-
-    runtime_payload = load_spflow_payload(artifact)
-    return runtime_payload is not None and _runtime_payload_supports_spn_mip(runtime_payload)
-
-
 def load_supported_spflow_checkpoint(path):
     """Load only the declared supported Torch/SPFlow checkpoint classes on CPU.
 
@@ -672,7 +586,6 @@ __all__ = [
     "SPFlowBackendCompatibilityError",
     "SPFlowDependencyUnavailableError",
     "detect_spflow_backend_capabilities",
-    "build_spn_mip_payload",
     "evaluate_spflow_query",
     "fit_spflow_model",
     "has_spflow_payload",
@@ -680,7 +593,6 @@ __all__ = [
     "register_spflow_backend_adapter",
     "require_spflow_backend",
     "resolve_spflow_payload_path",
-    "supports_spn_mip",
     "unregister_spflow_backend_adapter",
 ]
 
@@ -771,26 +683,6 @@ def _payload_locator(payload: object) -> str:
         if isinstance(locator, str):
             return locator
     return ""
-
-
-def _runtime_payload_supports_spn_mip(runtime_payload: Mapping[str, object]) -> bool:
-    if str(runtime_payload.get("query_strategy", "")) != "spflow":
-        return False
-    conditional_models = runtime_payload.get("conditional_models")
-    if not isinstance(conditional_models, Mapping):
-        return False
-    return isinstance(conditional_models.get("numerator_model"), Mapping) and isinstance(
-        conditional_models.get("denominator_model"),
-        Mapping,
-    )
-
-
-register_spflow_backend_adapter(
-    CURRENT_SPFLOW_ADAPTER_NAME,
-    lambda _runtime_payload: _CurrentSPFlowBackendAdapter(
-        backend_module=require_spflow_backend()
-    ),
-)
 
 
 def _row_matches_assignments(
