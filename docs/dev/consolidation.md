@@ -374,15 +374,26 @@ A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 ba
 
 Can run in parallel with Track A once the TPM part of A3 lands.
 
-- [ ] **B1 workspace package.** Create `packages/tpm/` with its own
-  `pyproject.toml` and tests. `open_energy_lab.tpm` temporarily re-exports it.
-- [ ] **B2 invert planning.** Move planning-dataset loading
-  (`fit.py:607,1179`, `query.py:673`) and `build_spn_chance_model` / `solve_*`
-  (`mio.py:1712-2340`) into `planning`. Add a test that the TPM package never
-  imports `open_energy_lab`.
-- [ ] **B3 retire old paths.** Remove the v1 `spn_mip` payload, the
-  `planning-v1` mode, legacy feature semantics, `fixture_replay`, and
-  `FEATURE_NAME`.
+Mapped 2026-10-02; order changed so the move comes after the cleanup:
+
+- [x] **B1 decouple inside OEL.** `tpm` imports nothing from
+  `open_energy_lab` outside itself (enforced by
+  `tests/unit/tpm/test_standalone_imports.py`). `fit_tpm_artifact` and
+  `fit_tpm_artifact_from_study_manifest` moved to `planning/tpm_fit.py` and
+  now build a generic request for `fit_tpm_artifact_from_rows` (two optional
+  request fields added); fitted artifacts are identical apart from the
+  pickle hash, which varies run to run. The empirical (`fixture_replay`)
+  query reads the dataset JSON itself. `build_spn_chance_model` stays in
+  `tpm`: it does not import OEL. src -118 lines. tpm tests that use planning
+  fixtures move out in B3.
+- [ ] **B2 retire old paths.** The v1 `spn_mip` payload (`build_spn_mip_payload`,
+  `supports_spn_mip`, the two `*_from_artifact` solvers, about 300-500 lines,
+  plus the `planning/problem.py` call sites and the 4 strict-xfail tests),
+  `planning-v1` mode, MIO compiler v1, `fixture_replay`, `FEATURE_NAME`, and
+  the v1 fixtures.
+- [ ] **B3 workspace package.** Move to `packages/<name>/` with its own
+  `pyproject.toml` and tests; `open_energy_lab.tpm` re-exports it for now.
+  Decisions due: package name; Python floor (`tpm_for_sp` pins 3.11).
 - [ ] **B4 internal consolidation.** One circuit representation, one DAG
   traversal and evaluator. Split `mio.py` into compile, condition, encode, and
   solve. One checkpoint helper. Merge `product_mixture` into `native`.
