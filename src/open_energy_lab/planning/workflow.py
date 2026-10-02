@@ -8,7 +8,7 @@ from typing import Any, Mapping
 
 from open_energy_lab.tpm.artifact import TPMArtifact
 from open_energy_lab.tpm.domains import TPMApproximationDomain
-from open_energy_lab.tpm.fit import TPMFitConfig, fit_tpm_artifact_from_study_manifest
+from open_energy_lab.tpm.fit import TPMFitConfig
 from open_energy_lab.tpm.mio import compile_spflow_model_to_mio
 from open_energy_lab.tpm.optional_spflow import load_spflow_payload
 from open_energy_lab.tpm.query import TPMQueryRequest, query_tpm_artifact
@@ -18,6 +18,7 @@ from .optional_solver import PlanningSolveConfig, PlanningSolveSummary, solve_pl
 from .problem import PlanningProblemDefinition, assemble_planning_problem
 from .study import PlanningStudyRequest
 from .study_dataset import PlanningStudyDatasetManifest, load_study_dataset_manifest
+from .tpm_fit import fit_tpm_artifact_from_study_manifest
 
 
 @dataclass(frozen=True, slots=True)

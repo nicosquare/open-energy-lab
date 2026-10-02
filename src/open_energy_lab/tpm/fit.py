@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 import tempfile
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from numbers import Real
 from pathlib import Path
@@ -236,6 +236,10 @@ class TPMArtifactBuildRequest:
     feature_roles: Mapping[str, str] = field(default_factory=dict)
     feature_domains: Mapping[str, TPMFeatureDomain] = field(default_factory=dict)
     provenance: Mapping[str, object] = field(default_factory=dict)
+    target_definition: Mapping[str, object] | None = None
+    """Full target metadata to record; derived from the fields above when omitted."""
+    declared_feature_types: Mapping[str, str] = field(default_factory=dict)
+    """Expected feature types; fitting fails if inference disagrees."""
 
     def __post_init__(self) -> None:
         artifact_id = str(self.artifact_id)
@@ -309,6 +313,13 @@ class TPMArtifactBuildRequest:
 
         provenance = {str(key): value for key, value in dict(self.provenance).items()}
         object.__setattr__(self, "provenance", provenance)
+        if self.target_definition is not None:
+            object.__setattr__(self, "target_definition", dict(self.target_definition))
+        object.__setattr__(
+            self,
+            "declared_feature_types",
+            {str(name): str(kind) for name, kind in dict(self.declared_feature_types).items()},
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -398,106 +409,6 @@ def learn_current_spflow_structure(
     return model
 
 
-def fit_tpm_artifact(
-    source: object,
-    *,
-    output_path: str | Path | None = None,
-    fit_config: TPMFitConfig | None = None,
-    feature_domains: Mapping[str, TPMFeatureDomain] | None = None,
-    spflow_backend: Any | None = None,
-) -> TPMArtifact:
-    """Fit and optionally persist a first-release TPM artifact."""
-
-    dataset = _load_planning_dataset_artifact(source)
-    dataset_source_path = _source_dataset_path(source)
-    config = fit_config or TPMFitConfig()
-    canonical_target_name = str(dataset.target_metadata["target_name"])
-    event_target_name = str(dataset.target_metadata["event_target_name"])
-    feature_roles = _planning_feature_roles(
-        dataset=dataset,
-        canonical_target_name=canonical_target_name,
-        event_target_name=event_target_name,
-    )
-    training_data = normalize_training_data(
-        dataset.rows,
-        feature_domains=feature_domains,
-        feature_roles=feature_roles,
-    )
-    training_random_seed = _resolved_training_random_seed(
-        dataset.provenance,
-        configured_seed=config.training_random_seed,
-    )
-    feature_schema = _build_feature_schema(
-        dataset=dataset,
-        training_data=training_data,
-        canonical_target_name=canonical_target_name,
-        event_target_name=event_target_name,
-    )
-    training_data = _training_data_with_feature_schema(
-        training_data,
-        feature_schema=feature_schema,
-    )
-    fit_result = _fit_and_persist_spflow_model(
-        training_data,
-        feature_schema=feature_schema,
-        canonical_target_name=canonical_target_name,
-        event_target_name=event_target_name,
-        target_threshold=float(dataset.target_metadata["threshold_default"]),
-        training_random_seed=training_random_seed,
-        config=config,
-        backend=spflow_backend,
-        output_path=output_path,
-    )
-
-    piecewise_metadata = build_piecewise_metadata(
-        fit_numeric_tolerance=float(dataset.export_configuration["numeric_tolerance"]),
-        query_numeric_tolerance=DEFAULT_QUERY_NUMERIC_TOLERANCE,
-        legacy_reference_paths=PIECEWISE_LEGACY_EVIDENCE_PATHS,
-    )
-
-    artifact = TPMArtifact(
-        artifact_id=f"tpm-artifact:{dataset.dataset_id}",
-        schema_version="v3",
-        created_at=_created_at_utc(),
-        dataset_reference=dataset.dataset_id,
-        feature_schema=dump_feature_schema(feature_schema, schema_version="v3"),
-        target_definition=dict(dataset.target_metadata),
-        fit_configuration=_persisted_fit_configuration(
-            config=config,
-            result=fit_result,
-            training_random_seed=training_random_seed,
-            input_row_count=dataset.row_count,
-            input_column_order=dataset.column_order,
-        ),
-        backend_generation=fit_result.backend_generation,
-        backend_api_version=fit_result.backend_api_version,
-        execution_mode=config.execution_mode,
-        spn_payload=fit_result.spn_payload,
-        spn_payload_format=fit_result.spn_payload_format,
-        payload_hash=fit_result.payload_hash,
-        query_configuration={
-            "supported_output_modes": list(config.supported_output_modes),
-            "required_decision_features": [
-                str(feature["feature_name"]) for feature in dataset.design_feature_schema
-            ],
-        },
-        approximation_metadata=piecewise_metadata.to_dict(),
-        provenance=_artifact_provenance(
-            dataset=dataset,
-            training_random_seed=training_random_seed,
-            training_data=training_data,
-            dataset_source_path=dataset_source_path,
-        ),
-        source_path=fit_result.source_path,
-    )
-    _publish_validated_fit(
-        artifact,
-        fit_result=fit_result,
-        output_path=output_path,
-    )
-    return artifact
-
-
 def fit_tpm_artifact_from_rows(
     rows: Sequence[Mapping[str, object]],
     *,
@@ -555,9 +466,13 @@ def fit_tpm_artifact_from_rows(
         created_at=_created_at_utc(),
         dataset_reference=build_request.dataset_reference,
         feature_schema=dump_feature_schema(feature_schema, schema_version="v3"),
-        target_definition=_generic_target_definition(
-            build_request=build_request,
-            event_was_derived=event_was_derived,
+        target_definition=(
+            dict(build_request.target_definition)
+            if build_request.target_definition is not None
+            else _generic_target_definition(
+                build_request=build_request,
+                event_was_derived=event_was_derived,
+            )
         ),
         fit_configuration=_persisted_fit_configuration(
             config=config,
@@ -592,121 +507,6 @@ def fit_tpm_artifact_from_rows(
     return artifact
 
 
-def fit_tpm_artifact_from_study_manifest(
-    manifest: object,
-    *,
-    output_path: str | Path,
-    fit_feature_names: Sequence[str] | None = None,
-    max_tensor_bytes: int = 1_073_741_824,
-    fit_config: TPMFitConfig | None = None,
-    feature_domains: Mapping[str, TPMFeatureDomain] | None = None,
-    spflow_backend: Any | None = None,
-) -> TPMArtifact:
-    """Fit a compact TPM from a file-backed schema-v2 planning-study manifest."""
-
-    from open_energy_lab.planning.study_dataset import (
-        PlanningStudyDatasetManifest,
-        iter_study_rows,
-        load_study_dataset_manifest,
-    )
-
-    resolved = (
-        manifest
-        if isinstance(manifest, PlanningStudyDatasetManifest)
-        else load_study_dataset_manifest(manifest)
-    )
-    if not resolved.source_path:
-        raise ValueError("study TPM fitting requires a file-backed manifest")
-    metadata = dict(resolved.metadata)
-    request_metadata = metadata.get("study_request")
-    if not isinstance(request_metadata, Mapping):
-        raise ValueError("study manifest metadata must include study_request")
-    event_metadata = request_metadata.get("adequacy_event")
-    if not isinstance(event_metadata, Mapping):
-        raise ValueError("study_request must include adequacy_event metadata")
-    target_name = str(event_metadata.get("kind", ""))
-    event_target_name = str(metadata.get("active_event_target", ""))
-    if not target_name or not event_target_name:
-        raise ValueError("study manifest must identify the adequacy target and event")
-
-    selected = tuple(
-        str(name)
-        for name in (
-            fit_feature_names
-            if fit_feature_names is not None
-            else metadata.get("default_fit_feature_names", ())
-        )
-    )
-    required = ("battery_option_id", "solar_option_id", target_name, event_target_name)
-    if not selected or len(set(selected)) != len(selected):
-        raise ValueError("fit_feature_names must be non-empty and unique")
-    missing_required = [name for name in required if name not in selected]
-    if missing_required:
-        raise ValueError(
-            "compact study fit must include decision, target, and event features: "
-            + ", ".join(missing_required)
-        )
-    unknown = [name for name in selected if name not in resolved.column_order]
-    if unknown:
-        raise ValueError("fit_feature_names reference unknown columns: " + ", ".join(unknown))
-    if isinstance(max_tensor_bytes, bool) or int(max_tensor_bytes) <= 0:
-        raise ValueError("max_tensor_bytes must be a positive integer")
-    estimated_tensor_bytes = resolved.row_count * len(selected) * 8
-    if estimated_tensor_bytes > int(max_tensor_bytes):
-        raise TPMFitMemoryError(
-            "selected TPM tensor requires "
-            f"{estimated_tensor_bytes} bytes, exceeding max_tensor_bytes={int(max_tensor_bytes)}"
-        )
-
-    compact_rows = tuple(
-        {name: row[name] for name in selected}
-        for row in iter_study_rows(resolved)
-    )
-    configured = (
-        replace(fit_config, persist_training_rows=False)
-        if fit_config is not None
-        else TPMFitConfig(
-            training_random_seed=int(
-                request_metadata.get("random_seed", CANONICAL_TPM_RANDOM_SEED)
-            ),
-            spn_payload_format="spflow-model-sidecar",
-            persist_training_rows=False,
-        )
-    )
-    return fit_tpm_artifact_from_rows(
-        compact_rows,
-        build_request=TPMArtifactBuildRequest(
-            artifact_id=f"tpm-study:{resolved.dataset_id}",
-            dataset_reference=resolved.dataset_id,
-            decision_features=("battery_option_id", "solar_option_id"),
-            target_name=target_name,
-            event_target_name=event_target_name,
-            target_threshold=float(event_metadata["threshold"]),
-            feature_roles={
-                "battery_option_id": "decision",
-                "solar_option_id": "decision",
-                target_name: "target",
-                event_target_name: "target",
-            },
-            feature_domains=dict(feature_domains or {}),
-            provenance={
-                "study_manifest_path": resolved.source_path.as_posix(),
-                "study_semantic_sha256": resolved.semantic_sha256,
-                "study_request_fingerprint": resolved.request_fingerprint,
-                "study_row_count": resolved.row_count,
-                "fit_feature_names": list(selected),
-                "estimated_tensor_bytes": estimated_tensor_bytes,
-                "training_random_seed": int(
-                    request_metadata.get("random_seed", CANONICAL_TPM_RANDOM_SEED)
-                ),
-            },
-        ),
-        output_path=Path(output_path),
-        fit_config=configured,
-        spflow_backend=spflow_backend,
-    )
-
-
 __all__ = [
     "CANONICAL_OUTPUT_MODES",
     "CANONICAL_TPM_RANDOM_SEED",
@@ -717,9 +517,7 @@ __all__ = [
     "TPMFitConfig",
     "TPMFitMemoryError",
     "TPM_ROBUSTNESS_RANDOM_SEEDS",
-    "fit_tpm_artifact",
     "fit_tpm_artifact_from_rows",
-    "fit_tpm_artifact_from_study_manifest",
     "learn_current_spflow_structure",
     "translate_spflow_fit_configuration",
 ]
@@ -1173,30 +971,6 @@ def _uses_current_spflow_backend(backend: Any | None) -> bool:
     )
 
 
-def _load_planning_dataset_artifact(
-    source: object,
-) -> object:
-    from open_energy_lab.planning.dataset import PlanningDatasetArtifact, load_planning_dataset
-
-    if isinstance(source, PlanningDatasetArtifact):
-        return source
-    to_dict = getattr(source, "to_dict", None)
-    if callable(to_dict) and not isinstance(source, str | Path | Mapping):
-        # Import-boundary tests deliberately reload the planning module. Rebuild
-        # an artifact created by the previous module instance so public in-memory
-        # handoff does not depend on dataclass identity surviving that reload.
-        return PlanningDatasetArtifact.from_dict(to_dict())
-    return load_planning_dataset(source)
-
-
-def _source_dataset_path(
-    source: object,
-) -> Path | None:
-    if isinstance(source, str | Path):
-        return Path(source)
-    return None
-
-
 def _resolved_training_random_seed(
     provenance: Mapping[str, object],
     *,
@@ -1210,29 +984,6 @@ def _resolved_training_random_seed(
         if value is not None:
             return int(value)
     return CANONICAL_TPM_RANDOM_SEED
-
-
-def _planning_feature_roles(
-    *,
-    dataset: object,
-    canonical_target_name: str,
-    event_target_name: str,
-) -> dict[str, str]:
-    decision_names = {
-        str(feature["feature_name"]) for feature in dataset.design_feature_schema
-    }
-    roles: dict[str, str] = {}
-    for feature_name in dataset.column_order:
-        normalized_name = str(feature_name)
-        if normalized_name in decision_names:
-            roles[normalized_name] = "decision"
-        elif normalized_name == event_target_name:
-            roles[normalized_name] = "target"
-        elif normalized_name == canonical_target_name:
-            roles[normalized_name] = "metric_target"
-        else:
-            roles[normalized_name] = "context"
-    return roles
 
 
 def _generic_feature_roles(
@@ -1257,81 +1008,6 @@ def _generic_feature_roles(
                 "context",
             )
     return roles
-
-
-def _build_feature_schema(
-    *,
-    dataset: object,
-    training_data: TPMTrainingData,
-    canonical_target_name: str,
-    event_target_name: str,
-) -> tuple[TPMFeatureSpec, ...]:
-    design_feature_schema = {
-        str(feature["feature_name"]): feature for feature in dataset.design_feature_schema
-    }
-    feature_specs: list[TPMFeatureSpec] = []
-    for inferred_spec in training_data.feature_schema:
-        feature_name = inferred_spec.feature_name
-        if feature_name in design_feature_schema:
-            declared_feature = design_feature_schema[feature_name]
-            declared_type = str(declared_feature["feature_type"])
-            if declared_type != inferred_spec.feature_type:
-                raise ValueError(
-                    "design feature schema type mismatch for "
-                    f"{feature_name!r}: expected {declared_type!r}, "
-                    f"inferred {inferred_spec.feature_type!r}"
-                )
-        if feature_name == event_target_name:
-            feature_specs.append(
-                _binary_event_target_spec(
-                    feature_name=feature_name,
-                    inferred_spec=inferred_spec,
-                    rows=training_data.rows,
-                )
-            )
-            continue
-        feature_specs.append(inferred_spec)
-
-    feature_names = {spec.feature_name for spec in feature_specs}
-    if canonical_target_name not in feature_names:
-        raise ValueError(
-            "training data does not include the canonical target feature "
-            f"{canonical_target_name!r}"
-        )
-    if event_target_name not in feature_names:
-        raise ValueError(
-            "training data does not include the SPN event target feature "
-            f"{event_target_name!r}"
-        )
-    return tuple(feature_specs)
-
-
-def _artifact_provenance(
-    *,
-    dataset: PlanningDatasetArtifact,
-    training_random_seed: int | None,
-    training_data: TPMTrainingData,
-    dataset_source_path: Path | None,
-) -> dict[str, object]:
-    provenance = dict(dataset.provenance)
-    provenance["training_dataset_id"] = dataset.dataset_id
-    provenance["training_row_count"] = dataset.row_count
-    provenance["training_column_order"] = list(training_data.column_order)
-    if dataset_source_path is not None:
-        dataset_source_text = dataset_source_path.as_posix()
-        provenance["training_dataset_path"] = dataset_source_text
-        provenance["training_dataset_fixture_path"] = dataset_source_text
-        provenance["dataset_fixture_path"] = dataset_source_text
-    provenance["legacy_evidence_paths"] = list(
-        _merge_legacy_evidence_paths(
-            provenance.get("legacy_evidence_paths"),
-            FIT_LEGACY_EVIDENCE_PATHS,
-            PIECEWISE_LEGACY_EVIDENCE_PATHS,
-        )
-    )
-    if training_random_seed is not None:
-        provenance["training_random_seed"] = training_random_seed
-    return provenance
 
 
 def _merge_legacy_evidence_paths(*groups: object) -> tuple[str, ...]:
@@ -1477,6 +1153,13 @@ def _build_generic_feature_schema(
     feature_specs: list[TPMFeatureSpec] = []
     for inferred_spec in training_data.feature_schema:
         feature_name = inferred_spec.feature_name
+        declared_type = build_request.declared_feature_types.get(feature_name)
+        if declared_type is not None and declared_type != inferred_spec.feature_type:
+            raise ValueError(
+                "design feature schema type mismatch for "
+                f"{feature_name!r}: expected {declared_type!r}, "
+                f"inferred {inferred_spec.feature_type!r}"
+            )
         if feature_name == build_request.event_target_name:
             feature_specs.append(
                 _binary_event_target_spec(

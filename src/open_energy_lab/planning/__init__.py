@@ -44,6 +44,7 @@ from .study_validation import (
     brier_score_by_configuration,
     select_spn_candidate,
 )
+from .tpm_fit import fit_tpm_artifact, fit_tpm_artifact_from_study_manifest
 from .workflow import (
     CompiledPlanningStudyTPM,
     PlanningStudyRunResult,
@@ -81,6 +82,8 @@ __all__ = [
     "assess_recommendation",
     "brier_score_by_configuration",
     "select_spn_candidate",
+    "fit_tpm_artifact",
+    "fit_tpm_artifact_from_study_manifest",
     "CompiledPlanningStudyTPM",
     "PlanningStudyRunResult",
     "VerifiedPlanningStudySolution",
