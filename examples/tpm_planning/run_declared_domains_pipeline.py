@@ -14,7 +14,7 @@ from numbers import Real
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from open_energy_lab.tpm import (
+from tpm import (
     TPMArtifactBuildRequest,
     TPMFeatureDomain,
     TPMFitConfig,
@@ -24,7 +24,7 @@ from open_energy_lab.tpm import (
     load_tpm_artifact,
     query_tpm_artifact,
 )
-from open_energy_lab.tpm.artifact import write_tpm_sidecar
+from tpm.artifact import write_tpm_sidecar
 
 
 EXAMPLE_DIRECTORY = Path(__file__).resolve().parent

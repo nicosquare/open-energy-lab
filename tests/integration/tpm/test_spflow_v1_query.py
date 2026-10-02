@@ -6,10 +6,10 @@ from time import perf_counter
 
 import pytest
 
-import open_energy_lab.tpm.features as features_module
-import open_energy_lab.tpm.query as query_module
-from open_energy_lab.tpm import load_tpm_artifact
-from open_energy_lab.tpm.query import TPMQueryRequest, query_tpm_artifact
+import tpm.features as features_module
+import tpm.query as query_module
+from tpm import load_tpm_artifact
+from tpm.query import TPMQueryRequest, query_tpm_artifact
 from tests.integration.tpm.spflow_v1_test_support import (
     QUERY_BUDGET_SECONDS,
     fit_real_artifact,

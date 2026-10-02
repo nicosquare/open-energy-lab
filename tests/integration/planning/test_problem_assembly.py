@@ -10,7 +10,7 @@ from types import SimpleNamespace
 
 import pytest
 import open_energy_lab.planning.problem as problem_module
-import open_energy_lab.tpm.conditional_mio as conditional_mio_module
+import tpm.conditional_mio as conditional_mio_module
 
 from open_energy_lab.planning import load_planning_dataset
 from open_energy_lab.planning.problem import (
@@ -18,7 +18,7 @@ from open_energy_lab.planning.problem import (
     assemble_planning_problem,
 )
 from open_energy_lab.planning import fit_tpm_artifact
-from open_energy_lab.tpm import load_tpm_artifact
+from tpm import load_tpm_artifact
 from tests.integration.planning.fixture_utils import (
     PLANNING_DATASET_ARTIFACT_FIXTURE_PATH,
     PLANNING_PROBLEM_FIXTURE_PATH,

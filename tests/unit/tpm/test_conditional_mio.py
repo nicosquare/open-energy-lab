@@ -9,10 +9,10 @@ from pathlib import Path
 
 import pytest
 
-import open_energy_lab.tpm.conditional_mio as conditional_mio_module
-import open_energy_lab.tpm.query as query_module
-from open_energy_lab.tpm.artifact import load_tpm_artifact
-from open_energy_lab.tpm.conditional import (
+import tpm.conditional_mio as conditional_mio_module
+import tpm.query as query_module
+from tpm.artifact import load_tpm_artifact
+from tpm.conditional import (
     TPMConditionalCircuit,
     TPMConditionalCircuitNode,
     TPMConditionalCompilationRequest,
@@ -21,21 +21,21 @@ from open_energy_lab.tpm.conditional import (
     TPMConditionalPair,
     resolve_conditional_attachment_formulation,
 )
-from open_energy_lab.tpm.conditional_mio import (
+from tpm.conditional_mio import (
     TPMConditionalEvaluationError,
     compile_conditional_mio_pair,
     evaluate_conditional_mio_pair,
 )
-from open_energy_lab.tpm.domains import TPMFeatureDomain, TPMNormalizationSpec
-from open_energy_lab.tpm.mio import condition_compiled_spflow_mio
-from open_energy_lab.tpm.optional_spflow import SPFlowDependencyUnavailableError
-from open_energy_lab.tpm.piecewise import (
+from tpm.domains import TPMFeatureDomain, TPMNormalizationSpec
+from tpm.mio import condition_compiled_spflow_mio
+from tpm.optional_spflow import SPFlowDependencyUnavailableError
+from tpm.piecewise import (
     LOGARITHM_ENDPOINT_POLICY_NAME,
     PiecewiseBreakpointPolicy,
     build_logsumexp_piecewise_spec,
     resolve_guarded_exponential_spec,
 )
-from open_energy_lab.tpm.query import evaluate_native_conditional_pair
+from tpm.query import evaluate_native_conditional_pair
 from tests.unit.tpm.test_conditional_pair import _encoding, _pair
 
 

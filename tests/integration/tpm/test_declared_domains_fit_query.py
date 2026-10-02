@@ -6,14 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from open_energy_lab.tpm.artifact import load_tpm_artifact
-from open_energy_lab.tpm.domains import TPMFeatureDomain
-from open_energy_lab.tpm.fit import (
+from tpm.artifact import load_tpm_artifact
+from tpm.domains import TPMFeatureDomain
+from tpm.fit import (
     TPMArtifactBuildRequest,
     TPMFitConfig,
     fit_tpm_artifact_from_rows,
 )
-from open_energy_lab.tpm.query import TPMQueryRequest, query_tpm_artifact
+from tpm.query import TPMQueryRequest, query_tpm_artifact
 from tests.integration.tpm.declared_domains_test_support import (
     load_declared_domains_fixture,
     physical_training_rows,

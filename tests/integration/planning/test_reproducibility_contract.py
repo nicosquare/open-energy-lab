@@ -35,7 +35,7 @@ def test_quickstart_lists_reproducibility_review_commands() -> None:
     )
     assert (
         'uv run python -c "import open_energy_lab; import open_energy_lab.simulator; '
-        'import open_energy_lab.tpm; import open_energy_lab.planning"'
+        'import tpm; import open_energy_lab.planning"'
         in quickstart_text
     )
     assert 'rg "from legacy|import legacy"' in quickstart_text

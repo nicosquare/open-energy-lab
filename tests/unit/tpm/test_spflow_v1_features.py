@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-import open_energy_lab.tpm.features as features_module
-from open_energy_lab.tpm.data import normalize_training_data
-from open_energy_lab.tpm.domains import TPMFeatureDomain
-from open_energy_lab.tpm.features import TPMFeatureSpec
+import tpm.features as features_module
+from tpm.data import normalize_training_data
+from tpm.domains import TPMFeatureDomain
+from tpm.features import TPMFeatureSpec
 
 
 FEATURE_SCHEMA = (

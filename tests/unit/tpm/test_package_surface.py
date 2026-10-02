@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 
 
-TPM_PACKAGE = "open_energy_lab.tpm"
+TPM_PACKAGE = "tpm"
 EXPECTED_TPM_EXPORTS = [
     "CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND",
     "CONDITIONAL_EMBEDDING_PARITY_RECORD_KIND",
@@ -169,7 +169,7 @@ def test_tpm_root_surface_stays_explicit_about_surface_maturity() -> None:
         if name in METADATA_EXPORTS:
             assert isinstance(export, str | tuple)
         else:
-            assert export.__module__.startswith("open_energy_lab.tpm.")
+            assert export.__module__.startswith("tpm.")
 
 
 def test_tpm_root_reserves_only_documented_public_exports() -> None:
@@ -195,5 +195,5 @@ def test_tpm_root_exposes_current_backend_and_artifact_contracts() -> None:
     assert issubclass(module.TPMArtifactIntegrityError, ValueError)
     assert issubclass(module.SPFlowBackendCompatibilityError, ImportError)
     assert module.CurrentSPFlowCapabilities.__module__ == (
-        "open_energy_lab.tpm.optional_spflow"
+        "tpm.optional_spflow"
     )

@@ -355,20 +355,21 @@ def test_demand_package_import_contract_stays_reserved_and_import_light():
 
 def test_tpm_package_imports_from_source_tree_without_optional_stacks():
     before_import = set(sys.modules)
-    module_spec = importlib.util.find_spec("open_energy_lab.tpm")
+    module_spec = importlib.util.find_spec("tpm")
 
     if module_spec is None:
-        assert "open_energy_lab.tpm" not in sys.modules
+        assert "tpm" not in sys.modules
         return
 
-    module = importlib.import_module("open_energy_lab.tpm")
+    module = importlib.import_module("tpm")
 
     assert module.__file__ is not None
     module_file = Path(module.__file__).resolve()
-    assert module.__name__ == "open_energy_lab.tpm"
+    assert module.__name__ == "tpm"
     assert module_file.name == "__init__.py"
     assert module_file.parent.name == "tpm"
-    assert module_file.parent.parent.name == "open_energy_lab"
+    assert module_file.parent.parent.name == "src"
+    assert module_file.parent.parent.parent.name == "sp-tpm"
     assert module.__all__ == EXPECTED_TPM_EXPORTS
     assert all("." not in export_name for export_name in module.__all__)
     assert all(not export_name.startswith("_") for export_name in module.__all__)

@@ -8,10 +8,10 @@ import math
 import pyomo.environ as pyo
 import pytest
 
-import open_energy_lab.tpm as tpm_package
-import open_energy_lab.tpm.conditional_mio as conditional_mio_module
+import tpm as tpm_package
+import tpm.conditional_mio as conditional_mio_module
 from open_energy_lab.planning.piecewise import build_piecewise_planning_terms
-from open_energy_lab.tpm.mio import (
+from tpm.mio import (
     build_spn_chance_model,
     build_spn_modeling_terms,
     evaluate_compiled_spflow_probability,

@@ -6,8 +6,8 @@ import math
 
 import pytest
 
-from open_energy_lab.tpm.data import TPMTrainingData, normalize_training_data
-from open_energy_lab.tpm.domains import TPMFeatureDomain
+from tpm.data import TPMTrainingData, normalize_training_data
+from tpm.domains import TPMFeatureDomain
 
 
 def _training_rows() -> tuple[dict[str, object], ...]:

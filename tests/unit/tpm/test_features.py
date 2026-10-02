@@ -7,8 +7,8 @@ import math
 
 import pytest
 
-from open_energy_lab.tpm.features import SUPPORTED_TPM_FEATURE_TYPES, TPMFeatureSpec
-from open_energy_lab.tpm.domains import (
+from tpm.features import SUPPORTED_TPM_FEATURE_TYPES, TPMFeatureSpec
+from tpm.domains import (
     TPMFeatureDomain,
     TPMNormalizationSpec,
     TPMTrainingSupport,

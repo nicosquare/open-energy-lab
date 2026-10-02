@@ -8,14 +8,14 @@ from pathlib import Path
 import pytest
 
 from open_energy_lab.planning.dataset import load_planning_dataset
-from open_energy_lab.tpm import (
+from tpm import (
     TPMQueryRequest,
     UnsupportedTPMArtifactVersionError,
     compile_spflow_model_to_mio,
     load_tpm_artifact,
     query_tpm_artifact,
 )
-from open_energy_lab.tpm.optional_spflow import load_spflow_payload
+from tpm.optional_spflow import load_spflow_payload
 from tests.integration.planning.fixture_utils import (
     COMMON_LIST_KEYS,
     COMMON_PROVENANCE_KEYS,

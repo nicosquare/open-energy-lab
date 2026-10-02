@@ -11,12 +11,12 @@ from copy import deepcopy
 
 import pytest
 
-from open_energy_lab.tpm.artifact import (
+from tpm.artifact import (
     SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS,
     UnsupportedTPMArtifactVersionError,
     load_tpm_artifact,
 )
-from open_energy_lab.tpm.optional_spflow import load_spflow_payload
+from tpm.optional_spflow import load_spflow_payload
 
 
 SIDECAR_BYTES = b"deterministic-spflow-1.1-sidecar\n"

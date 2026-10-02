@@ -1,7 +1,7 @@
 """Fit TPM artifacts from planning datasets and planning-study manifests.
 
 Both entry points translate planning data into the generic
-:func:`open_energy_lab.tpm.fit_tpm_artifact_from_rows` request, so the TPM
+:func:`tpm.fit_tpm_artifact_from_rows` request, so the TPM
 package never needs to know planning formats.
 """
 
@@ -12,15 +12,15 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from open_energy_lab.tpm import (
+from tpm import (
     TPMArtifact,
     TPMArtifactBuildRequest,
     TPMFitConfig,
     TPMFitMemoryError,
     fit_tpm_artifact_from_rows,
 )
-from open_energy_lab.tpm.domains import TPMFeatureDomain
-from open_energy_lab.tpm.fit import CANONICAL_TPM_RANDOM_SEED
+from tpm.domains import TPMFeatureDomain
+from tpm.fit import CANONICAL_TPM_RANDOM_SEED
 
 from .dataset import PlanningDatasetArtifact, load_planning_dataset
 from .study_dataset import (

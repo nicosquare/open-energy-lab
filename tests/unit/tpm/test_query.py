@@ -9,16 +9,16 @@ from types import SimpleNamespace
 
 import pytest
 
-import open_energy_lab.tpm.query as query_module
-from open_energy_lab.tpm.artifact import load_tpm_artifact
-from open_energy_lab.tpm.data import normalize_training_data
-from open_energy_lab.tpm.domains import TPMFeatureDomain
-from open_energy_lab.tpm.features import (
+import tpm.query as query_module
+from tpm.artifact import load_tpm_artifact
+from tpm.data import normalize_training_data
+from tpm.domains import TPMFeatureDomain
+from tpm.features import (
     TPMFeatureValidationError,
     validate_spflow_feature_assignments,
 )
-from open_energy_lab.tpm.fit import TPMArtifactBuildRequest, fit_tpm_artifact_from_rows
-from open_energy_lab.tpm.query import TPMQueryRequest, query_tpm_artifact
+from tpm.fit import TPMArtifactBuildRequest, fit_tpm_artifact_from_rows
+from tpm.query import TPMQueryRequest, query_tpm_artifact
 
 
 def _artifact_payload(*, execution_mode: str = "fixture_replay") -> dict[str, object]:

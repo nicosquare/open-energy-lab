@@ -19,13 +19,13 @@ from open_energy_lab.planning.piecewise import (
     build_piecewise_planning_terms,
     validate_first_release_decision_features,
 )
-from open_energy_lab.tpm.artifact import TPMArtifact, load_tpm_artifact
-from open_energy_lab.tpm.domains import TPMApproximationDomain
-from open_energy_lab.tpm.mio import compile_spflow_model_to_mio, infer_max_sum_terms
-from open_energy_lab.tpm.optional_spflow import (
+from tpm.artifact import TPMArtifact, load_tpm_artifact
+from tpm.domains import TPMApproximationDomain
+from tpm.mio import compile_spflow_model_to_mio, infer_max_sum_terms
+from tpm.optional_spflow import (
     load_spflow_payload,
 )
-from open_energy_lab.tpm.query import marginalize_spflow_model
+from tpm.query import marginalize_spflow_model
 
 SUPPORTED_OBJECTIVE_DIRECTIONS = ("minimize",)
 SUPPORTED_PLANNING_BACKENDS = ("pyomo",)

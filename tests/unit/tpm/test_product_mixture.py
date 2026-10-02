@@ -1,7 +1,7 @@
 """General feature maps preserve native likelihood, gradients and conditionals."""
 import numpy as np
 import pytest
-from open_energy_lab.tpm.product_mixture import (
+from tpm.product_mixture import (
     ProductMixtureSchema, initialize_product_mixture, materialize_product_mixture,
     product_mixture_log_prob, product_mixture_conditional_probability,
 )

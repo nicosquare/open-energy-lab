@@ -6,7 +6,7 @@ import math
 
 import pytest
 
-from open_energy_lab.tpm.piecewise import (
+from tpm.piecewise import (
     CANONICAL_PIECEWISE_LEGACY_REFERENCE_PATHS,
     DEFAULT_QUERY_NUMERIC_TOLERANCE,
     PiecewiseBreakpointPolicy,

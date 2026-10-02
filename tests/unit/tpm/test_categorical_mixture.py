@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import torch
 
-from open_energy_lab.tpm.categorical_native import (
+from tpm.categorical_native import (
     CategoricalMixtureConfig, build_categorical_mixture, initialize_categorical_mixture,
     categorical_mixture_step, save_categorical_mixture_state, load_categorical_mixture_state,
 )
@@ -63,7 +63,7 @@ def test_lloyd_matches_readable_full_matrix_reference():
 
 @pytest.mark.parametrize('chunk_size',[1,5,32])
 def test_streaming_lloyd_matches_full_matrix_initialization(tmp_path,chunk_size):
-    from open_energy_lab.tpm import initialize_categorical_mixture_streaming
+    from tpm import initialize_categorical_mixture_streaming
     cfg,rows,expected=fixture()
     path=tmp_path/'rows.npy';np.save(path,rows.numpy())
     actual=build_categorical_mixture(cfg)
@@ -75,7 +75,7 @@ def test_streaming_lloyd_matches_full_matrix_initialization(tmp_path,chunk_size)
 
 
 def test_streaming_initialization_preserves_empty_cluster_fallback():
-    from open_energy_lab.tpm import initialize_categorical_mixture_streaming
+    from tpm import initialize_categorical_mixture_streaming
     cfg,rows,_=fixture()
     rows[:]=torch.tensor([0.,.4,1.],dtype=torch.float64)
     expected=build_categorical_mixture(cfg);actual=build_categorical_mixture(cfg)
@@ -87,7 +87,7 @@ def test_streaming_initialization_preserves_empty_cluster_fallback():
 
 
 def test_streaming_initialization_rejects_invalid_last_chunk():
-    from open_energy_lab.tpm import initialize_categorical_mixture_streaming
+    from tpm import initialize_categorical_mixture_streaming
     cfg,rows,_=fixture();rows[-1,0]=.5
     with pytest.raises(ValueError,match='categorical'):
         initialize_categorical_mixture_streaming(build_categorical_mixture(cfg),rows.numpy(),seed=0,chunk_size=5)
@@ -172,7 +172,7 @@ def test_constant_columns_and_empty_components_keep_normalized_support():
 
 
 def test_selected_inference_reload_is_separate_from_training_backend_resume(tmp_path):
-    from open_energy_lab.tpm import load_categorical_mixture_for_inference
+    from tpm import load_categorical_mixture_for_inference
     cfg,rows,model=fixture();optimizer=torch.optim.Adam(model.parameters(),lr=.003)
     generator=torch.Generator().manual_seed(0);epoch=generator.get_state()
     torch.randperm(len(rows),generator=generator)

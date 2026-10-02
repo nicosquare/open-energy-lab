@@ -7,7 +7,7 @@ import math
 
 import pytest
 
-from open_energy_lab.tpm.conditional import (
+from tpm.conditional import (
     TPMBinaryDecisionLink,
     TPMCompilerFidelityEvidence,
     TPMConditionalAttachment,
@@ -17,7 +17,7 @@ from open_energy_lab.tpm.conditional import (
     load_conditional_evidence,
     publish_conditional_evidence,
 )
-from open_energy_lab.tpm.conditional_mio import (
+from tpm.conditional_mio import (
     TPMConditionalDiagnosticsError,
     build_compiler_fidelity_evidence,
     build_embedding_parity_evidence,

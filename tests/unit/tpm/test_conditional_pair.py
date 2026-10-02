@@ -10,8 +10,8 @@ from threading import Barrier
 
 import pytest
 
-import open_energy_lab.tpm.conditional as conditional_module
-from open_energy_lab.tpm.conditional import (
+import tpm.conditional as conditional_module
+from tpm.conditional import (
     CONDITIONAL_PAIR_COMPILER_VERSION,
     CONDITIONAL_PAIR_RECORD_KIND,
     CONDITIONAL_PAIR_SCHEMA_VERSION,
@@ -28,8 +28,8 @@ from open_energy_lab.tpm.conditional import (
     load_conditional_pair,
     publish_conditional_pair,
 )
-from open_energy_lab.tpm.conditional_mio import evaluate_conditional_mio_pair
-from open_energy_lab.tpm.piecewise import resolve_guarded_exponential_spec
+from tpm.conditional_mio import evaluate_conditional_mio_pair
+from tpm.piecewise import resolve_guarded_exponential_spec
 
 
 def _source_reference() -> TPMConditionalSourceReference:

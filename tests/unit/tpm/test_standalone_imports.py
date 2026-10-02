@@ -1,12 +1,11 @@
-"""The tpm package must not depend on the rest of open_energy_lab (it is being
-extracted into a standalone package)."""
+"""The standalone tpm package (sp-tpm) must not depend on open_energy_lab."""
 
 from __future__ import annotations
 
 import ast
 from pathlib import Path
 
-TPM_ROOT = Path(__file__).resolve().parents[3] / "src" / "open_energy_lab" / "tpm"
+TPM_ROOT = Path(__file__).resolve().parents[3] / "packages" / "sp-tpm" / "src" / "tpm"
 
 
 def _imported_modules(path: Path) -> set[str]:
@@ -32,13 +31,13 @@ def test_tpm_only_imports_itself_from_open_energy_lab() -> None:
         f"{path.name}: {module}"
         for path in sorted(TPM_ROOT.glob("*.py"))
         for module in _imported_modules(path)
-        if module.startswith("open_energy_lab") and not module.startswith("open_energy_lab.tpm")
+        if module.startswith("open_energy_lab") and not module.startswith("tpm")
     }
     absolute_self = {
         f"{path.name}: {module}"
         for path in sorted(TPM_ROOT.glob("*.py"))
         for module in _imported_modules(path)
-        if module.startswith("open_energy_lab.tpm")
+        if module.startswith("tpm")
     }
     assert not offenders, sorted(offenders)
     assert not absolute_self, f"use relative imports inside tpm: {sorted(absolute_self)}"

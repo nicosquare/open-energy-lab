@@ -11,18 +11,20 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src" / "open_energy_lab"
+TPM = ROOT / "packages" / "sp-tpm" / "src" / "tpm"
 TESTS = ROOT / "tests"
-PACKAGES = (
-    "control",
-    "tpm",
-    "simulator",
-    "market",
-    "planning",
-    "weather",
-    "demand",
-    "visualization",
-    "core",
-)
+# package label -> (source directory, import name)
+PACKAGES = {
+    "control": (SRC / "control", "open_energy_lab.control"),
+    "tpm (sp-tpm)": (TPM, "tpm"),
+    "simulator": (SRC / "simulator", "open_energy_lab.simulator"),
+    "market": (SRC / "market", "open_energy_lab.market"),
+    "planning": (SRC / "planning", "open_energy_lab.planning"),
+    "weather": (SRC / "weather", "open_energy_lab.weather"),
+    "demand": (SRC / "demand", "open_energy_lab.demand"),
+    "visualization": (SRC / "visualization", "open_energy_lab.visualization"),
+    "core": (SRC / "core", "open_energy_lab.core"),
+}
 SMELLS = {
     "`def _finite(` copies": r"def _finite\(",
     "`def _non_empty*` copies": r"def _non_empty",
@@ -54,21 +56,21 @@ def _count(pattern: str, files: list[Path]) -> int:
 def main() -> None:
     print("| Package | Lines | Files | `__all__` exports |")
     print("|---|---|---|---|")
-    for name in PACKAGES:
-        files = _sources(SRC / name)
+    for name, (directory, module) in PACKAGES.items():
+        files = _sources(directory)
         lines = sum(len(_lines(f)) for f in files)
-        exports = len(getattr(importlib.import_module(f"open_energy_lab.{name}"), "__all__", ()))
+        exports = len(getattr(importlib.import_module(module), "__all__", ()))
         print(f"| {name} | {lines:,} | {len(files)} | {exports} |")
-    total = sum(len(_lines(f)) for f in _sources(SRC))
-    print(f"| **total src** | **{total:,}** | | |")
+    total = sum(len(_lines(f)) for f in _sources(SRC) + _sources(TPM))
+    print(f"| **total src (incl. sp-tpm)** | **{total:,}** | | |")
 
     tests = [f for f in _sources(TESTS) if f.name.startswith("test_")]
     test_lines = sum(len(_lines(f)) for f in _sources(TESTS))
     print(f"\nTests: {len(tests)} `test_*.py` files, {test_lines:,} lines.\n")
 
-    print("| Smell (grep over `src/open_energy_lab`) | Count |")
+    print("| Smell (grep over `src/open_energy_lab` and sp-tpm) | Count |")
     print("|---|---|")
-    files = _sources(SRC)
+    files = _sources(SRC) + _sources(TPM)
     for label, pattern in SMELLS.items():
         print(f"| {label} | {_count(pattern, files):,} |")
 

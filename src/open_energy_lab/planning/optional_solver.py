@@ -8,7 +8,7 @@ from importlib import import_module
 from types import SimpleNamespace
 from typing import Any
 
-from open_energy_lab.tpm.mio import build_spn_chance_model, extract_spn_solution
+from tpm.mio import build_spn_chance_model, extract_spn_solution
 
 from .problem import (
     DEFAULT_SOLVER_NAME,

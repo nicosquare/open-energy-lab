@@ -15,6 +15,7 @@ dependencies = [
     "pyarrow==25.0.0",
     "pvlib",
     "pyomo==6.10.1",
+    "sp-tpm",
     "spflow==1.1.0",
     "timezonefinder",
 ]
@@ -36,6 +37,12 @@ notebook = [
     "nbclient",
     "seaborn",
 ]
+
+[tool.uv.workspace]
+members = ["packages/sp-tpm"]
+
+[tool.uv.sources]
+sp-tpm = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/open_energy_lab"]

@@ -4,7 +4,7 @@ import math
 
 import pytest
 
-from open_energy_lab.tpm import (
+from tpm import (
     TPMIntegerDecisionMapping, attach_conditional_mio_pair,
     evaluate_conditional_mio_pair, initialize_conditional_mio_attachment,
     publish_conditional_pair, load_conditional_pair,
@@ -129,10 +129,10 @@ def compile_gaussian_lookup(monkeypatch, bounds=(40, 160)):
     from spflow.modules.leaves import Bernoulli, Categorical, Normal
     from spflow.modules.products import Product
     from spflow.modules.sums import Sum
-    import open_energy_lab.tpm.conditional_mio as cm
-    from open_energy_lab.tpm.artifact import load_tpm_artifact
+    import tpm.conditional_mio as cm
+    from tpm.artifact import load_tpm_artifact
     from tests.unit.tpm.test_conditional_mio import TPM_FIXTURE_DIRECTORY, _compilation_request
-    from open_energy_lab.tpm.piecewise import PiecewiseBreakpointPolicy, resolve_guarded_exponential_spec
+    from tpm.piecewise import PiecewiseBreakpointPolicy, resolve_guarded_exponential_spec
 
     def tensor(value):
         return torch.tensor([[[value]]], dtype=torch.float64)

@@ -6,7 +6,7 @@ import os
 import numpy as np
 import pytest
 
-from open_energy_lab.tpm.categorical_gurobi import (
+from tpm.categorical_gurobi import (
     curves, compile_categorical_log_ratio, evaluate_categorical_log_ratio,
     attach_categorical_log_ratio, categorical_attachment_witness,
 )
@@ -119,7 +119,7 @@ def test_cold_chance_attachment_matches_exhaustive_optimum():
 
 
 def test_group_certification_preserves_every_legal_feasible_completion():
-    from open_energy_lab.tpm.categorical_gurobi import CategoricalGroupSeparator
+    from tpm.categorical_gurobi import CategoricalGroupSeparator
     orders=np.array(list(itertools.product(range(4),repeat=3)))
     scores=dict(zip(map(tuple,orders),np.random.default_rng(45).uniform(-5,-1,len(orders))))
     oracle=lambda q:np.array([scores[tuple(row)] for row in q])
@@ -143,7 +143,7 @@ def test_group_certification_preserves_every_legal_feasible_completion():
 
 
 def test_group_guard_nonfinite_and_malformed_domains_fail_closed():
-    from open_energy_lab.tpm.categorical_gurobi import CategoricalGroupSeparator
+    from tpm.categorical_gurobi import CategoricalGroupSeparator
     legal=lambda q:np.ones(len(q),dtype=bool)
     for bad in (math.nan, math.inf):
         separator=CategoricalGroupSeparator(lambda q:np.full(len(q),bad),[range(2)]*2,legal,-3)
@@ -155,7 +155,7 @@ def test_group_guard_nonfinite_and_malformed_domains_fail_closed():
 
 
 def test_incumbent_restrictions_preserve_all_better_feasible_objectives():
-    from open_energy_lab.tpm.categorical_gurobi import restrict_categorical_domains
+    from tpm.categorical_gurobi import restrict_categorical_domains
     den,num,tables,orders=fixture();limit=math.log(.1)
     records=compile_categorical_log_ratio(den,num,tables,log_limit=limit)
     profits=[np.array([0.,-2.,4.]),np.array([0.,3.])]

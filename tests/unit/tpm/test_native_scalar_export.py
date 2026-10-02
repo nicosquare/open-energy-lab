@@ -10,8 +10,8 @@ from tests.unit.tpm.test_native_initialization import make_config, fitting_rows,
 @pytest.mark.parametrize("extreme", [False, True])
 def test_scalar_export_preserves_joint_conditional_parameters_and_state(layout, extreme):
     import torch
-    import open_energy_lab.tpm as public
-    from open_energy_lab.tpm import native
+    import tpm as public
+    from tpm import native
     from spflow.modules.leaves import Bernoulli, Normal
     from spflow.modules.products import Product
     from spflow.modules.sums import Sum

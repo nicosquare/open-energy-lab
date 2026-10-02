@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from open_energy_lab.tpm.conditional import (
+from tpm.conditional import (
     CONDITIONAL_PAIR_COMPILER_VERSION,
     CONDITIONAL_PAIR_RECORD_KIND,
     CONDITIONAL_PAIR_SCHEMA_VERSION,
@@ -18,13 +18,13 @@ from open_energy_lab.tpm.conditional import (
     publish_conditional_pair,
     resolve_conditional_attachment_formulation,
 )
-from open_energy_lab.tpm.conditional_mio import (
+from tpm.conditional_mio import (
     attach_conditional_mio_pair,
     evaluate_conditional_mio_pair,
     initialize_conditional_mio_attachment,
     inspect_conditional_mio_attachment,
 )
-from open_energy_lab.tpm.piecewise import (
+from tpm.piecewise import (
     CONDITIONAL_GUARD_POLICY_NAME,
     CONDITIONAL_GUARD_TRANSITION_WIDTH,
     PiecewiseBreakpointPolicy,
@@ -46,7 +46,7 @@ LEGACY_PAIR_PATHS = (
 
 def test_prevalidated_guard_evaluator_is_bitwise_equal_at_knots_and_interiors():
     import random
-    from open_energy_lab.tpm.piecewise import _guarded_exponential_evaluator
+    from tpm.piecewise import _guarded_exponential_evaluator
     configuration=_encoding('piecewise').sum_configuration
     fast=_guarded_exponential_evaluator(configuration)
     points=configuration['exp_x_points'];rng=random.Random(0)
@@ -62,7 +62,7 @@ def test_prevalidated_guard_evaluator_is_bitwise_equal_at_knots_and_interiors():
 def test_sparse_dcc_preserves_every_active_linear_row_without_unused_columns():
     import pyomo.environ as pyo
     from pyomo.repn import generate_standard_repn
-    from open_energy_lab.tpm.mio import _sparse_dcc_piecewise
+    from tpm.mio import _sparse_dcc_piecewise
 
     points=[i/16 for i in range(17)]
     values=[math.sin(4*x) for x in points]

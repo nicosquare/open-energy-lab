@@ -220,7 +220,7 @@ The `provenance` mapping records:
 - `refresh_policy`
 
 Artifact manifests retain the complete persisted payload accepted or rejected
-by `open_energy_lab.tpm.load_tpm_artifact`. Query fixtures retain the
+by `tpm.load_tpm_artifact`. Query fixtures retain the
 `TPMQueryRequest` fields and exact expected response.
 
 ## Fixture Records

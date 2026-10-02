@@ -22,7 +22,7 @@ from open_energy_lab.planning.piecewise import (
     validate_first_release_decision_features,
     validate_current_spflow_mio_payload,
 )
-from open_energy_lab.tpm.domains import TPMApproximationDomain, TPMNormalizationSpec
+from tpm.domains import TPMApproximationDomain, TPMNormalizationSpec
 from tests.integration.planning.fixture_utils import (
     TPM_ARTIFACT_FIXTURE_PATH,
     load_planning_fixture,

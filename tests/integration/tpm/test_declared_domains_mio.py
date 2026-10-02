@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from open_energy_lab.tpm import (
+from tpm import (
     TPMApproximationDomain,
     compile_spflow_model_to_mio,
     evaluate_compiled_spflow_probability,
     load_tpm_artifact,
 )
-from open_energy_lab.tpm.optional_spflow import load_spflow_payload
-from open_energy_lab.tpm.query import marginalize_spflow_model
+from tpm.optional_spflow import load_spflow_payload
+from tpm.query import marginalize_spflow_model
 
 
 ARTIFACT_PATH = "tests/fixtures/tpm/tpm_artifact_domains_v3.json"

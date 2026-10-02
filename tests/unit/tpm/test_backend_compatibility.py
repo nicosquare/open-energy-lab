@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-import open_energy_lab.tpm.optional_spflow as optional_spflow_module
+import tpm.optional_spflow as optional_spflow_module
 
 
 def test_missing_spflow_is_a_required_install_failure(monkeypatch) -> None:

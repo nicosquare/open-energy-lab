@@ -20,7 +20,7 @@ import pytest
 
 def native_api():
     # A missing required capability is a failure, never an optional-backend skip.
-    return import_module("open_energy_lab.tpm.native")
+    return import_module("tpm.native")
 
 
 def make_config(api, layout="gaussian", **overrides):
@@ -193,12 +193,12 @@ def test_config_round_trip_and_import_do_not_load_training_backends():
         api.TPMNativeMixtureConfig.from_dict({**config.to_dict(), "unknown": True})
     code = """
 import json, sys
-import open_energy_lab.tpm as tpm
+import tpm as tpm
 for name in ('TPMNativeMixtureConfig', 'initialize_native_mixture',
              'native_joint_conditional_log_values', 'native_full_gradient_step',
              'capture_native_training_state', 'restore_native_training_state',
              'materialize_native_mixture'):
-    assert getattr(tpm, name).__module__ == 'open_energy_lab.tpm.native'
+    assert getattr(tpm, name).__module__ == 'tpm.native'
 print(json.dumps([name for name in ('torch', 'spflow') if name in sys.modules]))
 """
     # The parent environment intentionally retains the old installed dependency until

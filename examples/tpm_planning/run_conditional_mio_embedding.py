@@ -12,7 +12,7 @@ from numbers import Real
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from open_energy_lab.tpm import (
+from tpm import (
     TPMArtifactBuildRequest,
     TPMBinaryDecisionMapping,
     TPMCategoricalDecisionMapping,
@@ -40,10 +40,10 @@ from open_energy_lab.tpm import (
     publish_conditional_evidence,
     publish_conditional_pair,
 )
-from open_energy_lab.tpm.artifact import write_tpm_sidecar
-from open_energy_lab.tpm.optional_spflow import load_spflow_payload
-from open_energy_lab.tpm.query import reduce_spflow_log_likelihood
-from open_energy_lab.tpm.piecewise import (
+from tpm.artifact import write_tpm_sidecar
+from tpm.optional_spflow import load_spflow_payload
+from tpm.query import reduce_spflow_log_likelihood
+from tpm.piecewise import (
     PiecewiseBreakpointPolicy,
     build_logsumexp_piecewise_spec,
     resolve_guarded_exponential_spec,

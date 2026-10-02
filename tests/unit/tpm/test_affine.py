@@ -3,9 +3,9 @@ from itertools import product
 import json
 import numpy as np
 import pytest
-from open_energy_lab.tpm.affine import (compile_affine_logsum,conditional_affine_bounds,
+from tpm.affine import (compile_affine_logsum,conditional_affine_bounds,
     compile_binary_mixture_log_ratio,evaluate_binary_log_ratio,evaluate_affine_logsum)
-from open_energy_lab.tpm.binary_cuts import CompiledProbabilitySeparator,ConditionalFaceCertifier
+from tpm.binary_cuts import CompiledProbabilitySeparator,ConditionalFaceCertifier
 
 
 def test_affine_and_one_bit_bounds_cover_every_three_dimensional_assignment():
@@ -86,9 +86,9 @@ class Block(importlib.abc.MetaPathFinder):
         if fullname.split('.')[0] in {'torch','spflow','gurobipy','pyomo','highspy'}:
             raise AssertionError('Eager optional backend: '+fullname)
 sys.meta_path.insert(0, Block())
-import open_energy_lab.tpm.product_mixture
-import open_energy_lab.tpm.affine
-import open_energy_lab.tpm.affine_gurobi
-import open_energy_lab.tpm.binary_cuts
+import tpm.product_mixture
+import tpm.affine
+import tpm.affine_gurobi
+import tpm.binary_cuts
 ''', str(__import__('pathlib').Path(__file__).resolve().parents[3] / 'src')], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr

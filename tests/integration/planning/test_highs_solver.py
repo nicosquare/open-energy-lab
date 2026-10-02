@@ -19,7 +19,7 @@ from open_energy_lab.planning.problem import (
     PlanningProblemDefinition,
     assemble_planning_problem,
 )
-from open_energy_lab.tpm import load_tpm_artifact
+from tpm import load_tpm_artifact
 from tests.integration.planning.fixture_utils import (
     PLANNING_PROBLEM_FIXTURE_PATH,
     TPM_ARTIFACT_FIXTURE_PATH,

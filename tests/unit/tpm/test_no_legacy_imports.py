@@ -6,7 +6,7 @@ import ast
 from pathlib import Path
 
 
-TPM_SOURCE_DIR = Path("src/open_energy_lab/tpm")
+TPM_SOURCE_DIR = Path("packages/sp-tpm/src/tpm")
 PLANNED_TPM_MODULE_PATHS = (
     TPM_SOURCE_DIR / "__init__.py",
     TPM_SOURCE_DIR / "artifact.py",

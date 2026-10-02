@@ -42,7 +42,7 @@ def test_importing_every_library_package_does_not_load_oel_validation() -> None:
         import open_energy_lab
 
         for info in pkgutil.walk_packages(open_energy_lab.__path__, "open_energy_lab."):
-            if info.name.startswith("open_energy_lab.tpm"):
+            if info.name.startswith("tpm"):
                 continue  # heavy optional backends; covered by tpm boundary tests
             importlib.import_module(info.name)
 
