@@ -83,16 +83,31 @@ target architecture.
 
 ## Useful Checks
 
-Run only the checks relevant to the files changed:
+Tests are selected by pytest markers (see `pyproject.toml`). A plain
+`pytest` is the routine offline suite; run the narrower commands while
+iterating and the routine suite before committing:
 
 ```bash
-uv run pytest tests/unit/demand tests/integration/demand tests/integration/simulator
-uv run pytest tests/unit/weather tests/integration/weather tests/integration/simulator
-uv run pytest tests/unit/planning tests/unit/tpm tests/integration/planning tests/integration/tpm
-uv run pytest tests/unit/test_lazy_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py
-uv run python -c "import open_energy_lab; import open_energy_lab.weather; import open_energy_lab.demand; import open_energy_lab.simulator; import open_energy_lab.tpm; import open_energy_lab.planning"
-rg "from legacy|import legacy" src/open_energy_lab/weather src/open_energy_lab/demand src/open_energy_lab/simulator src/open_energy_lab/tpm src/open_energy_lab/planning tests/unit/weather tests/unit/demand tests/unit/tpm tests/unit/planning tests/integration/weather tests/integration/demand tests/integration/simulator tests/integration/planning docs/migration
+uv run pytest                                   # routine offline suite, ~2 min
+uv run pytest tests/unit/<pkg> tests/integration/<pkg>   # one package while iterating
+uv run pytest -m slow                           # solver-backed and multi-day checks, ~5 min (CI runs it)
+uv run pytest -m notebook                       # walkthrough notebooks; needs the notebook group, ~2 min
+uv run python tools/verify_backends.py          # required SPFlow / Pyomo / HiGHS versions
+uv run python tools/consolidation_metrics.py    # size and duplication metrics for docs/dev/consolidation.md
+```
 
+Opt-in groups, local only and never part of the routine path:
+
+```bash
+uv run pytest -m external_reference_data        # installed external reference data, ~16 min
+uv run pytest -m reference_benchmark            # reference-host benchmarks; the robust FCR one can hit its 1 h HiGHS limit
+uv run pytest -m licensed_gurobi                # needs a licensed Gurobi
+uv run pytest -m "live_entsoe or live_rte"      # needs ENTSO-E / RTE credentials
+```
+
+Legacy reference checks, only when touching `legacy/old_tpm`:
+
+```bash
 cd legacy/old_tpm && cargo test
 cd legacy/old_tpm && python scripts/test_battery_consistency.py
 cd legacy/old_tpm && pytest src_py/tpm/spn/test_tangent_lower_bound.py
