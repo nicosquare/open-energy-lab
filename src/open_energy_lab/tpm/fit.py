@@ -11,7 +11,7 @@ from numbers import Real
 from pathlib import Path
 from typing import Any
 
-from .artifact import FEATURE_NAME, TPMArtifact, write_tpm_model_sidecar
+from .artifact import TPMArtifact, write_tpm_model_sidecar
 from .data import TPMTrainingData, normalize_training_data
 from .domains import (
     TPMFeatureDomain,
@@ -510,7 +510,6 @@ def fit_tpm_artifact_from_rows(
 __all__ = [
     "CANONICAL_OUTPUT_MODES",
     "CANONICAL_TPM_RANDOM_SEED",
-    "FEATURE_NAME",
     "FIT_LEGACY_EVIDENCE_PATHS",
     "PIECEWISE_LEGACY_EVIDENCE_PATHS",
     "TPMArtifactBuildRequest",

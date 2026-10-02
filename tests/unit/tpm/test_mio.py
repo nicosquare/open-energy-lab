@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import copy
 import math
 
@@ -14,12 +13,10 @@ import open_energy_lab.tpm.conditional_mio as conditional_mio_module
 from open_energy_lab.planning.piecewise import build_piecewise_planning_terms
 from open_energy_lab.tpm.mio import (
     build_spn_chance_model,
-    build_spn_chance_model_from_artifact,
     build_spn_modeling_terms,
     evaluate_compiled_spflow_probability,
     infer_max_sum_terms,
 )
-from open_energy_lab.tpm.artifact import LegacyTPMArtifactVersionError
 
 
 def _feature_schema() -> list[dict[str, object]]:
@@ -100,62 +97,6 @@ def _serialized_conditional_models() -> dict[str, object]:
                 {"id": 13, "type": "sum", "children": [11, 12], "weights": [0.6, 0.4]},
             ],
         },
-    }
-
-
-def _artifact_payload(locator: str) -> dict[str, object]:
-    return {
-        "artifact_id": "tpm-artifact-mio-unit",
-        "schema_version": "v1",
-        "created_at": "2026-07-14T00:00:00Z",
-        "dataset_reference": "synthetic-dataset",
-        "feature_schema": [
-            {
-                "feature_name": "battery_capacity_kwh",
-                "feature_role": "decision",
-                "feature_type": "continuous",
-                "bounds": [0.0, 10.0],
-                "modifiable": True,
-            },
-            {
-                "feature_name": "shortfall",
-                "feature_role": "metric_target",
-                "feature_type": "continuous",
-                "bounds": [0.0, 1.0],
-                "modifiable": False,
-            },
-            {
-                "feature_name": "shortfall_exceeds_threshold",
-                "feature_role": "target",
-                "feature_type": "binary",
-                "discrete_values": [0.0, 1.0],
-                "ordering": [0.0, 1.0],
-                "modifiable": False,
-            },
-        ],
-        "target_definition": {
-            "target_name": "shortfall",
-            "event_target_name": "shortfall_exceeds_threshold",
-            "threshold_default": 0.05,
-            "supported_query_mode": "exceedance-probability",
-        },
-        "fit_configuration": {"backend_name": "spflow"},
-        "spn_payload": {
-            "locator": locator,
-            "serialization": "pickle",
-            "backend": "spflow",
-        },
-        "spn_payload_format": "pickle-path",
-        "query_configuration": {
-            "supported_output_modes": ["conditional_probability", "log_likelihood"],
-            "required_decision_features": ["battery_capacity_kwh"],
-        },
-        "approximation_metadata": {
-            "approximation_kind": "piecewise",
-            "sum_encoding_mode": "piecewise",
-            "query_numeric_tolerance": 1e-9,
-        },
-        "provenance": {},
     }
 
 
@@ -450,27 +391,3 @@ def test_build_spn_modeling_terms_builds_generic_piecewise_terms() -> None:
     assert terms.exp_curve.domain_upper_bound == pytest.approx(0.0)
     assert terms.log_curve.domain_lower_bound == pytest.approx(1.0)
     assert terms.log_curve.domain_upper_bound == pytest.approx(3.0)
-
-
-def test_legacy_fake_backend_artifact_cannot_enter_public_generic_tpm_surface(
-    tmp_path: Path,
-) -> None:
-    artifact_path = tmp_path / "artifact.json"
-    artifact_path.write_text(
-        __import__("json").dumps(
-            _artifact_payload("legacy-fake-spn-payload.pkl"),
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-
-    with pytest.raises(LegacyTPMArtifactVersionError, match=r"(?i)legacy|refit"):
-        build_spn_chance_model_from_artifact(
-            pyo,
-            artifact=artifact_path,
-            problem_id="artifact-spn-mio-unit",
-            decision_features=("battery_capacity_kwh",),
-            cost_terms={"battery_capacity_kwh": 100.0},
-            chance_limit_epsilon=0.1,
-        )

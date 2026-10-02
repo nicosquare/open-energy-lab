@@ -16,7 +16,6 @@ from typing import Any
 from .features import TPMFeatureSpec, dump_feature_schema, load_feature_schema
 from .piecewise import load_piecewise_metadata
 
-FEATURE_NAME = "009-tpm-planning"
 SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS = ("v2", "v3")
 SUPPORTED_TPM_EXECUTION_MODES = ("production", "fixture_replay")
 TPM_ARTIFACT_REQUIRED_KEYS = (
@@ -378,7 +377,6 @@ def write_tpm_model_sidecar(
 
 
 __all__ = [
-    "FEATURE_NAME",
     "LegacyTPMArtifactVersionError",
     "SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS",
     "SUPPORTED_TPM_EXECUTION_MODES",

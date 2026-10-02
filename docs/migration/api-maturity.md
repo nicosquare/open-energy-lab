@@ -204,7 +204,6 @@ from open_energy_lab.tpm import (
     UnsupportedSPFlowModuleError,
     build_piecewise_metadata,
     build_spn_chance_model,
-    build_spn_chance_model_from_artifact,
     build_spn_modeling_terms,
     compile_spflow_model_to_mio,
     detect_spflow_backend_capabilities,
@@ -224,7 +223,6 @@ from open_energy_lab.tpm import (
     require_pyomo_backend,
     require_spflow_backend,
     solve_spn_chance_model,
-    solve_spn_chance_model_from_artifact,
     unregister_spflow_backend_adapter,
 )
 ```
