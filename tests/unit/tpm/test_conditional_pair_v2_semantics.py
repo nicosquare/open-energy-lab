@@ -7,13 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from open_energy_lab.tpm.conditional import (
+from tpm.conditional import (
     CONDITIONAL_PAIR_COMPILER_VERSION,
     CONDITIONAL_PAIR_RECORD_KIND,
     CONDITIONAL_PAIR_SCHEMA_VERSION,
     load_conditional_pair,
 )
-from open_energy_lab.tpm.piecewise import (
+from tpm.piecewise import (
     CONDITIONAL_GUARD_TRANSITION_WIDTH,
     PiecewiseBreakpointPolicy,
     build_logsumexp_piecewise_spec,

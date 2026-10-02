@@ -11,7 +11,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import perf_counter
 
-from open_energy_lab.tpm import (
+from tpm import (
     TPMArtifactBuildRequest,
     TPMFitConfig,
     TPMQueryRequest,
@@ -22,7 +22,7 @@ from open_energy_lab.tpm import (
     load_tpm_artifact,
     query_tpm_artifact,
 )
-from open_energy_lab.tpm.optional_spflow import load_spflow_payload
+from tpm.optional_spflow import load_spflow_payload
 
 
 EXAMPLE_ROOT = Path(__file__).resolve().parent

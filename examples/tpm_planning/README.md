@@ -263,5 +263,5 @@ also exercises the required default HiGHS solve.
 Inspect current SPFlow capability metadata with:
 
 ```bash
-uv run python -c "from open_energy_lab.tpm import detect_spflow_backend_capabilities; import json; print(json.dumps(detect_spflow_backend_capabilities(), indent=2, sort_keys=True))"
+uv run python -c "from tpm import detect_spflow_backend_capabilities; import json; print(json.dumps(detect_spflow_backend_capabilities(), indent=2, sort_keys=True))"
 ```

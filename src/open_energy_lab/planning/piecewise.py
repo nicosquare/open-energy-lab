@@ -5,12 +5,12 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from open_energy_lab.tpm.piecewise import (
+from tpm.piecewise import (
     PiecewiseApproximationMetadata,
     load_piecewise_metadata,
 )
-from open_energy_lab.tpm.domains import TPMCompiledValidityRecord
-from open_energy_lab.tpm.mio import condition_compiled_spflow_mio
+from tpm.domains import TPMCompiledValidityRecord
+from tpm.mio import condition_compiled_spflow_mio
 
 DEFAULT_EXP_PIECEWISE_DOMAIN_FLOOR = -500.0
 CURRENT_SPFLOW_MIO_SCHEMA_VERSION = "v2"

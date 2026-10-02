@@ -6,14 +6,14 @@ from collections.abc import Mapping
 from pathlib import Path
 from time import perf_counter
 
-from open_energy_lab.tpm.artifact import TPMArtifact, load_tpm_artifact
-from open_energy_lab.tpm.fit import (
+from tpm.artifact import TPMArtifact, load_tpm_artifact
+from tpm.fit import (
     TPMArtifactBuildRequest,
     TPMFitConfig,
     fit_tpm_artifact_from_rows,
 )
-from open_energy_lab.tpm.optional_spflow import load_spflow_payload
-from open_energy_lab.tpm.query import TPMQueryRequest
+from tpm.optional_spflow import load_spflow_payload
+from tpm.query import TPMQueryRequest
 
 
 CANONICAL_SEED = 13

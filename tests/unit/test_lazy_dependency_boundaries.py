@@ -126,7 +126,7 @@ def test_package_roots_do_not_load_required_backends() -> None:
         import open_energy_lab.market
         import open_energy_lab.planning
         import open_energy_lab.simulator
-        import open_energy_lab.tpm
+        import tpm
         import open_energy_lab.visualization
         import open_energy_lab.weather
 
@@ -251,8 +251,8 @@ def test_tpm_workflow_loads_spflow_and_torch_only_at_its_boundary() -> None:
         import importlib
         import sys
 
-        import open_energy_lab.tpm
-        from open_energy_lab.tpm.optional_spflow import require_spflow_backend
+        import tpm
+        from tpm.optional_spflow import require_spflow_backend
 
         assert "spflow" not in sys.modules
         assert "torch" not in sys.modules
@@ -311,7 +311,7 @@ def test_feature_016_core_and_direct_evaluation_work_without_backend_or_notebook
 
         import open_energy_lab
         import open_energy_lab.planning
-        import open_energy_lab.tpm as tpm
+        import tpm as tpm
 
         pair = tpm.load_conditional_pair(
             "tests/fixtures/tpm/conditional_pair_max_v2.json"
@@ -348,7 +348,7 @@ def test_feature_016_spflow_boundaries_fail_clearly_without_fallback() -> None:
 
         sys.meta_path.insert(0, BlockedSPFlowFinder())
 
-        from open_energy_lab.tpm import (
+        from tpm import (
             SPFlowDependencyUnavailableError,
             TPMConditionalCompilationRequest,
             compile_conditional_mio_pair,
@@ -413,7 +413,7 @@ def test_feature_016_attachment_fails_clearly_without_pyomo() -> None:
 
         sys.meta_path.insert(0, BlockedPyomoFinder())
 
-        from open_energy_lab.tpm import (
+        from tpm import (
             SPNSolverDependencyUnavailableError,
             attach_conditional_mio_pair,
             load_conditional_pair,
@@ -511,7 +511,7 @@ def test_feature_016_notebook_execution_fails_if_notebook_runtime_is_absent() ->
         "open_energy_lab.market",
         "open_energy_lab.weather",
         "open_energy_lab.demand",
-        "open_energy_lab.tpm",
+        "tpm",
         "open_energy_lab.planning",
         "open_energy_lab.visualization",
     ),
@@ -553,18 +553,18 @@ def test_package_imports_stay_clear_of_lazy_research_stacks(module_name: str) ->
         "open_energy_lab.simulator.fcr_bid_evaluation",
         "open_energy_lab.simulator.stacked_service",
         "open_energy_lab.simulator.fcr_settlement",
-        "open_energy_lab.tpm",
-        "open_energy_lab.tpm.artifact",
-        "open_energy_lab.tpm.conditional",
-        "open_energy_lab.tpm.conditional_mio",
-        "open_energy_lab.tpm.data",
-        "open_energy_lab.tpm.domains",
-        "open_energy_lab.tpm.features",
-        "open_energy_lab.tpm.fit",
-        "open_energy_lab.tpm.mio",
-        "open_energy_lab.tpm.query",
-        "open_energy_lab.tpm.piecewise",
-        "open_energy_lab.tpm.optional_spflow",
+        "tpm",
+        "tpm.artifact",
+        "tpm.conditional",
+        "tpm.conditional_mio",
+        "tpm.data",
+        "tpm.domains",
+        "tpm.features",
+        "tpm.fit",
+        "tpm.mio",
+        "tpm.query",
+        "tpm.piecewise",
+        "tpm.optional_spflow",
         "open_energy_lab.planning",
         "open_energy_lab.planning.dataset",
         "open_energy_lab.planning.problem",
@@ -602,7 +602,7 @@ def test_categorical_public_operations_do_not_eagerly_load_training_or_solver_st
     _run_isolated_python(
         """
         import sys
-        from open_energy_lab.tpm import (
+        from tpm import (
             CategoricalMixtureConfig, build_categorical_mixture,
             initialize_categorical_mixture, categorical_mixture_step,
             save_categorical_mixture_state, load_categorical_mixture_state, load_categorical_mixture_for_inference,

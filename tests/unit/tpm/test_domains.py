@@ -8,7 +8,7 @@ import math
 
 import pytest
 
-from open_energy_lab.tpm.domains import (
+from tpm.domains import (
     TPMApproximationDomain,
     TPMCompiledValidityRecord,
     TPMFeatureDomain,

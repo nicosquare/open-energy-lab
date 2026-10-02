@@ -4,6 +4,7 @@ import re
 
 
 TARGET_PACKAGE = Path("src/open_energy_lab")
+TPM_PACKAGE = Path("packages/sp-tpm/src/tpm")
 CONTROL_PACKAGE = TARGET_PACKAGE / "control"
 FEATURE_010_MODULES = (
     TARGET_PACKAGE / "market" / "time.py",
@@ -28,16 +29,16 @@ FEATURE_012_OFFLINE_MODULES = (
     TARGET_PACKAGE / "simulator" / "fcr_settlement.py",
 )
 FEATURE_014_DOMAIN_MODULES = (
-    TARGET_PACKAGE / "tpm" / "domains.py",
-    TARGET_PACKAGE / "tpm" / "mio.py",
+    TPM_PACKAGE / "domains.py",
+    TPM_PACKAGE / "mio.py",
     TARGET_PACKAGE / "planning" / "piecewise.py",
     TARGET_PACKAGE / "planning" / "problem.py",
     TARGET_PACKAGE / "planning" / "workflow.py",
 )
 FEATURE_016_IMPORT_LIGHT_MODULES = (
-    TARGET_PACKAGE / "tpm" / "conditional.py",
-    TARGET_PACKAGE / "tpm" / "conditional_mio.py",
-    TARGET_PACKAGE / "tpm" / "query.py",
+    TPM_PACKAGE / "conditional.py",
+    TPM_PACKAGE / "conditional_mio.py",
+    TPM_PACKAGE / "query.py",
 )
 FEATURE_013_OFFLINE_MODULES = (
     TARGET_PACKAGE / "control" / "robust_fcr_bidding.py",

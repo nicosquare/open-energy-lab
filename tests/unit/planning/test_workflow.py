@@ -9,7 +9,7 @@ from open_energy_lab.planning.optional_solver import PlanningSolveConfig, Planni
 from open_energy_lab.planning.study_dataset import PlanningStudyDatasetWriter
 from open_energy_lab.planning.workflow import solve_planning_study
 from open_energy_lab.planning import fit_tpm_artifact_from_study_manifest
-from open_energy_lab.tpm.fit import TPMFitMemoryError
+from tpm.fit import TPMFitMemoryError
 
 
 def _manifest(tmp_path):

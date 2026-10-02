@@ -7,19 +7,19 @@ import math
 
 import pytest
 
-import open_energy_lab.tpm.conditional_mio as conditional_mio_module
-from open_energy_lab.tpm.artifact import load_tpm_artifact
-from open_energy_lab.tpm.conditional import (
+import tpm.conditional_mio as conditional_mio_module
+from tpm.artifact import load_tpm_artifact
+from tpm.conditional import (
     TPMBinaryDecisionMapping,
     TPMCategoricalDecisionMapping,
     TPMConditionalPair,
     TPMContinuousDecisionMapping,
 )
-from open_energy_lab.tpm.conditional_mio import (
+from tpm.conditional_mio import (
     attach_conditional_mio_pair,
     compile_conditional_mio_pair,
 )
-from open_energy_lab.tpm.mio import SPNSolverDependencyUnavailableError
+from tpm.mio import SPNSolverDependencyUnavailableError
 from tests.unit.tpm.test_conditional_pair import _pair
 
 

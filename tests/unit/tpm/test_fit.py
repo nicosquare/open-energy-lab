@@ -10,17 +10,17 @@ from types import SimpleNamespace
 import pytest
 
 from open_energy_lab.planning import load_planning_dataset
-import open_energy_lab.tpm.fit as fit_module
-import open_energy_lab.tpm.optional_spflow as optional_spflow_module
-from open_energy_lab.tpm.artifact import load_tpm_artifact
-from open_energy_lab.tpm.domains import TPMFeatureDomain
+import tpm.fit as fit_module
+import tpm.optional_spflow as optional_spflow_module
+from tpm.artifact import load_tpm_artifact
+from tpm.domains import TPMFeatureDomain
 from open_energy_lab.planning import fit_tpm_artifact, fit_tpm_artifact_from_study_manifest
-from open_energy_lab.tpm.fit import (
+from tpm.fit import (
     TPMArtifactBuildRequest,
     TPMFitConfig,
     fit_tpm_artifact_from_rows,
 )
-from open_energy_lab.tpm.optional_spflow import (
+from tpm.optional_spflow import (
     SPFlowDependencyUnavailableError,
     load_spflow_payload,
 )

@@ -6,13 +6,13 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Mapping
 
-from open_energy_lab.tpm.artifact import TPMArtifact
-from open_energy_lab.tpm.domains import TPMApproximationDomain
-from open_energy_lab.tpm.fit import TPMFitConfig
-from open_energy_lab.tpm.mio import compile_spflow_model_to_mio
-from open_energy_lab.tpm.optional_spflow import load_spflow_payload
-from open_energy_lab.tpm.query import TPMQueryRequest, query_tpm_artifact
-from open_energy_lab.tpm.query import marginalize_spflow_model
+from tpm.artifact import TPMArtifact
+from tpm.domains import TPMApproximationDomain
+from tpm.fit import TPMFitConfig
+from tpm.mio import compile_spflow_model_to_mio
+from tpm.optional_spflow import load_spflow_payload
+from tpm.query import TPMQueryRequest, query_tpm_artifact
+from tpm.query import marginalize_spflow_model
 
 from .optional_solver import PlanningSolveConfig, PlanningSolveSummary, solve_planning_problem
 from .problem import PlanningProblemDefinition, assemble_planning_problem

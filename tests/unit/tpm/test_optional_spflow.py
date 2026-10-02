@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
-import open_energy_lab.tpm.optional_spflow as optional_spflow_module
-from open_energy_lab.tpm import detect_spflow_backend_capabilities
+import tpm.optional_spflow as optional_spflow_module
+from tpm import detect_spflow_backend_capabilities
 
 
 class _FakeAdapter(SimpleNamespace):

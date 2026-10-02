@@ -395,9 +395,14 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
   MIO compiler v1 (every schema-v2 artifact, incl. the production SPFlow
   fixture), `fixture_replay` (6 fixtures, 8 test files), and the exact
   categorical lookup in `build_spn_chance_model`; revisit in B4/B5.
-- [ ] **B3 workspace package.** Move to `packages/<name>/` with its own
-  `pyproject.toml` and tests; `open_energy_lab.tpm` re-exports it for now.
-  Decisions due: package name; Python floor (`tpm_for_sp` pins 3.11).
+- [ ] **B3 workspace package** (agreed 2026-10-02: installed as `sp-tpm`,
+  imported as `tpm`; Python >= 3.11 for sp-tpm, OEL stays >= 3.12).
+  - [x] B3a move: uv workspace with `packages/sp-tpm/` (git mv keeps
+    history). Core dependencies numpy, scipy, torch, `spflow==1.1.0`;
+    Pyomo, HiGHS and Gurobi are extras (tpm_for_sp excludes Pyomo/HiGHS).
+    All `open_energy_lab.tpm` references now use `tpm`; no shim.
+  - [ ] B3b: move the tpm tests and fixtures into the package (tests that
+    need planning stay in OEL) and add a Python 3.11 CI job for them.
 - [ ] **B4 internal consolidation.** One circuit representation, one DAG
   traversal and evaluator. Split `mio.py` into compile, condition, encode, and
   solve. One checkpoint helper. Merge `product_mixture` into `native`.

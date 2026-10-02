@@ -14,10 +14,10 @@ from open_energy_lab.planning import (
     solve_planning_problem,
 )
 from open_energy_lab.planning.workflow import compile_planning_study_tpm
-from open_energy_lab.tpm import TPMApproximationDomain
-from open_energy_lab.tpm import compile_spflow_model_to_mio, load_tpm_artifact
-from open_energy_lab.tpm.optional_spflow import load_spflow_payload
-from open_energy_lab.tpm.query import marginalize_spflow_model
+from tpm import TPMApproximationDomain
+from tpm import compile_spflow_model_to_mio, load_tpm_artifact
+from tpm.optional_spflow import load_spflow_payload
+from tpm.query import marginalize_spflow_model
 from tests.integration.planning.fixture_utils import (
     TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH,
 )

@@ -18,7 +18,7 @@ from open_energy_lab.planning.workflow import (
     solve_planning_study,
 )
 from open_energy_lab.simulator.planning_study import generate_planning_study_dataset
-from open_energy_lab.tpm import TPMFitConfig, TPMQueryRequest, query_tpm_artifact
+from tpm import TPMFitConfig, TPMQueryRequest, query_tpm_artifact
 from open_energy_lab.weather import load_weather_artifact
 from tests.integration.demand.fixture_utils import FITTED_DEMAND_ARTIFACT_FIXTURE_PATH
 from tests.integration.planning.test_study_simulation import _request

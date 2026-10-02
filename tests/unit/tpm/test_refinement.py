@@ -8,7 +8,7 @@ import pytest
 
 
 def schema():
-    from open_energy_lab.tpm.artifact import load_tpm_artifact
+    from tpm.artifact import load_tpm_artifact
     path = Path(__file__).resolve().parents[2] / 'fixtures/tpm/tpm_artifact_domains_v3.json'
     specs = load_tpm_artifact(path).feature_specs
     return (specs[0], specs[3], specs[4])
@@ -38,14 +38,14 @@ def progress(**changes):
 
 
 def step(model, optimizer, rows):
-    from open_energy_lab.tpm.refinement import refine_spn_step
+    from tpm.refinement import refine_spn_step
     return refine_spn_step(model, optimizer, rows, conditioning_indices=(0,), target_index=2,
                            conditional_weight=10., gaussian_floors={0: .025, 1: .05}, gradient_clip_norm=10.)
 
 
 def test_joint_conditional_loss_matches_independent_mixture_formula_and_gradients():
     import torch
-    from open_energy_lab.tpm.refinement import spn_refinement_loss
+    from tpm.refinement import spn_refinement_loss
     model, rows = model_and_rows()
     loss, scores = spn_refinement_loss(model, rows, conditioning_indices=(0,), target_index=2, conditional_weight=10.)
     logweights = torch.log(torch.tensor([.4, .6], dtype=torch.float64))
@@ -65,7 +65,7 @@ def test_joint_conditional_loss_matches_independent_mixture_formula_and_gradient
 def test_width_projection_uses_explicit_feature_indices():
     import torch
     from spflow.modules.leaves import Normal
-    from open_energy_lab.tpm.refinement import project_spn_gaussian_widths
+    from tpm.refinement import project_spn_gaussian_widths
     model, _ = model_and_rows()
     project_spn_gaussian_widths(model, {0: .5, 1: .7})
     for leaf in model.modules():
@@ -78,8 +78,8 @@ def test_width_projection_uses_explicit_feature_indices():
 def test_export_reload_preserves_shared_subgraphs(tmp_path):
     import torch
     from spflow.modules.sums import Sum
-    from open_energy_lab.tpm.refinement import save_supported_spn_model
-    from open_energy_lab.tpm.optional_spflow import load_supported_spflow_checkpoint
+    from tpm.refinement import save_supported_spn_model
+    from tpm.optional_spflow import load_supported_spflow_checkpoint
     branch, rows = model_and_rows()
     model = Sum([branch,branch],weights=torch.tensor([.3,.7],dtype=torch.float64))
     expected = model.log_likelihood(rows).detach()
@@ -92,7 +92,7 @@ def test_export_reload_preserves_shared_subgraphs(tmp_path):
 
 def test_safe_cpu_checkpoint_resume_preserves_optimizer_cursor_and_next_update(tmp_path):
     import torch
-    from open_energy_lab.tpm.refinement import save_spn_refinement_state, load_spn_refinement_state
+    from tpm.refinement import save_spn_refinement_state, load_spn_refinement_state
     model, rows = model_and_rows()
     optimizer = torch.optim.Adam(model.parameters(), lr=.01, foreach=False)
     step(model, optimizer, rows)
@@ -121,7 +121,7 @@ def test_safe_cpu_checkpoint_resume_preserves_optimizer_cursor_and_next_update(t
 
 def test_checkpoint_rejects_unknown_classes_and_malformed_state(tmp_path):
     import torch
-    from open_energy_lab.tpm.refinement import save_spn_refinement_state, load_spn_refinement_state
+    from tpm.refinement import save_spn_refinement_state, load_spn_refinement_state
     path = tmp_path / 'unsafe.pt'
     torch.save({'model': torch.nn.Linear(3, 1)}, path)
     with torch.serialization.safe_globals([torch.nn.Linear]):
@@ -146,7 +146,7 @@ def test_checkpoint_rejects_unknown_classes_and_malformed_state(tmp_path):
 
 def test_supported_model_validation_rejects_missing_scope_and_nonfinite_parameters():
     import torch
-    from open_energy_lab.tpm.refinement import validate_refinement_spn
+    from tpm.refinement import validate_refinement_spn
     model, _ = model_and_rows()
     result = validate_refinement_spn(model, feature_count=3)
     assert abs(result['all_marginalized_log_mass']) <= 1e-8
@@ -157,8 +157,8 @@ def test_supported_model_validation_rejects_missing_scope_and_nonfinite_paramete
 
 def test_bounded_prometheus_uses_typed_schema_and_reports_missing_label(tmp_path):
     import torch
-    from open_energy_lab.tpm.fit import learn_bounded_prometheus
-    from open_energy_lab.tpm import save_spn_refinement_state, load_spn_refinement_state
+    from tpm.fit import learn_bounded_prometheus
+    from tpm import save_spn_refinement_state, load_spn_refinement_state
     generator = torch.Generator().manual_seed(11)
     rows = torch.rand((48, 3), generator=generator, dtype=torch.float64)
     rows[:, 2] = 0
@@ -182,7 +182,7 @@ def test_bounded_prometheus_uses_typed_schema_and_reports_missing_label(tmp_path
 
 def test_conditional_queries_reject_continuous_target_and_ignore_uncertainty_values():
     import torch
-    from open_energy_lab.tpm import spn_binary_conditional_logs
+    from tpm import spn_binary_conditional_logs
     model, rows = model_and_rows()
     before = spn_binary_conditional_logs(model, rows, conditioning_indices=(0,), target_index=2)
     rows[:, 1] = 1e6
@@ -194,7 +194,7 @@ def test_conditional_queries_reject_continuous_target_and_ignore_uncertainty_val
 
 def test_structure_size_and_work_exhaustion_have_no_fallback(monkeypatch):
     import spflow.learn
-    from open_energy_lab.tpm.fit import learn_bounded_prometheus
+    from tpm.fit import learn_bounded_prometheus
     model, rows = model_and_rows()
     calls = []
     def learner(*args, **kwargs): calls.append(1); return model
@@ -218,7 +218,7 @@ def test_public_refinement_imports_do_not_load_scientific_backends():
     environment = dict(os.environ, PYTHONPATH=str(Path(__file__).resolve().parents[3] / 'src'))
     result = subprocess.run([sys.executable, '-c', '''
 import sys
-from open_energy_lab.tpm import (learn_bounded_prometheus, validate_refinement_spn,
+from tpm import (learn_bounded_prometheus, validate_refinement_spn,
     project_spn_gaussian_widths, spn_binary_conditional_logs, spn_refinement_loss,
     refine_spn_step, save_spn_refinement_state, load_spn_refinement_state)
 assert not {'torch', 'spflow', 'pyomo', 'gurobipy'} & set(sys.modules)
@@ -229,10 +229,10 @@ assert not {'torch', 'spflow', 'pyomo', 'gurobipy'} & set(sys.modules)
 def test_safe_learned_model_sidecar_reaches_public_integer_compiler(tmp_path, monkeypatch):
     import json
     from dataclasses import replace
-    from open_energy_lab.tpm import (save_supported_spn_model, compile_conditional_mio_pair,
+    from tpm import (save_supported_spn_model, compile_conditional_mio_pair,
                                      TPMConditionalCompilationRequest)
-    from open_energy_lab.tpm.artifact import load_tpm_artifact
-    import open_energy_lab.tpm.optional_spflow as optional
+    from tpm.artifact import load_tpm_artifact
+    import tpm.optional_spflow as optional
     from tests.unit.tpm.test_conditional_pair import _encoding, _numerical_policy
 
     model, _ = model_and_rows()

@@ -36,7 +36,7 @@ from open_energy_lab.simulator.demand import (
 from open_energy_lab.simulator.load import LoadComponent
 from open_energy_lab.simulator.stochastic_demand import DemandFamilyEvaluationRequest
 from open_energy_lab.simulator.weather import weather_component_from_sampled_trace
-from open_energy_lab.tpm import (
+from tpm import (
     TPMFitConfig,
     TPMQueryRequest,
     compile_spflow_model_to_mio,
@@ -45,7 +45,7 @@ from open_energy_lab.tpm import (
     query_tpm_artifact,
 )
 from open_energy_lab.planning import fit_tpm_artifact
-from open_energy_lab.tpm.optional_spflow import load_spflow_payload
+from tpm.optional_spflow import load_spflow_payload
 from open_energy_lab.weather import (
     WeatherSamplingRequest,
     load_weather_artifact,

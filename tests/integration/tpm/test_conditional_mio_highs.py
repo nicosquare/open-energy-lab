@@ -6,8 +6,8 @@ import math
 
 import pytest
 
-from open_energy_lab.tpm.artifact import load_tpm_artifact
-from open_energy_lab.tpm.conditional import (
+from tpm.artifact import load_tpm_artifact
+from tpm.conditional import (
     TPMBinaryDecisionMapping,
     TPMCategoricalDecisionMapping,
     TPMConditionalCompilationRequest,
@@ -17,7 +17,7 @@ from open_energy_lab.tpm.conditional import (
     load_conditional_pair,
     publish_conditional_pair,
 )
-from open_energy_lab.tpm.conditional_mio import (
+from tpm.conditional_mio import (
     attach_conditional_mio_pair,
     build_embedding_parity_evidence,
     compile_conditional_mio_pair,
@@ -25,7 +25,7 @@ from open_energy_lab.tpm.conditional_mio import (
     initialize_conditional_mio_attachment,
     inspect_conditional_mio_attachment,
 )
-from open_energy_lab.tpm.query import evaluate_native_conditional_pair
+from tpm.query import evaluate_native_conditional_pair
 from tests.integration.tpm.conditional_mio_test_support import (
     CONDITIONAL_MAX_PAIR_PATH,
     CONDITIONAL_MIO_ARTIFACT_PATH,
@@ -385,8 +385,8 @@ def test_exported_native_mixture_compiles_and_attaches_to_integer_orders(tmp_pat
     from dataclasses import replace
 
     import pyomo.environ as pyo
-    from open_energy_lab.tpm.artifact import TPMArtifact, write_tpm_model_sidecar
-    from open_energy_lab.tpm.native import TPMNativeMixtureConfig, _build_mixture, export_native_mixture_scalar
+    from tpm.artifact import TPMArtifact, write_tpm_model_sidecar
+    from tpm.native import TPMNativeMixtureConfig, _build_mixture, export_native_mixture_scalar
     from tests.unit.tpm.test_conditional_mio import _compilation_request, _encoding, TPM_FIXTURE_DIRECTORY
 
     template = load_tpm_artifact(TPM_FIXTURE_DIRECTORY / "tpm_artifact_domains_v3.json")

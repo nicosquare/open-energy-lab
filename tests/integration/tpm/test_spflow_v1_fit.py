@@ -8,7 +8,7 @@ from numbers import Real
 
 import pytest
 
-import open_energy_lab.tpm.fit as fit_module
+import tpm.fit as fit_module
 from tests.integration.tpm.spflow_v1_test_support import (
     CANONICAL_SEED,
     FIT_BUDGET_SECONDS,

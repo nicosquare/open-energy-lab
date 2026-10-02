@@ -4,7 +4,7 @@ import copy
 import pytest
 import torch
 
-from open_energy_lab.tpm.tensorized import enable_linsum_contraction, lower_linsum_einet
+from tpm.tensorized import enable_linsum_contraction, lower_linsum_einet
 
 
 @pytest.fixture(autouse=True)
@@ -81,7 +81,7 @@ def test_scalar_export_does_not_recursively_revisit_shared_modules(monkeypatch):
 
 
 def test_device_movement_visits_each_shared_module_once(monkeypatch):
-    from open_energy_lab.tpm.refinement import _move_modules_once
+    from tpm.refinement import _move_modules_once
     model = lower_linsum_einet(make_model())
     before = model.log_likelihood(evidence()).detach()
     visited = []
@@ -97,7 +97,7 @@ def test_device_movement_visits_each_shared_module_once(monkeypatch):
 
 def test_scalar_marginalization_preserves_shared_graph_and_probabilities(monkeypatch):
     from spflow.modules.sums import Sum
-    from open_energy_lab.tpm.query import marginalize_spflow_model
+    from tpm.query import marginalize_spflow_model
     model = lower_linsum_einet(make_model())
     rows = evidence()
     rows[:,2:4] = float('nan')
@@ -118,7 +118,7 @@ def test_scalar_marginalization_preserves_shared_graph_and_probabilities(monkeyp
 
 
 def test_conditioned_compaction_keeps_shared_nodes_once_and_rejects_cycles():
-    from open_energy_lab.tpm.mio import _compact_conditioned_graph
+    from tpm.mio import _compact_conditioned_graph
     nodes=[dict(id=i,type='constant',value=0.) for i in range(20)]
     nodes.extend(dict(id=20+i,type='product',children=list(range(20))) for i in range(500))
     nodes.append(dict(id=520,type='sum',children=list(range(20,520))))

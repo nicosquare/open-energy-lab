@@ -417,9 +417,9 @@ Run the complete relevant regression set after those focused checks:
 uv run pytest tests/unit/control tests/unit/simulator tests/unit/weather tests/unit/demand tests/integration/weather tests/integration/demand tests/integration/simulator
 uv run pytest tests/unit/planning tests/unit/tpm tests/integration/planning tests/integration/tpm
 uv run pytest tests/unit/test_ci_workflow.py tests/unit/test_lazy_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py
-uv run python -c "import open_energy_lab; import open_energy_lab.simulator; import open_energy_lab.tpm; import open_energy_lab.planning"
-uv run python -c "import open_energy_lab; import open_energy_lab.weather; import open_energy_lab.demand; import open_energy_lab.simulator; import open_energy_lab.tpm; import open_energy_lab.planning"
-rg "from legacy|import legacy" src/open_energy_lab/tpm src/open_energy_lab/planning src/open_energy_lab/simulator tests/unit/planning tests/unit/tpm tests/integration/planning tests/integration/tpm docs/migration
+uv run python -c "import open_energy_lab; import open_energy_lab.simulator; import tpm; import open_energy_lab.planning"
+uv run python -c "import open_energy_lab; import open_energy_lab.weather; import open_energy_lab.demand; import open_energy_lab.simulator; import tpm; import open_energy_lab.planning"
+rg "from legacy|import legacy" packages/sp-tpm/src/tpm src/open_energy_lab/planning src/open_energy_lab/simulator tests/unit/planning tests/unit/tpm tests/integration/planning tests/integration/tpm docs/migration
 ```
 
 ### Recorded complete regression — 2026-08-19

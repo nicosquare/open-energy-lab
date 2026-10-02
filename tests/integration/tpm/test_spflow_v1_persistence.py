@@ -6,7 +6,7 @@ import hashlib
 
 import pytest
 
-from open_energy_lab.tpm.artifact import (
+from tpm.artifact import (
     LegacyTPMArtifactVersionError,
     TPMArtifactIntegrityError,
     load_tpm_artifact,

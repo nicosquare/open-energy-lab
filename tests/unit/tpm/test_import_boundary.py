@@ -10,18 +10,18 @@ from pathlib import Path
 import pytest
 
 
-TPM_PACKAGE = "open_energy_lab.tpm"
+TPM_PACKAGE = "tpm"
 PLANNED_TPM_SUBMODULES = (
-    "open_energy_lab.tpm.artifact",
-    "open_energy_lab.tpm.conditional",
-    "open_energy_lab.tpm.conditional_mio",
-    "open_energy_lab.tpm.data",
-    "open_energy_lab.tpm.domains",
-    "open_energy_lab.tpm.features",
-    "open_energy_lab.tpm.fit",
-    "open_energy_lab.tpm.query",
-    "open_energy_lab.tpm.piecewise",
-    "open_energy_lab.tpm.optional_spflow",
+    "tpm.artifact",
+    "tpm.conditional",
+    "tpm.conditional_mio",
+    "tpm.data",
+    "tpm.domains",
+    "tpm.features",
+    "tpm.fit",
+    "tpm.query",
+    "tpm.piecewise",
+    "tpm.optional_spflow",
 )
 HEAVY_TPM_BACKENDS = {"spflow", "torch", "pyomo", "highspy"}
 
@@ -57,7 +57,8 @@ def test_tpm_package_root_reserves_a_lightweight_public_boundary() -> None:
     module_file = Path(module.__file__).resolve()
     assert module_file.name == "__init__.py"
     assert module_file.parent.name == "tpm"
-    assert module_file.parent.parent.name == "open_energy_lab"
+    assert module_file.parent.parent.name == "src"
+    assert module_file.parent.parent.parent.name == "sp-tpm"
 
 
 def test_tpm_root_import_defers_planned_submodule_loading() -> None:
@@ -88,9 +89,9 @@ def test_declared_domain_exports_load_only_the_import_light_domain_module() -> N
         package.TPMTrainingSupport,
     )
 
-    assert all(export.__module__ == "open_energy_lab.tpm.domains" for export in exported_types)
-    assert "open_energy_lab.tpm.domains" in sys.modules
-    assert "open_energy_lab.tpm.features" not in sys.modules
+    assert all(export.__module__ == "tpm.domains" for export in exported_types)
+    assert "tpm.domains" in sys.modules
+    assert "tpm.features" not in sys.modules
     newly_loaded = set(sys.modules) - modules_before
     assert not any(
         module_name == "pyomo" or module_name.startswith("pyomo.")
@@ -132,7 +133,7 @@ def test_conditional_exports_resolve_without_loading_heavy_backends() -> None:
     )
 
     assert all(
-        export.__module__.startswith("open_energy_lab.tpm.") for export in exports
+        export.__module__.startswith("tpm.") for export in exports
     )
     newly_loaded_roots = {
         module_name.split(".", 1)[0]

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-import open_energy_lab.tpm.mio as mio_module
-from open_energy_lab.tpm import load_tpm_artifact
-from open_energy_lab.tpm.domains import TPMApproximationDomain
-from open_energy_lab.tpm.features import TPMFeatureSpec
+import tpm.mio as mio_module
+from tpm import load_tpm_artifact
+from tpm.domains import TPMApproximationDomain
+from tpm.features import TPMFeatureSpec
 
 
 FEATURE_SCHEMA = (

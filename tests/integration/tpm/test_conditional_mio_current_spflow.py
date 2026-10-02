@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from open_energy_lab.tpm.artifact import load_tpm_artifact
-from open_energy_lab.tpm.conditional import (
+from tpm.artifact import load_tpm_artifact
+from tpm.conditional import (
     TPMBinaryDecisionMapping,
     TPMCategoricalDecisionMapping,
     TPMConditionalCompilationRequest,
@@ -18,24 +18,24 @@ from open_energy_lab.tpm.conditional import (
     load_conditional_pair,
     publish_conditional_pair,
 )
-from open_energy_lab.tpm.conditional_mio import (
+from tpm.conditional_mio import (
     attach_conditional_mio_pair,
     build_compiler_fidelity_evidence,
     compile_conditional_mio_pair,
     evaluate_conditional_mio_pair,
 )
-from open_energy_lab.tpm.domains import TPMFeatureDomain
-from open_energy_lab.tpm.fit import (
+from tpm.domains import TPMFeatureDomain
+from tpm.fit import (
     TPMArtifactBuildRequest,
     TPMFitConfig,
     fit_tpm_artifact_from_rows,
 )
-from open_energy_lab.tpm.piecewise import (
+from tpm.piecewise import (
     PiecewiseBreakpointPolicy,
     build_logsumexp_piecewise_spec,
     resolve_guarded_exponential_spec,
 )
-from open_energy_lab.tpm.query import evaluate_native_conditional_pair
+from tpm.query import evaluate_native_conditional_pair
 from tests.integration.tpm.conditional_mio_test_support import (
     CONDITIONAL_MIO_SOURCE_PATH,
     file_sha256,

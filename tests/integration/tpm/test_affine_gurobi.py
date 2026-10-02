@@ -4,8 +4,8 @@ from itertools import product
 import math
 import numpy as np
 import pytest
-from open_energy_lab.tpm.affine import compile_binary_mixture_log_ratio,evaluate_binary_log_ratio
-from open_energy_lab.tpm.affine_gurobi import attach_affine_log_ratio,check_affine_sos_assignments
+from tpm.affine import compile_binary_mixture_log_ratio,evaluate_binary_log_ratio
+from tpm.affine_gurobi import attach_affine_log_ratio,check_affine_sos_assignments
 
 
 def test_generic_attachment_shares_decisions_preserves_objective_and_all_assignments():

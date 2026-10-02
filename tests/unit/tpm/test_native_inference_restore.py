@@ -9,7 +9,7 @@ from tests.unit.tpm.test_native_initialization import fitting_rows, initialize, 
 @pytest.fixture
 def checkpoint():
     import torch
-    from open_energy_lab.tpm import native
+    from tpm import native
 
     config = make_config(native)
     model, _ = initialize(native,fitting_rows(),config)
@@ -19,8 +19,8 @@ def checkpoint():
 
 def test_inference_restore_ignores_training_backend_preserves_density_and_state(checkpoint):
     import torch
-    import open_energy_lab.tpm as public
-    from open_energy_lab.tpm import native
+    import tpm as public
+    from tpm import native
 
     model,config,state = checkpoint
     # An opaque foreign-backend training RNG is deliberately unusable on CPU.
@@ -53,7 +53,7 @@ def test_inference_restore_ignores_training_backend_preserves_density_and_state(
 
 def test_training_restore_still_restores_its_local_rng(checkpoint):
     import torch
-    from open_energy_lab.tpm import native
+    from tpm import native
     model,config,state = checkpoint
     restored,optimizer = native.restore_native_training_state(state,config=config,device='cpu')
     assert torch.equal(model._native_torch_generator.get_state(),restored._native_torch_generator.get_state())
@@ -65,7 +65,7 @@ def test_training_restore_still_restores_its_local_rng(checkpoint):
 @pytest.mark.parametrize('damage',['nonfinite','shape','missing','floor','config'])
 def test_inference_rejects_incompatible_model_state(checkpoint,damage):
     import torch
-    from open_energy_lab.tpm import native
+    from tpm import native
     _model,config,state = checkpoint
     key = next(iter(state['model_state']))
     if damage == 'nonfinite':

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-import open_energy_lab.tpm.mio as mio_module
-from open_energy_lab.tpm.features import TPMFeatureSpec
+import tpm.mio as mio_module
+from tpm.features import TPMFeatureSpec
 
 
 PARITY_ABSOLUTE_TOLERANCE = 1e-6

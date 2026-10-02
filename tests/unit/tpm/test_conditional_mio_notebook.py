@@ -97,10 +97,10 @@ def test_notebook_uses_public_fixture_backed_composition_for_all_mapping_forms()
         for node in ast.walk(tree)
         if isinstance(node, ast.ImportFrom)
         and node.module
-        and node.module.startswith("open_energy_lab")
+        and node.module.split(".")[0] in {"open_energy_lab", "tpm"}
     ]
     assert oel_imports
-    assert {node.module for node in oel_imports} == {"open_energy_lab.tpm"}
+    assert {node.module for node in oel_imports} == {"tpm"}
 
 
 def test_notebook_remains_thin_without_fitting_compilation_or_enumeration() -> None:

@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import pytest
-import open_energy_lab.tpm.mio as mio_module
+import tpm.mio as mio_module
 
-from open_energy_lab.tpm import (
+from tpm import (
     TPMApproximationDomain,
     build_compiled_spflow_decision_link_model,
     compile_spflow_model_to_mio,
     load_tpm_artifact,
 )
-from open_energy_lab.tpm.optional_spflow import load_spflow_payload
-from open_energy_lab.tpm.query import marginalize_spflow_model
+from tpm.optional_spflow import load_spflow_payload
+from tpm.query import marginalize_spflow_model
 
 
 @pytest.fixture(scope="module")
