@@ -484,7 +484,7 @@ def test_feature_016_notebook_execution_fails_if_notebook_runtime_is_absent() ->
 
         sys.meta_path.insert(0, BlockedNotebookFinder())
 
-        from tests.integration.tpm.test_conditional_mio_notebook_execution import (
+        from tests.integration.planning.test_conditional_mio_notebook_execution import (
             test_conditional_mio_notebook_executes_offline_without_mutating_evidence,
         )
 

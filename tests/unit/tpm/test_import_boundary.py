@@ -31,18 +31,11 @@ def restore_tpm_modules():
     """Import-isolation probes must not invalidate classes collected elsewhere."""
     saved = {name: module for name, module in sys.modules.items()
              if name == TPM_PACKAGE or name.startswith(TPM_PACKAGE + ".")}
-    parent = importlib.import_module("open_energy_lab")
-    missing = object()
-    old_attribute = getattr(parent, "tpm", missing)
     yield
     for name in list(sys.modules):
         if name == TPM_PACKAGE or name.startswith(TPM_PACKAGE + "."):
             del sys.modules[name]
     sys.modules.update(saved)
-    if old_attribute is missing:
-        parent.__dict__.pop("tpm", None)
-    else:
-        parent.tpm = old_attribute
 
 
 def test_tpm_package_root_reserves_a_lightweight_public_boundary() -> None:

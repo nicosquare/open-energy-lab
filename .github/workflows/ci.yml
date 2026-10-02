@@ -88,3 +88,29 @@ jobs:
         run: uv run --locked --no-sync python tools/verify_backends.py --notebook
       - name: Execute notebooks offline
         run: uv run --offline --locked --no-sync pytest -m "notebook and ${OPT_IN}"
+
+  sp-tpm:
+    name: sp-tpm standalone (Python 3.11)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.5"
+          enable-cache: true
+          cache-dependency-glob: packages/sp-tpm/pyproject.toml
+          cache-suffix: sp-tpm-py3.11
+      # The workspace lock targets Python >=3.12, so sp-tpm is installed on its
+      # own here, and pythonpath drops src/ so open_energy_lab is not importable.
+      - name: Install sp-tpm without open_energy_lab
+        run: |
+          uv venv -p 3.11 .venv-sp-tpm
+          uv pip install -p .venv-sp-tpm -e "packages/sp-tpm[highs]" pytest pyyaml
+      - name: Verify required backends
+        run: .venv-sp-tpm/bin/python tools/verify_backends.py
+      - name: Run tpm tests
+        run: .venv-sp-tpm/bin/python -m pytest -o pythonpath=. tests/unit/tpm tests/integration/tpm -m "${OPT_IN}"

@@ -52,8 +52,8 @@ uv run --locked --no-sync python \
 uv run --locked --no-sync pytest \
   tests/unit/planning tests/unit/tpm \
   tests/integration/planning tests/integration/tpm \
-  --ignore=tests/unit/tpm/test_declared_domains_notebook.py \
-  --ignore=tests/integration/tpm/test_declared_domains_notebook_execution.py \
+  --ignore=tests/unit/planning/test_declared_domains_notebook.py \
+  --ignore=tests/integration/planning/test_declared_domains_notebook_execution.py \
   --ignore=tests/integration/tpm/test_mio_solver.py \
   --ignore=tests/integration/tpm/test_real_spflow_backend.py \
   --ignore=tests/integration/planning/test_gurobi_solver.py \
@@ -74,8 +74,8 @@ separately only when the optional notebook dependency group is installed:
 uv sync --locked --group dev --group notebook
 
 uv run --locked --no-sync pytest \
-  tests/unit/tpm/test_declared_domains_notebook.py \
-  tests/integration/tpm/test_declared_domains_notebook_execution.py
+  tests/unit/planning/test_declared_domains_notebook.py \
+  tests/integration/planning/test_declared_domains_notebook_execution.py
 ```
 
 These checks keep the source notebook output-free, execute it through a real local kernel with
