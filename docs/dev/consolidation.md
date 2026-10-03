@@ -412,7 +412,7 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
     Python 3.11, sp-tpm[highs] only, `src/` off the path (583 passed,
     1 Gurobi skip). Tests stay in the repo-level `tests/` tree; moving them
     under `packages/sp-tpm/` can wait for B6.
-- [ ] **B4 internal consolidation** (scope agreed 2026-10-03, three PRs). The
+- [x] **B4 internal consolidation** (scope agreed 2026-10-03, three PRs). The
   three circuit evaluators keep their own node maths (probability floors and
   log-sum-exp vs max vs piecewise differ), so only the traversal is shared.
   Merging `product_mixture` into `native` moves to B5/B6: tpm_for_sp's
@@ -441,8 +441,22 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
     `src/open_energy_lab/tpm` paths in `docs/migration` fixed. src +137
     lines (imports, docstrings, `__init__`). `git blame -C -C` follows the
     moved code.
-  - [ ] B4c one memoized DAG traversal for the evaluators, the graph
-    compactor and the attachment initializer.
+  - [x] B4c one memoized DAG traversal. New `tpm/_graph.py`
+    (`memoized_acyclic`) holds the memo cache, cycle detection and
+    missing-node check that 8 recursive walks wrote out by hand: the three
+    evaluators (compiled MIO, serialized categorical SPN, conditional
+    circuit), the conditioning rewrite, the graph compactor, circuit
+    validation, attachment bounds and the attachment initializer. Each node
+    function keeps its body and still recurses through `visit`, so visiting
+    order, laziness, Pyomo initialization order and error order are
+    unchanged. src +9 lines: the gain is one tested place for the
+    bookkeeping, not size; the mapping's -80 estimate assumed a post-order
+    rewrite, which would have changed error order. Evidence: every
+    traversal's return value (floats exactly; conditioned graphs as root and
+    nodes, since their provenance block varies run to run) and every raised
+    message recorded per test on main and on the branch, 1,741 calls in 151
+    tpm and planning tests, 13 of them errors: all identical apart from the
+    deliberate publication race.
 - [ ] **B5 public API and style.** Lay out `schema/`, `learn/`, `compile/`,
   `embed/` (pyomo, gurobi), and `evaluate/`. Make public the private names
   `tpm_for_sp` relies on (`_stabilize_leaf_parameters`,
