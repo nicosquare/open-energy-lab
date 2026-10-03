@@ -276,9 +276,8 @@ def categorical_mixture_step(model, optimizer, rows, *, microbatch, gradient_cli
 def save_categorical_mixture_state(path, *, model, optimizer, generator, epoch_generator_state,
                                    progress, best_state, context):
     """Atomic weights-only full continuation, without serializing live classes."""
-    import os
-    import tempfile
     import torch
+    from ._io import atomic_write
     from .native import _copy_native_state
     from .refinement import (_finite_metadata, _validate_progress, _validate_optimizer,
                              _validate_best, _validate_optimizer_cursor)
@@ -294,13 +293,7 @@ def save_categorical_mixture_state(path, *, model, optimizer, generator, epoch_g
         context=_finite_metadata(context),generator_state=generator.get_state(),
         epoch_generator_state=epoch_generator_state,device_type=model.mix.device.type,
         torch_version=str(torch.__version__)))
-    path=Path(path);path.parent.mkdir(parents=True,exist_ok=True);temporary=None
-    try:
-        with tempfile.NamedTemporaryFile(dir=path.parent,prefix='.'+path.name,suffix='.tmp',delete=False) as stream:
-            temporary=Path(stream.name);torch.save(payload,stream);stream.flush();os.fsync(stream.fileno())
-        os.replace(temporary,path)
-    finally:
-        if temporary is not None:temporary.unlink(missing_ok=True)
+    atomic_write(Path(path),lambda stream:torch.save(payload,stream))
 
 
 def _read_categorical_mixture_state(path, expected_config, expected_context):

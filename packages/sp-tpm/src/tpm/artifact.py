@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import pickle
-import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from ._io import atomic_write_bytes
 from .features import TPMFeatureSpec, dump_feature_schema, load_feature_schema
 from .piecewise import load_piecewise_metadata
 
@@ -161,7 +160,7 @@ class TPMArtifact:
         """Atomically persist the artifact as human-inspectable JSON."""
 
         output_path = Path(path)
-        _atomic_write_bytes(
+        atomic_write_bytes(
             output_path,
             (json.dumps(self.to_dict(), indent=2) + "\n").encode("utf-8"),
         )
@@ -360,7 +359,7 @@ def write_tpm_sidecar(
         raise TypeError("TPM sidecar payload must be bytes-like")
     normalized_payload = bytes(payload)
     output_path = Path(path)
-    _atomic_write_bytes(output_path, normalized_payload)
+    atomic_write_bytes(output_path, normalized_payload)
     return output_path, hashlib.sha256(normalized_payload).hexdigest()
 
 
@@ -475,25 +474,6 @@ def _verify_sidecar_integrity(artifact: TPMArtifact) -> None:
             f"{artifact.payload_locator!r}: expected {artifact.payload_hash}, "
             f"got {actual_hash}"
         )
-
-
-def _atomic_write_bytes(path: Path, payload: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary_name = tempfile.mkstemp(
-        dir=path.parent,
-        prefix=f".{path.name}.",
-        suffix=".tmp",
-    )
-    temporary_path = Path(temporary_name)
-    try:
-        with os.fdopen(descriptor, "wb") as temporary_file:
-            temporary_file.write(payload)
-            temporary_file.flush()
-            os.fsync(temporary_file.fileno())
-        os.replace(temporary_path, path)
-    except BaseException:
-        temporary_path.unlink(missing_ok=True)
-        raise
 
 
 def _mapping(value: object, *, field_name: str) -> dict[str, object]:

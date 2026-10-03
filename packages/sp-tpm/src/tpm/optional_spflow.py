@@ -600,7 +600,7 @@ __all__ = [
 def _resolved_payload_path(payload_path: str | Path | None) -> Path:
     if payload_path is not None:
         return Path(payload_path)
-    temp_dir = Path(tempfile.mkdtemp(prefix="open-energy-lab-tpm-"))
+    temp_dir = Path(tempfile.mkdtemp(prefix="tpm-"))
     return temp_dir / "spn_payload.pkl"
 
 

@@ -53,7 +53,7 @@ def test_highs_solves_physical_to_model_coordinate_links(
         compiled_payload=compiled_x_payload,
         decision_features=("x",),
     )
-    decision = model._open_energy_lab_decision_variables["x"]
+    decision = model._tpm_decision_variables["x"]
     decision["physical_var"].fix(physical_value)
 
     solver = pyo.SolverFactory("highs")
@@ -76,7 +76,7 @@ def test_highs_reports_outside_physical_value_infeasible(compiled_x_payload) -> 
         compiled_payload=compiled_x_payload,
         decision_features=("x",),
     )
-    model._open_energy_lab_decision_variables["x"]["physical_var"].fix(59.0)
+    model._tpm_decision_variables["x"]["physical_var"].fix(59.0)
 
     solver = pyo.SolverFactory("highs")
     solver.options["threads"] = 1
@@ -95,7 +95,7 @@ def test_declared_binary_order_maps_solver_states_back_to_caller_labels(
         compiled_payload=compiled_x_payload,
         decision_features=("activation",),
     )
-    decision = model._open_energy_lab_decision_variables["activation"]
+    decision = model._tpm_decision_variables["activation"]
     feature_spec = {
         spec.feature_name: spec
         for spec in load_tpm_artifact(

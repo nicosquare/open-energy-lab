@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
@@ -12,6 +11,7 @@ from itertools import product as cartesian_product
 from pathlib import Path
 from typing import Any
 
+from ._io import canonical_json_bytes
 from .artifact import TPMArtifact, load_tpm_artifact
 from .domains import (
     TPMApproximationDomain,
@@ -25,6 +25,7 @@ from .optional_spflow import (
 )
 from .piecewise import build_histogram_piecewise_points
 from .piecewise import guarded_exponential_points
+from .piecewise import interpolate_within_breakpoints
 from .piecewise import load_piecewise_metadata
 
 
@@ -314,18 +315,7 @@ def condition_compiled_spflow_mio(
         "feature_schema": [dict(spec) for spec in feature_schema],
         "fitted_artifact": dict(compiled.get("fitted_artifact", {})),
     }
-    source_digest = hashlib.sha256(
-        (
-            json.dumps(
-                source_payload,
-                allow_nan=False,
-                ensure_ascii=False,
-                separators=(",", ":"),
-                sort_keys=True,
-            )
-            + "\n"
-        ).encode("utf-8")
-    ).hexdigest()
+    source_digest = hashlib.sha256(canonical_json_bytes(source_payload)).hexdigest()
     marginalized = [
         name for name in feature_names if name not in retained and name != event_target
     ]
@@ -1660,7 +1650,7 @@ def _evaluate_normal_leaf(
                 f"normalized evidence for scope {feature_index} must be within "
                 f"[{x_values[0]}, {x_values[-1]}]"
             )
-        log_likelihood += _linear_interpolate(point, x_values=x_values, y_values=y_values)
+        log_likelihood += interpolate_within_breakpoints(point, x_values=x_values, y_values=y_values)
     return log_likelihood
 
 
@@ -1685,26 +1675,6 @@ def _evaluate_discrete_leaf(
             )
         result += probabilities[category]
     return result
-
-
-def _linear_interpolate(
-    value: float,
-    *,
-    x_values: Sequence[float],
-    y_values: Sequence[float],
-) -> float:
-    if value == x_values[-1]:
-        return float(y_values[-1])
-    for left_x, right_x, left_y, right_y in zip(
-        x_values,
-        x_values[1:],
-        y_values,
-        y_values[1:],
-    ):
-        if left_x <= value <= right_x:
-            ratio = (value - left_x) / (right_x - left_x)
-            return float(left_y) + ratio * (float(right_y) - float(left_y))
-    raise ValueError("interpolation value is outside the breakpoint domain")
 
 
 @dataclass(frozen=True, slots=True)
@@ -1807,9 +1777,9 @@ def build_spn_chance_model(
 
     model = backend.ConcreteModel(name=f"{problem_id}-spn-mio")
     model.decision_features = backend.Set(initialize=decision_features, ordered=True)
-    model._open_energy_lab_feature_by_name = feature_by_name
-    model._open_energy_lab_decision_variables = {}
-    model._open_energy_lab_decision_decoders = {}
+    model._tpm_feature_by_name = feature_by_name
+    model._tpm_decision_variables = {}
+    model._tpm_decision_decoders = {}
 
     total_cost = 0.0
     resolved_option_costs = dict(option_costs or {})
@@ -1831,8 +1801,8 @@ def build_spn_chance_model(
             option_costs=per_option_costs,
             compiled_validity=compiled_validity_by_name.get(feature_name),
         )
-        model._open_energy_lab_decision_variables[feature_name] = decision_payload
-        model._open_energy_lab_decision_decoders[feature_name] = _decision_decoder(feature_spec)
+        model._tpm_decision_variables[feature_name] = decision_payload
+        model._tpm_decision_decoders[feature_name] = _decision_decoder(feature_spec)
         total_cost += coefficient * decision_payload["cost_expression"]
 
     if _supports_exact_categorical_lookup(
@@ -1846,7 +1816,7 @@ def build_spn_chance_model(
             model,
             decision_features=decision_features,
             feature_by_name=feature_by_name,
-            decision_variables=model._open_energy_lab_decision_variables,
+            decision_variables=model._tpm_decision_variables,
             numerator_model=numerator_model,
             denominator_model=denominator_model,
             total_cost=total_cost,
@@ -1865,7 +1835,7 @@ def build_spn_chance_model(
         model=model,
         spn_model=numerator_model,
         feature_by_name=feature_by_name,
-        decision_variables=model._open_energy_lab_decision_variables,
+        decision_variables=model._tpm_decision_variables,
         sum_encoding_mode=sum_encoding_mode,
         piecewise_terms=piecewise_terms,
     )
@@ -1875,7 +1845,7 @@ def build_spn_chance_model(
         model=model,
         spn_model=denominator_model,
         feature_by_name=feature_by_name,
-        decision_variables=model._open_energy_lab_decision_variables,
+        decision_variables=model._tpm_decision_variables,
         sum_encoding_mode=sum_encoding_mode,
         piecewise_terms=piecewise_terms,
     )
@@ -1885,10 +1855,10 @@ def build_spn_chance_model(
         expr=numerator_root - denominator_root <= chance_limit_log
     )
     model.total_cost = backend.Objective(expr=total_cost, sense=backend.minimize)
-    model._open_energy_lab_risk_log_numerator = numerator_root
-    model._open_energy_lab_risk_log_denominator = denominator_root
-    model._open_energy_lab_chance_limit_epsilon = float(chance_limit_epsilon)
-    model._open_energy_lab_sum_encoding_mode = sum_encoding_mode
+    model._tpm_risk_log_numerator = numerator_root
+    model._tpm_risk_log_denominator = denominator_root
+    model._tpm_chance_limit_epsilon = float(chance_limit_epsilon)
+    model._tpm_sum_encoding_mode = sum_encoding_mode
     return model
 
 
@@ -2005,12 +1975,12 @@ def _build_exact_categorical_lookup_model(
         expr=risk_expression <= chance_limit_epsilon
     )
     model.total_cost = backend.Objective(expr=total_cost, sense=backend.minimize)
-    model._open_energy_lab_risk_probability = risk_expression
-    model._open_energy_lab_risk_by_combination = tuple(risks)
-    model._open_energy_lab_categorical_combinations = combinations
-    model._open_energy_lab_chance_limit_epsilon = chance_limit_epsilon
-    model._open_energy_lab_sum_encoding_mode = sum_encoding_mode
-    model._open_energy_lab_risk_encoding_strategy = "exact-categorical-lookup"
+    model._tpm_risk_probability = risk_expression
+    model._tpm_risk_by_combination = tuple(risks)
+    model._tpm_categorical_combinations = combinations
+    model._tpm_chance_limit_epsilon = chance_limit_epsilon
+    model._tpm_sum_encoding_mode = sum_encoding_mode
+    model._tpm_risk_encoding_strategy = "exact-categorical-lookup"
     return model
 
 
@@ -2120,7 +2090,7 @@ def solve_spn_chance_model(
     results = solver.solve(model, tee=False)
     diagnostics = _solver_result_metadata(results)
     risk_encoding_strategy = str(
-        getattr(model, "_open_energy_lab_risk_encoding_strategy", "piecewise-spn")
+        getattr(model, "_tpm_risk_encoding_strategy", "piecewise-spn")
     )
     if _solver_result_reports_infeasible(results):
         return SPNSolveSummary(
@@ -2130,7 +2100,7 @@ def solve_spn_chance_model(
             objective_value=None,
             estimated_event_probability=None,
             estimated_shortfall_risk=None,
-            chance_limit_epsilon=float(getattr(model, "_open_energy_lab_chance_limit_epsilon")),
+            chance_limit_epsilon=float(getattr(model, "_tpm_chance_limit_epsilon")),
             solver_metadata={
                 "requested_solver_name": resolved_config.solver_name,
                 "backend_module": getattr(resolved_backend, "__name__", resolved_backend.__class__.__name__),
@@ -2154,7 +2124,7 @@ def solve_spn_chance_model(
         objective_value=float(solution["objective_value"]),
         estimated_event_probability=float(solution["estimated_event_probability"]),
         estimated_shortfall_risk=float(solution["estimated_shortfall_risk"]),
-        chance_limit_epsilon=float(getattr(model, "_open_energy_lab_chance_limit_epsilon")),
+        chance_limit_epsilon=float(getattr(model, "_tpm_chance_limit_epsilon")),
         solver_metadata={
             "requested_solver_name": resolved_config.solver_name,
             "backend_module": getattr(resolved_backend, "__name__", resolved_backend.__class__.__name__),
@@ -2179,8 +2149,8 @@ def extract_spn_solution(
     if not callable(value_function):
         raise TypeError("backend must expose value() to decode a solved SPN model")
 
-    decision_variables = getattr(model, "_open_energy_lab_decision_variables")
-    feature_by_name = getattr(model, "_open_energy_lab_feature_by_name")
+    decision_variables = getattr(model, "_tpm_decision_variables")
+    feature_by_name = getattr(model, "_tpm_feature_by_name")
     selected_design: dict[str, object] = {}
     for feature_name, decision_payload in decision_variables.items():
         feature_spec = feature_by_name[feature_name]
@@ -2192,7 +2162,7 @@ def extract_spn_solution(
         )
 
     objective_value = float(value_function(model.total_cost))
-    risk_probability = getattr(model, "_open_energy_lab_risk_probability", None)
+    risk_probability = getattr(model, "_tpm_risk_probability", None)
     result = {
         "selected_design": selected_design,
         "objective_value": objective_value,
@@ -2208,8 +2178,8 @@ def extract_spn_solution(
         )
         return result
 
-    numerator_log = float(value_function(model._open_energy_lab_risk_log_numerator))
-    denominator_log = float(value_function(model._open_energy_lab_risk_log_denominator))
+    numerator_log = float(value_function(model._tpm_risk_log_numerator))
+    denominator_log = float(value_function(model._tpm_risk_log_denominator))
     estimated_risk = math.exp(min(0.0, numerator_log - denominator_log))
     result.update(
         {
@@ -2315,8 +2285,8 @@ def build_compiled_spflow_decision_link_model(
         raise ValueError("decision_features must be non-empty and unique")
 
     model = backend.ConcreteModel(name="compiled-spflow-decision-links")
-    model._open_energy_lab_decision_variables = {}
-    model._open_energy_lab_decision_decoders = {}
+    model._tpm_decision_variables = {}
+    model._tpm_decision_decoders = {}
     for feature_name in normalized_decisions:
         if feature_name not in feature_by_name:
             raise ValueError(f"unknown compiled decision feature {feature_name!r}")
@@ -2337,8 +2307,8 @@ def build_compiled_spflow_decision_link_model(
             feature_name=feature_name,
             compiled_validity=validity,
         )
-        model._open_energy_lab_decision_variables[feature_name] = decision_payload
-        model._open_energy_lab_decision_decoders[feature_name] = _decision_decoder(
+        model._tpm_decision_variables[feature_name] = decision_payload
+        model._tpm_decision_decoders[feature_name] = _decision_decoder(
             feature_spec
         )
     model.constant_objective = backend.Objective(expr=0.0)
@@ -2753,7 +2723,7 @@ def _encode_conditioned_piecewise_leaf(
         raise ValueError(
             f"conditioned piecewise leaf {node_id} has no decision mapping"
         )
-    fixed_log_value = _linear_interpolate(
+    fixed_log_value = interpolate_within_breakpoints(
         float(node["fixed_value"]),
         x_values=breakpoints,
         y_values=log_values,
@@ -3200,7 +3170,7 @@ def _encode_piecewise_leaf(
                 f"piecewise leaf {node_id} requires a decision variable or fixed_value"
             )
         fixed_value = float(node["fixed_value"])
-        fixed_log_value = _linear_interpolate(
+        fixed_log_value = interpolate_within_breakpoints(
             fixed_value,
             x_values=breakpoints,
             y_values=log_values,

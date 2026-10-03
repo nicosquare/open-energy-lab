@@ -19,6 +19,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, ClassVar
 
+from ._io import canonical_json_bytes
 from .piecewise import (
     _guarded_exponential_evaluator,
     guarded_exponential_points,
@@ -2255,16 +2256,7 @@ def canonical_conditional_json_bytes(value: object) -> bytes:
     finite_payload = _thaw_json(
         _freeze_json(payload, field_name="canonical conditional JSON")
     )
-    return (
-        json.dumps(
-            finite_payload,
-            allow_nan=False,
-            ensure_ascii=False,
-            separators=(",", ":"),
-            sort_keys=True,
-        )
-        + "\n"
-    ).encode("utf-8")
+    return canonical_json_bytes(finite_payload)
 
 
 def load_conditional_pair(path: str | Path) -> TPMConditionalPair:

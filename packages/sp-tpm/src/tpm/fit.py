@@ -1036,7 +1036,7 @@ def _spn_payload_output_path(
     if output_path is not None:
         artifact_path = Path(output_path)
         return artifact_path.with_name(f"{artifact_path.stem}.spn_payload.pkl")
-    temporary_directory = Path(tempfile.mkdtemp(prefix="open-energy-lab-tpm-fit-"))
+    temporary_directory = Path(tempfile.mkdtemp(prefix="tpm-fit-"))
     return temporary_directory / "tpm-artifact.spn_payload.pkl"
 
 

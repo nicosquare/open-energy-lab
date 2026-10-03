@@ -124,7 +124,7 @@ def test_build_spn_chance_model_supports_only_valid_sum_encodings(
         piecewise_terms=piecewise_terms,
     )
 
-    assert model._open_energy_lab_sum_encoding_mode == sum_encoding_mode
+    assert model._tpm_sum_encoding_mode == sum_encoding_mode
     assert model.chance_constraint is not None
     assert hasattr(model, "numerator_spn")
     assert hasattr(model, "denominator_spn")
@@ -170,7 +170,7 @@ def test_existing_whole_model_public_entry_point_does_not_route_through_attachme
         piecewise_terms=piecewise_terms,
     )
 
-    assert model._open_energy_lab_sum_encoding_mode == "max"
+    assert model._tpm_sum_encoding_mode == "max"
     assert hasattr(model, "total_cost")
     assert hasattr(model, "chance_constraint")
     assert not hasattr(model, "conditional_pair")
@@ -270,14 +270,14 @@ def test_categorical_spn_uses_exact_compiled_risk_lookup() -> None:
         piecewise_terms=piecewise_terms,
     )
 
-    assert model._open_energy_lab_risk_encoding_strategy == "exact-categorical-lookup"
-    assert model._open_energy_lab_categorical_combinations == (
+    assert model._tpm_risk_encoding_strategy == "exact-categorical-lookup"
+    assert model._tpm_categorical_combinations == (
         ("battery-small", "solar-a"),
         ("battery-small", "solar-b"),
         ("battery-large", "solar-a"),
         ("battery-large", "solar-b"),
     )
-    assert model._open_energy_lab_risk_by_combination == pytest.approx(
+    assert model._tpm_risk_by_combination == pytest.approx(
         (0.2, 0.2, 0.02, 0.02)
     )
     assert not hasattr(model, "numerator_spn")

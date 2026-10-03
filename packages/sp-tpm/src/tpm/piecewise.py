@@ -608,6 +608,28 @@ def piecewise_linear_interpolate(
     return normalized_y_points[-1]
 
 
+def interpolate_within_breakpoints(
+    value: float,
+    *,
+    x_values: Sequence[float],
+    y_values: Sequence[float],
+) -> float:
+    """Interpolate inside increasing breakpoints; unlike the lookup above, never clamp."""
+
+    if value == x_values[-1]:
+        return float(y_values[-1])
+    for left_x, right_x, left_y, right_y in zip(
+        x_values,
+        x_values[1:],
+        y_values,
+        y_values[1:],
+    ):
+        if left_x <= value <= right_x:
+            ratio = (value - left_x) / (right_x - left_x)
+            return float(left_y) + ratio * (float(right_y) - float(left_y))
+    raise ValueError("interpolation value is outside the breakpoint domain")
+
+
 def approximate_exponential(
     value: float,
     *,
