@@ -49,9 +49,9 @@ The migration translates behavior from these reference-only paths:
 
 | Preserved concern | Legacy evidence | Current implementation |
 | --- | --- | --- |
-| row and feature preparation | `legacy/old_tpm/src_py/tpm/data/datahandler.py`, `legacy/old_tpm/src_py/tpm/data/features/feature.py` | `src/open_energy_lab/tpm/fit.py`, `src/open_energy_lab/tpm/features.py` |
-| SPN fit, persistence, and query | `legacy/old_tpm/src_py/tpm/spn/main.py` | `src/open_energy_lab/tpm/optional_spflow.py`, `src/open_energy_lab/tpm/artifact.py`, `src/open_energy_lab/tpm/query.py` |
-| SPN-to-MIO equations and density handling | `legacy/old_tpm/src_py/tpm/spn/encoding.py`, `legacy/old_tpm/src_py/tpm/spn/utils_tangent.py`, `legacy/old_tpm/src_py/utils/densities.py` | `src/open_energy_lab/tpm/mio.py`, `src/open_energy_lab/planning/piecewise.py`, `src/open_energy_lab/planning/problem.py` |
+| row and feature preparation | `legacy/old_tpm/src_py/tpm/data/datahandler.py`, `legacy/old_tpm/src_py/tpm/data/features/feature.py` | `packages/sp-tpm/src/tpm/fit.py`, `packages/sp-tpm/src/tpm/features.py` |
+| SPN fit, persistence, and query | `legacy/old_tpm/src_py/tpm/spn/main.py` | `packages/sp-tpm/src/tpm/optional_spflow.py`, `packages/sp-tpm/src/tpm/artifact.py`, `packages/sp-tpm/src/tpm/query.py` |
+| SPN-to-MIO equations and density handling | `legacy/old_tpm/src_py/tpm/spn/encoding.py`, `legacy/old_tpm/src_py/tpm/spn/utils_tangent.py`, `legacy/old_tpm/src_py/utils/densities.py` | `packages/sp-tpm/src/tpm/mio/`, `src/open_energy_lab/planning/piecewise.py`, `src/open_energy_lab/planning/problem.py` |
 
 The current code does not import or deserialize the legacy package. The
 canonical source rows and reproducible production-fixture workflow live in
@@ -263,7 +263,7 @@ uv run pytest tests/integration/planning/test_highs_solver.py tests/integration/
 uv run pytest tests/unit/planning tests/unit/tpm tests/integration/planning tests/integration/tpm
 uv run pytest tests/unit/test_lazy_dependency_boundaries.py tests/unit/test_import_contract.py tests/unit/test_no_legacy_imports.py
 uv run python -c "import open_energy_lab; import open_energy_lab.weather; import open_energy_lab.demand; import open_energy_lab.simulator; import open_energy_lab.tpm; import open_energy_lab.planning"
-rg "from legacy|import legacy" src/open_energy_lab/tpm src/open_energy_lab/planning tests/unit/tpm tests/unit/planning tests/integration/tpm tests/integration/planning
+rg "from legacy|import legacy" packages/sp-tpm/src/tpm src/open_energy_lab/planning tests/unit/tpm tests/unit/planning tests/integration/tpm tests/integration/planning
 ```
 
 These required checks are offline and need no notebooks, network services,

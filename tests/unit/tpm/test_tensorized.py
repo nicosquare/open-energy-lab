@@ -118,7 +118,7 @@ def test_scalar_marginalization_preserves_shared_graph_and_probabilities(monkeyp
 
 
 def test_conditioned_compaction_keeps_shared_nodes_once_and_rejects_cycles():
-    from tpm.mio import _compact_conditioned_graph
+    from tpm.mio.condition import _compact_conditioned_graph
     nodes=[dict(id=i,type='constant',value=0.) for i in range(20)]
     nodes.extend(dict(id=20+i,type='product',children=list(range(20))) for i in range(500))
     nodes.append(dict(id=520,type='sum',children=list(range(20,520))))
