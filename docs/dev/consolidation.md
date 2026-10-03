@@ -461,8 +461,30 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
   `embed/` (pyomo, gurobi), and `evaluate/`. Make public the private names
   `tpm_for_sp` relies on (`_stabilize_leaf_parameters`,
   `_materialize_native_categorical_leaves`, `_spflow_operation_children`).
-  Type, format, and document the research-kernel modules. Make SPFlow, Pyomo,
-  and Gurobi optional extras.
+  Type, format, and document the research-kernel modules. SPFlow 1.1.0 and
+  torch stay core dependencies (2026-10-03); only Pyomo, HiGHS and Gurobi are
+  extras. SPNs are built with SPFlow only, so the non-SPFlow paths go first
+  (scope agreed 2026-10-03).
+  - [x] B5a remove planning's `empirical_dataset` risk mode. Planning always
+    solves the SPN-MIO: `PlanningProblemDefinition` loses
+    `risk_evaluation_mode` and `fixture_baseline`, the assembly loses
+    `candidate_designs` and `deterministic_fixture_baseline`, and
+    `PlanningDecisionCandidate`, the row-counting candidate builder, the
+    candidate Pyomo model and the deterministic handoff shortcut are gone. A
+    non-current-SPFlow artifact now raises a clear `ValueError` instead of
+    silently falling back; a missing Pyomo fails at the solve boundary with
+    the existing dependency error. `planning_problem_case.json` and the
+    HiGHS/Gurobi/optional-solve tests now use the current-SPFlow production
+    fixture (HiGHS optimal at epsilon 0.9, infeasible at 0.5; Gurobi matches
+    HiGHS within 1e-9). src -711 lines. Evidence: planning assembly and solve
+    outputs recorded per test on main (twice, no noise) and on the branch,
+    removed keys stripped: all 5 tests that ran the SPN-MIO path on main are
+    identical.
+  - [ ] B5b remove tpm `fixture_replay`, the table sidecar, the
+    injected-backend fit branch and the `optional_spflow` adapter/capability
+    scaffolding; rename `optional_spflow.py`.
+  - [ ] B5c public API: make tpm_for_sp's private names public, prune unused
+    exports, decide `product_mixture`/`categorical_native` with tpm_for_sp.
 - [ ] **B6 switch `tpm_for_sp`.** Make it depend on the workspace package
   instead of the whole `references/oel` submodule, then drop the re-export.
 
