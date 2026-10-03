@@ -22,7 +22,7 @@ from open_energy_lab.planning.problem import (
 from tpm import load_tpm_artifact
 from tests.integration.planning.fixture_utils import (
     PLANNING_PROBLEM_FIXTURE_PATH,
-    TPM_ARTIFACT_FIXTURE_PATH,
+    TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH,
     load_planning_fixture,
 )
 
@@ -73,39 +73,25 @@ def _track_real_highs(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
 
 
 def _canonical_highs_problem(*, infeasible: bool = False) -> PlanningProblemAssembly:
-    artifact = load_tpm_artifact(load_planning_fixture(TPM_ARTIFACT_FIXTURE_PATH))
+    artifact = load_tpm_artifact(TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH)
     fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
     problem_definition = fixture["problem_definition"]
     assert isinstance(problem_definition, dict)
-    assembled = assemble_planning_problem(
-        PlanningProblemDefinition(**problem_definition),
-        artifact,
-    )
-    candidates = assembled.candidate_designs
+    definition = PlanningProblemDefinition(**problem_definition)
     if infeasible:
-        candidates = tuple(
-            replace(candidate, estimated_shortfall_risk=0.25)
-            for candidate in candidates
+        # No battery/solar design keeps the SPN event probability this low.
+        infeasible_case = fixture["expected_required_highs_solve"]["infeasible_case"]
+        definition = replace(
+            definition,
+            chance_limit_epsilon=float(infeasible_case["chance_limit_epsilon"]),
         )
-    return replace(
-        assembled,
-        # An empty payload deliberately exercises the native candidate MILP,
-        # while this mode lets HiGHS report infeasibility instead of returning
-        # the empirical pre-solve shortcut.
-        risk_evaluation_mode="spn_mip",
-        spn_mip_payload={},
-        candidate_designs=candidates,
-        solver_configuration={
-            **assembled.solver_configuration,
-            "solver_name": "highs",
-            "solver_backend_required": True,
-            "solver_execution_optional": False,
-            "numeric_tolerance": NUMERIC_TOLERANCE,
-            "random_seed": 13,
-            "threads": 1,
-            "time_limit_seconds": 30.0,
-        },
-    )
+    return assemble_planning_problem(definition, artifact)
+
+
+def _active_objective_value(model: object) -> float:
+    objectives = list(model.component_data_objects(pyo.Objective, active=True))
+    assert len(objectives) == 1
+    return float(pyo.value(objectives[0]))
 
 
 def _assert_required_solver_metadata(
@@ -136,9 +122,10 @@ def test_real_highs_solves_integral_model_loads_solution_and_repeats(
     second = solve_planning_problem(assembled)
 
     assert first.status == second.status == "optimal"
-    assert first.selected_design == second.selected_design == {
-        "battery_capacity_kwh": 8.0,
-        "solar_capacity_kw": 4.0,
+    assert first.selected_design == second.selected_design
+    assert first.selected_design == {
+        "battery_capacity_kwh": pytest.approx(2.0, abs=NUMERIC_TOLERANCE),
+        "solar_enabled": 0.0,
     }
     assert first.objective_value == pytest.approx(
         second.objective_value,
@@ -156,18 +143,14 @@ def test_real_highs_solves_integral_model_loads_solution_and_repeats(
     _assert_required_solver_metadata(second, termination="optimal")
 
     assert len(executions) == 2
-    for execution in executions:
+    for execution, summary in zip(executions, (first, second), strict=True):
         assert execution["options"] == REQUIRED_SOLVER_OPTIONS
         assert execution["solve_kwargs"]["load_solutions"] is False
-        model = execution["model"]
-        indicator_values = [
-            float(pyo.value(model.choose[candidate_id]))
-            for candidate_id in model.CANDIDATES
-        ]
-        assert sum(indicator_values) == pytest.approx(1.0, abs=NUMERIC_TOLERANCE)
-        assert all(
-            value == pytest.approx(round(value), abs=NUMERIC_TOLERANCE)
-            for value in indicator_values
+        # The summary objective comes from the solution loaded into the SPN model.
+        assert _active_objective_value(execution["model"]) == pytest.approx(
+            summary.objective_value,
+            rel=0.0,
+            abs=NUMERIC_TOLERANCE,
         )
 
 
@@ -181,6 +164,7 @@ def test_real_highs_reports_infeasible_without_loading_a_solution(
     assert summary.status == "infeasible"
     assert summary.selected_design == {}
     assert summary.objective_value is None
+    assert summary.estimated_shortfall_risk is None
     assert summary.solver_metadata["solutions_loaded"] is False
     _assert_required_solver_metadata(summary, termination="infeasible")
 
@@ -188,7 +172,3 @@ def test_real_highs_reports_infeasible_without_loading_a_solution(
     execution = executions[0]
     assert execution["options"] == REQUIRED_SOLVER_OPTIONS
     assert execution["solve_kwargs"]["load_solutions"] is False
-    assert all(
-        execution["model"].choose[candidate_id].value is None
-        for candidate_id in execution["model"].CANDIDATES
-    )

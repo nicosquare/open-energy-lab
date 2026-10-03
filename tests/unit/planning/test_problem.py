@@ -12,7 +12,6 @@ from open_energy_lab.planning.problem import (
     SUPPORTED_FIRST_RELEASE_DECISION_VARIABLE_TYPES,
     SUPPORTED_OBJECTIVE_DIRECTIONS,
     SUPPORTED_PLANNING_BACKENDS,
-    SUPPORTED_RISK_EVALUATION_MODES,
 )
 
 
@@ -61,19 +60,6 @@ def test_planning_problem_definition_preserves_distinct_threshold_and_chance_lim
     assert problem.shortfall_threshold == pytest.approx(0.05)
     assert problem.chance_limit_epsilon == pytest.approx(0.2)
     assert problem.shortfall_threshold != problem.chance_limit_epsilon
-
-
-def test_planning_problem_definition_defaults_to_spn_mip_risk_mode() -> None:
-    problem = PlanningProblemDefinition(
-        problem_id="planning-problem-unit",
-        decision_features=("battery_capacity_kwh",),
-        decision_feature_types={"battery_capacity_kwh": "continuous"},
-        shortfall_threshold=0.05,
-        chance_limit_epsilon=0.2,
-    )
-
-    assert SUPPORTED_RISK_EVALUATION_MODES == ("empirical_dataset", "spn_mip")
-    assert problem.risk_evaluation_mode == "spn_mip"
 
 
 @pytest.mark.parametrize(
@@ -167,12 +153,11 @@ def test_planning_problem_definition_tracks_documented_problem_fields() -> None:
         "chance_limit_epsilon",
         "cost_terms",
         "tpm_artifact_reference",
-        "risk_evaluation_mode",
         "objective_direction",
         "solver_configuration",
         "approximation_contract",
-        "fixture_baseline",
     }.issubset(field_names)
+    assert not {"risk_evaluation_mode", "fixture_baseline"} & field_names
 
 
 def test_planning_problem_definition_normalizes_reproducibility_metadata() -> None:
@@ -200,19 +185,6 @@ def test_planning_problem_definition_normalizes_reproducibility_metadata() -> No
             "approximation_kind": "piecewise",
             "leaf_encoding_mode": "histogram",
         },
-        fixture_baseline={
-            "label": "planning-baseline-a",
-            "source_fixture_path": "tests/fixtures/planning/planning_problem_case.json",
-            "expected_status": "optimal",
-            "expected_selected_design": {
-                "battery_capacity_kwh": 8.0,
-                "solar_capacity_kw": 4.0,
-            },
-            "expected_objective_value": 13400.0,
-            "expected_estimated_shortfall_risk": 0.0,
-            "expected_candidate_count": 2,
-            "expected_feasible_candidate_count": 2,
-        },
     )
 
     assert SUPPORTED_OBJECTIVE_DIRECTIONS == ("minimize",)
@@ -223,11 +195,6 @@ def test_planning_problem_definition_normalizes_reproducibility_metadata() -> No
     assert problem.solver_configuration["numeric_tolerance"] == pytest.approx(1e-8)
     assert problem.solver_configuration["random_seed"] == 13
     assert problem.approximation_contract["approximation_kind"] == "piecewise"
-    assert problem.fixture_baseline["expected_candidate_count"] == 2
-    assert problem.fixture_baseline["expected_selected_design"] == {
-        "battery_capacity_kwh": 8.0,
-        "solar_capacity_kw": 4.0,
-    }
 
 
 def test_planning_problem_definition_rejects_unsupported_solver_backend() -> None:
@@ -239,18 +206,4 @@ def test_planning_problem_definition_rejects_unsupported_solver_backend() -> Non
             shortfall_threshold=0.05,
             chance_limit_epsilon=0.1,
             solver_configuration={"backend_name": "docplex"},
-        )
-
-
-def test_planning_problem_definition_rejects_fixture_baseline_with_unknown_decision_feature() -> None:
-    with pytest.raises(ValueError, match="fixture_baseline.expected_selected_design"):
-        PlanningProblemDefinition(
-            problem_id="planning-problem-unit",
-            decision_features=("battery_capacity_kwh",),
-            decision_feature_types={"battery_capacity_kwh": "continuous"},
-            shortfall_threshold=0.05,
-            chance_limit_epsilon=0.1,
-            fixture_baseline={
-                "expected_selected_design": {"solar_capacity_kw": 4.0},
-            },
         )

@@ -43,7 +43,6 @@ def test_solve_planning_problem_can_solve_a_serialized_spn_model_with_gurobi() -
         problem_id="serialized-spn-gurobi",
         artifact_id="synthetic-artifact",
         dataset_reference="synthetic-dataset",
-        risk_evaluation_mode="spn_mip",
         decision_features=("battery_enabled", "solar_enabled"),
         target_name="shortfall",
         risk_target_name="shortfall_exceeds_threshold",
@@ -54,7 +53,6 @@ def test_solve_planning_problem_can_solve_a_serialized_spn_model_with_gurobi() -
             "battery_enabled": 1200.0,
             "solar_enabled": 950.0,
         },
-        candidate_designs=(),
         piecewise_terms=piecewise_terms,
         solver_metadata={
             "canonical_backend": "pyomo",

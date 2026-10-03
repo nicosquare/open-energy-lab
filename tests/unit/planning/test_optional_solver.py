@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
@@ -14,77 +15,7 @@ from open_energy_lab.planning.optional_solver import (
     require_pyomo_backend,
     solve_planning_problem,
 )
-from open_energy_lab.planning.problem import (
-    PlanningDecisionCandidate,
-    PlanningProblemAssembly,
-)
-
-
-class _FakePyomoBackend(SimpleNamespace):
-    def build_candidate_model(self, **kwargs):
-        return SimpleNamespace(model_name=f"{kwargs['problem_id']}-handoff", **kwargs)
-
-    def solve_candidate_model(self, handoff, solve_config):
-        if getattr(self, "solver_unavailable", False):
-            raise PlanningSolverUnavailableError("fake solver unavailable")
-
-        selected_candidate_id = min(
-            handoff.feasible_candidate_ids,
-            key=lambda candidate_id: (
-                handoff.candidate_lookup[candidate_id].objective_value,
-                handoff.candidate_lookup[candidate_id].estimated_shortfall_risk,
-            ),
-        )
-        return {
-            "status": "optimal",
-            "candidate_id": selected_candidate_id,
-            "solver_metadata": {
-                "backend_solver_name": solve_config.solver_name,
-            },
-            "feasibility_diagnostics": {
-                "model_name": handoff.model.model_name,
-            },
-        }
-
-
-def _assembled_problem() -> PlanningProblemAssembly:
-    return PlanningProblemAssembly(
-        problem_id="planning-problem-unit",
-        artifact_id="tpm-artifact:planning-dataset-export-integration",
-        dataset_reference="planning-dataset-export-integration",
-        risk_evaluation_mode="empirical_dataset",
-        decision_features=("battery_capacity_kwh", "solar_capacity_kw"),
-        target_name="shortfall",
-        risk_target_name="shortfall_exceeds_threshold",
-        shortfall_threshold=0.05,
-        chance_limit_epsilon=0.1,
-        objective_direction="minimize",
-        cost_terms={
-            "battery_capacity_kwh": 1200.0,
-            "solar_capacity_kw": 950.0,
-        },
-        candidate_designs=(
-            PlanningDecisionCandidate(
-                selected_design={
-                    "battery_capacity_kwh": 8.0,
-                    "solar_capacity_kw": 4.0,
-                },
-                objective_value=13400.0,
-                estimated_shortfall_risk=0.0,
-                matched_row_count=1,
-            ),
-        ),
-        piecewise_terms=SimpleNamespace(
-            approximation_kind="piecewise",
-            fit_numeric_tolerance=1e-9,
-            query_numeric_tolerance=1e-9,
-        ),
-        solver_metadata={
-            "canonical_backend": "pyomo",
-            "solver_execution_optional": True,
-        },
-        spn_mip_payload={},
-    )
+from open_energy_lab.planning.problem import PlanningProblemAssembly
 
 
 class _FakeSPNBackend(SimpleNamespace):
@@ -92,6 +23,8 @@ class _FakeSPNBackend(SimpleNamespace):
         return SimpleNamespace(model_name=f"{kwargs['problem_id']}-spn-handoff", **kwargs)
 
     def solve_candidate_model(self, handoff, solve_config):
+        if getattr(self, "solver_unavailable", False):
+            raise PlanningSolverUnavailableError("fake solver unavailable")
         return {
             "status": "optimal",
             "selected_design": {
@@ -110,20 +43,20 @@ class _FakeSPNBackend(SimpleNamespace):
 
 
 def _assembled_spn_problem() -> PlanningProblemAssembly:
-    problem = _assembled_problem()
     return PlanningProblemAssembly(
-        problem_id=problem.problem_id,
-        artifact_id=problem.artifact_id,
-        dataset_reference=problem.dataset_reference,
-        risk_evaluation_mode="spn_mip",
-        decision_features=problem.decision_features,
-        target_name=problem.target_name,
-        risk_target_name=problem.risk_target_name,
-        shortfall_threshold=problem.shortfall_threshold,
-        chance_limit_epsilon=problem.chance_limit_epsilon,
-        objective_direction=problem.objective_direction,
-        cost_terms=problem.cost_terms,
-        candidate_designs=problem.candidate_designs,
+        problem_id="planning-problem-unit",
+        artifact_id="tpm-artifact:planning-dataset-export-integration",
+        dataset_reference="planning-dataset-export-integration",
+        decision_features=("battery_capacity_kwh", "solar_capacity_kw"),
+        target_name="shortfall",
+        risk_target_name="shortfall_exceeds_threshold",
+        shortfall_threshold=0.05,
+        chance_limit_epsilon=0.1,
+        objective_direction="minimize",
+        cost_terms={
+            "battery_capacity_kwh": 1200.0,
+            "solar_capacity_kw": 950.0,
+        },
         piecewise_terms=SimpleNamespace(
             approximation_kind="piecewise",
             fit_numeric_tolerance=1e-9,
@@ -143,7 +76,10 @@ def _assembled_spn_problem() -> PlanningProblemAssembly:
             sum_encoding_mode="piecewise",
             mio_epsilon=1e-6,
         ),
-        solver_metadata=problem.solver_metadata,
+        solver_metadata={
+            "canonical_backend": "pyomo",
+            "solver_execution_optional": True,
+        },
         spn_mip_payload={
             "decision_features": ["battery_capacity_kwh", "solar_capacity_kw"],
             "feature_schema": [
@@ -202,40 +138,20 @@ def test_solve_planning_problem_rejects_skip_when_required_backend_is_unavailabl
 
     with pytest.raises(PlanningSolverDependencyUnavailableError, match="pyomo missing"):
         solve_planning_problem(
-            _assembled_problem(),
+            _assembled_spn_problem(),
             solve_config=PlanningSolveConfig(skip_if_unavailable=True),
         )
-
-
-def test_solve_planning_problem_uses_injected_backend_without_importing_pyomo() -> None:
-    summary = solve_planning_problem(
-        _assembled_problem(),
-        solve_config=PlanningSolveConfig(solver_name="fake-pyomo"),
-        pyomo_backend=_FakePyomoBackend(__name__="pyomo.testing", __version__="0.test"),
-    )
-
-    assert summary.status == "optimal"
-    assert summary.selected_design == {
-        "battery_capacity_kwh": 8.0,
-        "solar_capacity_kw": 4.0,
-    }
-    assert summary.objective_value == pytest.approx(13400.0)
-    assert summary.estimated_shortfall_risk == pytest.approx(0.0)
-    assert summary.solver_metadata["backend_module"] == "pyomo.testing"
-    assert summary.solver_metadata["handoff_strategy"] == "custom-backend-hook"
-    assert summary.solver_metadata["solve_execution_mode"] == "custom-backend-hook"
-    assert summary.feasibility_diagnostics["model_name"] == "planning-problem-unit-handoff"
 
 
 def test_solve_planning_problem_rejects_skip_for_non_supplemental_solver() -> None:
     with pytest.raises(PlanningSolverUnavailableError, match="fake solver unavailable"):
         solve_planning_problem(
-            _assembled_problem(),
+            _assembled_spn_problem(),
             solve_config=PlanningSolveConfig(
                 solver_name="fake-pyomo",
                 skip_if_unavailable=True,
             ),
-            pyomo_backend=_FakePyomoBackend(
+            pyomo_backend=_FakeSPNBackend(
                 __name__="pyomo.testing",
                 __version__="0.test",
                 solver_unavailable=True,
@@ -257,9 +173,42 @@ def test_solve_planning_problem_accepts_direct_spn_backend_results() -> None:
     }
     assert summary.objective_value == pytest.approx(11950.0)
     assert summary.estimated_shortfall_risk == pytest.approx(0.08)
+    assert summary.solver_metadata["backend_module"] == "pyomo.testing"
     assert summary.solver_metadata["handoff_strategy"] == "custom-backend-hook"
     assert summary.solver_metadata["solve_execution_mode"] == "custom-backend-hook"
-    assert summary.feasibility_diagnostics["model_name"] == "planning-problem-unit-spn-handoff"
+    assert summary.feasibility_diagnostics == {
+        "model_name": "planning-problem-unit-spn-handoff",
+    }
+
+
+@pytest.mark.parametrize("solver_name", ["", "pyomo"])
+def test_solve_planning_problem_requires_an_explicit_mio_solver(
+    solver_name: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        optional_solver_module,
+        "_build_native_pyomo_spn_model",
+        lambda backend, **kwargs: SimpleNamespace(),
+    )
+
+    with pytest.raises(ValueError, match="selects no MIO solver"):
+        solve_planning_problem(
+            _assembled_spn_problem(),
+            solve_config=PlanningSolveConfig(solver_name=solver_name),
+            pyomo_backend=SimpleNamespace(__name__="pyomo.testing", __version__="0.test"),
+        )
+
+
+def test_solve_planning_problem_rejects_an_assembly_without_an_spn_payload() -> None:
+    problem = replace(_assembled_spn_problem(), spn_mip_payload={})
+
+    with pytest.raises(ValueError, match="has no SPN-MIO payload"):
+        solve_planning_problem(
+            problem,
+            solve_config=PlanningSolveConfig(solver_name="fake-pyomo"),
+            pyomo_backend=_FakeSPNBackend(__name__="pyomo.testing", __version__="0.test"),
+        )
 
 
 def test_native_solver_time_limit_returns_diagnostic_summary_without_loading_solution() -> None:
@@ -291,8 +240,7 @@ def test_native_solver_time_limit_returns_diagnostic_summary_without_loading_sol
         _open_energy_lab_highspy_version="1.15.1",
         SolverFactory=lambda solver_name: solver,
     )
-    problem = _assembled_problem()
-    candidate = problem.candidate_designs[0]
+    problem = _assembled_spn_problem()
     handoff = optional_solver_module._PlanningPyomoModelHandoff(
         model=SimpleNamespace(
             solutions=SimpleNamespace(load_from=_fail_if_loaded),
@@ -300,11 +248,8 @@ def test_native_solver_time_limit_returns_diagnostic_summary_without_loading_sol
         backend=backend,
         backend_name="pyomo.testing",
         backend_version="0.test",
-        handoff_strategy="native-pyomo",
+        handoff_strategy="native-pyomo-spn",
         requested_solver_name="highs",
-        candidate_ids=(0,),
-        candidate_lookup={0: candidate},
-        feasible_candidate_ids=(0,),
     )
 
     summary = optional_solver_module._solve_through_pyomo_solver(
@@ -319,8 +264,6 @@ def test_native_solver_time_limit_returns_diagnostic_summary_without_loading_sol
     assert summary.estimated_shortfall_risk is None
     assert summary.feasibility_diagnostics == {
         "reason": "solver reached its configured time limit before proving optimality",
-        "candidate_count": 1,
-        "feasible_candidate_count": 1,
         "solver_status": "aborted",
         "termination_condition": "maxTimeLimit",
     }

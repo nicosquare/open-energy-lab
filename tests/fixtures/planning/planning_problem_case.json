@@ -1,20 +1,19 @@
 {
   "fixture_name": "planning_problem_case",
   "fixture_status": "active",
-  "purpose": "Deterministic first-release planning-problem and required HiGHS solve fixture for offline assembly and solver-boundary review.",
+  "purpose": "Deterministic first-release SPN chance-constrained planning problem and required HiGHS solve fixture for offline assembly and solver-boundary review.",
   "spec_feature": "009-tpm-planning",
   "provenance": {
     "author": "OpenAI Codex",
-    "origin": "Current-library planning assembly contract derived from the committed TPM artifact fixture and deterministic battery-solar cost metadata",
+    "origin": "Current-library SPN-MIO planning assembly contract derived from the committed current-SPFlow production TPM artifact fixture and deterministic battery-solar cost metadata",
     "legacy_evidence_paths": [
       "legacy/old_tpm/src_py/tpm/spn/encoding.py",
       "legacy/old_tpm/src_py/utils/densities.py"
     ],
     "generation_command": "uv run pytest tests/integration/planning/test_problem_assembly.py tests/integration/planning/test_optional_solve.py tests/integration/planning/test_highs_solver.py",
     "random_seed": 13,
-    "refresh_policy": "Update only when the first-release planning problem contract, required HiGHS configuration, deterministic baseline, or supplemental comparison tolerances intentionally change.",
-    "tpm_artifact_fixture_path": "tests/fixtures/tpm/tpm_artifact_v2.json",
-    "dataset_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json",
+    "refresh_policy": "Update only when the first-release planning problem contract, the committed current-SPFlow production artifact, required HiGHS configuration, or supplemental comparison tolerances intentionally change.",
+    "tpm_artifact_fixture_path": "tests/fixtures/tpm/tpm_artifact_spflow_v1.json",
     "created_from_fixture": true,
     "canonical_backend": "pyomo",
     "solver_name": "highs"
@@ -25,28 +24,27 @@
   ],
   "notes": [
     "This active fixture keeps the first-release planning scope limited to battery and solar decision variables while remaining offline and reviewable in git.",
-    "It records the exact planning definition, required HiGHS provenance, deterministic candidate baseline, and optimal/infeasible outcomes used by the fixture-backed US3 review path.",
+    "It records the exact planning definition, required HiGHS provenance, and the optimal/infeasible SPN-MIO outcomes solved from the committed current-SPFlow production artifact.",
     "Required Pyomo/HiGHS failures are installation failures; only explicitly selected supplemental Gurobi validation may skip when its binary or license is unavailable."
   ],
-  "tpm_artifact_fixture_path": "tests/fixtures/tpm/tpm_artifact_v2.json",
+  "tpm_artifact_fixture_path": "tests/fixtures/tpm/tpm_artifact_spflow_v1.json",
   "problem_definition": {
     "problem_id": "planning-problem-assembly-integration",
-    "tpm_artifact_reference": "tests/fixtures/tpm/tpm_artifact_v2.json",
+    "tpm_artifact_reference": "tests/fixtures/tpm/tpm_artifact_spflow_v1.json",
     "decision_features": [
       "battery_capacity_kwh",
-      "solar_capacity_kw"
+      "solar_enabled"
     ],
     "decision_feature_types": {
       "battery_capacity_kwh": "continuous",
-      "solar_capacity_kw": "continuous"
+      "solar_enabled": "binary"
     },
-    "shortfall_threshold": 0.05,
-    "chance_limit_epsilon": 0.1,
+    "shortfall_threshold": 0.08,
+    "chance_limit_epsilon": 0.9,
     "cost_terms": {
       "battery_capacity_kwh": 1200.0,
-      "solar_capacity_kw": 950.0
+      "solar_enabled": 950.0
     },
-    "risk_evaluation_mode": "spn_mip",
     "objective_direction": "minimize",
     "solver_configuration": {
       "backend_name": "pyomo",
@@ -60,78 +58,32 @@
     },
     "approximation_contract": {
       "approximation_kind": "piecewise",
-      "leaf_encoding_mode": "histogram",
+      "leaf_encoding_mode": "piecewise-log-density",
       "sum_encoding_mode": "piecewise"
-    },
-    "fixture_baseline": {
-      "label": "planning-baseline-a",
-      "source_fixture_path": "tests/fixtures/planning/planning_problem_case.json",
-      "expected_status": "optimal",
-      "expected_selected_design": {
-        "battery_capacity_kwh": 8.0,
-        "solar_capacity_kw": 4.0
-      },
-      "expected_objective_value": 13400.0,
-      "expected_estimated_shortfall_risk": 0.0,
-      "expected_candidate_count": 2,
-      "expected_feasible_candidate_count": 2
     }
   },
   "expected_assembly": {
-    "artifact_id": "tpm-artifact:planning-dataset-export-integration",
-    "dataset_reference": "planning-dataset-export-integration",
+    "artifact_id": "tpm-artifact:generic-rows-current-spflow-v1",
+    "dataset_reference": "generic-rows-current-spflow-v1",
     "target_name": "shortfall",
-    "risk_target_name": "shortfall_exceeds_threshold",
-    "candidate_designs": [
-      {
-        "selected_design": {
-          "battery_capacity_kwh": 8.0,
-          "solar_capacity_kw": 4.0
-        },
-        "objective_value": 13400.0,
-        "estimated_shortfall_risk": 0.0,
-        "matched_row_count": 1
-      },
-      {
-        "selected_design": {
-          "battery_capacity_kwh": 10.0,
-          "solar_capacity_kw": 5.0
-        },
-        "objective_value": 16750.0,
-        "estimated_shortfall_risk": 0.0,
-        "matched_row_count": 1
-      }
-    ],
+    "risk_target_name": "shortfall_event",
     "chance_constraint_metadata": {
       "target_name": "shortfall",
-      "event_target_name": "shortfall_exceeds_threshold",
+      "event_target_name": "shortfall_event",
       "comparison": ">",
-      "threshold": 0.05,
-      "chance_limit_epsilon": 0.1,
-      "supported_query_mode": "exceedance-probability",
-      "risk_evaluation_mode": "empirical_dataset"
+      "threshold": 0.08,
+      "chance_limit_epsilon": 0.9,
+      "supported_query_mode": "exceedance-probability"
     },
     "solver_metadata": {
       "canonical_backend": "pyomo",
       "solver_name": "highs",
-      "dataset_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json"
+      "spn_payload_source": "current-spflow-mio-compiler",
+      "spn_payload_locator": "sidecars/tpm_artifact_spflow_v1.spn_payload.pkl"
     },
     "approximation_contract": {
+      "leaf_encoding_mode": "piecewise-log-density",
       "sum_encoding_mode": "piecewise"
-    },
-    "deterministic_fixture_baseline": {
-      "candidate_count": 2,
-      "feasible_candidate_count": 2,
-      "dataset_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json",
-      "numeric_tolerance": 1e-09,
-      "status": "optimal",
-      "selected_design": {
-        "battery_capacity_kwh": 8.0,
-        "solar_capacity_kw": 4.0
-      },
-      "objective_value": 13400.0,
-      "estimated_shortfall_risk": 0.0,
-      "matched_row_count": 1
     }
   },
   "expected_required_highs_solve": {
@@ -143,16 +95,17 @@
       "time_limit_seconds": 30.0
     },
     "repeatability_tolerance": 1e-09,
+    "risk_tolerance": 1e-06,
     "optimal_summary": {
       "status": "optimal",
       "selected_design": {
-        "battery_capacity_kwh": 8.0,
-        "solar_capacity_kw": 4.0
+        "battery_capacity_kwh": 2.0,
+        "solar_enabled": 0.0
       },
-      "objective_value": 13400.0,
-      "estimated_shortfall_risk": 0.0,
+      "objective_value": 2400.0,
+      "estimated_shortfall_risk": 0.8333333333333334,
       "backend_module": "pyomo.environ",
-      "handoff_strategy": "native-pyomo",
+      "handoff_strategy": "native-pyomo-spn",
       "solve_execution_mode": "native-pyomo-solver",
       "termination_condition": "optimal",
       "solutions_loaded": true,
@@ -166,14 +119,13 @@
       "highspy_version": "1.15.1"
     },
     "infeasible_case": {
-      "candidate_risk_override": 0.25,
-      "chance_limit_epsilon": 0.1
+      "chance_limit_epsilon": 0.5
     },
     "infeasible_summary": {
       "status": "infeasible",
       "selected_design": {},
       "objective_value": null,
-      "estimated_shortfall_risk": 0.25,
+      "estimated_shortfall_risk": null,
       "termination_condition": "infeasible",
       "solutions_loaded": false
     }

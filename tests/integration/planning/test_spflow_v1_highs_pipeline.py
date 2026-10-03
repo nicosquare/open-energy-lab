@@ -94,7 +94,6 @@ def test_current_spflow_compiler_output_is_solved_by_real_highs() -> None:
     assert compiled["compiler_version"] == "spflow-v1-mio-v1"
     assert compiled["breakpoint_policy"]["breakpoint_count"] == 5
     assert compiled["mio_epsilon"] == MIO_TOLERANCE
-    assert assembled.risk_evaluation_mode == "spn_mip"
     planning_compiled = _find_compiled_mio(assembled.spn_mip_payload)
     assert planning_compiled == compiled
     assert compilation_model.scope.query == (0, 1, 5)
