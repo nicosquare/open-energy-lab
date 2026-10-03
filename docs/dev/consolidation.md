@@ -395,7 +395,7 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
   MIO compiler v1 (every schema-v2 artifact, incl. the production SPFlow
   fixture), `fixture_replay` (6 fixtures, 8 test files), and the exact
   categorical lookup in `build_spn_chance_model`; revisit in B4/B5.
-- [ ] **B3 workspace package** (agreed 2026-10-02: installed as `sp-tpm`,
+- [x] **B3 workspace package** (agreed 2026-10-02: installed as `sp-tpm`,
   imported as `tpm`; Python >= 3.11 for sp-tpm, OEL stays >= 3.12).
   - [x] B3a move: uv workspace with `packages/sp-tpm/` (git mv keeps
     history). Core dependencies numpy, scipy, torch, `spflow==1.1.0`;
@@ -412,9 +412,28 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
     Python 3.11, sp-tpm[highs] only, `src/` off the path (583 passed,
     1 Gurobi skip). Tests stay in the repo-level `tests/` tree; moving them
     under `packages/sp-tpm/` can wait for B6.
-- [ ] **B4 internal consolidation.** One circuit representation, one DAG
-  traversal and evaluator. Split `mio.py` into compile, condition, encode, and
-  solve. One checkpoint helper. Merge `product_mixture` into `native`.
+- [ ] **B4 internal consolidation** (scope agreed 2026-10-03, three PRs). The
+  three circuit evaluators keep their own node maths (probability floors and
+  log-sum-exp vs max vs piecewise differ), so only the traversal is shared.
+  Merging `product_mixture` into `native` moves to B5/B6: tpm_for_sp's
+  knapsack training is built on it.
+  - [x] B4a shared helpers. New `tpm/_io.py` (canonical JSON bytes,
+    streaming atomic write) replaces the inline copy in `mio.py`, the
+    artifact writer and the two hand-rolled checkpoint writers (refinement,
+    categorical). One strict interpolation helper
+    (`piecewise.interpolate_within_breakpoints`) replaces the copies in
+    `mio.py` and `conditional_mio.py`. The Pyomo model attributes
+    `_open_energy_lab_*` set by tpm became `_tpm_*`; the OEL candidate model
+    lost two attributes nothing read, and OEL's own backend version tags
+    keep their name. Temp-dir prefixes renamed `tpm-*`. src -20 lines.
+    Evidence: each changed helper's output recorded per test on main and on
+    the branch (1,700 calls, 173 tpm and planning tests); everything stable
+    across two main runs matched, and the only other difference was which
+    thread wins a deliberate publication race.
+  - [ ] B4b split `mio.py` into compile, evaluate, condition, encode and
+    chance-model modules; `tpm/mio.py` re-exports for OEL and tpm_for_sp.
+  - [ ] B4c one memoized DAG traversal for the evaluators, the graph
+    compactor and the attachment initializer.
 - [ ] **B5 public API and style.** Lay out `schema/`, `learn/`, `compile/`,
   `embed/` (pyomo, gurobi), and `evaluate/`. Make public the private names
   `tpm_for_sp` relies on (`_stabilize_leaf_parameters`,
