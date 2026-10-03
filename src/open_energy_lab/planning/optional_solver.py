@@ -426,11 +426,6 @@ def _build_native_pyomo_candidate_model(
         ),
         sense=backend.minimize,
     )
-    model._open_energy_lab_candidate_lookup = {
-        candidate_id: dict(candidate.selected_design)
-        for candidate_id, candidate in candidate_lookup.items()
-    }
-    model._open_energy_lab_chance_limit_epsilon = float(chance_limit_epsilon)
     return model
 
 
@@ -835,7 +830,7 @@ def _solver_stack_metadata(
     }
     risk_encoding_strategy = getattr(
         handoff.model,
-        "_open_energy_lab_risk_encoding_strategy",
+        "_tpm_risk_encoding_strategy",
         None,
     )
     if risk_encoding_strategy is not None:

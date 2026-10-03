@@ -9,10 +9,10 @@ from __future__ import annotations
 import copy
 import json
 import math
-import os
 from pathlib import Path
 import random
-import tempfile
+
+from ._io import atomic_write
 
 
 def _supported_types():
@@ -239,18 +239,7 @@ def save_spn_refinement_state(path, *, model, optimizer, feature_schema, progres
         cuda_rng_state=torch.cuda.get_rng_state(device).cpu() if device.type == 'cuda' else None,
         python_rng_state=random.getstate(),
         numpy_rng_state=(np_state[0], np_state[1].tolist(), *np_state[2:]))
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = None
-    try:
-        with tempfile.NamedTemporaryFile(dir=path.parent, prefix='.' + path.name, suffix='.tmp', delete=False) as stream:
-            temporary = Path(stream.name)
-            torch.save(payload, stream)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, path)
-    finally:
-        if temporary is not None: temporary.unlink(missing_ok=True)
+    atomic_write(Path(path), lambda stream: torch.save(payload, stream))
 
 
 def save_supported_spn_model(path, *, model, feature_schema):

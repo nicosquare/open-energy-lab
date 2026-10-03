@@ -39,6 +39,7 @@ from .piecewise import (
     LOGARITHM_ENDPOINT_POLICY_NAME,
     evaluate_guarded_exponential,
     guarded_exponential_points,
+    interpolate_within_breakpoints,
     resolve_guarded_exponential_spec,
 )
 from .domains import (
@@ -2135,19 +2136,7 @@ def _strict_linear_interpolate(
         raise ValueError(
             f"{field_name} value {point} is outside [{x_points[0]}, {x_points[-1]}]"
         )
-    if point == x_points[-1]:
-        return y_points[-1]
-    for left_x, right_x, left_y, right_y in zip(
-        x_points,
-        x_points[1:],
-        y_points,
-        y_points[1:],
-        strict=True,
-    ):
-        if left_x <= point <= right_x:
-            ratio = (point - left_x) / (right_x - left_x)
-            return left_y + ratio * (right_y - left_y)
-    raise ValueError(f"{field_name} interpolation value is outside its domain")
+    return interpolate_within_breakpoints(point, x_values=x_points, y_values=y_points)
 
 
 def _finite_float(value: object, *, field_name: str) -> float:
