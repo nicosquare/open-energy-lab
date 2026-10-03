@@ -430,8 +430,17 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
     the branch (1,700 calls, 173 tpm and planning tests); everything stable
     across two main runs matched, and the only other difference was which
     thread wins a deliberate publication race.
-  - [ ] B4b split `mio.py` into compile, evaluate, condition, encode and
-    chance-model modules; `tpm/mio.py` re-exports for OEL and tpm_for_sp.
+  - [x] B4b split `mio.py` (3491 lines) into the `tpm/mio/` package:
+    `compiler` (992), `evaluate` (389), `condition` (330), `encode` (780),
+    `chance_model` (1030, the serialized-SPN chance model) and `_common`
+    (44). All 87 top-level definitions moved verbatim (checked by comparing
+    source segments). `tpm/mio/__init__.py` re-exports every name imported
+    from `tpm.mio` today, including the two private helpers tpm_for_sp
+    uses; tests reaching other private helpers import from the submodules.
+    The submodules join the lazy-import boundary test. Stale
+    `src/open_energy_lab/tpm` paths in `docs/migration` fixed. src +137
+    lines (imports, docstrings, `__init__`). `git blame -C -C` follows the
+    moved code.
   - [ ] B4c one memoized DAG traversal for the evaluators, the graph
     compactor and the attachment initializer.
 - [ ] **B5 public API and style.** Lay out `schema/`, `learn/`, `compile/`,
