@@ -6,6 +6,7 @@ import hashlib
 import math
 from collections.abc import Mapping, Sequence
 
+from .._graph import memoized_acyclic
 from .._io import canonical_json_bytes
 from ._common import _sequence_of_mappings
 
@@ -78,8 +79,6 @@ def condition_compiled_spflow_mio(
         raise ValueError(f"compiled MIO root node {root_id} does not exist")
 
     output_nodes: list[dict[str, object]] = []
-    cache: dict[int, int] = {}
-    active: set[int] = set()
 
     def append(node: Mapping[str, object]) -> int:
         node_id = len(output_nodes)
@@ -116,14 +115,7 @@ def condition_compiled_spflow_mio(
             return normalized[0]
         return append({"type": "product", "children": list(normalized)})
 
-    def transform(source_id: int) -> int:
-        if source_id in cache:
-            return cache[source_id]
-        if source_id in active:
-            raise ValueError("compiled MIO nodes must form an acyclic graph")
-        if source_id not in source_nodes:
-            raise ValueError(f"compiled MIO node {source_id} does not exist")
-        active.add(source_id)
+    def transform_node(source_id: int) -> int:
         source = source_nodes[source_id]
         node_type = str(source.get("type", ""))
         if node_type == "normal":
@@ -239,10 +231,14 @@ def condition_compiled_spflow_mio(
             raise ValueError(
                 f"compiled MIO node {source_id} has unsupported type {node_type!r}"
             )
-        active.remove(source_id)
-        cache[source_id] = result
         return result
 
+    transform = memoized_acyclic(
+        transform_node,
+        cycle_message="compiled MIO nodes must form an acyclic graph",
+        nodes=source_nodes,
+        missing_message="compiled MIO node {node_id} does not exist",
+    )
     conditioned_root = transform(root_id)
     compact_root, compact_nodes = _compact_conditioned_graph(
         conditioned_root, output_nodes
@@ -291,27 +287,22 @@ def _compact_conditioned_graph(
     """Remove superseded simplification nodes and assign stable postorder ids."""
 
     node_by_id = {int(node["id"]): node for node in nodes}
-    active: set[int] = set()
     order: list[int] = []
-    visited: set[int] = set()
 
-    def visit(node_id: int) -> None:
-        if node_id in visited:
-            return
-        if node_id in active:
-            raise ValueError("conditioned circuit nodes must form an acyclic graph")
-        if node_id not in node_by_id:
-            raise ValueError(f"conditioned circuit node {node_id} does not exist")
-        active.add(node_id)
+    def visit_node(node_id: int) -> None:
         children = node_by_id[node_id].get("children", ())
         if not _is_sequence_value(children):
             raise ValueError("conditioned circuit children must be a sequence")
         for child in children:
             visit(int(child))
-        active.remove(node_id)
         order.append(node_id)
-        visited.add(node_id)
 
+    visit = memoized_acyclic(
+        visit_node,
+        cycle_message="conditioned circuit nodes must form an acyclic graph",
+        nodes=node_by_id,
+        missing_message="conditioned circuit node {node_id} does not exist",
+    )
     visit(root_id)
     remap = {old_id: new_id for new_id, old_id in enumerate(order)}
     compact: list[dict[str, object]] = []

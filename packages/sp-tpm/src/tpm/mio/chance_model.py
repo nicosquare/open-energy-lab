@@ -9,6 +9,7 @@ from importlib import import_module
 from itertools import product as cartesian_product
 from typing import Any
 
+from .._graph import memoized_acyclic
 from ..domains import (
     TPMCompiledValidityRecord,
 )
@@ -352,17 +353,8 @@ def _evaluate_serialized_categorical_spn(
     node_by_id = {int(node["id"]): node for node in nodes}
     if len(node_by_id) != len(nodes):
         raise ValueError("serialized categorical SPN nodes must use unique ids")
-    cache: dict[int, float] = {}
-    active: set[int] = set()
 
-    def evaluate(node_id: int) -> float:
-        if node_id in cache:
-            return cache[node_id]
-        if node_id in active:
-            raise ValueError("serialized categorical SPN nodes must be acyclic")
-        if node_id not in node_by_id:
-            raise ValueError(f"serialized categorical SPN node {node_id} does not exist")
-        active.add(node_id)
+    def evaluate_node(node_id: int) -> float:
         node = node_by_id[node_id]
         node_type = str(node.get("type", ""))
         if node_type in {"leaf_binary", "leaf_categorical"}:
@@ -404,10 +396,14 @@ def _evaluate_serialized_categorical_spn(
             raise ValueError(
                 f"unsupported exact categorical SPN node type {node_type!r}"
             )
-        active.remove(node_id)
-        cache[node_id] = value
         return value
 
+    evaluate = memoized_acyclic(
+        evaluate_node,
+        cycle_message="serialized categorical SPN nodes must be acyclic",
+        nodes=node_by_id,
+        missing_message="serialized categorical SPN node {node_id} does not exist",
+    )
     return evaluate(int(spn_model["root_id"]))
 
 

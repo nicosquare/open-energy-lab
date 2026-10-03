@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping, Sequence
 
+from .._graph import memoized_acyclic
 from ..domains import (
     TPMCompiledValidityRecord,
 )
@@ -100,17 +101,8 @@ def evaluate_compiled_spflow_probability(
     if len(node_by_id) != len(nodes):
         raise ValueError("compiled nodes must use unique integer ids")
     root_id = int(payload["root_id"])
-    cache: dict[int, float] = {}
-    active: set[int] = set()
 
-    def evaluate_log(node_id: int) -> float:
-        if node_id in cache:
-            return cache[node_id]
-        if node_id in active:
-            raise ValueError("compiled nodes must form an acyclic graph")
-        if node_id not in node_by_id:
-            raise ValueError(f"compiled node {node_id} does not exist")
-        active.add(node_id)
+    def evaluate_log_node(node_id: int) -> float:
         node = node_by_id[node_id]
         node_type = str(node.get("type", ""))
         if node_type == "normal":
@@ -133,10 +125,14 @@ def evaluate_compiled_spflow_probability(
             value = maximum + math.log(math.fsum(math.exp(term - maximum) for term in terms))
         else:
             raise ValueError(f"unsupported compiled node type {node_type!r}")
-        active.remove(node_id)
-        cache[node_id] = value
         return value
 
+    evaluate_log = memoized_acyclic(
+        evaluate_log_node,
+        cycle_message="compiled nodes must form an acyclic graph",
+        nodes=node_by_id,
+        missing_message="compiled node {node_id} does not exist",
+    )
     return math.exp(evaluate_log(root_id))
 
 
