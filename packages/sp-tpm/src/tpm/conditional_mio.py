@@ -7,6 +7,7 @@ import keyword
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from ._graph import memoized_acyclic
 from .artifact import TPMArtifact, load_tpm_artifact
 from .conditional import (
     TPMBinaryDecisionLink,
@@ -1491,18 +1492,11 @@ def _initialize_attachment_circuit(
     coordinates: Mapping[str, float],
 ) -> float:
     nodes = {node.node_id: node for node in circuit.nodes}
-    cache: dict[int, float] = {}
-    active: set[int] = set()
     probability_floor = float(
         pair.encoding.leaf_configuration["discrete_probability_floor"]
     )
 
-    def initialize(node_id: int) -> float:
-        if node_id in cache:
-            return cache[node_id]
-        if node_id in active:
-            raise ValueError("conditional circuit must be acyclic")
-        active.add(node_id)
+    def initialize_node(node_id: int) -> float:
         node = nodes[node_id]
         if node.node_type == "log_one":
             value = 0.0
@@ -1612,15 +1606,16 @@ def _initialize_attachment_circuit(
                 value = maximum + logarithm
         else:  # pragma: no cover - record validation owns this invariant
             raise ValueError(f"unsupported conditional node {node.node_type!r}")
-        active.remove(node_id)
         if not math.isfinite(value):
             raise ValueError(
                 f"conditional circuit node {node.node_id} produced a nonfinite value"
             )
         _set_initial_value(block.node_out[node_id], value)
-        cache[node_id] = value
         return value
 
+    initialize = memoized_acyclic(
+        initialize_node, cycle_message="conditional circuit must be acyclic"
+    )
     return initialize(circuit.root_id)
 
 
@@ -2029,18 +2024,11 @@ def _evaluate_circuit(
     encoding: TPMConditionalEncodingPolicy,
 ) -> float:
     nodes = {node.node_id: node for node in circuit.nodes}
-    cache: dict[int, float] = {}
-    active: set[int] = set()
     probability_floor = float(
         encoding.leaf_configuration["discrete_probability_floor"]
     )
 
-    def evaluate(node_id: int) -> float:
-        if node_id in cache:
-            return cache[node_id]
-        if node_id in active:
-            raise ValueError("conditional circuit must be acyclic")
-        active.add(node_id)
+    def evaluate_node(node_id: int) -> float:
         node = nodes[node_id]
         if node.node_type == "log_one":
             value = 0.0
@@ -2105,14 +2093,15 @@ def _evaluate_circuit(
                 value = maximum + logarithm
         else:  # pragma: no cover - record validation owns this invariant
             raise ValueError(f"unsupported conditional node {node.node_type!r}")
-        active.remove(node_id)
         if not math.isfinite(value):
             raise ValueError(
                 f"conditional circuit node {node.node_id} produced a nonfinite value"
             )
-        cache[node_id] = value
         return value
 
+    evaluate = memoized_acyclic(
+        evaluate_node, cycle_message="conditional circuit must be acyclic"
+    )
     return evaluate(circuit.root_id)
 
 

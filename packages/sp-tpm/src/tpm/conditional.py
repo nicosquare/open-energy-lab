@@ -19,6 +19,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, ClassVar
 
+from ._graph import memoized_acyclic
 from ._io import canonical_json_bytes
 from .piecewise import (
     _guarded_exponential_evaluator,
@@ -685,22 +686,17 @@ class TPMConditionalCircuit:
             raise ValueError(
                 f"conditional circuit root_id {self.root_id!r} does not exist"
             )
-        active: set[int] = set()
-        visited: set[int] = set()
 
-        def visit(node_id: int) -> None:
-            if node_id in visited:
-                return
-            if node_id in active:
-                raise ValueError("conditional circuit nodes must form an acyclic graph")
-            if node_id not in by_id:
-                raise ValueError(f"conditional circuit child {node_id} does not exist")
-            active.add(node_id)
+        def visit_node(node_id: int) -> None:
             for child_id in by_id[node_id].children:
                 visit(child_id)
-            active.remove(node_id)
-            visited.add(node_id)
 
+        visit = memoized_acyclic(
+            visit_node,
+            cycle_message="conditional circuit nodes must form an acyclic graph",
+            nodes=by_id,
+            missing_message="conditional circuit child {node_id} does not exist",
+        )
         visit(self.root_id)
         for node in nodes:
             if node.node_type == "sum":
@@ -1087,7 +1083,6 @@ def _resolve_circuit_attachment_formulation(
     bounds: dict[int, tuple[float, float]] = {}
     sum_records: dict[int, dict[str, object]] = {}
     leaf_representations: dict[int, dict[str, object]] = {}
-    active: set[int] = set()
     probability_floor = float(
         encoding.leaf_configuration["discrete_probability_floor"]
     )
@@ -1117,12 +1112,7 @@ def _resolve_circuit_attachment_formulation(
             "solver_breakpoints": list(solver_points),
         }
 
-    def resolve(node_id: int) -> tuple[float, float]:
-        if node_id in bounds:
-            return bounds[node_id]
-        if node_id in active:
-            raise ValueError("attachment-bound circuit must be acyclic")
-        active.add(node_id)
+    def resolve_node(node_id: int) -> tuple[float, float]:
         node = nodes[node_id]
         if node.node_type == "log_one":
             interval = (0.0, 0.0)
@@ -1309,14 +1299,17 @@ def _resolve_circuit_attachment_formulation(
             sum_records[node_id] = record
         else:  # pragma: no cover - circuit validation owns the node type set
             raise ValueError(f"unsupported conditional circuit node type {node.node_type!r}")
-        active.remove(node_id)
         if not all(math.isfinite(value) for value in interval):
             raise ValueError(f"conditioned node {node_id} has nonfinite reachable bounds")
         if interval[0] > interval[1]:
             raise ValueError(f"conditioned node {node_id} has inverted reachable bounds")
-        bounds[node_id] = interval
         return interval
 
+    resolve = memoized_acyclic(
+        resolve_node,
+        cycle_message="attachment-bound circuit must be acyclic",
+        cache=bounds,
+    )
     for node in circuit.nodes:
         resolve(node.node_id)
     result: dict[str, object] = {
