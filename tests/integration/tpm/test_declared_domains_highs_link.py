@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-import tpm.mio as mio_module
+from tpm.mio.encode import _decode_decision_value
 
 from tpm import (
     TPMApproximationDomain,
@@ -104,14 +104,14 @@ def test_declared_binary_order_maps_solver_states_back_to_caller_labels(
     }["activation"]
 
     decision["normalized_var"].set_value(0.0)
-    assert mio_module._decode_decision_value(
+    assert _decode_decision_value(
         feature_spec,
         decision_payload=decision,
         value_function=pyo.value,
         numeric_tolerance=1e-9,
     ) == "off"
     decision["normalized_var"].set_value(1.0)
-    assert mio_module._decode_decision_value(
+    assert _decode_decision_value(
         feature_spec,
         decision_payload=decision,
         value_function=pyo.value,

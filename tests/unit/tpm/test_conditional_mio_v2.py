@@ -62,7 +62,7 @@ def test_prevalidated_guard_evaluator_is_bitwise_equal_at_knots_and_interiors():
 def test_sparse_dcc_preserves_every_active_linear_row_without_unused_columns():
     import pyomo.environ as pyo
     from pyomo.repn import generate_standard_repn
-    from tpm.mio import _sparse_dcc_piecewise
+    from tpm.mio.encode import _sparse_dcc_piecewise
 
     points=[i/16 for i in range(17)]
     values=[math.sin(4*x) for x in points]

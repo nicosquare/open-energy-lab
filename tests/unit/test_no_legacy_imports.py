@@ -30,7 +30,7 @@ FEATURE_012_OFFLINE_MODULES = (
 )
 FEATURE_014_DOMAIN_MODULES = (
     TPM_PACKAGE / "domains.py",
-    TPM_PACKAGE / "mio.py",
+    *sorted((TPM_PACKAGE / "mio").glob("*.py")),
     TARGET_PACKAGE / "planning" / "piecewise.py",
     TARGET_PACKAGE / "planning" / "problem.py",
     TARGET_PACKAGE / "planning" / "workflow.py",

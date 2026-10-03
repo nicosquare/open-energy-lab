@@ -85,7 +85,7 @@ The review record for the shipped slice is:
 ```text
 Dependency: Python standard library modules plus existing open_energy_lab simulator, demand, weather, and planning package modules
 Requested by: 009-tpm-planning
-Target module: src/open_energy_lab/simulator/planning_export.py, src/open_energy_lab/tpm/artifact.py, src/open_energy_lab/tpm/data.py, src/open_energy_lab/tpm/features.py, src/open_energy_lab/tpm/fit.py, src/open_energy_lab/tpm/query.py, src/open_energy_lab/tpm/piecewise.py, src/open_energy_lab/tpm/optional_spflow.py, src/open_energy_lab/planning/__init__.py, src/open_energy_lab/planning/dataset.py, src/open_energy_lab/planning/problem.py, src/open_energy_lab/planning/piecewise.py, src/open_energy_lab/planning/optional_solver.py
+Target module: src/open_energy_lab/simulator/planning_export.py, packages/sp-tpm/src/tpm/artifact.py, packages/sp-tpm/src/tpm/data.py, packages/sp-tpm/src/tpm/features.py, packages/sp-tpm/src/tpm/fit.py, packages/sp-tpm/src/tpm/query.py, packages/sp-tpm/src/tpm/piecewise.py, packages/sp-tpm/src/tpm/optional_spflow.py, src/open_energy_lab/planning/__init__.py, src/open_energy_lab/planning/dataset.py, src/open_energy_lab/planning/problem.py, src/open_energy_lab/planning/piecewise.py, src/open_energy_lab/planning/optional_solver.py
 Classification: core
 Import boundary: allowed at import time for open_energy_lab.simulator, open_energy_lab.tpm, and open_energy_lab.planning, with package-root exports resolved lazily so ordinary imports, persisted artifact loading, empirical query replay, and planning assembly stay import-light
 Install mechanism: base project environment via conda plus uv
@@ -98,7 +98,7 @@ Alternatives considered: keeping the package roots unpromoted or eagerly importi
 ```text
 Dependency: SPFlow
 Requested by: 009-tpm-planning production TPM fit and query workflows
-Target module: src/open_energy_lab/tpm/fit.py and src/open_energy_lab/tpm/optional_spflow.py
+Target module: packages/sp-tpm/src/tpm/fit.py and packages/sp-tpm/src/tpm/optional_spflow.py
 Classification: required-install
 Import boundary: lazy; excluded from open_energy_lab and open_energy_lab.tpm package-root imports until a production TPM workflow invokes it
 Install mechanism: standard uv-managed project environment, locked to spflow==1.1.0 for the first release
