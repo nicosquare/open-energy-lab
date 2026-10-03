@@ -259,7 +259,6 @@ def main() -> None:
             },
             shortfall_threshold=0.05,
             chance_limit_epsilon=0.3,
-            risk_evaluation_mode="spn_mip",
             cost_terms={
                 "battery_capacity_kwh": 1200.0,
                 "solar_capacity_kw": 950.0,
@@ -284,7 +283,6 @@ def main() -> None:
             "breakpoint_count"
         ],
         "mio_epsilon": compiled_mio["mio_epsilon"],
-        "risk_evaluation_mode": assembled_problem.risk_evaluation_mode,
         "solve_status": solve_summary.status,
         "selected_design": dict(solve_summary.selected_design),
         "objective_value": solve_summary.objective_value,

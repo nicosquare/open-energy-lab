@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from dataclasses import replace
 
 import pytest
 
@@ -21,34 +20,19 @@ from open_energy_lab.planning.problem import (
 from tpm import load_tpm_artifact
 from tests.integration.planning.fixture_utils import (
     PLANNING_PROBLEM_FIXTURE_PATH,
-    TPM_ARTIFACT_FIXTURE_PATH,
+    TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH,
     load_planning_fixture,
 )
 
 
 def _comparison_problem() -> PlanningProblemAssembly:
-    artifact = load_tpm_artifact(load_planning_fixture(TPM_ARTIFACT_FIXTURE_PATH))
+    artifact = load_tpm_artifact(TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH)
     fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
     problem_definition = fixture["problem_definition"]
     assert isinstance(problem_definition, dict)
-    assembled = assemble_planning_problem(
+    return assemble_planning_problem(
         PlanningProblemDefinition(**problem_definition),
         artifact,
-    )
-    return replace(
-        assembled,
-        risk_evaluation_mode="spn_mip",
-        spn_mip_payload={},
-        solver_configuration={
-            **assembled.solver_configuration,
-            "solver_name": "highs",
-            "solver_backend_required": True,
-            "solver_execution_optional": False,
-            "numeric_tolerance": 1e-9,
-            "random_seed": 13,
-            "threads": 1,
-            "time_limit_seconds": 30.0,
-        },
     )
 
 

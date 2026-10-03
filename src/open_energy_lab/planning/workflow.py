@@ -173,7 +173,6 @@ def solve_planning_study(
         shortfall_threshold=threshold,
         chance_limit_epsilon=chance_limit_epsilon,
         option_costs=option_costs,
-        risk_evaluation_mode="spn_mip",
         solver_configuration={
             "solver_name": resolved_solve_config.solver_name,
             "numeric_tolerance": resolved_solve_config.numeric_tolerance,

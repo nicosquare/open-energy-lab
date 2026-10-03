@@ -21,42 +21,32 @@ from open_energy_lab.planning.problem import (
 from tpm import load_tpm_artifact
 from tests.integration.planning.fixture_utils import (
     PLANNING_PROBLEM_FIXTURE_PATH,
-    TPM_ARTIFACT_FIXTURE_PATH,
+    TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH,
     load_planning_fixture,
 )
 
 
 class _FakePyomoBackend(SimpleNamespace):
-    def build_candidate_model(self, **kwargs):
+    def build_spn_model(self, **kwargs):
         return SimpleNamespace(model_name=f"{kwargs['problem_id']}-handoff", **kwargs)
 
     def solve_candidate_model(self, handoff, solve_config):
         if getattr(self, "solver_unavailable", False):
             raise PlanningSolverUnavailableError("fake solver unavailable")
-
-        selected_candidate_id = min(
-            handoff.feasible_candidate_ids,
-            key=lambda candidate_id: (
-                handoff.candidate_lookup[candidate_id].objective_value,
-                handoff.candidate_lookup[candidate_id].estimated_shortfall_risk,
-            ),
-        )
-        return {
-            "status": "optimal",
-            "candidate_id": selected_candidate_id,
-            "solver_metadata": {"backend_solver_name": solve_config.solver_name},
-            "feasibility_diagnostics": {"model_name": handoff.model.model_name},
-        }
+        raise AssertionError("the fake solver must be unavailable in these tests")
 
 
-def _assembled_problem():
-    artifact = load_tpm_artifact(load_planning_fixture(TPM_ARTIFACT_FIXTURE_PATH))
+def _planning_problem_definition(**overrides: object) -> PlanningProblemDefinition:
     planning_fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
     problem_definition = planning_fixture["problem_definition"]
     assert isinstance(problem_definition, dict)
+    return replace(PlanningProblemDefinition(**problem_definition), **overrides)
+
+
+def _assembled_problem(**overrides: object):
     return assemble_planning_problem(
-        PlanningProblemDefinition(**problem_definition),
-        artifact,
+        _planning_problem_definition(**overrides),
+        load_tpm_artifact(TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH),
     )
 
 
@@ -81,17 +71,21 @@ def test_required_highs_repeated_runs_match_the_committed_optimal_summary() -> N
 
     assert first == second
     assert first.status == optimal_summary["status"]
-    assert first.selected_design == optimal_summary["selected_design"]
     repeatability_tolerance = float(expected_highs_solve["repeatability_tolerance"])
+    assert first.selected_design == {
+        name: pytest.approx(value, rel=0.0, abs=repeatability_tolerance)
+        for name, value in optimal_summary["selected_design"].items()
+    }
     assert first.objective_value == pytest.approx(
         optimal_summary["objective_value"],
         rel=0.0,
         abs=repeatability_tolerance,
     )
+    # The encoded risk is a piecewise MIO estimate, accurate to the MIO epsilon.
     assert first.estimated_shortfall_risk == pytest.approx(
         optimal_summary["estimated_shortfall_risk"],
         rel=0.0,
-        abs=repeatability_tolerance,
+        abs=float(expected_highs_solve["risk_tolerance"]),
     )
     for key in (
         "backend_module",
@@ -108,7 +102,6 @@ def test_required_highs_repeated_runs_match_the_committed_optimal_summary() -> N
 
 
 def test_required_highs_matches_the_committed_infeasible_summary() -> None:
-    assembled_problem = _assembled_problem()
     planning_fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
     expected_highs_solve = planning_fixture["expected_required_highs_solve"]
     assert isinstance(expected_highs_solve, dict)
@@ -118,20 +111,8 @@ def test_required_highs_matches_the_committed_infeasible_summary() -> None:
     assert isinstance(infeasible_case, dict)
     assert isinstance(expected_summary, dict)
     assert isinstance(solve_config, dict)
-    infeasible_problem = replace(
-        assembled_problem,
-        risk_evaluation_mode="spn_mip",
-        spn_mip_payload={},
+    infeasible_problem = _assembled_problem(
         chance_limit_epsilon=float(infeasible_case["chance_limit_epsilon"]),
-        candidate_designs=tuple(
-            replace(
-                candidate,
-                estimated_shortfall_risk=float(
-                    infeasible_case["candidate_risk_override"]
-                ),
-            )
-            for candidate in assembled_problem.candidate_designs
-        ),
     )
 
     summary = solve_planning_problem(
@@ -142,9 +123,7 @@ def test_required_highs_matches_the_committed_infeasible_summary() -> None:
     assert summary.status == expected_summary["status"]
     assert summary.selected_design == expected_summary["selected_design"]
     assert summary.objective_value is expected_summary["objective_value"]
-    assert summary.estimated_shortfall_risk == pytest.approx(
-        expected_summary["estimated_shortfall_risk"]
-    )
+    assert summary.estimated_shortfall_risk is expected_summary["estimated_shortfall_risk"]
     assert (
         summary.solver_metadata["termination_condition"]
         == expected_summary["termination_condition"]

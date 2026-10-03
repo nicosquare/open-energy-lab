@@ -1,10 +1,8 @@
-"""Offline integration contracts for fixture-backed planning-problem assembly."""
+"""Offline integration contracts for SPN chance-constrained planning assembly."""
 
 from __future__ import annotations
 
-import hashlib
-import json
-import pickle
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -23,6 +21,7 @@ from tests.integration.planning.fixture_utils import (
     PLANNING_DATASET_ARTIFACT_FIXTURE_PATH,
     PLANNING_PROBLEM_FIXTURE_PATH,
     TPM_ARTIFACT_FIXTURE_PATH,
+    TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH,
     load_planning_fixture,
 )
 
@@ -35,27 +34,6 @@ def _planning_problem_definition(
     return PlanningProblemDefinition(**problem_definition)
 
 
-def _write_test_sidecar_payload(
-    *,
-    artifact_path: Path,
-    payload_path: Path,
-    payload: dict[str, object],
-) -> None:
-    serialized = pickle.dumps(payload)
-    payload_path.write_bytes(serialized)
-
-    manifest = json.loads(artifact_path.read_text(encoding="utf-8"))
-    payload_hash = hashlib.sha256(serialized).hexdigest()
-    manifest["payload_hash"] = payload_hash
-    provenance = manifest.get("provenance")
-    if isinstance(provenance, dict) and "sidecar_sha256" in provenance:
-        provenance["sidecar_sha256"] = payload_hash
-    artifact_path.write_text(
-        json.dumps(manifest, indent=2) + "\n",
-        encoding="utf-8",
-    )
-
-
 def test_assemble_planning_problem_replays_committed_tpm_artifact_offline(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -66,12 +44,10 @@ def test_assemble_planning_problem_replays_committed_tpm_artifact_offline(
             AssertionError("planning assembly used the composable attachment path")
         ),
     )
-    artifact = load_tpm_artifact(load_planning_fixture(TPM_ARTIFACT_FIXTURE_PATH))
+    artifact = load_tpm_artifact(TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH)
     planning_fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
     expected_assembly = planning_fixture["expected_assembly"]
     assert isinstance(expected_assembly, dict)
-    expected_candidate_designs = expected_assembly["candidate_designs"]
-    assert isinstance(expected_candidate_designs, list)
 
     assert planning_fixture["spec_feature"] == "009-tpm-planning"
     assert planning_fixture["fixture_status"] == "active"
@@ -84,175 +60,76 @@ def test_assemble_planning_problem_replays_committed_tpm_artifact_offline(
         artifact,
     )
 
-    assert assembled.risk_evaluation_mode == "empirical_dataset"
     assert assembled.problem_id == planning_fixture["problem_definition"]["problem_id"]
     assert assembled.artifact_id == expected_assembly["artifact_id"]
     assert assembled.dataset_reference == expected_assembly["dataset_reference"]
-    assert assembled.decision_features == (
-        "battery_capacity_kwh",
-        "solar_capacity_kw",
-    )
+    assert assembled.decision_features == ("battery_capacity_kwh", "solar_enabled")
     assert assembled.target_name == expected_assembly["target_name"]
-    assert assembled.risk_target_name == "shortfall_exceeds_threshold"
-    assert assembled.shortfall_threshold == pytest.approx(0.05)
-    assert assembled.chance_limit_epsilon == pytest.approx(0.1)
+    assert assembled.risk_target_name == expected_assembly["risk_target_name"]
+    assert assembled.shortfall_threshold == pytest.approx(0.08)
+    assert assembled.chance_limit_epsilon == pytest.approx(0.9)
     assert assembled.objective_direction == "minimize"
-    assert len(assembled.candidate_designs) == len(expected_candidate_designs)
-    assert assembled.candidate_designs[0].selected_design == expected_candidate_designs[0][
-        "selected_design"
-    ]
-    assert assembled.candidate_designs[0].objective_value == pytest.approx(
-        expected_candidate_designs[0]["objective_value"]
-    )
-    assert assembled.candidate_designs[0].estimated_shortfall_risk == pytest.approx(
-        expected_candidate_designs[0]["estimated_shortfall_risk"]
-    )
-    assert assembled.candidate_designs[1].selected_design == expected_candidate_designs[1][
-        "selected_design"
-    ]
-    assert assembled.candidate_designs[1].objective_value == pytest.approx(
-        expected_candidate_designs[1]["objective_value"]
-    )
-    assert assembled.candidate_designs[1].estimated_shortfall_risk == pytest.approx(
-        expected_candidate_designs[1]["estimated_shortfall_risk"]
-    )
     assert assembled.piecewise_terms.decision_features == (
         "battery_capacity_kwh",
-        "solar_capacity_kw",
+        "solar_enabled",
     )
     assert assembled.piecewise_terms.decision_feature_types == {
         "battery_capacity_kwh": "continuous",
-        "solar_capacity_kw": "continuous",
+        "solar_enabled": "binary",
     }
     assert assembled.piecewise_terms.approximation_kind == "piecewise"
-    assert (
-        assembled.solver_metadata["canonical_backend"]
-        == expected_assembly["solver_metadata"]["canonical_backend"]
-    )
-    assert assembled.solver_metadata["solver_name"] == expected_assembly["solver_metadata"][
-        "solver_name"
-    ]
-    assert assembled.solver_metadata["dataset_fixture_path"] == expected_assembly[
-        "solver_metadata"
-    ]["dataset_fixture_path"]
-    assert assembled.solver_metadata["risk_evaluation_mode"] == "empirical_dataset"
+    for key, value in expected_assembly["solver_metadata"].items():
+        assert assembled.solver_metadata[key] == value
     assert assembled.chance_constraint_metadata == {
-        "target_name": expected_assembly["chance_constraint_metadata"]["target_name"],
-        "event_target_name": expected_assembly["chance_constraint_metadata"]["event_target_name"],
-        "comparison": expected_assembly["chance_constraint_metadata"]["comparison"],
+        **expected_assembly["chance_constraint_metadata"],
         "threshold": pytest.approx(
             expected_assembly["chance_constraint_metadata"]["threshold"]
         ),
         "chance_limit_epsilon": pytest.approx(
             expected_assembly["chance_constraint_metadata"]["chance_limit_epsilon"]
         ),
-        "supported_query_mode": expected_assembly["chance_constraint_metadata"][
-            "supported_query_mode"
-        ],
-        "risk_evaluation_mode": expected_assembly["chance_constraint_metadata"][
-            "risk_evaluation_mode"
-        ],
     }
     assert assembled.solver_configuration["random_seed"] == 13
-    assert assembled.approximation_contract["sum_encoding_mode"] == expected_assembly[
-        "approximation_contract"
-    ]["sum_encoding_mode"]
-    assert assembled.deterministic_fixture_baseline == {
-        "candidate_count": expected_assembly["deterministic_fixture_baseline"][
-            "candidate_count"
-        ],
-        "feasible_candidate_count": expected_assembly["deterministic_fixture_baseline"][
-            "feasible_candidate_count"
-        ],
-        "dataset_fixture_path": expected_assembly["deterministic_fixture_baseline"][
-            "dataset_fixture_path"
-        ],
-        "numeric_tolerance": pytest.approx(
-            expected_assembly["deterministic_fixture_baseline"]["numeric_tolerance"]
-        ),
-        "status": expected_assembly["deterministic_fixture_baseline"]["status"],
-        "selected_design": expected_assembly["deterministic_fixture_baseline"][
-            "selected_design"
-        ],
-        "objective_value": pytest.approx(
-            expected_assembly["deterministic_fixture_baseline"]["objective_value"]
-        ),
-        "estimated_shortfall_risk": pytest.approx(
-            expected_assembly["deterministic_fixture_baseline"][
-                "estimated_shortfall_risk"
-            ]
-        ),
-        "matched_row_count": expected_assembly["deterministic_fixture_baseline"][
-            "matched_row_count"
-        ],
-    }
+    for key, value in expected_assembly["approximation_contract"].items():
+        assert assembled.approximation_contract[key] == value
+    assert assembled.spn_mip_payload["source"] == "current-spflow-mio-compiler"
+    assert assembled.spn_mip_payload["decision_features"] == [
+        "battery_capacity_kwh",
+        "solar_enabled",
+    ]
 
 
-def test_assemble_planning_problem_accepts_tmp_generated_dataset_paths(
+@pytest.mark.parametrize("artifact_source", ["fixture-replay", "injected-backend"])
+def test_assemble_planning_problem_rejects_artifacts_without_a_current_spflow_model(
+    artifact_source: str,
     tmp_path: Path,
 ) -> None:
     planning_fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
-    dataset = load_planning_dataset(PLANNING_DATASET_ARTIFACT_FIXTURE_PATH)
-    dataset_path = tmp_path / "planning-dataset.json"
-    artifact_path = tmp_path / "tpm-artifact.json"
-
-    dataset.write_json(dataset_path)
-    fit_tpm_artifact(
-        dataset_path,
-        output_path=artifact_path,
-        spflow_backend=SimpleNamespace(__name__="spflow.testing", __version__="0.test"),
-    )
+    artifact_path = TPM_ARTIFACT_FIXTURE_PATH
+    if artifact_source == "injected-backend":
+        dataset = load_planning_dataset(PLANNING_DATASET_ARTIFACT_FIXTURE_PATH)
+        dataset_path = tmp_path / "planning-dataset.json"
+        artifact_path = tmp_path / "tpm-artifact.json"
+        dataset.write_json(dataset_path)
+        fit_tpm_artifact(
+            dataset_path,
+            output_path=artifact_path,
+            spflow_backend=SimpleNamespace(__name__="spflow.testing", __version__="0.test"),
+        )
     artifact = load_tpm_artifact(artifact_path)
-
-    assembled = assemble_planning_problem(
+    definition = replace(
         _planning_problem_definition(planning_fixture),
-        artifact,
+        decision_features=("battery_capacity_kwh", "solar_capacity_kw"),
+        decision_feature_types={
+            "battery_capacity_kwh": "continuous",
+            "solar_capacity_kw": "continuous",
+        },
+        cost_terms={"battery_capacity_kwh": 1200.0, "solar_capacity_kw": 950.0},
+        approximation_contract={"approximation_kind": "piecewise"},
     )
 
-    assert assembled.dataset_reference == dataset.dataset_id
-    assert assembled.solver_metadata["dataset_fixture_path"] == dataset_path.as_posix()
-    assert assembled.deterministic_fixture_baseline["dataset_fixture_path"] == (
-        dataset_path.as_posix()
-    )
-    assert len(assembled.candidate_designs) == 2
-
-
-def test_assemble_planning_problem_falls_back_to_empirical_mode_when_sidecar_lacks_serialized_spn_models(
-    tmp_path: Path,
-    monkeypatch,
-) -> None:
-    planning_fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
-    dataset = load_planning_dataset(PLANNING_DATASET_ARTIFACT_FIXTURE_PATH)
-    dataset_path = tmp_path / "planning-dataset.json"
-    artifact_path = tmp_path / "tpm-artifact.json"
-
-    dataset.write_json(dataset_path)
-    fit_tpm_artifact(
-        dataset_path,
-        output_path=artifact_path,
-        spflow_backend=SimpleNamespace(__name__="spflow.testing", __version__="0.test"),
-    )
-    artifact = load_tpm_artifact(artifact_path)
-    payload_path = artifact_path.parent / str(artifact.spn_payload["locator"])
-    payload = pickle.loads(payload_path.read_bytes())
-    payload["query_strategy"] = "table"
-    payload.pop("conditional_models", None)
-    payload.pop("spn_model", None)
-    _write_test_sidecar_payload(
-        artifact_path=artifact_path,
-        payload_path=payload_path,
-        payload=payload,
-    )
-    artifact = load_tpm_artifact(artifact_path)
-    monkeypatch.setattr("open_energy_lab.planning.problem._pyomo_is_available", lambda: True)
-
-    assembled = assemble_planning_problem(
-        _planning_problem_definition(planning_fixture),
-        artifact,
-    )
-
-    assert assembled.risk_evaluation_mode == "empirical_dataset"
-    assert assembled.spn_mip_payload == {}
+    with pytest.raises(ValueError, match="requires a current-SPFlow production TPM artifact"):
+        assemble_planning_problem(definition, artifact)
 
 
 def test_v3_planning_requires_interval_for_retained_continuous_decision_only() -> None:

@@ -19,8 +19,8 @@ example. It:
   breakpoints and MIO epsilon `1e-6`
 - checks canonical-point native-versus-compiled probability error at `1e-6`
 
-There is no fake backend, automatic empirical fallback, or legacy `spn.*`
-runtime path in this example.
+There is no fake backend or legacy `spn.*` runtime path in this example, and
+planning has no empirical fallback.
 
 Run the example from the repository root:
 
@@ -170,9 +170,8 @@ uv run python examples/tpm_planning/run_real_backend_pipeline.py
 
 Generated data stays under `tmp/open-energy-lab-pipeline-real-backends/`. A
 successful `pipeline_summary.json` records production SPFlow evidence, compiler
-version/five-breakpoint/`1e-6` metadata, `risk_evaluation_mode == "spn_mip"`,
-an optimal HiGHS termination, seed `13`, one thread, a 30-second limit, and the
-installed Pyomo/highspy versions. The example is fully offline and does not
+version/five-breakpoint/`1e-6` metadata, an optimal HiGHS termination, seed
+`13`, one thread, a 30-second limit, and the installed Pyomo/highspy versions. The example is fully offline and does not
 need Gurobi, notebooks, network services, GPUs, or solver licenses.
 
 ## Discrete Solar-Storage Study

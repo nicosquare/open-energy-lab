@@ -11,10 +11,7 @@ from open_energy_lab.planning.optional_solver import (
     PlanningSolverUnavailableError,
     solve_planning_problem,
 )
-from open_energy_lab.planning.problem import (
-    PlanningDecisionCandidate,
-    PlanningProblemAssembly,
-)
+from open_energy_lab.planning.problem import PlanningProblemAssembly
 from tests.integration.planning.fixture_utils import (
     PLANNING_PROBLEM_FIXTURE_PATH,
     load_planning_fixture,
@@ -25,7 +22,7 @@ class _GurobiPolicyBackend(SimpleNamespace):
     failure: str | None = None
     observed_solver_name: str | None = None
 
-    def build_candidate_model(self, **kwargs: object) -> SimpleNamespace:
+    def build_spn_model(self, **kwargs: object) -> SimpleNamespace:
         return SimpleNamespace(**kwargs)
 
     def solve_candidate_model(self, handoff: object, solve_config: object):
@@ -34,7 +31,12 @@ class _GurobiPolicyBackend(SimpleNamespace):
             raise PlanningSolverUnavailableError(self.failure)
         return {
             "status": "optimal",
-            "candidate_id": 0,
+            "selected_design": {
+                "battery_capacity_kwh": 8.0,
+                "solar_capacity_kw": 4.0,
+            },
+            "objective_value": 13400.0,
+            "estimated_shortfall_risk": 0.0,
             "solver_metadata": {
                 "candidate_solver": self.observed_solver_name,
                 "supplemental_solver": True,
@@ -47,7 +49,6 @@ def _assembled_problem() -> PlanningProblemAssembly:
         problem_id="supplemental-gurobi-policy-unit",
         artifact_id="tpm-artifact:gurobi-policy-unit",
         dataset_reference="gurobi-policy-unit",
-        risk_evaluation_mode="empirical_dataset",
         decision_features=("battery_capacity_kwh", "solar_capacity_kw"),
         target_name="shortfall",
         risk_target_name="shortfall_exceeds_threshold",
@@ -58,17 +59,6 @@ def _assembled_problem() -> PlanningProblemAssembly:
             "battery_capacity_kwh": 1200.0,
             "solar_capacity_kw": 950.0,
         },
-        candidate_designs=(
-            PlanningDecisionCandidate(
-                selected_design={
-                    "battery_capacity_kwh": 8.0,
-                    "solar_capacity_kw": 4.0,
-                },
-                objective_value=13400.0,
-                estimated_shortfall_risk=0.0,
-                matched_row_count=1,
-            ),
-        ),
         piecewise_terms=SimpleNamespace(approximation_kind="piecewise"),
         solver_metadata={"canonical_backend": "pyomo"},
         solver_configuration={
@@ -78,6 +68,8 @@ def _assembled_problem() -> PlanningProblemAssembly:
             "solver_execution_optional": False,
             "numeric_tolerance": 1e-9,
         },
+        # The policy backend builds its own model, so the payload is opaque here.
+        spn_mip_payload={"source": "gurobi-policy-unit"},
     )
 
 
