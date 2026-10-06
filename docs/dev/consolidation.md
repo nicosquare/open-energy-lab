@@ -480,9 +480,26 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
     outputs recorded per test on main (twice, no noise) and on the branch,
     removed keys stripped: all 5 tests that ran the SPN-MIO path on main are
     identical.
-  - [ ] B5b remove tpm `fixture_replay`, the table sidecar, the
-    injected-backend fit branch and the `optional_spflow` adapter/capability
-    scaffolding; rename `optional_spflow.py`.
+  - [x] B5b SPFlow-only tpm. Removed the `fixture_replay` query mode,
+    the injected-backend fit branch with its "table" sidecar
+    (`fit_spflow_model`, `evaluate_spflow_query`), and the adapter registry
+    and capability detection. `optional_spflow.py` is now `spflow_backend.py`;
+    `require_spflow_backend` is a lazy import plus version check (a missing
+    SPFlow raises the plain `ImportError`). `execution_mode` stays in
+    persisted artifacts but must be "production" (a `fixture_replay`
+    artifact is rejected as removed); it left the fit config, the query
+    request and planning. Planning's backend hook is `solve_spn_model`. New
+    sidecars drop `backend_capabilities`/`backend_adapter_name`. Deleted the
+    `fixture_replay` fixtures (`tpm_artifact_v2*`, `tpm_query_case.json`),
+    `test_execution_modes.py` and the adapter tests; tests that fitted with a
+    fake backend now fit real SPFlow. src -786, tests -916. Evidence:
+    fit/load/query/compile/condition/evaluate outputs recorded per test on
+    main (twice) and on the branch: 171 tests, 415 calls; all surviving
+    production-path tests identical, and the 22 differing calls are the
+    intended moves (14 fake-backend fits now real SPFlow, 5 loads moved to
+    the production fixture, 3 downstream of those, 2 reworded errors).
+    tpm_for_sp (B6) must switch `optional_spflow` imports to
+    `spflow_backend` and drop three `execution_mode="production"` arguments.
   - [ ] B5c public API: make tpm_for_sp's private names public, prune unused
     exports, decide `product_mixture`/`categorical_native` with tpm_for_sp.
 - [ ] **B6 switch `tpm_for_sp`.** Make it depend on the workspace package
