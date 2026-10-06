@@ -15,7 +15,7 @@ PLANNED_TPM_MODULE_PATHS = (
     TPM_SOURCE_DIR / "fit.py",
     TPM_SOURCE_DIR / "query.py",
     TPM_SOURCE_DIR / "piecewise.py",
-    TPM_SOURCE_DIR / "optional_spflow.py",
+    TPM_SOURCE_DIR / "spflow_backend.py",
 )
 def _imports_legacy(path):
     for node in ast.walk(ast.parse(path.read_text(), filename=str(path))):

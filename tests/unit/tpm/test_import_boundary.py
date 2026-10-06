@@ -21,7 +21,7 @@ PLANNED_TPM_SUBMODULES = (
     "tpm.fit",
     "tpm.query",
     "tpm.piecewise",
-    "tpm.optional_spflow",
+    "tpm.spflow_backend",
 )
 HEAVY_TPM_BACKENDS = {"spflow", "torch", "pyomo", "highspy"}
 

@@ -176,17 +176,13 @@ Stable TPM package-root imports:
 
 ```python
 from open_energy_lab.tpm import (
-    CURRENT_SPFLOW_ADAPTER_NAME,
     CURRENT_SPFLOW_BACKEND_GENERATION,
     REQUIRED_SPFLOW_VERSION,
     SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS,
-    SUPPORTED_TPM_EXECUTION_MODES,
-    CurrentSPFlowCapabilities,
     LegacyTPMArtifactVersionError,
     PiecewiseApproximationMetadata,
     PiecewiseBreakpointPolicy,
     SPFlowBackendCompatibilityError,
-    SPFlowDependencyUnavailableError,
     SPNModelingTerms,
     SPNPiecewiseCurveSpec,
     SPNSolveConfig,
@@ -206,7 +202,6 @@ from open_energy_lab.tpm import (
     build_spn_chance_model,
     build_spn_modeling_terms,
     compile_spflow_model_to_mio,
-    detect_spflow_backend_capabilities,
     dump_feature_schema,
     evaluate_compiled_spflow_probability,
     extract_spn_solution,
@@ -219,11 +214,9 @@ from open_energy_lab.tpm import (
     load_tpm_artifact,
     normalize_training_data,
     query_tpm_artifact,
-    register_spflow_backend_adapter,
     require_pyomo_backend,
     require_spflow_backend,
     solve_spn_chance_model,
-    unregister_spflow_backend_adapter,
 )
 ```
 

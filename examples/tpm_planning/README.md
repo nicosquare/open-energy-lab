@@ -259,8 +259,8 @@ Imports remain lazy, but these are required installed dependencies. The generic
 pipeline uses SPFlow and Torch only; the broader simulator-to-planning example
 also exercises the required default HiGHS solve.
 
-Inspect current SPFlow capability metadata with:
+Check the installed SPFlow version with:
 
 ```bash
-uv run python -c "from tpm import detect_spflow_backend_capabilities; import json; print(json.dumps(detect_spflow_backend_capabilities(), indent=2, sort_keys=True))"
+uv run python -c "import tpm; print(tpm.require_spflow_backend().__version__)"
 ```

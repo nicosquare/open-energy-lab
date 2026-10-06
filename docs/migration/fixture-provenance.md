@@ -282,9 +282,6 @@ validation.
 
 The remaining fixtures have narrower roles:
 
-- `tpm_artifact_v2.json` and its JSON sidecar are explicit empirical
-  `fixture_replay` evidence. They are not production-model or compiler-parity
-  evidence and cannot activate as a fallback.
 - `tpm_artifact_v1.json` preserves an old inline payload only to verify an
   explicit incompatibility/refit error. Pre-1.0 artifacts must be refitted
   from source rows rather than migrated or deserialized in place.

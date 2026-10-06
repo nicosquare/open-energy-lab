@@ -10,7 +10,6 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from pathlib import Path
-from typing import Any
 
 from tpm import (
     TPMArtifact,
@@ -48,7 +47,6 @@ def fit_tpm_artifact(
     output_path: str | Path | None = None,
     fit_config: TPMFitConfig | None = None,
     feature_domains: Mapping[str, TPMFeatureDomain] | None = None,
-    spflow_backend: Any | None = None,
 ) -> TPMArtifact:
     """Fit and optionally persist a TPM artifact from one planning dataset."""
 
@@ -82,7 +80,6 @@ def fit_tpm_artifact(
         ),
         output_path=output_path,
         fit_config=fit_config,
-        spflow_backend=spflow_backend,
     )
 
 
@@ -94,7 +91,6 @@ def fit_tpm_artifact_from_study_manifest(
     max_tensor_bytes: int = 1_073_741_824,
     fit_config: TPMFitConfig | None = None,
     feature_domains: Mapping[str, TPMFeatureDomain] | None = None,
-    spflow_backend: Any | None = None,
 ) -> TPMArtifact:
     """Fit a compact TPM from a file-backed schema-v2 planning-study manifest."""
 
@@ -188,7 +184,6 @@ def fit_tpm_artifact_from_study_manifest(
         ),
         output_path=Path(output_path),
         fit_config=configured,
-        spflow_backend=spflow_backend,
     )
 
 

@@ -31,7 +31,6 @@ from tpm import (
     compile_conditional_mio_pair,
     evaluate_conditional_mio_pair,
     evaluate_native_conditional_pair,
-    detect_spflow_backend_capabilities,
     fit_tpm_artifact_from_rows,
     inspect_conditional_mio_attachment,
     load_tpm_artifact,
@@ -41,7 +40,7 @@ from tpm import (
     publish_conditional_pair,
 )
 from tpm.artifact import write_tpm_sidecar
-from tpm.optional_spflow import load_spflow_payload
+from tpm.spflow_backend import load_spflow_payload
 from tpm.query import reduce_spflow_log_likelihood
 from tpm.piecewise import (
     PiecewiseBreakpointPolicy,
@@ -834,7 +833,6 @@ def verify_fixtures() -> dict[str, object]:
         raise AssertionError("PWL pair changed during verification")
     if EVIDENCE_PATH.read_bytes() != evidence_before:
         raise AssertionError("conditional evidence changed during verification")
-    capabilities = detect_spflow_backend_capabilities()
     return {
         "mode": "verify_fixtures",
         "artifact_id": committed.artifact_id,
@@ -856,7 +854,6 @@ def verify_fixtures() -> dict[str, object]:
         ],
         "backend_generation": committed.backend_generation,
         "backend_api_version": committed.backend_api_version,
-        "adapter_name": capabilities["backend_adapter_name"],
         "semantic_refit_verified": True,
         "create_only_reuse_verified": True,
         "corruption_and_mismatch_nonrepair_verified": True,

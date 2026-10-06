@@ -15,8 +15,6 @@ DECLARED_DOMAINS_FIXTURE_PATH = (
     TPM_FIXTURE_DIRECTORY / "declared_feature_domains_v1.json"
 )
 IMMUTABLE_V2_FIXTURE_PATHS = (
-    TPM_FIXTURE_DIRECTORY / "tpm_artifact_v2.json",
-    TPM_FIXTURE_DIRECTORY / "sidecars" / "tpm_artifact_v2.fixture.json",
     TPM_FIXTURE_DIRECTORY / "tpm_artifact_spflow_v1.json",
     TPM_FIXTURE_DIRECTORY / "sidecars" / "tpm_artifact_spflow_v1.spn_payload.pkl",
 )

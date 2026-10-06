@@ -22,7 +22,7 @@ class _FakeSPNBackend(SimpleNamespace):
     def build_spn_model(self, **kwargs):
         return SimpleNamespace(model_name=f"{kwargs['problem_id']}-spn-handoff", **kwargs)
 
-    def solve_candidate_model(self, handoff, solve_config):
+    def solve_spn_model(self, handoff, solve_config):
         if getattr(self, "solver_unavailable", False):
             raise PlanningSolverUnavailableError("fake solver unavailable")
         return {

@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import math
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -21,7 +20,7 @@ from tpm.fit import TPMArtifactBuildRequest, fit_tpm_artifact_from_rows
 from tpm.query import TPMQueryRequest, query_tpm_artifact
 
 
-def _artifact_payload(*, execution_mode: str = "fixture_replay") -> dict[str, object]:
+def _artifact_payload() -> dict[str, object]:
     return {
         "artifact_id": "tpm-artifact-query-unit",
         "schema_version": "v2",
@@ -73,7 +72,7 @@ def _artifact_payload(*, execution_mode: str = "fixture_replay") -> dict[str, ob
         "fit_configuration": {"backend_name": "spflow"},
         "backend_generation": "current-spflow",
         "backend_api_version": "1.1.0",
-        "execution_mode": execution_mode,
+        "execution_mode": "production",
         "spn_payload": {
             "locator": "sidecars/tpm-artifact-query-unit.spflow",
             "serialization": "spflow-model-sidecar",
@@ -111,7 +110,6 @@ def _artifact_payload(*, execution_mode: str = "fixture_replay") -> dict[str, ob
 
 def _query_request(
     *,
-    execution_mode: str = "fixture_replay",
     output_mode: str = "conditional_probability",
 ) -> TPMQueryRequest:
     return TPMQueryRequest(
@@ -122,11 +120,10 @@ def _query_request(
         marginalized_features=("solar_has_tracking",),
         output_mode=output_mode,
         target_name="shortfall",
-        execution_mode=execution_mode,
     )
 
 
-def test_tpm_query_request_defaults_to_production() -> None:
+def test_tpm_query_request_defaults() -> None:
     request = TPMQueryRequest(
         decision_assignments={
             "battery_capacity_kwh": 8.0,
@@ -137,42 +134,28 @@ def test_tpm_query_request_defaults_to_production() -> None:
 
     assert request.output_mode == "conditional_probability"
     assert request.target_name == ""
-    assert request.execution_mode == "production"
 
 
-def test_tpm_query_request_rejects_implicit_or_unknown_fallback_modes() -> None:
-    with pytest.raises(ValueError, match=r"execution_mode.*production.*fixture_replay"):
-        TPMQueryRequest(execution_mode="automatic")
+def test_fixture_replay_artifacts_are_rejected_as_removed() -> None:
+    payload = _artifact_payload()
+    payload["execution_mode"] = "fixture_replay"
 
-
-def test_explicit_fixture_replay_is_deterministic_and_identifies_its_source() -> None:
-    artifact = load_tpm_artifact(_artifact_payload())
-    request = _query_request()
-
-    first = query_tpm_artifact(artifact, request)
-    second = query_tpm_artifact(artifact, request)
-
-    assert first == second
-    assert first["source"] == "empirical_fixture"
-    assert first["target_name"] == "shortfall"
-    assert first["resolved_target_name"] == "shortfall_exceeds_threshold"
-    assert first["output_mode"] == "conditional_probability"
-    assert first["marginalized_features"] == ("solar_has_tracking",)
-    assert 0.0 <= first["value"] <= 1.0
+    with pytest.raises(ValueError, match="fixture_replay' was removed"):
+        load_tpm_artifact(payload)
 
 
 def test_production_mode_does_not_automatically_use_empirical_fixture_data() -> None:
-    artifact = load_tpm_artifact(_artifact_payload(execution_mode="production"))
+    artifact = load_tpm_artifact(_artifact_payload())
 
     with pytest.raises(
         RuntimeError,
         match=r"(?i)production.*spflow.*payload|payload.*required",
     ):
-        query_tpm_artifact(artifact, _query_request(execution_mode="production"))
+        query_tpm_artifact(artifact, _query_request())
 
 
 def test_production_mode_does_not_return_metadata_only_fallback() -> None:
-    payload = _artifact_payload(execution_mode="production")
+    payload = _artifact_payload()
     payload["provenance"] = {}
     artifact = load_tpm_artifact(payload)
 
@@ -180,14 +163,7 @@ def test_production_mode_does_not_return_metadata_only_fallback() -> None:
         RuntimeError,
         match=r"(?i)production.*spflow.*payload|payload.*required",
     ):
-        query_tpm_artifact(artifact, _query_request(execution_mode="production"))
-
-
-def test_query_rejects_request_and_artifact_execution_mode_mismatch() -> None:
-    artifact = load_tpm_artifact(_artifact_payload(execution_mode="fixture_replay"))
-
-    with pytest.raises(ValueError, match=r"execution_mode.*fixture_replay.*production"):
-        query_tpm_artifact(artifact, _query_request(execution_mode="production"))
+        query_tpm_artifact(artifact, _query_request())
 
 
 def test_query_tpm_artifact_rejects_missing_required_decision_feature() -> None:
@@ -199,7 +175,6 @@ def test_query_tpm_artifact_rejects_missing_required_decision_feature() -> None:
             TPMQueryRequest(
                 decision_assignments={"battery_capacity_kwh": 8.0},
                 marginalized_features=("solar_has_tracking",),
-                execution_mode="fixture_replay",
             ),
         )
 
@@ -216,48 +191,8 @@ def test_query_tpm_artifact_rejects_incompatible_target_requests() -> None:
                     "design_name": "baseline-a",
                 },
                 target_name="blackout_probability",
-                execution_mode="fixture_replay",
             ),
         )
-
-
-def test_fixture_replay_supports_log_likelihood_output() -> None:
-    artifact = load_tpm_artifact(_artifact_payload())
-
-    result = query_tpm_artifact(
-        artifact,
-        _query_request(output_mode="log_likelihood"),
-    )
-
-    assert result["source"] == "empirical_fixture"
-    assert result["output_mode"] == "log_likelihood"
-    assert isinstance(result["value"], float)
-
-
-def test_fixture_replay_uses_query_tolerance_for_zero_match_log_likelihood() -> None:
-    payload = _artifact_payload()
-    payload["approximation_metadata"] = {
-        **dict(payload["approximation_metadata"]),
-        "query_numeric_tolerance": 1e-6,
-    }
-    artifact = load_tpm_artifact(payload)
-
-    result = query_tpm_artifact(
-        artifact,
-        TPMQueryRequest(
-            decision_assignments={
-                "battery_capacity_kwh": 20.0,
-                "design_name": "baseline-a",
-            },
-            marginalized_features=("solar_has_tracking",),
-            output_mode="log_likelihood",
-            execution_mode="fixture_replay",
-        ),
-    )
-
-    assert result["source"] == "empirical_fixture"
-    assert result["matched_row_count"] == 0
-    assert result["value"] == pytest.approx(math.log(1e-6))
 
 
 def _stub_production_result(*_args, **_kwargs) -> dict[str, object]:
@@ -298,10 +233,6 @@ def _fit_scalar_query_artifact(
             },
         ),
         output_path=tmp_path / f"query-{domain.shape}.json",
-        spflow_backend=SimpleNamespace(
-            __name__="spflow.testing",
-            __version__="0.test",
-        ),
     )
 
 
@@ -401,10 +332,6 @@ def test_native_query_accepts_unobserved_declared_binary_and_category_values(
             },
         ),
         output_path=tmp_path / "query-unobserved-discrete.json",
-        spflow_backend=SimpleNamespace(
-            __name__="spflow.testing",
-            __version__="0.test",
-        ),
     )
     monkeypatch.setattr(
         query_module,

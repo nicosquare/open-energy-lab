@@ -3,14 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
-
-import pytest
 
 from open_energy_lab.planning import load_planning_dataset
 from tpm.artifact import load_tpm_artifact
 from open_energy_lab.planning import fit_tpm_artifact
-from tpm.fit import TPMFitConfig
 from tpm.query import TPMQueryRequest, query_tpm_artifact
 from tests.integration.planning.fixture_utils import PLANNING_DATASET_ARTIFACT_FIXTURE_PATH
 
@@ -41,14 +37,7 @@ def test_fit_reload_workflow_persists_tpm_artifact_offline(
 ) -> None:
     dataset = load_planning_dataset(PLANNING_DATASET_ARTIFACT_FIXTURE_PATH)
     artifact_path = tmp_path / "tpm-artifact-v1.json"
-    fake_backend = SimpleNamespace(__name__="spflow.testing", __version__="0.test")
-
-    fitted_artifact = fit_tpm_artifact(
-        dataset,
-        output_path=artifact_path,
-        fit_config=TPMFitConfig(execution_mode="fixture_replay"),
-        spflow_backend=fake_backend,
-    )
+    fitted_artifact = fit_tpm_artifact(dataset, output_path=artifact_path)
     reloaded_artifact = load_tpm_artifact(artifact_path)
 
     assert artifact_path.is_file()
@@ -68,14 +57,7 @@ def test_fit_reload_query_workflow_runs_from_exported_planning_dataset(
 ) -> None:
     dataset = load_planning_dataset(PLANNING_DATASET_ARTIFACT_FIXTURE_PATH)
     artifact_path = tmp_path / "tpm-artifact-v1.json"
-    fake_backend = SimpleNamespace(__name__="spflow.testing", __version__="0.test")
-
-    fitted_artifact = fit_tpm_artifact(
-        dataset,
-        output_path=artifact_path,
-        fit_config=TPMFitConfig(execution_mode="fixture_replay"),
-        spflow_backend=fake_backend,
-    )
+    fitted_artifact = fit_tpm_artifact(dataset, output_path=artifact_path)
     reloaded_artifact = load_tpm_artifact(artifact_path)
     result = query_tpm_artifact(
         reloaded_artifact,
@@ -87,7 +69,6 @@ def test_fit_reload_query_workflow_runs_from_exported_planning_dataset(
             marginalized_features=("solar_capacity_kw",),
             output_mode="conditional_probability",
             target_name="shortfall",
-            execution_mode="fixture_replay",
         ),
     )
 
@@ -97,5 +78,5 @@ def test_fit_reload_query_workflow_runs_from_exported_planning_dataset(
     assert result["resolved_target_name"] == "shortfall_exceeds_threshold"
     assert result["output_mode"] == "conditional_probability"
     assert result["marginalized_features"] == ("solar_capacity_kw",)
-    assert result["source"] == "empirical_fixture"
-    assert result["value"] == pytest.approx(0.0)
+    assert result["source"] == "spflow_backend"
+    assert 0.0 <= result["value"] <= 1.0

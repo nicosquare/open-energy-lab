@@ -16,7 +16,6 @@ EXPECTED_TPM_EXPORTS = [
     "CONDITIONAL_PAIR_SCHEMA_VERSION",
     "LegacyTPMArtifactVersionError",
     "SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS",
-    "SUPPORTED_TPM_EXECUTION_MODES",
     "TPMArtifact",
     "TPMArtifactIntegrityError",
     "TPMBinaryDecisionLink",
@@ -100,14 +99,9 @@ EXPECTED_TPM_EXPORTS = [
     "infer_max_sum_terms",
     "require_pyomo_backend",
     "solve_spn_chance_model",
-    "CURRENT_SPFLOW_ADAPTER_NAME",
     "CURRENT_SPFLOW_BACKEND_GENERATION",
-    "CurrentSPFlowCapabilities",
     "REQUIRED_SPFLOW_VERSION",
     "SPFlowBackendCompatibilityError",
-    "SPFlowDependencyUnavailableError",
-    "detect_spflow_backend_capabilities",
-    "register_spflow_backend_adapter",
     "require_spflow_backend",
     "PiecewiseApproximationMetadata",
     "PiecewiseBreakpointPolicy",
@@ -117,7 +111,6 @@ EXPECTED_TPM_EXPORTS = [
     "TPMQueryRequest",
     "evaluate_native_conditional_pair",
     "query_tpm_artifact",
-    "unregister_spflow_backend_adapter",
     "TPMNativeMixtureConfig",
     "initialize_native_mixture",
     "native_joint_conditional_log_values",
@@ -152,11 +145,9 @@ METADATA_EXPORTS = {
     "CONDITIONAL_PAIR_COMPILER_VERSION",
     "CONDITIONAL_PAIR_RECORD_KIND",
     "CONDITIONAL_PAIR_SCHEMA_VERSION",
-    "CURRENT_SPFLOW_ADAPTER_NAME",
     "CURRENT_SPFLOW_BACKEND_GENERATION",
     "REQUIRED_SPFLOW_VERSION",
     "SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS",
-    "SUPPORTED_TPM_EXECUTION_MODES",
 }
 
 
@@ -184,16 +175,12 @@ def test_tpm_root_exposes_current_backend_and_artifact_contracts() -> None:
     module = importlib.import_module(TPM_PACKAGE)
 
     assert module.SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS == ("v2", "v3")
-    assert module.SUPPORTED_TPM_EXECUTION_MODES == ("production", "fixture_replay")
     assert module.REQUIRED_SPFLOW_VERSION == "1.1.0"
     assert module.CURRENT_SPFLOW_BACKEND_GENERATION == "current-spflow"
-    assert module.CURRENT_SPFLOW_ADAPTER_NAME == "current-spflow-api"
     assert issubclass(
         module.LegacyTPMArtifactVersionError,
         module.UnsupportedTPMArtifactVersionError,
     )
     assert issubclass(module.TPMArtifactIntegrityError, ValueError)
     assert issubclass(module.SPFlowBackendCompatibilityError, ImportError)
-    assert module.CurrentSPFlowCapabilities.__module__ == (
-        "tpm.optional_spflow"
-    )
+    assert module.require_spflow_backend.__module__ == "tpm.spflow_backend"

@@ -16,7 +16,7 @@ from open_energy_lab.planning import (
 from open_energy_lab.planning.workflow import compile_planning_study_tpm
 from tpm import TPMApproximationDomain
 from tpm import compile_spflow_model_to_mio, load_tpm_artifact
-from tpm.optional_spflow import load_spflow_payload
+from tpm.spflow_backend import load_spflow_payload
 from tpm.query import marginalize_spflow_model
 from tests.integration.planning.fixture_utils import (
     TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH,

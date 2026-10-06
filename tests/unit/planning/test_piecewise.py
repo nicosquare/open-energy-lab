@@ -24,7 +24,7 @@ from open_energy_lab.planning.piecewise import (
 )
 from tpm.domains import TPMApproximationDomain, TPMNormalizationSpec
 from tests.integration.planning.fixture_utils import (
-    TPM_ARTIFACT_FIXTURE_PATH,
+    TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH,
     load_planning_fixture,
 )
 
@@ -134,7 +134,7 @@ def _compiled_mio_v2_payload() -> dict[str, object]:
 
 
 def test_build_piecewise_planning_terms_replays_committed_tpm_metadata() -> None:
-    artifact_fixture = load_planning_fixture(TPM_ARTIFACT_FIXTURE_PATH)
+    artifact_fixture = load_planning_fixture(TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH)
 
     planning_terms = build_piecewise_planning_terms(
         artifact_fixture["approximation_metadata"],
@@ -156,7 +156,7 @@ def test_build_piecewise_planning_terms_replays_committed_tpm_metadata() -> None
         "solar_tracking_enabled": "binary",
     }
     assert planning_terms.approximation_kind == "piecewise"
-    assert planning_terms.leaf_encoding_mode == "histogram"
+    assert planning_terms.leaf_encoding_mode == "piecewise-log-density"
     assert planning_terms.sum_encoding_mode == "piecewise"
     assert planning_terms.breakpoint_policy["policy_name"] == (
         "canonical-five-breakpoint-v1"
@@ -190,7 +190,7 @@ def test_build_piecewise_planning_terms_replays_committed_tpm_metadata() -> None
 
 
 def test_build_piecewise_planning_terms_preserves_reproducibility_metadata() -> None:
-    artifact_fixture = load_planning_fixture(TPM_ARTIFACT_FIXTURE_PATH)
+    artifact_fixture = load_planning_fixture(TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH)
 
     first = build_piecewise_planning_terms(
         artifact_fixture["approximation_metadata"],
@@ -210,7 +210,7 @@ def test_build_piecewise_planning_terms_preserves_reproducibility_metadata() -> 
 
 
 def test_build_piecewise_planning_terms_rejects_invalid_max_terms() -> None:
-    artifact_fixture = load_planning_fixture(TPM_ARTIFACT_FIXTURE_PATH)
+    artifact_fixture = load_planning_fixture(TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH)
 
     with pytest.raises(ValueError, match="max_terms"):
         build_piecewise_planning_terms(
@@ -248,7 +248,7 @@ def test_validate_first_release_decision_features_rejects_out_of_scope_feature_n
 
 
 def test_build_piecewise_planning_terms_rejects_unsupported_decision_variable_types() -> None:
-    artifact_fixture = load_planning_fixture(TPM_ARTIFACT_FIXTURE_PATH)
+    artifact_fixture = load_planning_fixture(TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH)
 
     with pytest.raises(ValueError, match="unsupported decision_variable_type|'ordinal'"):
         build_piecewise_planning_terms(
@@ -260,7 +260,7 @@ def test_build_piecewise_planning_terms_rejects_unsupported_decision_variable_ty
 
 
 def test_piecewise_curve_builders_replay_canonical_solver_ready_specs() -> None:
-    artifact_fixture = load_planning_fixture(TPM_ARTIFACT_FIXTURE_PATH)
+    artifact_fixture = load_planning_fixture(TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH)
 
     exp_curve = build_exponential_piecewise_curve(
         artifact_fixture["approximation_metadata"]
@@ -280,7 +280,7 @@ def test_piecewise_curve_builders_replay_canonical_solver_ready_specs() -> None:
 
 
 def test_build_exponential_piecewise_curve_rejects_domain_floor_inside_grid() -> None:
-    artifact_fixture = load_planning_fixture(TPM_ARTIFACT_FIXTURE_PATH)
+    artifact_fixture = load_planning_fixture(TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH)
 
     with pytest.raises(ValueError, match="domain_floor"):
         build_exponential_piecewise_curve(

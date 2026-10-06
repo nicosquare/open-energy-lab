@@ -20,9 +20,7 @@ from open_energy_lab.planning.piecewise import (
 from tpm.artifact import TPMArtifact, load_tpm_artifact
 from tpm.domains import TPMApproximationDomain
 from tpm.mio import compile_spflow_model_to_mio, infer_max_sum_terms
-from tpm.optional_spflow import (
-    load_spflow_payload,
-)
+from tpm.spflow_backend import load_spflow_payload
 from tpm.query import marginalize_spflow_model
 
 SUPPORTED_OBJECTIVE_DIRECTIONS = ("minimize",)
@@ -364,8 +362,7 @@ def _resolved_dataset_path_text(provenance: Mapping[str, object]) -> str | None:
 
 def _has_current_spflow_compiler_payload(artifact: TPMArtifact) -> bool:
     return (
-        artifact.execution_mode == "production"
-        and artifact.backend_generation == "current-spflow"
+        artifact.backend_generation == "current-spflow"
         and artifact.spn_payload_format == "spflow-model-sidecar"
     )
 
@@ -377,9 +374,8 @@ def _build_solver_facing_spn_payload(
 ) -> dict[str, object]:
     if not _has_current_spflow_compiler_payload(artifact):
         raise ValueError(
-            "planning requires a current-SPFlow production TPM artifact with a model "
-            f"sidecar; artifact {artifact.artifact_id!r} has execution_mode "
-            f"{artifact.execution_mode!r}, backend_generation "
+            "planning requires a current-SPFlow TPM artifact with a model "
+            f"sidecar; artifact {artifact.artifact_id!r} has backend_generation "
             f"{artifact.backend_generation!r} and spn_payload_format "
             f"{artifact.spn_payload_format!r}"
         )

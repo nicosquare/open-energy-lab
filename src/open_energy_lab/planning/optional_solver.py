@@ -351,7 +351,7 @@ def _solve_through_backend_hook(
     handoff: _PlanningPyomoModelHandoff,
 ) -> PlanningSolveSummary:
     try:
-        raw_result = handoff.backend.solve_candidate_model(handoff, solve_config)
+        raw_result = handoff.backend.solve_spn_model(handoff, solve_config)
     except PlanningSolverUnavailableError as exc:
         return _handle_solver_unavailable(
             assembled_problem,
@@ -375,13 +375,13 @@ def _summary_from_backend_result(
     raw_result: object,
 ) -> PlanningSolveSummary:
     if not isinstance(raw_result, Mapping):
-        raise TypeError("backend solve_candidate_model() must return a mapping")
+        raise TypeError("backend solve_spn_model() must return a mapping")
 
     status = str(raw_result.get("status", ""))
     if status == "optimal":
         if "selected_design" not in raw_result:
             raise ValueError(
-                "backend solve_candidate_model() must return selected_design "
+                "backend solve_spn_model() must return selected_design "
                 "for an optimal result"
             )
         return _optimal_direct_summary(
@@ -441,7 +441,7 @@ def _summary_from_backend_result(
             extra_solver_metadata=_mapping_from_value(raw_result.get("solver_metadata")),
         )
     raise ValueError(
-        "backend solve_candidate_model() must return status 'optimal', "
+        "backend solve_spn_model() must return status 'optimal', "
         "'infeasible', or 'skipped'"
     )
 

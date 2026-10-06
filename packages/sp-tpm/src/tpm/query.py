@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -10,21 +9,13 @@ from numbers import Real
 from pathlib import Path
 from typing import Any
 
-from .artifact import (
-    SUPPORTED_TPM_EXECUTION_MODES,
-    TPMArtifact,
-    load_tpm_artifact,
-)
+from .artifact import TPMArtifact, load_tpm_artifact
 from .conditional import TPMConditionalPair, TPMNativeConditionalEvaluation
 from .features import (
     TPMFeatureSpec,
     validate_spflow_feature_assignments,
 )
-from .optional_spflow import (
-    evaluate_spflow_query,
-    load_spflow_payload,
-    require_spflow_backend,
-)
+from .spflow_backend import load_spflow_payload, require_spflow_backend
 from .piecewise import (
     DEFAULT_QUERY_NUMERIC_TOLERANCE,
     resolve_query_numeric_tolerance,
@@ -45,7 +36,6 @@ class TPMQueryRequest:
     target_name: str = ""
     numeric_tolerance: float | None = None
     target_threshold: float | None = None
-    execution_mode: str = "production"
 
     def __post_init__(self) -> None:
         if not isinstance(self.decision_assignments, Mapping):
@@ -84,14 +74,6 @@ class TPMQueryRequest:
         if self.target_threshold is not None:
             object.__setattr__(self, "target_threshold", float(self.target_threshold))
 
-        execution_mode = str(self.execution_mode)
-        if execution_mode not in SUPPORTED_TPM_EXECUTION_MODES:
-            raise ValueError(
-                "execution_mode must be one of "
-                f"{SUPPORTED_TPM_EXECUTION_MODES!r}; got {execution_mode!r}"
-            )
-        object.__setattr__(self, "execution_mode", execution_mode)
-
 
 @dataclass(frozen=True, slots=True)
 class _QueryContext:
@@ -111,42 +93,12 @@ def query_tpm_artifact(
     """Evaluate one conditional TPM query from a persisted artifact contract."""
 
     resolved_artifact = _load_artifact(artifact)
-    if request.execution_mode != resolved_artifact.execution_mode:
-        raise ValueError(
-            "execution_mode mismatch: artifact requires "
-            f"{resolved_artifact.execution_mode!r}, request selected "
-            f"{request.execution_mode!r}"
-        )
     context = _build_query_context(resolved_artifact, request)
-    if request.execution_mode == "production":
-        result = _evaluate_current_spflow_query(resolved_artifact, request, context)
-        if result is None:
-            raise RuntimeError(
-                "production TPM queries require a valid current-SPFlow model payload"
-            )
-    else:
-        result = _evaluate_empirical_query(resolved_artifact, request, context)
-        if result is None:
-            result = evaluate_spflow_query(
-                resolved_artifact,
-                feature_specs=context.feature_by_name,
-                decision_assignments=request.decision_assignments,
-                marginalized_features=request.marginalized_features,
-                canonical_target_name=context.canonical_target_name,
-                event_target_name=context.event_target_name,
-                output_mode=request.output_mode,
-                numeric_tolerance=context.numeric_tolerance,
-            )
-            if result is not None:
-                result = {
-                    **result,
-                    "fixture_backend_source": result.get("source"),
-                    "source": "empirical_fixture",
-                }
-        if result is None:
-            raise RuntimeError(
-                "fixture_replay TPM queries require explicit empirical fixture data"
-            )
+    result = _evaluate_current_spflow_query(resolved_artifact, request, context)
+    if result is None:
+        raise RuntimeError(
+            "production TPM queries require a valid current-SPFlow model payload"
+        )
 
     response = {
         "artifact_id": resolved_artifact.artifact_id,
@@ -609,138 +561,3 @@ def _evaluate_current_spflow_query(
     if numerator_log_likelihood is not None:
         result["numerator_log_likelihood"] = numerator_log_likelihood
     return result
-
-
-def _evaluate_empirical_query(
-    artifact: TPMArtifact,
-    request: TPMQueryRequest,
-    context: _QueryContext,
-) -> dict[str, object] | None:
-    dataset = _load_empirical_dataset(artifact)
-    if dataset is None:
-        return None
-
-    target_name = context.canonical_target_name
-    event_target_name = context.event_target_name
-    required_columns = set(request.decision_assignments)
-    required_columns.add(target_name)
-    if not required_columns.issubset(dataset.column_order):
-        return None
-
-    matching_rows = [
-        row
-        for row in dataset.rows
-        if _row_matches_assignments(
-            row,
-            assignments=request.decision_assignments,
-            feature_by_name=context.feature_by_name,
-            numeric_tolerance=context.numeric_tolerance,
-        )
-    ]
-    total_row_count = len(dataset.rows)
-    matched_row_count = len(matching_rows)
-
-    if request.output_mode == "conditional_probability":
-        if matched_row_count == 0:
-            value = 0.0
-        else:
-            if event_target_name in dataset.column_order:
-                value = (
-                    sum(int(row[event_target_name]) for row in matching_rows)
-                    / matched_row_count
-                )
-            else:
-                value = sum(
-                    float(row[target_name]) > context.target_threshold for row in matching_rows
-                ) / matched_row_count
-    else:
-        evidence_probability = matched_row_count / total_row_count if total_row_count else 0.0
-        value = math.log(max(evidence_probability, context.numeric_tolerance))
-
-    return {
-        "matched_row_count": matched_row_count,
-        "total_row_count": total_row_count,
-        "source": "empirical_fixture",
-        "value": float(value),
-        "resolved_target_name": event_target_name,
-    }
-
-
-@dataclass(frozen=True, slots=True)
-class _EmpiricalRows:
-    column_order: tuple[str, ...]
-    rows: tuple[Mapping[str, object], ...]
-
-
-def _load_empirical_dataset(artifact: TPMArtifact) -> _EmpiricalRows | None:
-    """Rows and column order of the training dataset file the artifact records."""
-
-    dataset_path = _resolved_dataset_path(artifact.provenance)
-    if dataset_path is None:
-        return None
-    try:
-        payload = json.loads(dataset_path.read_text(encoding="utf-8"))
-        column_order = tuple(str(name) for name in payload["column_order"])
-        rows = tuple(dict(row) for row in payload["rows"])
-    except (OSError, KeyError, TypeError, ValueError):
-        return None
-    return _EmpiricalRows(column_order=column_order, rows=rows)
-
-
-def _resolved_dataset_path(provenance: Mapping[str, object]) -> Path | None:
-    for key in (
-        "training_dataset_path",
-        "training_dataset_fixture_path",
-        "dataset_fixture_path",
-    ):
-        value = provenance.get(key)
-        if isinstance(value, str) and value:
-            return Path(value)
-    return None
-
-
-def _row_matches_assignments(
-    row: Mapping[str, object],
-    *,
-    assignments: Mapping[str, object],
-    feature_by_name: Mapping[str, TPMFeatureSpec],
-    numeric_tolerance: float,
-) -> bool:
-    for feature_name, expected_value in assignments.items():
-        if feature_name not in row:
-            return False
-        actual_value = row[feature_name]
-        spec = feature_by_name[feature_name]
-        if _feature_values_match(
-            spec,
-            actual_value,
-            expected_value,
-            numeric_tolerance=numeric_tolerance,
-        ):
-            continue
-        return False
-    return True
-
-
-def _feature_values_match(
-    spec: TPMFeatureSpec,
-    actual_value: object,
-    expected_value: object,
-    *,
-    numeric_tolerance: float,
-) -> bool:
-    if spec.feature_type == "continuous":
-        return _numeric_match(actual_value, expected_value, numeric_tolerance)
-
-    if spec.feature_type in {"binary", "categorical"}:
-        return actual_value == expected_value
-
-    if expected_value in spec.discrete_values:
-        return actual_value == expected_value
-    return _numeric_match(actual_value, expected_value, numeric_tolerance)
-
-
-def _numeric_match(actual_value: object, expected_value: object, numeric_tolerance: float) -> bool:
-    if not _is_non_boolean_real(actual_value) or not _is_non_boolean_real(expected_value):
-        return False
-    return abs(float(actual_value) - float(expected_value)) <= numeric_tolerance

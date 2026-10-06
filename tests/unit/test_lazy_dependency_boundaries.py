@@ -252,7 +252,7 @@ def test_tpm_workflow_loads_spflow_and_torch_only_at_its_boundary() -> None:
         import sys
 
         import tpm
-        from tpm.optional_spflow import require_spflow_backend
+        from tpm.spflow_backend import require_spflow_backend
 
         assert "spflow" not in sys.modules
         assert "torch" not in sys.modules
@@ -349,7 +349,6 @@ def test_feature_016_spflow_boundaries_fail_clearly_without_fallback() -> None:
         sys.meta_path.insert(0, BlockedSPFlowFinder())
 
         from tpm import (
-            SPFlowDependencyUnavailableError,
             TPMConditionalCompilationRequest,
             compile_conditional_mio_pair,
             evaluate_native_conditional_pair,
@@ -376,7 +375,7 @@ def test_feature_016_spflow_boundaries_fail_clearly_without_fallback() -> None:
 
         try:
             compile_conditional_mio_pair(request)
-        except SPFlowDependencyUnavailableError as exc:
+        except ModuleNotFoundError as exc:
             assert "SPFlow" in str(exc)
         else:
             raise AssertionError("conditional compilation used an SPFlow fallback")
@@ -391,7 +390,7 @@ def test_feature_016_spflow_boundaries_fail_clearly_without_fallback() -> None:
                     "service_tier": "standard",
                 },
             )
-        except SPFlowDependencyUnavailableError as exc:
+        except ModuleNotFoundError as exc:
             assert "SPFlow" in str(exc)
         else:
             raise AssertionError("native conditional query used a fallback")
@@ -570,7 +569,7 @@ def test_package_imports_stay_clear_of_lazy_research_stacks(module_name: str) ->
         "tpm.mio.evaluate",
         "tpm.query",
         "tpm.piecewise",
-        "tpm.optional_spflow",
+        "tpm.spflow_backend",
         "open_energy_lab.planning",
         "open_energy_lab.planning.dataset",
         "open_energy_lab.planning.problem",

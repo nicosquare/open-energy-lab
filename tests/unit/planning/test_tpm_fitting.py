@@ -5,13 +5,11 @@ from __future__ import annotations
 import importlib
 import inspect
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
 from open_energy_lab.planning import load_planning_dataset
 import tpm.fit as fit_module
-import tpm.optional_spflow as optional_spflow_module
 from tpm.artifact import load_tpm_artifact
 from tpm.domains import TPMFeatureDomain
 from open_energy_lab.planning import fit_tpm_artifact, fit_tpm_artifact_from_study_manifest
@@ -20,10 +18,7 @@ from tpm.fit import (
     TPMFitConfig,
     fit_tpm_artifact_from_rows,
 )
-from tpm.optional_spflow import (
-    SPFlowDependencyUnavailableError,
-    load_spflow_payload,
-)
+from tpm.spflow_backend import load_spflow_payload
 from tests.integration.planning.fixture_utils import PLANNING_DATASET_ARTIFACT_FIXTURE_PATH
 
 
@@ -31,48 +26,11 @@ def _planning_dataset():
     return load_planning_dataset(PLANNING_DATASET_ARTIFACT_FIXTURE_PATH)
 
 
-class _FakeAdapter(SimpleNamespace):
-    @property
-    def adapter_name(self) -> str:
-        return "fake-adapter"
-
-    @property
-    def backend_name(self) -> str:
-        return "fake-spflow"
-
-    @property
-    def backend_version(self) -> str:
-        return "0.test"
-
-    @property
-    def backend_module(self) -> object:
-        return self
-
-    def detect_capabilities(self) -> dict[str, object]:
-        return {
-            "installed_backend_module": self.backend_name,
-            "installed_backend_version": self.backend_version,
-            "backend_adapter_name": self.adapter_name,
-            "legacy_spn_api_available": True,
-            "supports_real_spn_training": True,
-            "supports_real_spn_query": True,
-            "fallback_query_strategy": None,
-            "reason": "fake adapter available",
-        }
-
-    def fit_runtime_payload(self, runtime_payload):
-        payload = dict(runtime_payload)
-        payload["query_strategy"] = "table"
-        payload["adapter_marker"] = "custom-fit"
-        return payload
-
-
-def test_fit_tpm_artifact_persists_training_configuration_with_injected_backend(
+def test_fit_tpm_artifact_persists_training_configuration(
     tmp_path: Path,
 ) -> None:
     dataset = _planning_dataset()
     artifact_path = tmp_path / "tpm-artifact-v1.json"
-    fake_backend = SimpleNamespace(__name__="spflow.testing", __version__="0.test")
 
     artifact = fit_tpm_artifact(
         dataset,
@@ -81,7 +39,6 @@ def test_fit_tpm_artifact_persists_training_configuration_with_injected_backend(
             training_random_seed=97,
             notes=("fixture-backed-fit",),
         ),
-        spflow_backend=fake_backend,
     )
     reloaded = load_tpm_artifact(artifact_path)
 
@@ -109,7 +66,8 @@ def test_fit_tpm_artifact_persists_training_configuration_with_injected_backend(
 
     payload = load_spflow_payload(reloaded)
     assert payload is not None
-    assert "backend_capabilities" in payload
+    assert payload["query_strategy"] == "spflow"
+    assert payload["model"] is not None
 
 
 def test_fit_tpm_artifact_fails_lazily_when_spflow_is_unavailable(
@@ -118,16 +76,12 @@ def test_fit_tpm_artifact_fails_lazily_when_spflow_is_unavailable(
 ) -> None:
     artifact_path = tmp_path / "should-not-exist.json"
 
-    def _raise_dependency_error(_backend=None):
-        raise SPFlowDependencyUnavailableError("required 'spflow' dependency missing")
+    def _missing_spflow():
+        raise ModuleNotFoundError("No module named 'spflow'")
 
-    monkeypatch.setattr(
-        optional_spflow_module,
-        "_resolve_spflow_backend_adapter",
-        _raise_dependency_error,
-    )
+    monkeypatch.setattr(fit_module, "require_spflow_backend", _missing_spflow)
 
-    with pytest.raises(SPFlowDependencyUnavailableError, match="required 'spflow' dependency"):
+    with pytest.raises(ModuleNotFoundError, match="spflow"):
         fit_tpm_artifact(_planning_dataset(), output_path=artifact_path)
 
     assert not artifact_path.exists()
@@ -138,37 +92,16 @@ def test_fit_tpm_artifact_preserves_dataset_source_path_for_downstream_planning(
 ) -> None:
     dataset_path = tmp_path / "planning-dataset.json"
     artifact_path = tmp_path / "tpm-artifact-v1.json"
-    fake_backend = SimpleNamespace(__name__="spflow.testing", __version__="0.test")
 
     _planning_dataset().write_json(dataset_path)
     reloaded = fit_tpm_artifact(
         dataset_path,
         output_path=artifact_path,
-        spflow_backend=fake_backend,
     )
 
     assert reloaded.provenance["training_dataset_path"] == dataset_path.as_posix()
     assert reloaded.provenance["training_dataset_fixture_path"] == dataset_path.as_posix()
     assert reloaded.provenance["dataset_fixture_path"] == dataset_path.as_posix()
-
-
-def test_fit_tpm_artifact_can_use_an_injected_backend_adapter(
-    tmp_path: Path,
-) -> None:
-    artifact_path = tmp_path / "tpm-artifact-v1.json"
-
-    fit_tpm_artifact(
-        _planning_dataset(),
-        output_path=artifact_path,
-        spflow_backend=_FakeAdapter(),
-    )
-    reloaded = load_tpm_artifact(artifact_path)
-    payload = load_spflow_payload(reloaded)
-
-    assert payload is not None
-    assert payload["backend_adapter_name"] == "fake-adapter"
-    assert payload["backend_capabilities"]["backend_adapter_name"] == "fake-adapter"
-    assert payload["adapter_marker"] == "custom-fit"
 
 
 def test_fit_tpm_artifact_from_rows_derives_a_binary_event_target_for_generic_data(
@@ -199,7 +132,6 @@ def test_fit_tpm_artifact_from_rows_derives_a_binary_event_target_for_generic_da
             target_name="loss_ratio",
             target_threshold=0.05,
         ),
-        spflow_backend=SimpleNamespace(__name__="spflow.testing", __version__="0.test"),
     )
 
     assert artifact.artifact_id == "generic-risk-artifact"
@@ -257,7 +189,6 @@ def test_fit_tpm_artifact_from_rows_keeps_constant_event_targets_binary(
             event_target_name="loss_event",
             target_threshold=0.05,
         ),
-        spflow_backend=SimpleNamespace(__name__="spflow.testing", __version__="0.test"),
     )
 
     feature_schema = {
@@ -411,7 +342,6 @@ def test_generic_fit_uses_declarations_and_classifies_omitted_features(
         _declared_generic_rows(),
         build_request=_declared_generic_request(),
         output_path=tmp_path / "declared-generic.json",
-        spflow_backend=_FakeAdapter(),
     )
     specs = {spec.feature_name: spec for spec in artifact.feature_specs}
 
@@ -452,7 +382,6 @@ def test_planning_fit_accepts_optional_feature_domains_without_reading_dataset_m
                 upper=20.0,
             )
         },
-        spflow_backend=_FakeAdapter(),
     )
     specs = {spec.feature_name: spec for spec in artifact.feature_specs}
 
@@ -520,7 +449,6 @@ def test_generic_fit_rejects_unknown_or_role_ambiguous_declarations_before_backe
             _declared_generic_rows(),
             build_request=_declared_generic_request(feature_domains=feature_domains),
             output_path=tmp_path / "must-not-publish.json",
-            spflow_backend=_FakeAdapter(),
         )
 
 
@@ -574,7 +502,6 @@ def test_invalid_declared_physical_rows_fail_before_backend_and_publish_nothing(
             _declared_generic_rows(),
             build_request=_declared_generic_request(feature_domains=feature_domains),
             output_path=output_path,
-            spflow_backend=_FakeAdapter(),
         )
 
     assert backend_calls == []

@@ -11,7 +11,7 @@ from tpm import (
     compile_spflow_model_to_mio,
     load_tpm_artifact,
 )
-from tpm.optional_spflow import load_spflow_payload
+from tpm.spflow_backend import load_spflow_payload
 from tpm.query import marginalize_spflow_model
 
 

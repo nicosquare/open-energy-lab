@@ -124,14 +124,9 @@ sidecar and record a SHA-256 digest.
   manifest for required current SPFlow 1.1 validation.
 - `sidecars/tpm_artifact_spflow_v1.spn_payload.pkl`: real current-SPFlow
   model sidecar referenced by the production manifest.
-- `tpm_artifact_v2.json`: supported schema-v2 current-SPFlow-generation
-  manifest in explicit `fixture_replay` mode.
-- `sidecars/tpm_artifact_v2.fixture.json`: deterministic replay-only sidecar
-  referenced by the schema-v2 manifest.
 - `tpm_artifact_v1.json`: legacy schema-v1 rejection and refit evidence.
-- `tpm_artifact_unsupported_version.json`: schema-v2-shaped unsupported
+- `tpm_artifact_unsupported_version.json`: production-shaped unsupported
   version fixture.
-- `tpm_query_case.json`: explicit fixture-replay query and expected response.
 
 `planning_dataset_v1.json` remains loadable without SPFlow, Pyomo, or HiGHS.
 It preserves deterministic row and column ordering plus the simulator-derived
@@ -153,28 +148,20 @@ documented tolerances. It deliberately does not require pickle-byte equality;
 the newly written sidecar digest is persisted and subsequently verified by the
 artifact loader.
 
-`tpm_artifact_v2.json` separately records `backend_generation=current-spflow`,
-`backend_api_version=1.1.0`, `execution_mode=fixture_replay`, a relative
-sidecar locator, and the sidecar SHA-256 digest. Loading the manifest by path
-verifies that the sidecar exists inside the manifest directory and matches the
-digest.
-
-The replay v2 sidecar is contract evidence, not a serialized production model.
-It sets `production_model=false`; it remains only to validate explicit
-empirical replay without weakening the separate required production fixture.
+The `fixture_replay` execution mode and its replay fixtures
+(`tpm_artifact_v2.json`, `sidecars/tpm_artifact_v2.fixture.json`,
+`tpm_query_case.json`) were removed: TPM artifacts are fitted and queried with
+SPFlow only, and loading a `fixture_replay` manifest fails with a removal
+message. The production manifest's notes still mention the replay fixture; the
+manifest is a frozen compatibility anchor (see below).
 
 `tpm_artifact_v1.json` is intentionally unsupported. It preserves the prior
 inline fake-backend payload only to prove that schema-v1 artifacts fail with
 explicit current-SPFlow refit guidance.
 
-`tpm_artifact_unsupported_version.json` mirrors the v2 manifest shape but
-uses `schema_version=v999` so unsupported versions fail before sidecar,
+`tpm_artifact_unsupported_version.json` mirrors the production manifest shape
+but uses `schema_version=v999` so unsupported versions fail before sidecar,
 feature, or query validation.
-
-`tpm_query_case.json` references the supported v2 manifest and declares
-`execution_mode=fixture_replay`. Its `source=empirical_fixture` result is
-supplementary deterministic evidence and must never be reported as production
-current-SPFlow evidence.
 
 `declared_feature_domains_v1.json` is the source-input contract for feature
 `014-declared-feature-domains`. It declares scalar decision $x\in[40,160]$,
@@ -335,18 +322,6 @@ by `tpm.load_tpm_artifact`. Query fixtures retain the
 - refresh policy: only when the planning-dataset or export provenance contract
   intentionally changes
 
-`tpm_artifact_v2.json`
-
-- status: supported schema-v2 replay manifest
-- backend contract: current-SPFlow generation, API `1.1.0`
-- execution mode: `fixture_replay`
-- sidecar serialization: `fixture-replay-evidence-json`
-- validation target: schema, backend/mode metadata, safe locator, SHA-256
-  integrity, typed feature reload, and query metadata
-- seed: training seed `13`
-- refresh policy: update the manifest and digest together whenever its sidecar
-  or schema-v2 contract changes
-
 `tpm_artifact_spflow_v1.json`
 
 - status: supported schema-v2 production manifest
@@ -373,19 +348,9 @@ by `tpm.load_tpm_artifact`. Query fixtures retain the
 `tpm_artifact_unsupported_version.json`
 
 - status: active negative-case fixture
-- origin: v2 manifest shape with `schema_version=v999`
+- origin: production manifest shape with `schema_version=v999`
 - validation target: fail-fast unsupported-version diagnostics
-- refresh policy: keep aligned with the supported v2 manifest shape
-
-`tpm_query_case.json`
-
-- status: supported explicit replay case
-- execution mode: `fixture_replay`
-- validation target: conditional probability, explicit marginalization,
-  decision assignment, and `empirical_fixture` source labeling
-- seed: training seed `13`
-- refresh policy: only when replay request or response semantics intentionally
-  change
+- refresh policy: keep aligned with the production manifest shape
 
 ## Production Regeneration And Verification
 
@@ -426,8 +391,6 @@ this fixture.
 The following pre-feature evidence files are immutable compatibility anchors:
 
 - `tpm_artifact_v1.json`
-- `tpm_artifact_v2.json`
-- `sidecars/tpm_artifact_v2.fixture.json`
 - `tpm_artifact_spflow_v1.json`
 - `sidecars/tpm_artifact_spflow_v1.spn_payload.pkl`
 - `tpm_artifact_unsupported_version.json`
@@ -435,18 +398,6 @@ The following pre-feature evidence files are immutable compatibility anchors:
 U-Bounds tests may snapshot, load, query, and compare these files, but must not
 rewrite or regenerate them into schema v3. A changed byte requires a separate,
 explicit compatibility review; loading alone never authorizes a refresh.
-
-## Replay Integrity Refresh
-
-After intentionally changing the replay sidecar, compute its digest offline:
-
-```bash
-sha256sum tests/fixtures/tpm/sidecars/tpm_artifact_v2.fixture.json
-```
-
-Update the replay `tpm_artifact_v2.json` and the schema-v2-shaped unsupported
-fixture with that exact digest. Never weaken verification or use an absolute,
-parent-traversing, or network sidecar locator.
 
 ## Working Rule
 

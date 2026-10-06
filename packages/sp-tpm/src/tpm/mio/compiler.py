@@ -15,7 +15,7 @@ from ..domains import (
     TPMCompiledValidityRecord,
 )
 from ..features import TPMFeatureSpec, dump_feature_schema
-from ..optional_spflow import (
+from ..spflow_backend import (
     CURRENT_SPFLOW_BACKEND_GENERATION,
     REQUIRED_SPFLOW_VERSION,
     require_spflow_backend,
