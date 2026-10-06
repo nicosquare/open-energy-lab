@@ -320,10 +320,6 @@ def _fixture_payload(
                 "likelihood, query, and compiler semantics rather than requiring "
                 "pickle-byte equality."
             ),
-            (
-                "The separate tpm_artifact_v2.json fixture remains explicit "
-                "empirical fixture_replay evidence."
-            ),
         ],
         **artifact_payload,
     }

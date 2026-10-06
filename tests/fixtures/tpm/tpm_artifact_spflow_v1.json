@@ -390,8 +390,7 @@
   "fixture_status": "active",
   "notes": [
     "This fixture contains a real SPFlow 1.1 model and uses production mode.",
-    "Regeneration compares deterministic structure, parameters, likelihood, query, and compiler semantics rather than requiring pickle-byte equality.",
-    "The separate tpm_artifact_v2.json fixture remains explicit empirical fixture_replay evidence."
+    "Regeneration compares deterministic structure, parameters, likelihood, query, and compiler semantics rather than requiring pickle-byte equality."
   ],
   "payload_hash": "3d3095bdc7e7b11e6982dac286c5ed7b9dc1f5215d1bbc474820c241a6933077",
   "planned_contracts": [
