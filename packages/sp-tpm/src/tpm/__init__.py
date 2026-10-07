@@ -82,7 +82,6 @@ if TYPE_CHECKING:
     from .artifact import (
         LegacyTPMArtifactVersionError,
         SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS,
-        SUPPORTED_TPM_EXECUTION_MODES,
         TPMArtifact,
         TPMArtifactIntegrityError,
         UnsupportedTPMArtifactVersionError,
@@ -126,17 +125,11 @@ if TYPE_CHECKING:
         require_pyomo_backend,
         solve_spn_chance_model,
     )
-    from .optional_spflow import (
-        CURRENT_SPFLOW_ADAPTER_NAME,
+    from .spflow_backend import (
         CURRENT_SPFLOW_BACKEND_GENERATION,
         REQUIRED_SPFLOW_VERSION,
-        CurrentSPFlowCapabilities,
         SPFlowBackendCompatibilityError,
-        SPFlowDependencyUnavailableError,
-        detect_spflow_backend_capabilities,
-        register_spflow_backend_adapter,
         require_spflow_backend,
-        unregister_spflow_backend_adapter,
     )
     from .piecewise import (
         PiecewiseApproximationMetadata,
@@ -223,10 +216,6 @@ _EXPORT_MAP = {
     "SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS": (
         ".artifact",
         "SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS",
-    ),
-    "SUPPORTED_TPM_EXECUTION_MODES": (
-        ".artifact",
-        "SUPPORTED_TPM_EXECUTION_MODES",
     ),
     "TPMArtifact": (".artifact", "TPMArtifact"),
     "TPMArtifactIntegrityError": (".artifact", "TPMArtifactIntegrityError"),
@@ -419,43 +408,19 @@ _EXPORT_MAP = {
     "infer_max_sum_terms": (".mio", "infer_max_sum_terms"),
     "require_pyomo_backend": (".mio", "require_pyomo_backend"),
     "solve_spn_chance_model": (".mio", "solve_spn_chance_model"),
-    "CURRENT_SPFLOW_ADAPTER_NAME": (
-        ".optional_spflow",
-        "CURRENT_SPFLOW_ADAPTER_NAME",
-    ),
     "CURRENT_SPFLOW_BACKEND_GENERATION": (
-        ".optional_spflow",
+        ".spflow_backend",
         "CURRENT_SPFLOW_BACKEND_GENERATION",
     ),
-    "CurrentSPFlowCapabilities": (
-        ".optional_spflow",
-        "CurrentSPFlowCapabilities",
-    ),
     "REQUIRED_SPFLOW_VERSION": (
-        ".optional_spflow",
+        ".spflow_backend",
         "REQUIRED_SPFLOW_VERSION",
     ),
     "SPFlowBackendCompatibilityError": (
-        ".optional_spflow",
+        ".spflow_backend",
         "SPFlowBackendCompatibilityError",
     ),
-    "SPFlowDependencyUnavailableError": (
-        ".optional_spflow",
-        "SPFlowDependencyUnavailableError",
-    ),
-    "detect_spflow_backend_capabilities": (
-        ".optional_spflow",
-        "detect_spflow_backend_capabilities",
-    ),
-    "register_spflow_backend_adapter": (
-        ".optional_spflow",
-        "register_spflow_backend_adapter",
-    ),
-    "require_spflow_backend": (".optional_spflow", "require_spflow_backend"),
-    "unregister_spflow_backend_adapter": (
-        ".optional_spflow",
-        "unregister_spflow_backend_adapter",
-    ),
+    "require_spflow_backend": (".spflow_backend", "require_spflow_backend"),
     "PiecewiseApproximationMetadata": (
         ".piecewise",
         "PiecewiseApproximationMetadata",
@@ -485,7 +450,6 @@ __all__ = [
     "CONDITIONAL_PAIR_SCHEMA_VERSION",
     "LegacyTPMArtifactVersionError",
     "SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS",
-    "SUPPORTED_TPM_EXECUTION_MODES",
     "TPMArtifact",
     "TPMArtifactIntegrityError",
     "TPMBinaryDecisionLink",
@@ -569,14 +533,9 @@ __all__ = [
     "infer_max_sum_terms",
     "require_pyomo_backend",
     "solve_spn_chance_model",
-    "CURRENT_SPFLOW_ADAPTER_NAME",
     "CURRENT_SPFLOW_BACKEND_GENERATION",
-    "CurrentSPFlowCapabilities",
     "REQUIRED_SPFLOW_VERSION",
     "SPFlowBackendCompatibilityError",
-    "SPFlowDependencyUnavailableError",
-    "detect_spflow_backend_capabilities",
-    "register_spflow_backend_adapter",
     "require_spflow_backend",
     "PiecewiseApproximationMetadata",
     "PiecewiseBreakpointPolicy",
@@ -586,7 +545,6 @@ __all__ = [
     "TPMQueryRequest",
     "evaluate_native_conditional_pair",
     "query_tpm_artifact",
-    "unregister_spflow_backend_adapter",
     "TPMNativeMixtureConfig",
     "initialize_native_mixture",
     "native_joint_conditional_log_values",

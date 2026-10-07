@@ -25,7 +25,7 @@ class _GurobiPolicyBackend(SimpleNamespace):
     def build_spn_model(self, **kwargs: object) -> SimpleNamespace:
         return SimpleNamespace(**kwargs)
 
-    def solve_candidate_model(self, handoff: object, solve_config: object):
+    def solve_spn_model(self, handoff: object, solve_config: object):
         self.observed_solver_name = str(getattr(solve_config, "solver_name"))
         if self.failure is not None:
             raise PlanningSolverUnavailableError(self.failure)

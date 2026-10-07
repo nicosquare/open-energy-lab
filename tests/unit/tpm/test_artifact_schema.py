@@ -16,7 +16,7 @@ from tpm.artifact import (
     UnsupportedTPMArtifactVersionError,
     load_tpm_artifact,
 )
-from tpm.optional_spflow import load_spflow_payload
+from tpm.spflow_backend import load_spflow_payload
 
 
 SIDECAR_BYTES = b"deterministic-spflow-1.1-sidecar\n"
@@ -299,8 +299,13 @@ def test_schema_v2_requires_backend_and_execution_metadata(field_name: str) -> N
 
 
 def test_schema_v2_rejects_unknown_execution_mode() -> None:
-    with pytest.raises(ValueError, match=r"execution_mode.*production.*fixture_replay"):
+    with pytest.raises(ValueError, match=r"execution_mode must be 'production'"):
         load_tpm_artifact(_artifact_payload(execution_mode="automatic-fallback"))
+
+
+def test_schema_v2_rejects_removed_fixture_replay_mode() -> None:
+    with pytest.raises(ValueError, match="fixture_replay' was removed"):
+        load_tpm_artifact(_artifact_payload(execution_mode="fixture_replay"))
 
 
 @pytest.mark.parametrize(
@@ -528,7 +533,7 @@ def test_schema_v3_sidecar_feature_semantics_match_manifest_after_reload(
     runtime_payload = {
         "artifact_schema_version": "v3",
         "feature_schema": _v3_feature_schema(),
-        "query_strategy": "table",
+        "query_strategy": "spflow",
         "raw_rows": [],
     }
     sidecar_payload = pickle.dumps(runtime_payload)
@@ -554,7 +559,7 @@ def test_schema_v3_rejects_manifest_and_sidecar_feature_semantic_disagreement(
     runtime_payload = {
         "artifact_schema_version": "v3",
         "feature_schema": sidecar_schema,
-        "query_strategy": "table",
+        "query_strategy": "spflow",
         "raw_rows": [],
     }
     sidecar_payload = pickle.dumps(runtime_payload)

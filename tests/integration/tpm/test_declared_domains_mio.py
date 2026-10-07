@@ -10,7 +10,7 @@ from tpm import (
     evaluate_compiled_spflow_probability,
     load_tpm_artifact,
 )
-from tpm.optional_spflow import load_spflow_payload
+from tpm.spflow_backend import load_spflow_payload
 from tpm.query import marginalize_spflow_model
 
 

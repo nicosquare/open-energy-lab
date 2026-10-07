@@ -40,12 +40,12 @@ from tpm import (
     TPMFitConfig,
     TPMQueryRequest,
     compile_spflow_model_to_mio,
-    detect_spflow_backend_capabilities,
     load_tpm_artifact,
     query_tpm_artifact,
+    require_spflow_backend,
 )
 from open_energy_lab.planning import fit_tpm_artifact
-from tpm.optional_spflow import load_spflow_payload
+from tpm.spflow_backend import load_spflow_payload
 from open_energy_lab.weather import (
     WeatherSamplingRequest,
     load_weather_artifact,
@@ -115,7 +115,7 @@ def build_base_scenario(weather_family) -> BatteryLoadPVScenario:
 
 def main() -> None:
     OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
-    capability_report = detect_spflow_backend_capabilities()
+    spflow_version = require_spflow_backend().__version__
 
     weather_artifact = load_weather_artifact(
         REPO_ROOT / "tests/fixtures/weather/fitted_weather_artifact_v1.json",
@@ -202,7 +202,6 @@ def main() -> None:
         fit_config=TPMFitConfig(
             training_random_seed=13,
             spn_payload_format="spflow-model-sidecar",
-            execution_mode="production",
             notes=("real-simulator-to-highs-example",),
         ),
     )
@@ -273,7 +272,7 @@ def main() -> None:
         "output_dir": str(OUTPUT_ROOT.relative_to(REPO_ROOT)),
         "dataset_path": str(dataset_path.relative_to(REPO_ROOT)),
         "tpm_path": str(tpm_path.relative_to(REPO_ROOT)),
-        "spflow_capabilities": capability_report,
+        "spflow_version": spflow_version,
         "used_real_spflow_backend": True,
         "spn_payload_format": tpm_artifact.spn_payload_format,
         "spn_payload_locator": tpm_artifact.spn_payload.get("locator"),

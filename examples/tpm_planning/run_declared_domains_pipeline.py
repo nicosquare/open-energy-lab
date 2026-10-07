@@ -19,7 +19,6 @@ from tpm import (
     TPMFeatureDomain,
     TPMFitConfig,
     TPMQueryRequest,
-    detect_spflow_backend_capabilities,
     fit_tpm_artifact_from_rows,
     load_tpm_artifact,
     query_tpm_artifact,
@@ -229,7 +228,6 @@ def _fixture_payload(artifact, evidence: Mapping[str, object]) -> dict[str, obje
         **artifact_payload["spn_payload"],
         "locator": "sidecars/tpm_artifact_domains_v3.spn_payload.pkl",
     }
-    capabilities = detect_spflow_backend_capabilities()
     provenance = dict(artifact_payload["provenance"])
     provenance.update(
         {

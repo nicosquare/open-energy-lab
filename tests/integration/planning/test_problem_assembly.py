@@ -20,7 +20,6 @@ from tpm import load_tpm_artifact
 from tests.integration.planning.fixture_utils import (
     PLANNING_DATASET_ARTIFACT_FIXTURE_PATH,
     PLANNING_PROBLEM_FIXTURE_PATH,
-    TPM_ARTIFACT_FIXTURE_PATH,
     TPM_PRODUCTION_ARTIFACT_FIXTURE_PATH,
     load_planning_fixture,
 )
@@ -99,23 +98,17 @@ def test_assemble_planning_problem_replays_committed_tpm_artifact_offline(
     ]
 
 
-@pytest.mark.parametrize("artifact_source", ["fixture-replay", "injected-backend"])
-def test_assemble_planning_problem_rejects_artifacts_without_a_current_spflow_model(
-    artifact_source: str,
+def test_assemble_planning_problem_rejects_artifacts_without_a_model_sidecar(
     tmp_path: Path,
 ) -> None:
     planning_fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
-    artifact_path = TPM_ARTIFACT_FIXTURE_PATH
-    if artifact_source == "injected-backend":
-        dataset = load_planning_dataset(PLANNING_DATASET_ARTIFACT_FIXTURE_PATH)
-        dataset_path = tmp_path / "planning-dataset.json"
-        artifact_path = tmp_path / "tpm-artifact.json"
-        dataset.write_json(dataset_path)
-        fit_tpm_artifact(
-            dataset_path,
-            output_path=artifact_path,
-            spflow_backend=SimpleNamespace(__name__="spflow.testing", __version__="0.test"),
-        )
+    dataset = load_planning_dataset(PLANNING_DATASET_ARTIFACT_FIXTURE_PATH)
+    dataset_path = tmp_path / "planning-dataset.json"
+    artifact_path = tmp_path / "tpm-artifact.json"
+    dataset.write_json(dataset_path)
+    # The default fit writes a pickle-path sidecar, not the spflow-model-sidecar
+    # format that planning compiles.
+    fit_tpm_artifact(dataset_path, output_path=artifact_path)
     artifact = load_tpm_artifact(artifact_path)
     definition = replace(
         _planning_problem_definition(planning_fixture),
@@ -128,7 +121,7 @@ def test_assemble_planning_problem_rejects_artifacts_without_a_current_spflow_mo
         approximation_contract={"approximation_kind": "piecewise"},
     )
 
-    with pytest.raises(ValueError, match="requires a current-SPFlow production TPM artifact"):
+    with pytest.raises(ValueError, match="requires a current-SPFlow TPM artifact"):
         assemble_planning_problem(definition, artifact)
 
 

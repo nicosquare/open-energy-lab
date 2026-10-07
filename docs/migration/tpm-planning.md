@@ -50,7 +50,7 @@ The migration translates behavior from these reference-only paths:
 | Preserved concern | Legacy evidence | Current implementation |
 | --- | --- | --- |
 | row and feature preparation | `legacy/old_tpm/src_py/tpm/data/datahandler.py`, `legacy/old_tpm/src_py/tpm/data/features/feature.py` | `packages/sp-tpm/src/tpm/fit.py`, `packages/sp-tpm/src/tpm/features.py` |
-| SPN fit, persistence, and query | `legacy/old_tpm/src_py/tpm/spn/main.py` | `packages/sp-tpm/src/tpm/optional_spflow.py`, `packages/sp-tpm/src/tpm/artifact.py`, `packages/sp-tpm/src/tpm/query.py` |
+| SPN fit, persistence, and query | `legacy/old_tpm/src_py/tpm/spn/main.py` | `packages/sp-tpm/src/tpm/spflow_backend.py`, `packages/sp-tpm/src/tpm/artifact.py`, `packages/sp-tpm/src/tpm/query.py` |
 | SPN-to-MIO equations and density handling | `legacy/old_tpm/src_py/tpm/spn/encoding.py`, `legacy/old_tpm/src_py/tpm/spn/utils_tangent.py`, `legacy/old_tpm/src_py/utils/densities.py` | `packages/sp-tpm/src/tpm/mio/`, `src/open_energy_lab/planning/piecewise.py`, `src/open_energy_lab/planning/problem.py` |
 
 The current code does not import or deserialize the legacy package. The
@@ -68,9 +68,9 @@ compiler metadata, payload locator, and SHA-256 digest. Loading rejects a
 missing, corrupt, legacy, or incompatible sidecar before deserialization.
 
 Production queries require a valid current-SPFlow payload and report
-`source="spflow_backend"`. Empirical rows are available only when the caller
-and artifact explicitly select `fixture_replay`; production never silently
-downgrades to table, empirical, or metadata-only results.
+`source="spflow_backend"`. There is no empirical or table query mode:
+artifacts are fitted and queried with SPFlow only, and a `fixture_replay`
+manifest fails to load.
 
 Pre-1.0 SPFlow objects and schema-v1 artifacts are incompatible with SPFlow
 1.1. They are accepted only far enough to produce explicit refit guidance and

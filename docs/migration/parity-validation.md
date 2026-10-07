@@ -204,8 +204,8 @@ than attempting broad equality with the pre-1.0 runtime:
   serve production queries or planning.
 - The canonical production evidence is
   `tests/fixtures/tpm/tpm_artifact_spflow_v1.json` plus its SHA-256-verified
-  model sidecar. `tpm_artifact_v2.json` is explicit empirical
-  `fixture_replay` evidence and never a production fallback.
+  model sidecar. The `fixture_replay` mode and its replay fixtures were
+  removed; there is no empirical query path.
 - Required validation includes real SPFlow 1.1 fit/reload/query, native versus
   compiled probability checks, and real Pyomo 6.10.1/HiGHS 1.15.1 optimal and
   infeasible solves. Missing required backends fail validation; only explicitly

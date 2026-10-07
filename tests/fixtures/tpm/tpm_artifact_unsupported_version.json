@@ -5,7 +5,7 @@
   "spec_feature": "009-tpm-planning",
   "provenance": {
     "author": "OpenAI Codex",
-    "origin": "Copy of the supported schema-v2 fixture with schema_version changed to preserve fail-fast unsupported-version coverage",
+    "origin": "Production-shaped schema-v2 artifact with schema_version changed to preserve fail-fast unsupported-version coverage",
     "legacy_evidence_paths": [
       "legacy/old_tpm/src_py/simulator/data_generation.py",
       "legacy/old_tpm/src_py/simulator/feature_engineering.py",
@@ -15,9 +15,9 @@
       "legacy/old_tpm/src_py/tpm/spn/encoding.py",
       "legacy/old_tpm/src_py/utils/densities.py"
     ],
-    "generation_command": "Copy tests/fixtures/tpm/tpm_artifact_v2.json, set fixture_name to tpm_artifact_unsupported_version, change schema_version to v999, and preserve the remaining schema-v2 payload.",
+    "generation_command": "Take the production-shaped fields of tests/fixtures/tpm/tpm_artifact_spflow_v1.json (execution mode, sidecar payload and hash), set fixture_name to tpm_artifact_unsupported_version and change schema_version to v999.",
     "random_seed": 13,
-    "refresh_policy": "Update alongside tpm_artifact_v2.json whenever the explicit artifact compatibility contract changes.",
+    "refresh_policy": "Update alongside tpm_artifact_spflow_v1.json whenever the explicit artifact compatibility contract changes.",
     "dataset_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json",
     "training_dataset_fixture_path": "tests/fixtures/tpm/planning_dataset_v1.json",
     "created_from_fixture": true,
@@ -54,7 +54,7 @@
     "specs/009-tpm-planning/contracts/validation-contract.md"
   ],
   "notes": [
-    "This fixture mirrors the supported TPM artifact fixture shape with the schema version changed.",
+    "This fixture mirrors the supported TPM artifact fixture (tpm_artifact_spflow_v1.json) with the schema version changed.",
     "Loading it must fail fast as unsupported before sidecar, query, or feature validation proceeds."
   ],
   "artifact_id": "tpm-artifact:planning-dataset-export-integration",
@@ -284,8 +284,7 @@
       "shortfall_exceeds_threshold"
     ],
     "notes": [
-      "fixture-replay-contract-only",
-      "A reproducibly fitted production current-SPFlow sidecar is introduced by T041."
+      "unsupported-version-contract-only"
     ],
     "backend_generation": "current-spflow",
     "backend_api_version": "1.1.0",
@@ -297,10 +296,11 @@
     ]
   },
   "spn_payload": {
-    "locator": "sidecars/tpm_artifact_v2.fixture.json",
-    "serialization": "fixture-replay-evidence-json"
+    "backend": "spflow",
+    "locator": "sidecars/tpm_artifact_spflow_v1.spn_payload.pkl",
+    "serialization": "spflow-model-sidecar"
   },
-  "spn_payload_format": "fixture-replay-sidecar",
+  "spn_payload_format": "spflow-model-sidecar",
   "query_configuration": {
     "supported_output_modes": [
       "conditional_probability",
@@ -336,6 +336,6 @@
   },
   "backend_generation": "current-spflow",
   "backend_api_version": "1.1.0",
-  "execution_mode": "fixture_replay",
-  "payload_hash": "a57f5f009075a2295a321e16c0e05c12eae3340ac9c55bdcbcf1b56abaabb5ff"
+  "execution_mode": "production",
+  "payload_hash": "3d3095bdc7e7b11e6982dac286c5ed7b9dc1f5215d1bbc474820c241a6933077"
 }

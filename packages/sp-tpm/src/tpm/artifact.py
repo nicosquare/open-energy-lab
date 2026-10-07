@@ -16,7 +16,6 @@ from .features import TPMFeatureSpec, dump_feature_schema, load_feature_schema
 from .piecewise import load_piecewise_metadata
 
 SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS = ("v2", "v3")
-SUPPORTED_TPM_EXECUTION_MODES = ("production", "fixture_replay")
 TPM_ARTIFACT_REQUIRED_KEYS = (
     "artifact_id",
     "schema_version",
@@ -378,7 +377,6 @@ def write_tpm_model_sidecar(
 __all__ = [
     "LegacyTPMArtifactVersionError",
     "SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS",
-    "SUPPORTED_TPM_EXECUTION_MODES",
     "TPM_ARTIFACT_REQUIRED_KEYS",
     "TPMArtifact",
     "TPMArtifactIntegrityError",
@@ -413,11 +411,13 @@ def _validate_non_empty_string(value: object, *, field_name: str) -> str:
 
 def _validate_execution_mode(value: object) -> str:
     execution_mode = str(value)
-    if execution_mode not in SUPPORTED_TPM_EXECUTION_MODES:
+    if execution_mode == "fixture_replay":
         raise ValueError(
-            "execution_mode must be one of "
-            f"{SUPPORTED_TPM_EXECUTION_MODES!r}; got {execution_mode!r}"
+            "execution_mode 'fixture_replay' was removed; TPM artifacts are "
+            "fitted and queried with SPFlow ('production')"
         )
+    if execution_mode != "production":
+        raise ValueError(f"execution_mode must be 'production'; got {execution_mode!r}")
     return execution_mode
 
 

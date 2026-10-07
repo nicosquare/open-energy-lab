@@ -140,7 +140,7 @@ def test_invalid_query_values_fail_before_spflow_evaluation(
     def _unexpected_backend_call(*args, **kwargs):
         raise AssertionError("SPFlow evaluation must not run for invalid feature values")
 
-    monkeypatch.setattr(query_module, "evaluate_spflow_query", _unexpected_backend_call)
+    monkeypatch.setattr(query_module, "_evaluate_current_spflow_query", _unexpected_backend_call)
 
     with pytest.raises(validation_error) as exc_info:
         query_tpm_artifact(
@@ -149,7 +149,6 @@ def test_invalid_query_values_fail_before_spflow_evaluation(
                 decision_assignments=assignments,
                 marginalized_features=("ambient_temperature_c",),
                 target_name="shortfall",
-                execution_mode="production",
             ),
         )
 

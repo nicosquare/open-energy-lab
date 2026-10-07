@@ -55,7 +55,7 @@ from .mio import (
     encode_conditioned_spflow_circuit,
     require_pyomo_backend,
 )
-from .optional_spflow import (
+from .spflow_backend import (
     CURRENT_SPFLOW_BACKEND_GENERATION,
     REQUIRED_SPFLOW_VERSION,
     load_spflow_payload,
@@ -1695,8 +1695,6 @@ def _validate_eligible_artifact(artifact: TPMArtifact) -> None:
             "conditional compilation requires a current schema-v3 artifact with "
             "declared U-Bounds semantics; legacy artifacts remain compatibility-only"
         )
-    if artifact.execution_mode != "production":
-        raise ValueError("conditional compilation requires a production fitted artifact")
     if artifact.backend_generation != CURRENT_SPFLOW_BACKEND_GENERATION:
         raise ValueError("conditional compilation requires the current-SPFlow backend")
     if artifact.backend_api_version != REQUIRED_SPFLOW_VERSION:

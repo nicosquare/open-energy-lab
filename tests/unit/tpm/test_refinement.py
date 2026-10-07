@@ -79,7 +79,7 @@ def test_export_reload_preserves_shared_subgraphs(tmp_path):
     import torch
     from spflow.modules.sums import Sum
     from tpm.refinement import save_supported_spn_model
-    from tpm.optional_spflow import load_supported_spflow_checkpoint
+    from tpm.spflow_backend import load_supported_spflow_checkpoint
     branch, rows = model_and_rows()
     model = Sum([branch,branch],weights=torch.tensor([.3,.7],dtype=torch.float64))
     expected = model.log_likelihood(rows).detach()
@@ -232,7 +232,7 @@ def test_safe_learned_model_sidecar_reaches_public_integer_compiler(tmp_path, mo
     from tpm import (save_supported_spn_model, compile_conditional_mio_pair,
                                      TPMConditionalCompilationRequest)
     from tpm.artifact import load_tpm_artifact
-    import tpm.optional_spflow as optional
+    import tpm.spflow_backend as optional
     from tests.unit.tpm.test_conditional_pair import _encoding, _numerical_policy
 
     model, _ = model_and_rows()

@@ -325,7 +325,7 @@ def test_compiled_v2_rejects_unknown_discrete_and_unused_requests(
 
 
 def test_loaded_v2_fitted_artifact_cannot_be_promoted_by_an_interval() -> None:
-    legacy = load_tpm_artifact("tests/fixtures/tpm/tpm_artifact_v2.json")
+    legacy = load_tpm_artifact("tests/fixtures/tpm/tpm_artifact_spflow_v1.json")
 
     with pytest.raises(ValueError, match="schema_version 'v3'.*refit"):
         _compile_v2(_supported_sum_product_graph(), artifact=legacy)

@@ -16,13 +16,13 @@ from tpm import (
     TPMFitConfig,
     TPMQueryRequest,
     compile_spflow_model_to_mio,
-    detect_spflow_backend_capabilities,
     evaluate_compiled_spflow_probability,
     fit_tpm_artifact_from_rows,
     load_tpm_artifact,
     query_tpm_artifact,
+    require_spflow_backend,
 )
-from tpm.optional_spflow import load_spflow_payload
+from tpm.spflow_backend import load_spflow_payload
 
 
 EXAMPLE_ROOT = Path(__file__).resolve().parent
@@ -148,7 +148,6 @@ def _fit_config() -> TPMFitConfig:
             "canonical-seed-13",
             "deterministic-semantic-verification-not-pickle-byte-equality",
         ),
-        execution_mode="production",
     )
 
 
@@ -161,7 +160,6 @@ def _query_request() -> TPMQueryRequest:
         },
         marginalized_features=("ambient_temperature_c",),
         target_name="shortfall",
-        execution_mode="production",
     )
 
 
@@ -321,10 +319,6 @@ def _fixture_payload(
                 "Regeneration compares deterministic structure, parameters, "
                 "likelihood, query, and compiler semantics rather than requiring "
                 "pickle-byte equality."
-            ),
-            (
-                "The separate tpm_artifact_v2.json fixture remains explicit "
-                "empirical fixture_replay evidence."
             ),
         ],
         **artifact_payload,
@@ -501,7 +495,7 @@ def run_example() -> dict[str, object]:
     summary = {
         "generated_by": str(Path(__file__).relative_to(REPO_ROOT)),
         "artifact_path": str(artifact_path.relative_to(REPO_ROOT)),
-        "spflow_capabilities": detect_spflow_backend_capabilities(),
+        "spflow_version": require_spflow_backend().__version__,
         "used_real_spflow_backend": True,
         "artifact_id": artifact.artifact_id,
         "schema_version": artifact.schema_version,

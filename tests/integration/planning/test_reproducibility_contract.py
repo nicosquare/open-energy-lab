@@ -7,7 +7,6 @@ from pathlib import Path
 from tests.integration.planning.fixture_utils import (
     PLANNING_DATASET_EXPORT_FIXTURE_PATH,
     PLANNING_PROBLEM_FIXTURE_PATH,
-    TPM_QUERY_FIXTURE_PATH,
     load_planning_fixture,
 )
 
@@ -41,12 +40,11 @@ def test_quickstart_lists_reproducibility_review_commands() -> None:
     assert 'rg "from legacy|import legacy"' in quickstart_text
 
 
-def test_export_query_and_planning_fixtures_share_reproducibility_provenance_contract() -> None:
+def test_export_and_planning_fixtures_share_reproducibility_provenance_contract() -> None:
     export_fixture = load_planning_fixture(PLANNING_DATASET_EXPORT_FIXTURE_PATH)
-    query_fixture = load_planning_fixture(TPM_QUERY_FIXTURE_PATH)
     planning_fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
 
-    for fixture in (export_fixture, query_fixture, planning_fixture):
+    for fixture in (export_fixture, planning_fixture):
         assert fixture["spec_feature"] == "009-tpm-planning"
         assert "specs/009-tpm-planning/contracts/validation-contract.md" in fixture[
             "planned_contracts"
@@ -59,18 +57,14 @@ def test_export_query_and_planning_fixtures_share_reproducibility_provenance_con
         assert "refresh_policy" in provenance
 
 
-def test_export_query_and_planning_fixtures_reference_workflow_specific_contracts() -> None:
+def test_export_and_planning_fixtures_reference_workflow_specific_contracts() -> None:
     export_fixture = load_planning_fixture(PLANNING_DATASET_EXPORT_FIXTURE_PATH)
-    query_fixture = load_planning_fixture(TPM_QUERY_FIXTURE_PATH)
     planning_fixture = load_planning_fixture(PLANNING_PROBLEM_FIXTURE_PATH)
 
     assert "specs/009-tpm-planning/contracts/simulator-export-contract.md" in export_fixture[
         "planned_contracts"
     ]
     assert "specs/009-tpm-planning/contracts/planning-dataset-contract.md" in export_fixture[
-        "planned_contracts"
-    ]
-    assert "specs/009-tpm-planning/contracts/tpm-artifact-contract.md" in query_fixture[
         "planned_contracts"
     ]
     assert "specs/009-tpm-planning/contracts/planning-solve-contract.md" in planning_fixture[

@@ -30,7 +30,7 @@ class _FakePyomoBackend(SimpleNamespace):
     def build_spn_model(self, **kwargs):
         return SimpleNamespace(model_name=f"{kwargs['problem_id']}-handoff", **kwargs)
 
-    def solve_candidate_model(self, handoff, solve_config):
+    def solve_spn_model(self, handoff, solve_config):
         if getattr(self, "solver_unavailable", False):
             raise PlanningSolverUnavailableError("fake solver unavailable")
         raise AssertionError("the fake solver must be unavailable in these tests")

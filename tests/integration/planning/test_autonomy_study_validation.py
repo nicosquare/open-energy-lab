@@ -165,7 +165,6 @@ def _configuration_probabilities(artifact, rows):
                     },
                     output_mode="conditional_probability",
                     target_threshold=1.0,
-                    execution_mode="production",
                 ),
             )["value"]
         )

@@ -12,7 +12,7 @@ from tpm.fit import (
     TPMFitConfig,
     fit_tpm_artifact_from_rows,
 )
-from tpm.optional_spflow import load_spflow_payload
+from tpm.spflow_backend import load_spflow_payload
 from tpm.query import TPMQueryRequest
 
 
@@ -137,5 +137,4 @@ def valid_query_request() -> TPMQueryRequest:
         },
         marginalized_features=("ambient_temperature_c",),
         target_name="shortfall",
-        execution_mode="production",
     )

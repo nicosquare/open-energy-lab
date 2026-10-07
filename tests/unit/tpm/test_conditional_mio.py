@@ -28,7 +28,6 @@ from tpm.conditional_mio import (
 )
 from tpm.domains import TPMFeatureDomain, TPMNormalizationSpec
 from tpm.mio import condition_compiled_spflow_mio
-from tpm.optional_spflow import SPFlowDependencyUnavailableError
 from tpm.piecewise import (
     LOGARITHM_ENDPOINT_POLICY_NAME,
     PiecewiseBreakpointPolicy,
@@ -1066,7 +1065,7 @@ def test_compiler_reports_missing_spflow_before_loading_a_sidecar(
     )
 
     def missing_backend():
-        raise SPFlowDependencyUnavailableError("locked SPFlow dependency is absent")
+        raise ModuleNotFoundError("locked SPFlow dependency is absent")
 
     monkeypatch.setattr(
         conditional_mio_module, "require_spflow_backend", missing_backend
@@ -1078,7 +1077,7 @@ def test_compiler_reports_missing_spflow_before_loading_a_sidecar(
     )
 
     with pytest.raises(
-        SPFlowDependencyUnavailableError, match="SPFlow dependency is absent"
+        ModuleNotFoundError, match="SPFlow dependency is absent"
     ):
         compile_conditional_mio_pair(_compilation_request())
 
@@ -1093,7 +1092,7 @@ def test_native_evaluator_reports_missing_spflow_before_loading_a_sidecar(
     pair = compile_conditional_mio_pair(_compilation_request())
 
     def missing_backend():
-        raise SPFlowDependencyUnavailableError("locked SPFlow dependency is absent")
+        raise ModuleNotFoundError("locked SPFlow dependency is absent")
 
     monkeypatch.setattr(query_module, "require_spflow_backend", missing_backend)
     monkeypatch.setattr(
@@ -1103,7 +1102,7 @@ def test_native_evaluator_reports_missing_spflow_before_loading_a_sidecar(
     )
 
     with pytest.raises(
-        SPFlowDependencyUnavailableError, match="SPFlow dependency is absent"
+        ModuleNotFoundError, match="SPFlow dependency is absent"
     ):
         evaluate_native_conditional_pair(
             artifact,

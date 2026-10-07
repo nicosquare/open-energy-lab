@@ -10,7 +10,7 @@ from tpm.artifact import TPMArtifact
 from tpm.domains import TPMApproximationDomain
 from tpm.fit import TPMFitConfig
 from tpm.mio import compile_spflow_model_to_mio
-from tpm.optional_spflow import load_spflow_payload
+from tpm.spflow_backend import load_spflow_payload
 from tpm.query import TPMQueryRequest, query_tpm_artifact
 from tpm.query import marginalize_spflow_model
 
@@ -202,7 +202,6 @@ def solve_planning_study(
             decision_assignments=solve_summary.selected_design,
             output_mode="conditional_probability",
             target_threshold=threshold,
-            execution_mode="production",
         ),
     )
     native_probability = float(query["value"])

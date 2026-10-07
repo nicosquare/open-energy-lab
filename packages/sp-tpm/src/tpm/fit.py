@@ -9,7 +9,6 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from numbers import Real
 from pathlib import Path
-from typing import Any
 
 from .artifact import TPMArtifact, write_tpm_model_sidecar
 from .data import TPMTrainingData, normalize_training_data
@@ -24,12 +23,9 @@ from .features import (
     build_spflow_training_tensor,
     dump_feature_schema,
 )
-from .optional_spflow import (
-    CURRENT_SPFLOW_ADAPTER_NAME,
+from .spflow_backend import (
     CURRENT_SPFLOW_BACKEND_GENERATION,
     REQUIRED_SPFLOW_VERSION,
-    detect_spflow_backend_capabilities,
-    fit_spflow_model,
     require_spflow_backend,
     stabilize_spflow_leaf_parameters,
 )
@@ -165,7 +161,6 @@ class TPMFitConfig:
     supported_output_modes: tuple[str, ...] = CANONICAL_OUTPUT_MODES
     learn_mspn_kwargs: Mapping[str, object] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
-    execution_mode: str = "production"
     persist_training_rows: bool = True
 
     def __post_init__(self) -> None:
@@ -205,13 +200,6 @@ class TPMFitConfig:
         if any(not note for note in notes):
             raise ValueError("notes must not contain empty strings")
         object.__setattr__(self, "notes", notes)
-
-        execution_mode = str(self.execution_mode)
-        if execution_mode not in {"production", "fixture_replay"}:
-            raise ValueError(
-                "execution_mode must be 'production' or 'fixture_replay'"
-            )
-        object.__setattr__(self, "execution_mode", execution_mode)
 
         if not isinstance(self.persist_training_rows, bool):
             raise TypeError("persist_training_rows must be boolean")
@@ -415,7 +403,6 @@ def fit_tpm_artifact_from_rows(
     build_request: TPMArtifactBuildRequest,
     output_path: str | Path | None = None,
     fit_config: TPMFitConfig | None = None,
-    spflow_backend: Any | None = None,
 ) -> TPMArtifact:
     """Fit a TPM artifact from arbitrary rows plus explicit target/decision metadata."""
 
@@ -452,7 +439,6 @@ def fit_tpm_artifact_from_rows(
         target_threshold=float(build_request.target_threshold or 0.0),
         training_random_seed=training_random_seed,
         config=config,
-        backend=spflow_backend,
         output_path=output_path,
     )
     piecewise_metadata = build_piecewise_metadata(
@@ -483,7 +469,7 @@ def fit_tpm_artifact_from_rows(
         ),
         backend_generation=fit_result.backend_generation,
         backend_api_version=fit_result.backend_api_version,
-        execution_mode=config.execution_mode,
+        execution_mode="production",
         spn_payload=fit_result.spn_payload,
         spn_payload_format=fit_result.spn_payload_format,
         payload_hash=fit_result.payload_hash,
@@ -578,7 +564,6 @@ def _fit_and_persist_spflow_model(
     target_threshold: float,
     training_random_seed: int,
     config: TPMFitConfig,
-    backend: Any | None,
     output_path: str | Path | None,
 ) -> _SPFlowFitResult:
     sidecar_path = _spn_payload_output_path(output_path=output_path)
@@ -587,108 +572,65 @@ def _fit_and_persist_spflow_model(
         output_path=output_path,
         sidecar_path=sidecar_path,
     )
-    translated_kwargs = translate_spflow_fit_configuration(config.learn_mspn_kwargs)
-    determinism_configuration: Mapping[str, object] = {}
-    fit_summary: Mapping[str, object] = {}
-    leaf_families: tuple[str, ...] = ()
-    current_payload: Mapping[str, object] | None = None
+    require_spflow_backend()
+    determinism_configuration = _configure_torch_determinism(training_random_seed)
+    import torch
 
-    if _uses_current_spflow_backend(backend):
-        backend_module = require_spflow_backend()
-        backend_capabilities = detect_spflow_backend_capabilities(backend_module)
-        determinism_configuration = _configure_torch_determinism(training_random_seed)
-        import torch
-
-        previous_default_dtype = torch.get_default_dtype()
-        torch.set_default_dtype(torch.float64)
-        try:
-            model, tensor, leaves, translated_kwargs = _learn_current_spflow_structure(
-                training_data.rows,
-                feature_schema=feature_schema,
-                fit_configuration=config.learn_mspn_kwargs,
-            )
-        finally:
-            torch.set_default_dtype(previous_default_dtype)
-
-        fit_summary = _build_stable_fit_summary(model=model, tensor=tensor)
-        leaf_families = tuple(
-            dict.fromkeys(_canonical_leaf_family_name(leaf) for leaf in leaves)
+    previous_default_dtype = torch.get_default_dtype()
+    torch.set_default_dtype(torch.float64)
+    try:
+        model, tensor, leaves, translated_kwargs = _learn_current_spflow_structure(
+            training_data.rows,
+            feature_schema=feature_schema,
+            fit_configuration=config.learn_mspn_kwargs,
         )
-        current_payload = {
-            "payload_kind": "current-spflow-model-sidecar",
-            "artifact_schema_version": "v3",
-            "backend_module": "spflow",
-            "backend_version": REQUIRED_SPFLOW_VERSION,
-            "backend_adapter_name": CURRENT_SPFLOW_ADAPTER_NAME,
-            "backend_capabilities": backend_capabilities,
-            "backend_generation": CURRENT_SPFLOW_BACKEND_GENERATION,
-            "backend_api_version": REQUIRED_SPFLOW_VERSION,
-            "canonical_target_name": canonical_target_name,
-            "event_target_name": event_target_name,
-            "target_threshold": float(target_threshold),
-            "training_random_seed": training_random_seed,
-            "determinism_configuration": dict(determinism_configuration),
-            "learn_spn_kwargs": dict(translated_kwargs),
-            "column_order": list(training_data.column_order),
-            "feature_schema": [
-                spec.to_dict(schema_version="v3") for spec in feature_schema
-            ],
-            "normalized_rows": (
-                [dict(row) for row in training_data.normalized_rows]
-                if config.persist_training_rows
-                else []
-            ),
-            "raw_rows": (
-                [dict(row) for row in training_data.rows]
-                if config.persist_training_rows
-                else []
-            ),
-            "training_row_count": len(training_data.rows),
-            "event_target_index": training_data.column_order.index(event_target_name),
-            "query_strategy": "spflow",
-            "fit_summary": dict(fit_summary),
-            "model": model,
-        }
-    spn_payload: object = {}
-    if current_payload is not None:
-        deserialized_payload = current_payload
-    else:
-        import pickle
+    finally:
+        torch.set_default_dtype(previous_default_dtype)
 
-        sidecar_path.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile(
-            dir=sidecar_path.parent,
-            prefix=f".{sidecar_path.name}.",
-            suffix=".adapter-stage",
-            delete=False,
-        ) as staging_file:
-            staging_path = Path(staging_file.name)
-        try:
-            spn_payload, _ = fit_spflow_model(
-                training_data,
-                feature_schema=feature_schema,
-                canonical_target_name=canonical_target_name,
-                event_target_name=event_target_name,
-                target_threshold=target_threshold,
-                training_random_seed=training_random_seed,
-                learn_mspn_kwargs=config.learn_mspn_kwargs,
-                backend=backend,
-                payload_path=staging_path,
-                payload_format=config.spn_payload_format,
-            )
-            deserialized_payload = pickle.loads(staging_path.read_bytes())
-        finally:
-            staging_path.unlink(missing_ok=True)
-        if not isinstance(deserialized_payload, Mapping):
-            raise TypeError("persisted SPFlow sidecar payload must be a mapping")
+    fit_summary = _build_stable_fit_summary(model=model, tensor=tensor)
+    leaf_families = tuple(
+        dict.fromkeys(_canonical_leaf_family_name(leaf) for leaf in leaves)
+    )
+    sidecar_payload = {
+        "payload_kind": "current-spflow-model-sidecar",
+        "artifact_schema_version": "v3",
+        "backend_module": "spflow",
+        "backend_version": REQUIRED_SPFLOW_VERSION,
+        "backend_generation": CURRENT_SPFLOW_BACKEND_GENERATION,
+        "backend_api_version": REQUIRED_SPFLOW_VERSION,
+        "canonical_target_name": canonical_target_name,
+        "event_target_name": event_target_name,
+        "target_threshold": float(target_threshold),
+        "training_random_seed": training_random_seed,
+        "determinism_configuration": dict(determinism_configuration),
+        "learn_spn_kwargs": dict(translated_kwargs),
+        "column_order": list(training_data.column_order),
+        "feature_schema": [
+            spec.to_dict(schema_version="v3") for spec in feature_schema
+        ],
+        "normalized_rows": (
+            [dict(row) for row in training_data.normalized_rows]
+            if config.persist_training_rows
+            else []
+        ),
+        "raw_rows": (
+            [dict(row) for row in training_data.rows]
+            if config.persist_training_rows
+            else []
+        ),
+        "training_row_count": len(training_data.rows),
+        "event_target_index": training_data.column_order.index(event_target_name),
+        "query_strategy": "spflow",
+        "fit_summary": dict(fit_summary),
+        "model": model,
+    }
     _, payload_hash = write_tpm_model_sidecar(
         staged_sidecar_path,
-        deserialized_payload,
+        sidecar_payload,
     )
 
-    normalized_payload = dict(spn_payload) if isinstance(spn_payload, Mapping) else {}
-    normalized_payload.update(
-        {
+    return _SPFlowFitResult(
+        spn_payload={
             "locator": sidecar_path.name,
             "serialization": (
                 "pickle"
@@ -696,26 +638,11 @@ def _fit_and_persist_spflow_model(
                 else config.spn_payload_format
             ),
             "backend": "spflow",
-        }
-    )
-    persisted_backend_generation = str(
-        deserialized_payload.get(
-            "backend_generation",
-            CURRENT_SPFLOW_BACKEND_GENERATION,
-        )
-    )
-    persisted_backend_api_version = str(
-        deserialized_payload.get(
-            "backend_api_version",
-            deserialized_payload.get("backend_version", "unknown"),
-        )
-    )
-    return _SPFlowFitResult(
-        spn_payload=normalized_payload,
+        },
         spn_payload_format=config.spn_payload_format,
         payload_hash=payload_hash,
-        backend_generation=persisted_backend_generation,
-        backend_api_version=persisted_backend_api_version,
+        backend_generation=CURRENT_SPFLOW_BACKEND_GENERATION,
+        backend_api_version=REQUIRED_SPFLOW_VERSION,
         learn_spn_kwargs=translated_kwargs,
         leaf_families=leaf_families,
         determinism_configuration=determinism_configuration,
@@ -949,7 +876,7 @@ def _persisted_fit_configuration(
         "learn_spn_kwargs": dict(result.learn_spn_kwargs),
         "leaf_families": list(result.leaf_families),
         "notes": list(config.notes),
-        "execution_mode": config.execution_mode,
+        "execution_mode": "production",
     }
     if result.determinism_configuration:
         payload["determinism_configuration"] = dict(
@@ -958,16 +885,6 @@ def _persisted_fit_configuration(
     if result.fit_summary:
         payload["fit_summary"] = dict(result.fit_summary)
     return payload
-
-
-def _uses_current_spflow_backend(backend: Any | None) -> bool:
-    if backend is None:
-        return True
-    return (
-        getattr(backend, "__name__", None) == "spflow"
-        and str(getattr(backend, "__version__", "")) == REQUIRED_SPFLOW_VERSION
-        and not hasattr(backend, "fit_runtime_payload")
-    )
 
 
 def _resolved_training_random_seed(

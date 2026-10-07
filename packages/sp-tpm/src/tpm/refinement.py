@@ -268,7 +268,7 @@ def load_spn_refinement_state(path, *, expected_feature_schema, expected_context
     import numpy as np
     import torch
     from .features import dump_feature_schema, load_feature_schema
-    from .optional_spflow import load_supported_spflow_checkpoint
+    from .spflow_backend import load_supported_spflow_checkpoint
     payload = load_supported_spflow_checkpoint(path)
     required = {'schema', 'feature_schema', 'model', 'optimizer_state', 'optimizer_defaults', 'progress',
                 'best_state', 'context', 'admission', 'torch_version', 'spflow_version', 'torch_rng_state',
