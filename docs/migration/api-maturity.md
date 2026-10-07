@@ -172,23 +172,16 @@ from open_energy_lab.planning import (
 )
 ```
 
-Stable TPM package-root imports:
+Stable TPM package-root imports (the `sp-tpm` distribution; schema and
+version constants live in their submodules, e.g. `tpm.spflow_backend`):
 
 ```python
-from open_energy_lab.tpm import (
-    CURRENT_SPFLOW_BACKEND_GENERATION,
-    REQUIRED_SPFLOW_VERSION,
-    SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS,
+from tpm import (
     LegacyTPMArtifactVersionError,
     PiecewiseApproximationMetadata,
     PiecewiseBreakpointPolicy,
     SPFlowBackendCompatibilityError,
-    SPNModelingTerms,
-    SPNPiecewiseCurveSpec,
-    SPNSolveConfig,
-    SPNSolveSummary,
     SPNSolverDependencyUnavailableError,
-    SPNSolverUnavailableError,
     TPMArtifact,
     TPMArtifactBuildRequest,
     TPMArtifactIntegrityError,
@@ -200,14 +193,11 @@ from open_energy_lab.tpm import (
     UnsupportedSPFlowModuleError,
     build_piecewise_metadata,
     build_spn_chance_model,
-    build_spn_modeling_terms,
     compile_spflow_model_to_mio,
     dump_feature_schema,
     evaluate_compiled_spflow_probability,
     extract_spn_solution,
-    fit_tpm_artifact,
     fit_tpm_artifact_from_rows,
-    infer_feature_role,
     infer_max_sum_terms,
     load_feature_schema,
     load_piecewise_metadata,
@@ -216,7 +206,6 @@ from open_energy_lab.tpm import (
     query_tpm_artifact,
     require_pyomo_backend,
     require_spflow_backend,
-    solve_spn_chance_model,
 )
 ```
 

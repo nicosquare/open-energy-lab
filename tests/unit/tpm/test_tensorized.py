@@ -81,7 +81,7 @@ def test_scalar_export_does_not_recursively_revisit_shared_modules(monkeypatch):
 
 
 def test_device_movement_visits_each_shared_module_once(monkeypatch):
-    from tpm.refinement import _move_modules_once
+    from tpm.refinement import move_modules_once
     model = lower_linsum_einet(make_model())
     before = model.log_likelihood(evidence()).detach()
     visited = []
@@ -90,7 +90,7 @@ def test_device_movement_visits_each_shared_module_once(monkeypatch):
         visited.append(id(self))
         return original(self, fn, recurse=recurse)
     monkeypatch.setattr(torch.nn.Module,'_apply',counted)
-    _move_modules_once(model,'cpu')
+    move_modules_once(model,'cpu')
     assert len(visited) == len(set(visited)) == len(tuple(model.modules()))
     torch.testing.assert_close(before,model.log_likelihood(evidence()),rtol=0,atol=0)
 

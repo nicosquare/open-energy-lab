@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
 from importlib import import_module
 from itertools import product as cartesian_product
 from typing import Any
@@ -16,7 +15,6 @@ from ..domains import (
 from ..features import TPMFeatureSpec, load_feature_schema
 from ..piecewise import build_histogram_piecewise_points
 from ..piecewise import interpolate_within_breakpoints
-from ..piecewise import load_piecewise_metadata
 from ._common import (
     SPNSolverDependencyUnavailableError,
     _float_sequence,
@@ -32,52 +30,6 @@ from .encode import (
 
 
 _SUM_BIG_M = 100.0
-_DEFAULT_EXP_DOMAIN_FLOOR = -500.0
-
-
-@dataclass(frozen=True, slots=True)
-class SPNPiecewiseCurveSpec:
-    x_points: tuple[float, ...]
-    y_points: tuple[float, ...]
-    domain_lower_bound: float
-    domain_upper_bound: float
-    unbounded_domain_var: bool = False
-
-
-@dataclass(frozen=True, slots=True)
-class SPNModelingTerms:
-    approximation_kind: str
-    leaf_encoding_mode: str
-    sum_encoding_mode: str
-    exp_curve: SPNPiecewiseCurveSpec
-    log_curve: SPNPiecewiseCurveSpec
-    max_terms: int
-    mio_epsilon: float
-    fit_numeric_tolerance: float
-    query_numeric_tolerance: float
-
-
-class SPNSolverUnavailableError(RuntimeError):
-    """Raised when one requested solver cannot be used for SPN chance solving."""
-
-
-@dataclass(frozen=True, slots=True)
-class SPNSolveConfig:
-    solver_name: str = "gurobi"
-    numeric_tolerance: float = 1e-9
-    time_limit_seconds: float | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class SPNSolveSummary:
-    problem_id: str
-    status: str
-    selected_design: Mapping[str, object]
-    objective_value: float | None
-    estimated_event_probability: float | None
-    estimated_shortfall_risk: float | None
-    chance_limit_epsilon: float
-    solver_metadata: Mapping[str, object]
 
 
 def build_spn_chance_model(
@@ -407,85 +359,6 @@ def _evaluate_serialized_categorical_spn(
     return evaluate(int(spn_model["root_id"]))
 
 
-def solve_spn_chance_model(
-    model: object,
-    *,
-    backend: Any | None = None,
-    solve_config: SPNSolveConfig | None = None,
-) -> SPNSolveSummary:
-    """Solve one already-built SPN chance model with Pyomo and decode the result."""
-
-    resolved_backend = backend if backend is not None else require_pyomo_backend()
-    resolved_config = solve_config or SPNSolveConfig()
-    solver_factory = getattr(resolved_backend, "SolverFactory", None)
-    if solver_factory is None:
-        raise SPNSolverUnavailableError(
-            "pyomo backend does not expose SolverFactory for SPN chance solving"
-        )
-
-    try:
-        solver = solver_factory(resolved_config.solver_name)
-    except Exception as exc:  # pragma: no cover - backend specific
-        raise SPNSolverUnavailableError(str(exc)) from exc
-    if not _solver_is_available(solver):
-        raise SPNSolverUnavailableError(
-            f"solver {resolved_config.solver_name!r} is unavailable"
-        )
-
-    _apply_time_limit_if_supported(
-        solver,
-        time_limit_seconds=resolved_config.time_limit_seconds,
-    )
-    results = solver.solve(model, tee=False)
-    diagnostics = _solver_result_metadata(results)
-    risk_encoding_strategy = str(
-        getattr(model, "_tpm_risk_encoding_strategy", "piecewise-spn")
-    )
-    if _solver_result_reports_infeasible(results):
-        return SPNSolveSummary(
-            problem_id=str(getattr(model, "name", "spn-mio-problem")),
-            status="infeasible",
-            selected_design={},
-            objective_value=None,
-            estimated_event_probability=None,
-            estimated_shortfall_risk=None,
-            chance_limit_epsilon=float(getattr(model, "_tpm_chance_limit_epsilon")),
-            solver_metadata={
-                "requested_solver_name": resolved_config.solver_name,
-                "backend_module": getattr(resolved_backend, "__name__", resolved_backend.__class__.__name__),
-                "backend_version": getattr(resolved_backend, "__version__", "unknown"),
-                "status": "infeasible",
-                "solve_execution_mode": "native-pyomo-solver",
-                "risk_encoding_strategy": risk_encoding_strategy,
-                **diagnostics,
-            },
-        )
-
-    solution = extract_spn_solution(
-        model,
-        backend=resolved_backend,
-        numeric_tolerance=resolved_config.numeric_tolerance,
-    )
-    return SPNSolveSummary(
-        problem_id=str(getattr(model, "name", "spn-mio-problem")),
-        status="optimal",
-        selected_design=_mapping(solution.get("selected_design"), field_name="selected_design"),
-        objective_value=float(solution["objective_value"]),
-        estimated_event_probability=float(solution["estimated_event_probability"]),
-        estimated_shortfall_risk=float(solution["estimated_shortfall_risk"]),
-        chance_limit_epsilon=float(getattr(model, "_tpm_chance_limit_epsilon")),
-        solver_metadata={
-            "requested_solver_name": resolved_config.solver_name,
-            "backend_module": getattr(resolved_backend, "__name__", resolved_backend.__class__.__name__),
-            "backend_version": getattr(resolved_backend, "__version__", "unknown"),
-            "status": "optimal",
-            "solve_execution_mode": "native-pyomo-solver",
-            "risk_encoding_strategy": risk_encoding_strategy,
-            **diagnostics,
-        },
-    )
-
-
 def extract_spn_solution(
     model: object,
     *,
@@ -563,46 +436,6 @@ def infer_max_sum_terms(spn_payload: Mapping[str, object]) -> int:
             if child_count > max_terms:
                 max_terms = child_count
     return max_terms
-
-
-def build_spn_modeling_terms(
-    approximation_metadata: Mapping[str, object],
-    *,
-    max_terms: int,
-) -> SPNModelingTerms:
-    """Build generic SPN modeling terms without planning-specific decision-scope validation."""
-
-    resolved_metadata = load_piecewise_metadata(approximation_metadata)
-    normalized_max_terms = int(max_terms)
-    if normalized_max_terms < 1:
-        raise ValueError("max_terms must be at least 1")
-    breakpoint_policy = resolved_metadata.breakpoint_policy
-    exp_breakpoints = breakpoint_policy.exp_breakpoints()
-    exp_values = breakpoint_policy.exp_values()
-    log_breakpoints = breakpoint_policy.log_breakpoints(max_terms=normalized_max_terms)
-    log_values = breakpoint_policy.log_values(max_terms=normalized_max_terms)
-    return SPNModelingTerms(
-        approximation_kind=resolved_metadata.approximation_kind,
-        leaf_encoding_mode=resolved_metadata.leaf_encoding_mode,
-        sum_encoding_mode=resolved_metadata.sum_encoding_mode,
-        exp_curve=SPNPiecewiseCurveSpec(
-            x_points=(_DEFAULT_EXP_DOMAIN_FLOOR, exp_breakpoints[0], *exp_breakpoints),
-            y_points=(0.0, 0.0, *exp_values),
-            domain_lower_bound=_DEFAULT_EXP_DOMAIN_FLOOR,
-            domain_upper_bound=0.0,
-            unbounded_domain_var=True,
-        ),
-        log_curve=SPNPiecewiseCurveSpec(
-            x_points=log_breakpoints,
-            y_points=log_values,
-            domain_lower_bound=log_breakpoints[0],
-            domain_upper_bound=log_breakpoints[-1],
-        ),
-        max_terms=normalized_max_terms,
-        mio_epsilon=resolved_metadata.mio_epsilon,
-        fit_numeric_tolerance=resolved_metadata.fit_numeric_tolerance,
-        query_numeric_tolerance=resolved_metadata.query_numeric_tolerance,
-    )
 
 
 def _encode_serialized_spn(
@@ -988,39 +821,3 @@ def require_pyomo_backend() -> Any:
         ) from exc
 
 
-def _solver_is_available(solver: object) -> bool:
-    available = getattr(solver, "available", None)
-    if not callable(available):
-        return True
-    try:
-        return bool(available(exception_flag=False))
-    except TypeError:
-        return bool(available())
-
-
-def _apply_time_limit_if_supported(solver: object, *, time_limit_seconds: float | None) -> None:
-    if time_limit_seconds is None or not hasattr(solver, "options"):
-        return
-    options = getattr(solver, "options")
-    if not isinstance(options, dict):
-        return
-    options.setdefault("timelimit", float(time_limit_seconds))
-
-
-def _solver_result_reports_infeasible(results: object) -> bool:
-    diagnostics = _solver_result_metadata(results)
-    termination_condition = str(diagnostics.get("termination_condition", "")).lower()
-    return "infeasible" in termination_condition
-
-
-def _solver_result_metadata(results: object) -> dict[str, object]:
-    solver_block = getattr(results, "solver", None)
-    diagnostics: dict[str, object] = {}
-    if solver_block is not None:
-        status = getattr(solver_block, "status", None)
-        termination_condition = getattr(solver_block, "termination_condition", None)
-        if status is not None:
-            diagnostics["solver_status"] = str(status)
-        if termination_condition is not None:
-            diagnostics["termination_condition"] = str(termination_condition)
-    return diagnostics

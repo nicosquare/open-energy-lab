@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from numbers import Real
 from pathlib import Path
+from typing import NamedTuple
 
 from .artifact import TPMArtifact, write_tpm_model_sidecar
 from .data import TPMTrainingData, normalize_training_data
@@ -134,7 +135,7 @@ def learn_bounded_prometheus(rows, *, feature_schema, settings, gaussian_floors,
             values = (leaf.loc, leaf.scale) if type(leaf) is Normal else ((leaf.probs,) if type(leaf) in (Bernoulli, Categorical) else ())
             if any(not torch.isfinite(value).all() for value in values):
                 raise ValueError('Prometheus returned nonfinite learned leaf parameters')
-        _stabilize_leaf_parameters(model)
+        stabilize_spflow_leaf_parameters(model)
         project_spn_gaussian_widths(model, gaussian_floors)
         evidence = validate_refinement_spn(model, feature_count=len(schema))
         if evidence['modules'] > maximum_modules or evidence['scalar_outputs'] > maximum_scalar_outputs:
@@ -381,22 +382,6 @@ def translate_spflow_fit_configuration(
     return translated
 
 
-def learn_current_spflow_structure(
-    rows: Sequence[Mapping[str, object]],
-    *,
-    feature_schema: Sequence[TPMFeatureSpec],
-    fit_configuration: Mapping[str, object] | None = None,
-) -> object:
-    """Learn one SPFlow 1.1 structure from typed rows at a lazy boundary."""
-
-    model, _, _, _ = _learn_current_spflow_structure(
-        rows,
-        feature_schema=feature_schema,
-        fit_configuration=fit_configuration,
-    )
-    return model
-
-
 def fit_tpm_artifact_from_rows(
     rows: Sequence[Mapping[str, object]],
     *,
@@ -503,7 +488,11 @@ __all__ = [
     "TPMFitMemoryError",
     "TPM_ROBUSTNESS_RANDOM_SEEDS",
     "fit_tpm_artifact_from_rows",
-    "learn_current_spflow_structure",
+    "LearnedSPFlowStructure",
+    "cluster_by_kmeans_with_degenerate_fallback",
+    "learn_spflow_structure",
+    "materialize_native_categorical_leaves",
+    "partition_by_rdc_with_degenerate_fallback",
     "translate_spflow_fit_configuration",
 ]
 
@@ -579,7 +568,7 @@ def _fit_and_persist_spflow_model(
     previous_default_dtype = torch.get_default_dtype()
     torch.set_default_dtype(torch.float64)
     try:
-        model, tensor, leaves, translated_kwargs = _learn_current_spflow_structure(
+        model, tensor, leaves, translated_kwargs = learn_spflow_structure(
             training_data.rows,
             feature_schema=feature_schema,
             fit_configuration=config.learn_mspn_kwargs,
@@ -653,12 +642,28 @@ def _fit_and_persist_spflow_model(
     )
 
 
-def _learn_current_spflow_structure(
+class LearnedSPFlowStructure(NamedTuple):
+    """An SPFlow 1.1 structure and the inputs it was learned from."""
+
+    model: object
+    training_tensor: object
+    leaf_templates: tuple[object, ...]
+    learn_spn_kwargs: dict[str, object]
+
+
+def learn_spflow_structure(
     rows: Sequence[Mapping[str, object]],
     *,
     feature_schema: Sequence[TPMFeatureSpec],
-    fit_configuration: Mapping[str, object] | None,
-) -> tuple[object, object, tuple[object, ...], dict[str, object]]:
+    fit_configuration: Mapping[str, object] | None = None,
+) -> LearnedSPFlowStructure:
+    """Learn one SPFlow 1.1 structure from typed rows with ``learn_spn``.
+
+    Wraps RDC partitioning and k-means clustering with fallbacks for their
+    degenerate cases, materializes native categorical leaves, and stabilizes
+    degenerate leaf parameters.
+    """
+
     from spflow.learn import learn_spn
 
     schema = tuple(feature_schema)
@@ -680,7 +685,7 @@ def _learn_current_spflow_structure(
         # the recursive slice without discarding mixture structure already
         # learned above it.
         runtime_configuration["partitioning_method"] = (
-            _partition_by_rdc_with_degenerate_fallback
+            partition_by_rdc_with_degenerate_fallback
         )
     clustering_method = runtime_configuration.get("clustering_method", "kmeans")
     if clustering_method == "kmeans":
@@ -688,15 +693,15 @@ def _learn_current_spflow_structure(
         # SPFlow 1.1. Force a deterministic balanced split only in that
         # degenerate case so every recursive call makes progress.
         runtime_configuration["clustering_method"] = (
-            _cluster_by_kmeans_with_degenerate_fallback
+            cluster_by_kmeans_with_degenerate_fallback
         )
     model = learn_spn(tensor, leaf_modules=list(leaves), **runtime_configuration)
-    model = _materialize_native_categorical_leaves(model)
-    _stabilize_leaf_parameters(model)
-    return model, tensor, leaves, translated
+    model = materialize_native_categorical_leaves(model)
+    stabilize_spflow_leaf_parameters(model)
+    return LearnedSPFlowStructure(model, tensor, tuple(leaves), dict(translated))
 
 
-def _partition_by_rdc_with_degenerate_fallback(data: object, **kwargs: object) -> object:
+def partition_by_rdc_with_degenerate_fallback(data: object, **kwargs: object) -> object:
     """Run SPFlow RDC, falling back only for its empty-spectrum edge case."""
 
     from spflow.learn.learn_spn import partition_by_rdc
@@ -715,7 +720,7 @@ def _partition_by_rdc_with_degenerate_fallback(data: object, **kwargs: object) -
         )
 
 
-def _cluster_by_kmeans_with_degenerate_fallback(data: object, **kwargs: object) -> object:
+def cluster_by_kmeans_with_degenerate_fallback(data: object, **kwargs: object) -> object:
     """Run SPFlow k-means and force progress if it returns one cluster."""
 
     from spflow.learn.learn_spn import cluster_by_kmeans
@@ -734,16 +739,7 @@ def _cluster_by_kmeans_with_degenerate_fallback(data: object, **kwargs: object) 
     ).to(dtype=torch.int)
 
 
-def _stabilize_leaf_parameters(module: object, *, minimum_value: float = 1e-9) -> None:
-    """Keep constant learned slices finite without changing non-degenerate leaves."""
-
-    stabilize_spflow_leaf_parameters(
-        module,
-        minimum_value=minimum_value,
-    )
-
-
-def _materialize_native_categorical_leaves(module: object) -> object:
+def materialize_native_categorical_leaves(module: object) -> object:
     """Replace transient learning templates with native categorical leaves."""
 
     from spflow.modules.leaves import Categorical
@@ -760,7 +756,7 @@ def _materialize_native_categorical_leaves(module: object) -> object:
         return replacement
 
     for child_name, child in tuple(module.named_children()):
-        replacement = _materialize_native_categorical_leaves(child)
+        replacement = materialize_native_categorical_leaves(child)
         if replacement is not child:
             module._modules[child_name] = replacement
     return module

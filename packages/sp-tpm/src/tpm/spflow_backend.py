@@ -191,8 +191,10 @@ __all__ = [
     "SPFlowBackendCompatibilityError",
     "has_spflow_payload",
     "load_spflow_payload",
+    "load_supported_spflow_checkpoint",
     "require_spflow_backend",
     "resolve_spflow_payload_path",
+    "stabilize_spflow_leaf_parameters",
 ]
 
 

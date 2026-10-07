@@ -30,13 +30,6 @@ if TYPE_CHECKING:
         restrict_categorical_domains,
     )
     from .conditional import (
-        CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND,
-        CONDITIONAL_EMBEDDING_PARITY_RECORD_KIND,
-        CONDITIONAL_EVIDENCE_EVALUATOR_VERSION,
-        CONDITIONAL_EVIDENCE_SCHEMA_VERSION,
-        CONDITIONAL_PAIR_COMPILER_VERSION,
-        CONDITIONAL_PAIR_RECORD_KIND,
-        CONDITIONAL_PAIR_SCHEMA_VERSION,
         TPMBinaryDecisionLink,
         TPMBinaryDecisionMapping,
         TPMCategoricalDecisionLink,
@@ -81,7 +74,6 @@ if TYPE_CHECKING:
     )
     from .artifact import (
         LegacyTPMArtifactVersionError,
-        SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS,
         TPMArtifact,
         TPMArtifactIntegrityError,
         UnsupportedTPMArtifactVersionError,
@@ -98,7 +90,6 @@ if TYPE_CHECKING:
     from .features import (
         TPMFeatureSpec,
         dump_feature_schema,
-        infer_feature_role,
         load_feature_schema,
     )
     from .fit import (
@@ -108,26 +99,17 @@ if TYPE_CHECKING:
         fit_tpm_artifact_from_rows,
     )
     from .mio import (
-        SPNModelingTerms,
-        SPNPiecewiseCurveSpec,
-        SPNSolveConfig,
-        SPNSolveSummary,
         SPNSolverDependencyUnavailableError,
-        SPNSolverUnavailableError,
         UnsupportedSPFlowModuleError,
         build_spn_chance_model,
         build_compiled_spflow_decision_link_model,
-        build_spn_modeling_terms,
         compile_spflow_model_to_mio,
         evaluate_compiled_spflow_probability,
         extract_spn_solution,
         infer_max_sum_terms,
         require_pyomo_backend,
-        solve_spn_chance_model,
     )
     from .spflow_backend import (
-        CURRENT_SPFLOW_BACKEND_GENERATION,
-        REQUIRED_SPFLOW_VERSION,
         SPFlowBackendCompatibilityError,
         require_spflow_backend,
     )
@@ -181,41 +163,9 @@ _EXPORT_MAP = {
     "restore_native_mixture_for_inference": (".native", "restore_native_mixture_for_inference"),
     "materialize_native_mixture": (".native", "materialize_native_mixture"),
     "export_native_mixture_scalar": (".native", "export_native_mixture_scalar"),
-    "CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND": (
-        ".conditional",
-        "CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND",
-    ),
-    "CONDITIONAL_EMBEDDING_PARITY_RECORD_KIND": (
-        ".conditional",
-        "CONDITIONAL_EMBEDDING_PARITY_RECORD_KIND",
-    ),
-    "CONDITIONAL_EVIDENCE_EVALUATOR_VERSION": (
-        ".conditional",
-        "CONDITIONAL_EVIDENCE_EVALUATOR_VERSION",
-    ),
-    "CONDITIONAL_EVIDENCE_SCHEMA_VERSION": (
-        ".conditional",
-        "CONDITIONAL_EVIDENCE_SCHEMA_VERSION",
-    ),
-    "CONDITIONAL_PAIR_COMPILER_VERSION": (
-        ".conditional",
-        "CONDITIONAL_PAIR_COMPILER_VERSION",
-    ),
-    "CONDITIONAL_PAIR_RECORD_KIND": (
-        ".conditional",
-        "CONDITIONAL_PAIR_RECORD_KIND",
-    ),
-    "CONDITIONAL_PAIR_SCHEMA_VERSION": (
-        ".conditional",
-        "CONDITIONAL_PAIR_SCHEMA_VERSION",
-    ),
     "LegacyTPMArtifactVersionError": (
         ".artifact",
         "LegacyTPMArtifactVersionError",
-    ),
-    "SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS": (
-        ".artifact",
-        "SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS",
     ),
     "TPMArtifact": (".artifact", "TPMArtifact"),
     "TPMArtifactIntegrityError": (".artifact", "TPMArtifactIntegrityError"),
@@ -319,7 +269,6 @@ _EXPORT_MAP = {
     "TPMTrainingSupport": (".domains", "TPMTrainingSupport"),
     "TPMFeatureSpec": (".features", "TPMFeatureSpec"),
     "dump_feature_schema": (".features", "dump_feature_schema"),
-    "infer_feature_role": (".features", "infer_feature_role"),
     "load_feature_schema": (".features", "load_feature_schema"),
     "canonical_conditional_json_bytes": (
         ".conditional",
@@ -352,15 +301,10 @@ _EXPORT_MAP = {
     "TPMFitMemoryError": (".fit", "TPMFitMemoryError"),
     "TPMArtifactBuildRequest": (".fit", "TPMArtifactBuildRequest"),
     "fit_tpm_artifact_from_rows": (".fit", "fit_tpm_artifact_from_rows"),
-    "SPNModelingTerms": (".mio", "SPNModelingTerms"),
-    "SPNPiecewiseCurveSpec": (".mio", "SPNPiecewiseCurveSpec"),
-    "SPNSolveConfig": (".mio", "SPNSolveConfig"),
-    "SPNSolveSummary": (".mio", "SPNSolveSummary"),
     "SPNSolverDependencyUnavailableError": (
         ".mio",
         "SPNSolverDependencyUnavailableError",
     ),
-    "SPNSolverUnavailableError": (".mio", "SPNSolverUnavailableError"),
     "UnsupportedSPFlowModuleError": (
         ".mio",
         "UnsupportedSPFlowModuleError",
@@ -370,7 +314,6 @@ _EXPORT_MAP = {
         ".mio",
         "build_compiled_spflow_decision_link_model",
     ),
-    "build_spn_modeling_terms": (".mio", "build_spn_modeling_terms"),
     "compile_spflow_model_to_mio": (".mio", "compile_spflow_model_to_mio"),
     "compile_conditional_mio_pair": (
         ".conditional_mio",
@@ -407,15 +350,6 @@ _EXPORT_MAP = {
     "extract_spn_solution": (".mio", "extract_spn_solution"),
     "infer_max_sum_terms": (".mio", "infer_max_sum_terms"),
     "require_pyomo_backend": (".mio", "require_pyomo_backend"),
-    "solve_spn_chance_model": (".mio", "solve_spn_chance_model"),
-    "CURRENT_SPFLOW_BACKEND_GENERATION": (
-        ".spflow_backend",
-        "CURRENT_SPFLOW_BACKEND_GENERATION",
-    ),
-    "REQUIRED_SPFLOW_VERSION": (
-        ".spflow_backend",
-        "REQUIRED_SPFLOW_VERSION",
-    ),
     "SPFlowBackendCompatibilityError": (
         ".spflow_backend",
         "SPFlowBackendCompatibilityError",
@@ -441,15 +375,7 @@ _EXPORT_MAP = {
 }
 
 __all__ = [
-    "CONDITIONAL_COMPILER_FIDELITY_RECORD_KIND",
-    "CONDITIONAL_EMBEDDING_PARITY_RECORD_KIND",
-    "CONDITIONAL_EVIDENCE_EVALUATOR_VERSION",
-    "CONDITIONAL_EVIDENCE_SCHEMA_VERSION",
-    "CONDITIONAL_PAIR_COMPILER_VERSION",
-    "CONDITIONAL_PAIR_RECORD_KIND",
-    "CONDITIONAL_PAIR_SCHEMA_VERSION",
     "LegacyTPMArtifactVersionError",
-    "SUPPORTED_TPM_ARTIFACT_SCHEMA_VERSIONS",
     "TPMArtifact",
     "TPMArtifactIntegrityError",
     "TPMBinaryDecisionLink",
@@ -489,7 +415,6 @@ __all__ = [
     "TPMTrainingSupport",
     "TPMFeatureSpec",
     "dump_feature_schema",
-    "infer_feature_role",
     "load_feature_schema",
     "canonical_conditional_json_bytes",
     "load_conditional_evidence",
@@ -510,16 +435,10 @@ __all__ = [
     "TPMFitMemoryError",
     "TPMArtifactBuildRequest",
     "fit_tpm_artifact_from_rows",
-    "SPNModelingTerms",
-    "SPNPiecewiseCurveSpec",
-    "SPNSolveConfig",
-    "SPNSolveSummary",
     "SPNSolverDependencyUnavailableError",
-    "SPNSolverUnavailableError",
     "UnsupportedSPFlowModuleError",
     "build_spn_chance_model",
     "build_compiled_spflow_decision_link_model",
-    "build_spn_modeling_terms",
     "compile_spflow_model_to_mio",
     "compile_conditional_mio_pair",
     "attach_conditional_mio_pair",
@@ -532,9 +451,6 @@ __all__ = [
     "extract_spn_solution",
     "infer_max_sum_terms",
     "require_pyomo_backend",
-    "solve_spn_chance_model",
-    "CURRENT_SPFLOW_BACKEND_GENERATION",
-    "REQUIRED_SPFLOW_VERSION",
     "SPFlowBackendCompatibilityError",
     "require_spflow_backend",
     "PiecewiseApproximationMetadata",
