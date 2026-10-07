@@ -457,11 +457,11 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
     message recorded per test on main and on the branch, 1,741 calls in 151
     tpm and planning tests, 13 of them errors: all identical apart from the
     deliberate publication race.
-- [ ] **B5 public API and style.** Lay out `schema/`, `learn/`, `compile/`,
-  `embed/` (pyomo, gurobi), and `evaluate/`. Make public the private names
-  `tpm_for_sp` relies on (`_stabilize_leaf_parameters`,
-  `_materialize_native_categorical_leaves`, `_spflow_operation_children`).
-  Type, format, and document the research-kernel modules. SPFlow 1.1.0 and
+- [ ] **B5 public API and style.** Make public the private names
+  `tpm_for_sp` relies on, rebuild the torch mixtures on SPFlow, then revisit a
+  `schema/`, `learn/`, `compile/`, `embed/`, `evaluate/` layout (deferred
+  2026-10-07 until the mixtures settle). Type, format, and document the
+  research-kernel modules. SPFlow 1.1.0 and
   torch stay core dependencies (2026-10-03); only Pyomo, HiGHS and Gurobi are
   extras. SPNs are built with SPFlow only, so the non-SPFlow paths go first
   (scope agreed 2026-10-03).
@@ -500,10 +500,40 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
     the production fixture, 3 downstream of those, 2 reworded errors).
     tpm_for_sp (B6) must switch `optional_spflow` imports to
     `spflow_backend` and drop three `execution_mode="production"` arguments.
-  - [ ] B5c public API: make tpm_for_sp's private names public, prune unused
-    exports, decide `product_mixture`/`categorical_native` with tpm_for_sp.
+  - [x] B5c public API (scope agreed 2026-10-07: API cleanup, folders
+    later). Made public, in their modules, the helpers tpm_for_sp's scripts
+    reached into: `fit.learn_spflow_structure` (one function returning a
+    `LearnedSPFlowStructure` named tuple; replaces the private tuple version
+    and the model-only `learn_current_spflow_structure`),
+    `materialize_native_categorical_leaves`, the RDC/k-means degenerate
+    fallbacks, `mio.spflow_operation_children`,
+    `mio.bound_piecewise_auxiliaries`, `refinement.move_modules_once`, and
+    `spflow_backend.stabilize_spflow_leaf_parameters` /
+    `load_supported_spflow_checkpoint` (the fit wrapper around the former is
+    gone). Deleted `solve_spn_chance_model` and `build_spn_modeling_terms`
+    with their records, error and solver helpers: nothing called them
+    (planning has its own solve). The `tpm` root drops schema/version
+    constants and `infer_feature_role` (129 -> 111 exports); entry points,
+    records and errors stay. `native._build_mixture` waits for B5d.
+    src -303, tests -59.
+  - [ ] B5d one SPFlow-backed Bernoulli x Gaussian mixture: fold
+    `product_mixture` into `native` (decided 2026-10-07; tpm_for_sp research
+    may be rerun, so pick initialization and floors on merit). Prove equal
+    likelihoods for equal parameters; compare training on the knapsack
+    problem; measure speed.
+  - [ ] B5e `categorical_native` on SPFlow; encoders (`affine*`,
+    `categorical_gurobi`) read the SPFlow model's parameters.
 - [ ] **B6 switch `tpm_for_sp`.** Make it depend on the workspace package
   instead of the whole `references/oel` submodule, then drop the re-export.
+  Import changes collected so far: `open_energy_lab.tpm` -> `tpm`;
+  `optional_spflow` -> `spflow_backend`; drop `execution_mode="production"`
+  arguments (3); the B5c renames (`_learn_current_spflow_structure` and
+  `learn_current_spflow_structure` -> `learn_spflow_structure`, which returns
+  a named tuple; `fit._stabilize_leaf_parameters` ->
+  `spflow_backend.stabilize_spflow_leaf_parameters`; drop the leading
+  underscore from `_materialize_native_categorical_leaves`, the two RDC/k-means
+  fallbacks, `_spflow_operation_children`, `_bound_piecewise_auxiliaries` and
+  `_move_modules_once`); and whatever B5d/B5e change in the mixtures.
 
 ## Rules for every PR
 
