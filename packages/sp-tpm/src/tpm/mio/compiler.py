@@ -186,7 +186,7 @@ def compile_spflow_model_to_mio(
         exact_type = type(module)
         if exact_type is bindings["sum"]:
             _validate_compiler_module_shape(module, scope=module_scope)
-            children = _spflow_operation_children(
+            children = spflow_operation_children(
                 module,
                 operation="sum",
                 cat_class=bindings["cat"],
@@ -203,7 +203,7 @@ def compile_spflow_model_to_mio(
             }
         elif exact_type is bindings["product"]:
             _validate_compiler_module_shape(module, scope=module_scope)
-            children = _spflow_operation_children(
+            children = spflow_operation_children(
                 module,
                 operation="product",
                 cat_class=bindings["cat"],
@@ -672,7 +672,7 @@ def _validate_compiler_module_shape(
         )
 
 
-def _spflow_operation_children(
+def spflow_operation_children(
     module: object,
     *,
     operation: str,

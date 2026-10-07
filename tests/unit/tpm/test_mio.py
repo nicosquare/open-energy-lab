@@ -8,7 +8,6 @@ import math
 import pytest
 
 from tpm.mio import (
-    build_spn_modeling_terms,
     evaluate_compiled_spflow_probability,
     infer_max_sum_terms,
 )
@@ -99,17 +98,3 @@ def test_infer_max_sum_terms_uses_two_as_the_smallest_supported_piecewise_domain
     assert infer_max_sum_terms(payload) == 2
 
 
-def test_build_spn_modeling_terms_builds_generic_piecewise_terms() -> None:
-    terms = build_spn_modeling_terms(
-        {
-            "approximation_kind": "piecewise",
-            "sum_encoding_mode": "piecewise",
-        },
-        max_terms=3,
-    )
-
-    assert terms.sum_encoding_mode == "piecewise"
-    assert terms.max_terms == 3
-    assert terms.exp_curve.domain_upper_bound == pytest.approx(0.0)
-    assert terms.log_curve.domain_lower_bound == pytest.approx(1.0)
-    assert terms.log_curve.domain_upper_bound == pytest.approx(3.0)

@@ -483,7 +483,7 @@ def _encode_conditioned_piecewise_leaf(
             f_rule=list(log_values),
         )
         block.add_component(f"piecewise_leaf_{node_id}", piecewise)
-        _bound_piecewise_auxiliaries(backend, piecewise)
+        bound_piecewise_auxiliaries(backend, piecewise)
         return
     if "fixed_value" not in node:
         raise ValueError(
@@ -719,7 +719,7 @@ def _encode_conditioned_sum_node(
             backend.Constraint(expr=native_scale * input_row.body == 0),
         )
         input_row.deactivate()
-        _bound_piecewise_auxiliaries(backend, piecewise)
+        bound_piecewise_auxiliaries(backend, piecewise)
     total_bounds = _formulation_interval(
         formulation.get("total_bounds"),
         field_name=f"conditioned Sum {node_id} total bounds",
@@ -746,7 +746,7 @@ def _encode_conditioned_sum_node(
         y_points=log_y,
     )
     block.add_component(f"sum_log_piecewise_{node_id}", log_piecewise)
-    _bound_piecewise_auxiliaries(backend, log_piecewise)
+    bound_piecewise_auxiliaries(backend, log_piecewise)
     block.add_component(
         f"sum_output_{node_id}",
         backend.Constraint(expr=block.node_out[node_id] == maximum + logarithm),
@@ -768,7 +768,7 @@ def _formulation_interval(
     return lower, upper
 
 
-def _bound_piecewise_auxiliaries(backend: Any, piecewise: object) -> None:
+def bound_piecewise_auxiliaries(backend: Any, piecewise: object) -> None:
     """Apply explicit unit bounds to representation-owned convex weights."""
 
     for variable in piecewise.component_data_objects(

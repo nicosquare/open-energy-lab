@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 import tpm.spflow_backend as spflow_backend_module
-from tpm import REQUIRED_SPFLOW_VERSION, require_spflow_backend
+from tpm.spflow_backend import REQUIRED_SPFLOW_VERSION, require_spflow_backend
 
 
 def test_require_spflow_backend_returns_the_required_installed_version() -> None:

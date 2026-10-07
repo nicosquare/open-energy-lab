@@ -18,7 +18,7 @@ from tpm.fit import (
     TPMFitConfig,
     fit_tpm_artifact_from_rows,
 )
-from tpm.spflow_backend import load_spflow_payload
+from tpm.spflow_backend import load_spflow_payload, stabilize_spflow_leaf_parameters
 from tests.integration.planning.fixture_utils import PLANNING_DATASET_ARTIFACT_FIXTURE_PATH
 
 
@@ -213,7 +213,7 @@ def test_rdc_partition_guard_treats_an_empty_spectrum_as_independent_features(
         )
 
     monkeypatch.setattr(learn_module, "partition_by_rdc", _empty_spectrum_failure)
-    partition_ids = fit_module._partition_by_rdc_with_degenerate_fallback(
+    partition_ids = fit_module.partition_by_rdc_with_degenerate_fallback(
         torch.ones((20, 4), dtype=torch.float64)
     )
 
@@ -231,7 +231,7 @@ def test_rdc_partition_guard_does_not_hide_unrelated_runtime_errors(monkeypatch)
     monkeypatch.setattr(learn_module, "partition_by_rdc", _unrelated_failure)
 
     with pytest.raises(RuntimeError, match="unexpected partition failure"):
-        fit_module._partition_by_rdc_with_degenerate_fallback(
+        fit_module.partition_by_rdc_with_degenerate_fallback(
             torch.ones((20, 4), dtype=torch.float64)
         )
 
@@ -246,7 +246,7 @@ def test_kmeans_guard_forces_progress_when_backend_returns_one_cluster(monkeypat
         lambda data, **_kwargs: torch.zeros(data.shape[0], dtype=torch.int),
     )
 
-    labels = fit_module._cluster_by_kmeans_with_degenerate_fallback(
+    labels = fit_module.cluster_by_kmeans_with_degenerate_fallback(
         torch.ones((10, 3), dtype=torch.float64),
         n_clusters=2,
     )
@@ -267,7 +267,7 @@ def test_leaf_parameter_stabilization_keeps_constant_binary_slices_finite() -> N
     )
     normal.scale = torch.full((1, 1, 1), float("nan"))
     root = torch.nn.ModuleList((leaf, normal))
-    fit_module._stabilize_leaf_parameters(root)
+    stabilize_spflow_leaf_parameters(root)
 
     assert bool(torch.isfinite(leaf.logits).all())
     assert 0.0 < float(leaf.probs.detach().reshape(-1)[0]) < 1.0
