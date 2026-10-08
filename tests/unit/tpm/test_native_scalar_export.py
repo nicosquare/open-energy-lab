@@ -18,7 +18,7 @@ def test_scalar_export_preserves_joint_conditional_parameters_and_state(layout, 
 
     config = make_config(native, layout)
     g, b = len(config.gaussian_indices), len(config.bernoulli_indices)
-    model = native._build_mixture(
+    model = native.build_native_mixture(
         config, means=[[0.2] * g, [0.7] * g], scales=[[0.3] * g, [0.5] * g],
         probabilities=[[0.2] * b, [0.8] * b], weights=[0.3, 0.7], device="cpu",
     )
