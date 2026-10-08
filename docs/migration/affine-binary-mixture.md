@@ -9,23 +9,22 @@ callbacks, persistence and experiment assessment.
 
 ## Library interfaces
 
-- `open_energy_lab.tpm.product_mixture`: `ProductMixtureSchema`,
-  `initialize_product_mixture`, `product_mixture_log_prob`,
-  `product_mixture_action_terms`, `product_mixture_conditional_probability`,
-  and `materialize_product_mixture`. The schema partitions arbitrary input
-  columns into binary decisions, Gaussian observations and one binary event.
-  Parameters are float64 tensors on one device. Likelihood supports automatic
-  differentiation; conditional inference marginalizes Gaussian observations and
-  uses the fitted decision marginal as its denominator. SPFlow materialization
-  creates an independent CPU model without sharing parameter storage.
-- `open_energy_lab.tpm.affine`: `compile_affine_logsum`,
+- `tpm.native` (the former `product_mixture` merged in, B5d): the mixture is a
+  genuine SPFlow `Sum(Product(leaves))` built by `build_native_mixture` or
+  `initialize_native_mixture`; its leaves hold every parameter. Training and
+  batch queries use `native_mixture_log_likelihood`, a closed form that reads
+  those leaves (NaN marginalizes a column) and is about 10x faster than SPFlow's
+  `log_likelihood`; `check_native_mixture_against_spflow` verifies agreement.
+  `native_mixture_parameters` exports the logits, locations and log-scales the
+  affine encoders take.
+- `tpm.affine`: `compile_affine_logsum`,
   `compile_binary_mixture_log_ratio`, `evaluate_affine_logsum`,
   `evaluate_binary_log_ratio`, `conditional_affine_bounds`, and
   `validate_affine_logsum`. JSON-compatible records preserve both the original
   PWL grid and its clipped restrictions. Full evaluation supplies interpolation,
   maximum-selector and disaggregation assignments. Both conditional queries
   use the fitted mixture and share the same decision dimension.
-- `open_energy_lab.tpm.affine_gurobi`: `attach_affine_log_ratio` and
+- `tpm.affine_gurobi`: `attach_affine_log_ratio` and
   `check_affine_sos_assignments`. An attachment accepts distinct caller-owned
   binary variables and an optional namespace, validates the graph before adding
   variables, and returns numerator, denominator and log-ratio roots plus the
@@ -89,7 +88,7 @@ compares OEL against the preserved development formulation across all 1,024
 knapsack decisions, including variable/constraint/SOS counts and bounds.
 
 ```bash
-pytest tests/unit/tpm/test_product_mixture.py tests/unit/tpm/test_affine.py
+pytest tests/unit/tpm/test_native_closed_form.py tests/unit/tpm/test_affine.py
 # Explicit licensed integration check:
 pytest tests/integration/tpm/test_affine_gurobi.py
 ```

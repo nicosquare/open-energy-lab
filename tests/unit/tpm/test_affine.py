@@ -86,7 +86,7 @@ class Block(importlib.abc.MetaPathFinder):
         if fullname.split('.')[0] in {'torch','spflow','gurobipy','pyomo','highspy'}:
             raise AssertionError('Eager optional backend: '+fullname)
 sys.meta_path.insert(0, Block())
-import tpm.product_mixture
+import tpm.native
 import tpm.affine
 import tpm.affine_gurobi
 import tpm.binary_cuts

@@ -386,7 +386,7 @@ def test_exported_native_mixture_compiles_and_attaches_to_integer_orders(tmp_pat
 
     import pyomo.environ as pyo
     from tpm.artifact import TPMArtifact, write_tpm_model_sidecar
-    from tpm.native import TPMNativeMixtureConfig, _build_mixture, export_native_mixture_scalar
+    from tpm.native import TPMNativeMixtureConfig, build_native_mixture, export_native_mixture_scalar
     from tests.unit.tpm.test_conditional_mio import _compilation_request, _encoding, TPM_FIXTURE_DIRECTORY
 
     template = load_tpm_artifact(TPM_FIXTURE_DIRECTORY / "tpm_artifact_domains_v3.json")
@@ -397,7 +397,7 @@ def test_exported_native_mixture_compiles_and_attaches_to_integer_orders(tmp_pat
         components=2, gaussian_indices=(0, 1), bernoulli_indices=(2,), target_index=2,
         conditioning_indices=(0,), gaussian_floors=(0.01, 0.01), coordinate_id="scalar-attachment-fixture",
     )
-    native = _build_mixture(config, means=[[0.2, 80], [0.7, 110]], scales=[[0.3, 15], [0.4, 20]],
+    native = build_native_mixture(config, means=[[0.2, 80], [0.7, 110]], scales=[[0.3, 15], [0.4, 20]],
                             probabilities=[[0.2], [0.6]], weights=[0.4, 0.6], device="cpu")
     scalar = export_native_mixture_scalar(native)
     sidecar, digest = write_tpm_model_sidecar(tmp_path / "model.pkl", {

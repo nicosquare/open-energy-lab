@@ -113,7 +113,7 @@ def test_declared_graph_construction_uses_real_typed_leaves_and_owned_parameters
     scales = np.full((2, g), 0.2)
     probabilities = np.tile([[0.2], [0.7]], (1, b))
     weights = np.array([0.3, 0.7])
-    model = api._build_mixture(config, means=means, scales=scales,
+    model = api.build_native_mixture(config, means=means, scales=scales,
                                probabilities=probabilities, weights=weights, device="cpu")
     assert isinstance(model, Sum) and isinstance(model.inputs, Product)
     assert model.inputs.out_shape.channels == 2
@@ -205,11 +205,11 @@ def test_chunked_full_gradient_and_adam_match_analytic_row_mean(layout, weight, 
 
     api = native_api()
     rows, config = fitting_rows(layout), make_config(api, layout)
-    if layout == "binary":
-        # Break the exactly stationary mixture-weight symmetry for Adam parity.
-        # At zero gradient, eps=1e-8 amplifies ~1e-16 reduction roundoff; the
-        # unperturbed fixture retains a separate loss/gradient check below.
-        rows[0, 2] += 0.37
+    # Break the exactly stationary mixture-weight symmetry for Adam parity.
+    # At zero gradient, eps=1e-8 amplifies ~1e-16 reduction roundoff (the
+    # closed-form and analytic sums round differently); the unperturbed
+    # fixture retains a separate loss/gradient check below.
+    rows[0, config.gaussian_indices[0]] += 0.37
     actual, _ = initialize(api, rows, config)
     reference, _ = initialize(api, rows, config)
     optimizer, expected_optimizer = optimizer_for(actual), optimizer_for(reference)
