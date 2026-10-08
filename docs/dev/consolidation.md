@@ -536,8 +536,23 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
     Lloyd iterations on 921,600 rows, configurable). So the merged mixture
     keeps `native`'s Lloyd initialization and smooth floor. Step time 137 ms
     vs 150 ms for the old closed form (131,072 rows, A6000).
-  - [ ] B5e `categorical_native` on SPFlow; encoders (`affine*`,
-    `categorical_gurobi`) read the SPFlow model's parameters.
+  - [x] B5e `categorical_native` on SPFlow, same design as B5d.
+    `build_categorical_mixture` returns a `CategoricalMixture` that is a
+    genuine SPFlow `Sum(Product(Categorical/Normal leaves))`; `log_prob` (the
+    closed form, now reading the leaves), `project` and `config` stay.
+    The raw `mix`/`loc`/`log_scale`/`category_logits` tensors and
+    `to_spflow` are gone (writes to stacked copies would silently do
+    nothing): read with `categorical_mixture_parameters`, write with
+    `assign_categorical_mixture_parameters`, check with
+    `check_categorical_mixture_against_spflow`. Checkpoint schema
+    `categorical-mixture-training-v2` (state keys changed). Training
+    behaviour is deliberately unchanged (its own Lloyd initialization and
+    width clamp), which makes it provable: old vs new on synthetic data
+    (3 categorical, 3 Gaussian columns, 12 components), both initializers,
+    then 50 Adam steps: initial parameters, `log_prob` on 5 observed
+    subsets, every loss and the final parameters identical (difference 0),
+    gradient norm within 2.8e-17, SPFlow parity 5.3e-15.
+    `categorical_gurobi` already takes plain arrays and is unchanged.
 - [ ] **B6 switch `tpm_for_sp`.** Make it depend on the workspace package
   instead of the whole `references/oel` submodule, then drop the re-export.
   Import changes collected so far: `open_energy_lab.tpm` -> `tpm`;
@@ -553,7 +568,12 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
   target = event column, `initialize_native_mixture` or `build_native_mixture`,
   `native_mixture_log_likelihood` for training and NaN-marginal queries,
   `native_mixture_parameters` for the affine encoders; the SPFlow model is
-  the model, so no separate materialization); and whatever B5e changes.
+  the model, so no separate materialization); newsvendor code using
+  the categorical mixture replaces `model.mix`/`loc`/`log_scale`/
+  `category_logits` with `categorical_mixture_parameters` (read) and
+  `assign_categorical_mixture_parameters` (write), drops `to_spflow()` (the
+  model is SPFlow), and refits or converts `categorical-mixture-training-v1`
+  checkpoints.
 
 ## Rules for every PR
 

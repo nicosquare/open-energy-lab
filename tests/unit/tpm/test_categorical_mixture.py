@@ -7,6 +7,8 @@ import torch
 from tpm.categorical_native import (
     CategoricalMixtureConfig, build_categorical_mixture, initialize_categorical_mixture,
     categorical_mixture_step, save_categorical_mixture_state, load_categorical_mixture_state,
+    categorical_mixture_parameters, assign_categorical_mixture_parameters,
+    check_categorical_mixture_against_spflow,
 )
 
 
@@ -21,18 +23,15 @@ def fixture():
 
 def test_joint_gradient_marginal_and_conditional_parity():
     cfg, rows, model = fixture()
-    native = model.to_spflow()
+    # The model is the SPFlow graph; a second copy takes SPFlow's own gradients.
+    native = build_categorical_mixture(cfg); native.load_state_dict(model.state_dict())
     expected = native.log_likelihood(rows).flatten()
     actual = model.log_prob(rows)
     torch.testing.assert_close(actual, expected, atol=1e-10, rtol=1e-10)
+    assert check_categorical_mixture_against_spflow(model, rows) < 1e-10
     (-actual.mean()).backward(); (-expected.mean()).backward()
-    leaves = {int(n.scope.query[0]): n for n in native.modules()
-              if type(n).__name__ in ('Categorical','Normal')}
-    for p, index in zip(model.category_logits, cfg.categorical_indices):
-        torch.testing.assert_close(p.grad, leaves[index]._logits.grad.reshape_as(p), atol=1e-10, rtol=1e-9)
-    torch.testing.assert_close(model.loc.grad[:,0], leaves[1].loc.grad.flatten(), atol=1e-10, rtol=1e-9)
-    torch.testing.assert_close(model.log_scale.grad[:,0], leaves[1].log_scale.grad.flatten(), atol=1e-10, rtol=1e-9)
-    torch.testing.assert_close(model.mix.grad, native.logits.grad.flatten(), atol=1e-10, rtol=1e-9)
+    for (name, a), b in zip(model.named_parameters(), native.parameters(), strict=True):
+        torch.testing.assert_close(a.grad, b.grad, atol=1e-10, rtol=1e-9, msg=name)
     for observed in [(),(0,), (0,2), (1,)]:
         query=rows.clone()
         for i in set(range(3))-set(observed):query[:,i]=torch.nan
@@ -54,11 +53,12 @@ def test_lloyd_matches_readable_full_matrix_reference():
         if iteration<2:
             sums=torch.zeros_like(centers).index_add_(0,assignment,z)
             centers=torch.where((count>0)[:,None],sums/count.clamp_min(1)[:,None],centers)
-    torch.testing.assert_close(model.mix,(count.to(torch.float64)+.5).log())
+    params=categorical_mixture_parameters(model)
+    torch.testing.assert_close(params['mixture_logits'],(count.to(torch.float64)+.5).log())
     for j,index in enumerate(cfg.categorical_indices):
         table=torch.bincount(assignment*cfg.cardinalities[j]+rows[:,index].long(),minlength=cfg.components*cfg.cardinalities[j]).reshape(cfg.components,-1)
-        torch.testing.assert_close(model.category_logits[j],(table.to(torch.float64)+.5).log())
-    torch.testing.assert_close(model.loc[:,0],torch.stack([rows[assignment==k,1].mean() for k in range(cfg.components)]))
+        torch.testing.assert_close(params['category_logits'][j],(table.to(torch.float64)+.5).log())
+    torch.testing.assert_close(params['gaussian_location'][:,0],torch.stack([rows[assignment==k,1].mean() for k in range(cfg.components)]))
 
 
 @pytest.mark.parametrize('chunk_size',[1,5,32])
@@ -122,7 +122,7 @@ def test_safe_resume_preserves_adam_schedule_rng_cursor_and_best(tmp_path):
     for x,y in zip(a.parameters(),b.parameters()):torch.testing.assert_close(x,y,atol=0,rtol=0)
     with pytest.raises(ValueError,match='context'):
         load_categorical_mixture_state(path,expected_config=cfg,expected_context={'data':'other'})
-    payload=torch.load(path,weights_only=True);payload['model_state']['mix'][0]=float('nan');torch.save(payload,path)
+    payload=torch.load(path,weights_only=True);payload['model_state']['logits'].view(-1)[0]=float('nan');torch.save(payload,path)
     with pytest.raises((ValueError,FloatingPointError),match='finite'):
         load_categorical_mixture_state(path,expected_config=cfg,expected_context={'data':'fixture'})
 
@@ -131,9 +131,10 @@ def test_rejects_fractional_categories_and_projects_widths():
     cfg, rows, model=fixture();bad=rows.clone();bad[0,0]=.5
     with pytest.raises(ValueError,match='categorical'):
         initialize_categorical_mixture(model,bad,seed=0,iterations=2)
-    with torch.no_grad():model.log_scale.fill_(-100)
+    assign_categorical_mixture_parameters(model,gaussian_log_scale=torch.full((cfg.components,1),-100.))
     model.project()
-    torch.testing.assert_close(model.log_scale.exp(),torch.full_like(model.log_scale,.1))
+    log_scale=categorical_mixture_parameters(model)['gaussian_log_scale']
+    torch.testing.assert_close(log_scale.exp(),torch.full_like(log_scale,.1))
 
 
 def test_invalid_configuration():
@@ -168,7 +169,7 @@ def test_constant_columns_and_empty_components_keep_normalized_support():
     assert result['empty_components']==2
     assert torch.isfinite(model.log_prob(rows)).all()
     torch.testing.assert_close(model.log_prob(rows,observed=()),torch.zeros(10,dtype=torch.float64))
-    assert all(torch.softmax(p,1).min()>0 for p in model.category_logits)
+    assert all(torch.softmax(p,1).min()>0 for p in categorical_mixture_parameters(model)['category_logits'])
 
 
 def test_selected_inference_reload_is_separate_from_training_backend_resume(tmp_path):
@@ -177,7 +178,7 @@ def test_selected_inference_reload_is_separate_from_training_backend_resume(tmp_
     generator=torch.Generator().manual_seed(0);epoch=generator.get_state()
     torch.randperm(len(rows),generator=generator)
     best={k:v.detach().clone() for k,v in model.state_dict().items()}
-    with torch.no_grad():model.mix[0]+=1  # last iterate differs from the selected checkpoint
+    with torch.no_grad():model.logits.view(-1)[0]+=1  # last iterate differs from the selected checkpoint
     path=tmp_path/'state.pt'
     progress=dict(epoch=0,row_position=0,epoch_rows=len(rows),permutation_seed=0,updates=0,
         consumed_rows=0,elapsed_seconds=0.,schedule_step=0)
@@ -185,8 +186,8 @@ def test_selected_inference_reload_is_separate_from_training_backend_resume(tmp_
         epoch_generator_state=epoch,progress=progress,best_state=best,context={'source':'fixture'})
     payload=torch.load(path,weights_only=True);payload['device_type']='cuda';torch.save(payload,path)
     result=load_categorical_mixture_for_inference(path,expected_config=cfg,expected_context={'source':'fixture'})
-    assert result['source_device_type']=='cuda' and result['model'].mix.device.type=='cpu'
-    assert torch.equal(result['model'].mix,best['mix'])
+    assert result['source_device_type']=='cuda' and result['model'].logits.device.type=='cpu'
+    assert torch.equal(result['model'].logits,best['logits'])
     with pytest.raises(ValueError,match='backend'):
         load_categorical_mixture_state(path,expected_config=cfg,expected_context={'source':'fixture'})
     with pytest.raises(ValueError,match='context'):
