@@ -516,11 +516,26 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
     constants and `infer_feature_role` (129 -> 111 exports); entry points,
     records and errors stay. `native._build_mixture` waits for B5d.
     src -303, tests -59.
-  - [ ] B5d one SPFlow-backed Bernoulli x Gaussian mixture: fold
-    `product_mixture` into `native` (decided 2026-10-07; tpm_for_sp research
-    may be rerun, so pick initialization and floors on merit). Prove equal
-    likelihoods for equal parameters; compare training on the knapsack
-    problem; measure speed.
+  - [x] B5d one SPFlow-backed Bernoulli x Gaussian mixture (design agreed
+    2026-10-08). SPFlow's `log_likelihood` is ~10x slower than the closed form
+    for one-level mixtures (equal to 1e-14), so the model is a genuine SPFlow
+    `Sum(Product(leaves))` that holds every parameter, while training uses
+    `native_mixture_log_likelihood`, a closed form reading those leaves (NaN
+    marginalizes; a fully observed fast path). New in `tpm.native`:
+    `build_native_mixture` (was `_build_mixture`),
+    `native_mixture_log_likelihood`, `check_native_mixture_against_spflow`,
+    `native_mixture_parameters` (arrays for the affine encoders); the native
+    conditionals also use the closed form. `product_mixture.py` deleted.
+    Knapsack comparison (tpm_for_sp unfiltered joint data, K=1024, 4000
+    updates, 3 seeds, campaign recipe): the harness reproduces the campaign
+    exactly (seed 0: NLL 21.2199, MAE .00854); the smooth width floor matches
+    the old clamp (NLL 21.2196/21.2210/21.2195); k-means (Lloyd)
+    initialization is better on every seed (NLL 21.2151/21.2141/21.2160, MAE
+    .00806/.00761/.00867 vs .00854/.00917/.00862) and reaches the campaign's
+    final NLL by ~step 1500, at the cost of a 7.7 min initialization (300
+    Lloyd iterations on 921,600 rows, configurable). So the merged mixture
+    keeps `native`'s Lloyd initialization and smooth floor. Step time 137 ms
+    vs 150 ms for the old closed form (131,072 rows, A6000).
   - [ ] B5e `categorical_native` on SPFlow; encoders (`affine*`,
     `categorical_gurobi`) read the SPFlow model's parameters.
 - [ ] **B6 switch `tpm_for_sp`.** Make it depend on the workspace package
@@ -533,7 +548,12 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
   `spflow_backend.stabilize_spflow_leaf_parameters`; drop the leading
   underscore from `_materialize_native_categorical_leaves`, the two RDC/k-means
   fallbacks, `_spflow_operation_children`, `_bound_piecewise_auxiliaries` and
-  `_move_modules_once`); and whatever B5d/B5e change in the mixtures.
+  `_move_modules_once`); `product_mixture` is gone: the knapsack
+  `joint_model.py` moves to `tpm.native` (`TPMNativeMixtureConfig` with
+  target = event column, `initialize_native_mixture` or `build_native_mixture`,
+  `native_mixture_log_likelihood` for training and NaN-marginal queries,
+  `native_mixture_parameters` for the affine encoders; the SPFlow model is
+  the model, so no separate materialization); and whatever B5e changes.
 
 ## Rules for every PR
 
