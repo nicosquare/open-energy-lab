@@ -117,6 +117,10 @@ A4b full suite **plus `tests/parity`**: **2208 passed, 3 skipped, 6 failed**. Fo
   (an unchanged refresh occasionally publishing a new artifact), so
   investigate it separately; it is out of scope for the consolidation PRs.
   Tracked in [#23](https://github.com/nicosquare/open-energy-lab/issues/23).
+- SPFlow 1.1 cannot backpropagate through a marginalized Bernoulli column or
+  an all-NaN row: its leaf masks `log_prob` in place ("modified by an inplace
+  operation"). Values are correct. Refinement never queries those patterns;
+  the compiled evaluator (B5f) supports them.
 
 A1 core + market full suite: **2226 passed (2209 + 17 new core tests), same 6 baseline TPM failures, 2 skipped**.
 
@@ -553,6 +557,29 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
     subsets, every loss and the final parameters identical (difference 0),
     gradient norm within 2.8e-17, SPFlow parity 5.3e-15.
     `categorical_gurobi` already takes plain arrays and is unchanged.
+  - [x] B5f compiled evaluator for refinement. SPFlow evaluates module by
+    module, so a refinement pass on the learned newsvendor SPN (467 modules)
+    costs ~170 ms from 1k to 131k rows. `tpm.compiled.compile_spn_evaluator`
+    flattens a learned SPN (Normal/Bernoulli/Categorical leaves, Products,
+    Sums, feature/channel `Cat`, one channel and repetition) into one leaf
+    tensor plus one padded gather and sum/log-sum-exp per depth level, reading
+    the SPFlow modules' live parameters; `check_compiled_spn_against_spflow`
+    compares it with SPFlow. No atomic scatter-adds, so gradients are bitwise
+    repeatable on GPU (the scatter-add prototype was ~8% faster but not).
+    `spn_binary_conditional_logs`, `spn_refinement_loss` and `refine_spn_step`
+    take `evaluator="compiled"` (default) or `"spflow"`; each model is compiled
+    once, checked against SPFlow on its first batch, and cached weakly
+    (`refinement_spn_evaluator`). Newsvendor `structure.pt`, full refinement
+    loss (joint + two conditional passes), float64, A6000: loss identical,
+    worst relative gradient error 4.6e-11; 483 -> 58 ms at 32,768 rows (8.3x),
+    498 -> 180 ms at 128,000 (2.8x, the campaign microbatch), 525 -> 358 ms at
+    256,000 (1.5x). `torch.compile` on top gives ~1.3x more; left to callers.
+    Also fixed: the B5d closed form used `softplus`, which torch returns as
+    `l` above 20, dropping up to ~2e-9 per saturated Bernoulli leaf (now
+    `-logsigmoid(-l)`); and `stabilize_spflow_leaf_parameters` clamped
+    Bernoulli probabilities to `1 - 1e-9`, which is 1.0 in float32 (SPFlow's
+    default), so learned leaves could get infinite logits; it now clamps
+    logits.
 - [ ] **B6 switch `tpm_for_sp`.** Make it depend on the workspace package
   instead of the whole `references/oel` submodule, then drop the re-export.
   Import changes collected so far: `open_energy_lab.tpm` -> `tpm`;
@@ -573,7 +600,9 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
   `category_logits` with `categorical_mixture_parameters` (read) and
   `assign_categorical_mixture_parameters` (write), drops `to_spflow()` (the
   model is SPFlow), and refits or converts `categorical-mixture-training-v1`
-  checkpoints.
+  checkpoints. Refinement and `spn_binary_conditional_logs` now use the
+  compiled evaluator by default (no code change; results differ from SPFlow
+  at round-off, ~1e-11); pass `evaluator="spflow"` to reproduce old runs.
 
 ## Rules for every PR
 

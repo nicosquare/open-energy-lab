@@ -6,6 +6,7 @@ stays light; a missing installation raises the plain ``ImportError``.
 
 from __future__ import annotations
 
+import math
 import pickle
 from collections.abc import Mapping
 from importlib import import_module
@@ -159,15 +160,12 @@ def stabilize_spflow_leaf_parameters(
                     min=float(minimum_value),
                 )
             elif isinstance(child, Bernoulli):
-                child.probs = torch.clamp(
-                    torch.nan_to_num(
-                        child.probs,
-                        nan=0.5,
-                        posinf=1.0 - float(minimum_value),
-                        neginf=float(minimum_value),
-                    ),
-                    min=float(minimum_value),
-                    max=1.0 - float(minimum_value),
+                # Clamp logits, not probabilities: 1 - 1e-9 rounds to 1 in float32.
+                bound = math.log((1.0 - float(minimum_value)) / float(minimum_value))
+                child.logits = torch.clamp(
+                    torch.nan_to_num(child.logits, nan=0.0, posinf=bound, neginf=-bound),
+                    min=-bound,
+                    max=bound,
                 )
             elif isinstance(child, Categorical):
                 probabilities = torch.clamp(

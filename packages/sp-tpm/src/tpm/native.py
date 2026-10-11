@@ -404,6 +404,8 @@ def _closed_form_log_likelihood(model, data, config):
 
     p = _stacked_parameters(model, config)
     logits = p["bernoulli_logits"]
+    # log(1 + e^l); torch's softplus returns l above 20, dropping e^-l.
+    binary_log_normalizer = -torch.nn.functional.logsigmoid(-logits)
     location, log_scale = p["gaussian_location"], p["gaussian_log_scale"]
     precision = torch.exp(-2 * log_scale)
     normalizer = 0.5 * location * location * precision + log_scale + 0.5 * math.log(2 * math.pi)
@@ -416,11 +418,11 @@ def _closed_form_log_likelihood(model, data, config):
         binary = torch.where(observed_binary, binary, torch.zeros_like(binary))
         gaussian = torch.where(observed_gaussian, gaussian, torch.zeros_like(gaussian))
         binary_normalizer = (observed_binary.to(data.dtype)
-                             @ torch.nn.functional.softplus(logits).T)
+                             @ binary_log_normalizer.T)
         gaussian_normalizer = observed_gaussian.to(data.dtype) @ normalizer.T
     else:
         # Fully observed rows (the training case): per-component constants.
-        binary_normalizer = torch.nn.functional.softplus(logits).sum(dim=1)
+        binary_normalizer = binary_log_normalizer.sum(dim=1)
         gaussian_normalizer = normalizer.sum(dim=1)
     terms = (binary @ logits.T - binary_normalizer
              - 0.5 * (gaussian * gaussian) @ precision.T + gaussian @ (location * precision).T
