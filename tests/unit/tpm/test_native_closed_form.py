@@ -108,3 +108,16 @@ def test_chunked_gradients_sum_to_the_full_batch_gradient():
         (-native.native_mixture_log_likelihood(chunked, part, config=CONFIG).sum() / len(rows)).backward()
     for a, b in zip(full.parameters(), chunked.parameters(), strict=True):
         torch.testing.assert_close(a.grad, b.grad, atol=1e-12, rtol=0)
+
+
+def test_saturated_bernoulli_logits_keep_their_exponential_tail():
+    # torch's softplus returns l for l > 20, dropping e^-l (about 1e-9 here).
+    import torch
+
+    model, rows = _model(), torch.tensor(_rows())
+    leaves = native._leaves_by_index(model)
+    with torch.no_grad():
+        leaves[1].logits.fill_(20.5)
+        leaves[3].logits.fill_(-21.0)
+    fast = native.native_mixture_log_likelihood(model, rows, config=CONFIG)
+    torch.testing.assert_close(fast, model.log_likelihood(rows).reshape(-1), atol=1e-12, rtol=0)
