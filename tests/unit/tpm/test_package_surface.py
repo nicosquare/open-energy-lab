@@ -59,6 +59,7 @@ EXPECTED_TPM_EXPORTS = [
     "CompiledSPNEvaluator",
     "compile_spn_evaluator",
     "check_compiled_spn_against_spflow",
+    "UnsupportedSPNStructureError",
     "validate_refinement_spn",
     "refinement_spn_evaluator",
     "project_spn_gaussian_widths",

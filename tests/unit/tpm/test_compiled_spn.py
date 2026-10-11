@@ -199,3 +199,20 @@ def test_refinement_with_the_compiled_evaluator_follows_spflow(model, data):
     with pytest.raises(ValueError, match="evaluator"):
         refinement.spn_refinement_loss(model, data, **query, evaluator="fast")
 
+
+
+def test_auto_evaluator_falls_back_to_spflow_for_unsupported_structures():
+    import torch
+    from spflow.modules.leaves import Bernoulli, Exponential
+    from spflow.modules.products import Product
+
+    model = Product([Bernoulli(0, probs=torch.full((1, 1, 1), 0.3, dtype=torch.float64)),
+                     Exponential(1, rate=torch.full((1, 1, 1), 2.0, dtype=torch.float64))])
+    rows = torch.tensor([[0.0, 0.5], [1.0, 1.5]], dtype=torch.float64)
+    query = {"conditioning_indices": (1,), "target_index": 0}
+    auto = refinement.spn_binary_conditional_logs(model, rows, **query)
+    spflow = refinement.spn_binary_conditional_logs(model, rows, **query, evaluator="spflow")
+    torch.testing.assert_close(auto, spflow, atol=0, rtol=0)
+    assert refinement.refinement_spn_evaluator(model, rows) is None
+    with pytest.raises(compiled_module.UnsupportedSPNStructureError, match="Exponential"):
+        refinement.spn_binary_conditional_logs(model, rows, **query, evaluator="compiled")
