@@ -3,6 +3,10 @@
 Rows are already in the typed schema's model coordinates. Conditional binary
 queries marginalize every nonconditioning, nontarget feature. Checkpoints use
 restricted Torch loading and retain Adam, RNG and the caller's work cursor.
+
+Likelihoods use the compiled evaluator by default (``evaluator="compiled"``):
+each model is compiled once, checked against SPFlow on its first batch, and
+cached for its lifetime; ``evaluator="spflow"`` evaluates with SPFlow itself.
 """
 from __future__ import annotations
 
@@ -11,8 +15,12 @@ import json
 import math
 from pathlib import Path
 import random
+import weakref
 
 from ._io import atomic_write
+
+_EVALUATORS = ('compiled', 'spflow')
+_COMPILED = weakref.WeakKeyDictionary()
 
 
 def _supported_types():
@@ -73,7 +81,34 @@ def project_spn_gaussian_widths(model, gaussian_floors):
             leaf.log_scale.copy_(torch.maximum(leaf.log_scale, floors.log()))
 
 
-def spn_binary_conditional_logs(model, rows, *, conditioning_indices, target_index):
+def refinement_spn_evaluator(model, rows):
+    """The model's cached compiled evaluator, checked against SPFlow on first use.
+
+    The check runs on the first 256 of ``rows``; the cache assumes the
+    structure stays fixed, as it does during refinement.
+    """
+    from .compiled import check_compiled_spn_against_spflow, compile_spn_evaluator
+    compiled = _COMPILED.get(model)
+    if compiled is None:
+        compiled = compile_spn_evaluator(model)
+        check_compiled_spn_against_spflow(compiled, rows[:256].detach())
+        _COMPILED[model] = compiled
+    return compiled
+
+
+def _log_likelihood(model, data, evaluator):
+    # Joint log-likelihood per row, shape (rows,).
+    if evaluator not in _EVALUATORS:
+        raise ValueError(f'evaluator must be one of {_EVALUATORS}')
+    if evaluator == 'compiled':
+        return refinement_spn_evaluator(model, data).log_likelihood(data)
+    values = model.log_likelihood(data).reshape(len(data), -1)
+    if values.shape[1] != 1:
+        raise ValueError('refinement requires scalar outputs')
+    return values[:, 0]
+
+
+def spn_binary_conditional_logs(model, rows, *, conditioning_indices, target_index, evaluator='compiled'):
     """Return normalized log p(Y=0|X), log p(Y=1|X), marginalizing other columns."""
     import torch
     from spflow.modules.leaves import Normal, Bernoulli, Categorical
@@ -89,30 +124,28 @@ def spn_binary_conditional_logs(model, rows, *, conditioning_indices, target_ind
     evidence = torch.full_like(rows, torch.nan)
     evidence[:, list(indices)] = rows[:, list(indices)]
     evidence[:, target_index] = 0
-    zero = model.log_likelihood(evidence).reshape(len(rows), -1)
+    zero = _log_likelihood(model, evidence, evaluator)
     evidence = evidence.clone()
     evidence[:, target_index] = 1
-    one = model.log_likelihood(evidence).reshape(len(rows), -1)
-    if zero.shape[1] != 1 or one.shape[1] != 1:
-        raise ValueError('conditional refinement requires scalar outputs')
-    return torch.log_softmax(torch.stack((zero[:, 0], one[:, 0]), dim=1), dim=1)
+    one = _log_likelihood(model, evidence, evaluator)
+    return torch.log_softmax(torch.stack((zero, one), dim=1), dim=1)
 
 
-def spn_refinement_loss(model, rows, *, conditioning_indices, target_index, conditional_weight):
+def spn_refinement_loss(model, rows, *, conditioning_indices, target_index, conditional_weight,
+                        evaluator='compiled'):
     """Joint NLL plus caller-weighted binary conditional NLL, with autograd intact."""
     import torch
     if rows.ndim != 2 or not len(rows) or not torch.isfinite(rows).all():
         raise ValueError('refinement batches must be nonempty finite model-coordinate rows')
     if not math.isfinite(conditional_weight) or conditional_weight < 0:
         raise ValueError('conditional loss weight must be finite and nonnegative')
-    logs = spn_binary_conditional_logs(model, rows, conditioning_indices=conditioning_indices, target_index=target_index)
     labels = rows[:, target_index]
     if not ((labels == 0) | (labels == 1)).all():
         raise ValueError('conditional target must use binary model indices')
-    joint_values = model.log_likelihood(rows).reshape(len(rows), -1)
-    if joint_values.shape[1] != 1:
-        raise ValueError('joint refinement requires scalar outputs')
-    joint = -joint_values[:, 0].mean()
+    # The joint pass comes first so a compiled model is checked on fully observed rows.
+    joint = -_log_likelihood(model, rows, evaluator).mean()
+    logs = spn_binary_conditional_logs(model, rows, conditioning_indices=conditioning_indices,
+                                       target_index=target_index, evaluator=evaluator)
     conditional = -logs[torch.arange(len(rows), device=rows.device), labels.long()].mean()
     loss = joint + conditional_weight * conditional
     if not torch.isfinite(loss):
@@ -121,7 +154,7 @@ def spn_refinement_loss(model, rows, *, conditioning_indices, target_index, cond
 
 
 def refine_spn_step(model, optimizer, rows, *, conditioning_indices, target_index,
-                    conditional_weight, gaussian_floors, gradient_clip_norm):
+                    conditional_weight, gaussian_floors, gradient_clip_norm, evaluator='compiled'):
     """One gradient update and width projection; no sampling, schedule or selection."""
     import torch
     if not math.isfinite(gradient_clip_norm) or gradient_clip_norm <= 0:
@@ -129,7 +162,8 @@ def refine_spn_step(model, optimizer, rows, *, conditioning_indices, target_inde
     model.train()
     optimizer.zero_grad(set_to_none=True)
     loss, scores = spn_refinement_loss(model, rows, conditioning_indices=conditioning_indices,
-                                     target_index=target_index, conditional_weight=conditional_weight)
+                                     target_index=target_index, conditional_weight=conditional_weight,
+                                     evaluator=evaluator)
     loss.backward()
     norm = torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clip_norm, error_if_nonfinite=True)
     optimizer.step()
