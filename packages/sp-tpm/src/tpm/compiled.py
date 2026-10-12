@@ -23,9 +23,18 @@ from __future__ import annotations
 import math
 import weakref
 
-__all__ = ["CompiledSPNEvaluator", "check_compiled_spn_against_spflow", "compile_spn_evaluator"]
+__all__ = [
+    "CompiledSPNEvaluator",
+    "UnsupportedSPNStructureError",
+    "check_compiled_spn_against_spflow",
+    "compile_spn_evaluator",
+]
 
 _LEAF_KINDS = ("normal", "bernoulli", "categorical")
+
+
+class UnsupportedSPNStructureError(ValueError):
+    """The network uses modules or shapes the compiled evaluator does not cover."""
 
 
 def _module_types():
@@ -60,10 +69,10 @@ class CompiledSPNEvaluator:
                 return memo[id(module)]
             shape, kind = module.out_shape, type(module)
             if shape.channels != 1 or shape.repetitions != 1:
-                raise ValueError("compiled SPNs require one channel and one repetition per module")
+                raise UnsupportedSPNStructureError("compiled SPNs require one channel and one repetition per module")
             if kind in leaf_types:
                 if module.is_conditional:
-                    raise ValueError("compiled SPNs do not support conditional leaves")
+                    raise UnsupportedSPNStructureError("compiled SPNs do not support conditional leaves")
                 self.leaves[leaf_types[kind]].append(module)
                 result = []
                 for feature in module.scope.query:
@@ -79,17 +88,17 @@ class CompiledSPNEvaluator:
                 children = inputs.inputs if type(inputs) is Cat and inputs.dim == 2 else [inputs]
                 edges = [outputs(child) for child in children]
                 if any(len(edge) != 1 for edge in edges) or tuple(module.logits.shape) != (1, len(edges), 1, 1):
-                    raise ValueError("compiled SPN sums require scalar children and one weight per child")
+                    raise UnsupportedSPNStructureError("compiled SPN sums require scalar children and one weight per child")
                 nodes.append(("sum", [edge[0] for edge in edges], module))
                 result = [("node", len(nodes) - 1)]
             else:
-                raise ValueError(f"compiled SPNs do not support {kind.__name__} modules here")
+                raise UnsupportedSPNStructureError(f"compiled SPNs do not support {kind.__name__} modules here")
             memo[id(module)] = result
             return result
 
         root = outputs(model)
         if len(root) != 1 or root[0][0] != "node":
-            raise ValueError("compiled SPNs require a product or sum root with one output")
+            raise UnsupportedSPNStructureError("compiled SPNs require a product or sum root with one output")
         self._model = weakref.ref(model)
 
         # Leaf units are grouped by kind so leaf densities concatenate in order.

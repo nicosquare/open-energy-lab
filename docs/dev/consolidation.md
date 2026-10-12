@@ -580,6 +580,11 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
     Bernoulli probabilities to `1 - 1e-9`, which is 1.0 in float32 (SPFlow's
     default), so learned leaves could get infinite logits; it now clamps
     logits.
+    Follow-up: B6 found that the compiled default rejected Einet models
+    (newsvendor structure learning). The default is now `evaluator="auto"`:
+    compiled when the structure is supported, SPFlow otherwise (cached per
+    model). `"compiled"` raises `UnsupportedSPNStructureError`, and a failed
+    parity check still raises instead of falling back.
 - [ ] **B6 switch `tpm_for_sp`.** Make it depend on the workspace package
   instead of the whole `references/oel` submodule, then drop the re-export.
   Import changes collected so far: `open_energy_lab.tpm` -> `tpm`;

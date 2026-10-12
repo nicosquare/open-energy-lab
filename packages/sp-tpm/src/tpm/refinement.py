@@ -4,9 +4,11 @@ Rows are already in the typed schema's model coordinates. Conditional binary
 queries marginalize every nonconditioning, nontarget feature. Checkpoints use
 restricted Torch loading and retain Adam, RNG and the caller's work cursor.
 
-Likelihoods use the compiled evaluator by default (``evaluator="compiled"``):
-each model is compiled once, checked against SPFlow on its first batch, and
-cached for its lifetime; ``evaluator="spflow"`` evaluates with SPFlow itself.
+Likelihoods use the compiled evaluator when the network supports it
+(``evaluator="auto"``, the default): each model is compiled once, checked
+against SPFlow on its first batch, and cached for its lifetime; networks it does
+not cover (Einets, for example) use SPFlow. ``"compiled"`` requires the compiled
+evaluator and ``"spflow"`` always evaluates with SPFlow.
 """
 from __future__ import annotations
 
@@ -19,7 +21,8 @@ import weakref
 
 from ._io import atomic_write
 
-_EVALUATORS = ('compiled', 'spflow')
+_EVALUATORS = ('auto', 'compiled', 'spflow')
+_SPFLOW_ONLY = object()     # cache marker: the structure cannot be compiled
 _COMPILED = weakref.WeakKeyDictionary()
 
 
@@ -84,16 +87,22 @@ def project_spn_gaussian_widths(model, gaussian_floors):
 def refinement_spn_evaluator(model, rows):
     """The model's cached compiled evaluator, checked against SPFlow on first use.
 
-    The check runs on the first 256 of ``rows``; the cache assumes the
-    structure stays fixed, as it does during refinement.
+    Returns None when the structure cannot be compiled. The check runs on the
+    first 256 of ``rows``; the cache assumes the structure stays fixed, as it
+    does during refinement.
     """
-    from .compiled import check_compiled_spn_against_spflow, compile_spn_evaluator
+    from .compiled import (UnsupportedSPNStructureError, check_compiled_spn_against_spflow,
+                           compile_spn_evaluator)
     compiled = _COMPILED.get(model)
     if compiled is None:
-        compiled = compile_spn_evaluator(model)
-        check_compiled_spn_against_spflow(compiled, rows[:256].detach())
+        try:
+            compiled = compile_spn_evaluator(model)
+        except UnsupportedSPNStructureError:
+            compiled = _SPFLOW_ONLY
+        else:
+            check_compiled_spn_against_spflow(compiled, rows[:256].detach())
         _COMPILED[model] = compiled
-    return compiled
+    return None if compiled is _SPFLOW_ONLY else compiled
 
 
 def _log_likelihood(model, data, evaluator):
@@ -101,14 +110,22 @@ def _log_likelihood(model, data, evaluator):
     if evaluator not in _EVALUATORS:
         raise ValueError(f'evaluator must be one of {_EVALUATORS}')
     if evaluator == 'compiled':
-        return refinement_spn_evaluator(model, data).log_likelihood(data)
+        from .compiled import compile_spn_evaluator
+        compiled = refinement_spn_evaluator(model, data)
+        if compiled is None:
+            compile_spn_evaluator(model)    # raises the structural reason
+        return compiled.log_likelihood(data)
+    if evaluator == 'auto':
+        compiled = refinement_spn_evaluator(model, data)
+        if compiled is not None:
+            return compiled.log_likelihood(data)
     values = model.log_likelihood(data).reshape(len(data), -1)
     if values.shape[1] != 1:
         raise ValueError('refinement requires scalar outputs')
     return values[:, 0]
 
 
-def spn_binary_conditional_logs(model, rows, *, conditioning_indices, target_index, evaluator='compiled'):
+def spn_binary_conditional_logs(model, rows, *, conditioning_indices, target_index, evaluator='auto'):
     """Return normalized log p(Y=0|X), log p(Y=1|X), marginalizing other columns."""
     import torch
     from spflow.modules.leaves import Normal, Bernoulli, Categorical
@@ -132,7 +149,7 @@ def spn_binary_conditional_logs(model, rows, *, conditioning_indices, target_ind
 
 
 def spn_refinement_loss(model, rows, *, conditioning_indices, target_index, conditional_weight,
-                        evaluator='compiled'):
+                        evaluator='auto'):
     """Joint NLL plus caller-weighted binary conditional NLL, with autograd intact."""
     import torch
     if rows.ndim != 2 or not len(rows) or not torch.isfinite(rows).all():
@@ -154,7 +171,7 @@ def spn_refinement_loss(model, rows, *, conditioning_indices, target_index, cond
 
 
 def refine_spn_step(model, optimizer, rows, *, conditioning_indices, target_index,
-                    conditional_weight, gaussian_floors, gradient_clip_norm, evaluator='compiled'):
+                    conditional_weight, gaussian_floors, gradient_clip_norm, evaluator='auto'):
     """One gradient update and width projection; no sampling, schedule or selection."""
     import torch
     if not math.isfinite(gradient_clip_norm) or gradient_clip_norm <= 0:
