@@ -31,7 +31,11 @@ from tests.unit.simulator.test_stochastic_demand import (
 
 
 def _request(
-    *, worker_count: int, shard_format: str, local_start_step: int = 0
+    *,
+    worker_count: int,
+    shard_format: str,
+    local_start_step: int = 0,
+    grid_availability: GridAvailabilityPolicy | None = None,
 ) -> PlanningStudyRequest:
     return PlanningStudyRequest(
         study_id="simulation-integration",
@@ -51,12 +55,17 @@ def _request(
         shard_format=shard_format,
         local_start_step=local_start_step,
         adequacy_event=AdequacyEventDefinition("shortfall_ratio", 0.05),
-        grid_availability=GridAvailabilityPolicy(mode="islanded"),
+        grid_availability=grid_availability or GridAvailabilityPolicy(mode="islanded"),
     )
 
 
 def _run(
-    tmp_path, *, worker_count: int, shard_format: str, local_start_step: int = 0
+    tmp_path,
+    *,
+    worker_count: int,
+    shard_format: str,
+    local_start_step: int = 0,
+    grid_availability: GridAvailabilityPolicy | None = None,
 ):
     weather = load_weather_artifact(
         FITTED_WEATHER_ARTIFACT_FIXTURE_PATH,
@@ -72,6 +81,7 @@ def _run(
             worker_count=worker_count,
             shard_format=shard_format,
             local_start_step=local_start_step,
+            grid_availability=grid_availability,
         ),
         weather_artifact=weather,
         demand_artifact=demand,
@@ -181,3 +191,28 @@ def test_study_manifest_preserves_local_start_step(tmp_path) -> None:
     )
 
     assert manifest.metadata["study_request"]["local_start_step"] == 0
+
+
+def test_grid_import_limit_turns_connected_deficit_into_shortfall(tmp_path) -> None:
+    uncapped = _run(
+        tmp_path / "uncapped",
+        worker_count=1,
+        shard_format="jsonl",
+        grid_availability=GridAvailabilityPolicy(mode="always_available"),
+    )
+    capped = _run(
+        tmp_path / "capped",
+        worker_count=1,
+        shard_format="jsonl",
+        grid_availability=GridAvailabilityPolicy(
+            mode="always_available", import_limit_kw=0.0
+        ),
+    )
+    uncapped_rows = tuple(iter_study_rows(uncapped))
+    capped_rows = tuple(iter_study_rows(capped))
+
+    assert all(float(row["shortfall_ratio"]) == 0.0 for row in uncapped_rows)
+    assert any(float(row["shortfall_ratio"]) > 0.0 for row in capped_rows)
+    assert all(bool(row["grid_available_0"]) for row in capped_rows)
+    assert capped.metadata["study_request"]["grid_availability"]["import_limit_kw"] == 0.0
+    assert "import_limit_kw" not in uncapped.metadata["study_request"]["grid_availability"]

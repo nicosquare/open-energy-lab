@@ -244,6 +244,11 @@ def _simulate_configuration_batch(
         battery=battery,
         pv=solar,
     )
+    if request.grid_availability.import_limit_kw is not None:
+        scenario = replace(
+            scenario,
+            grid_import_limit_kw=request.grid_availability.import_limit_kw,
+        )
     _validate_physical_configuration(scenario, configuration, numeric_tolerance)
     controller = resolve_study_controller(request.controller, battery=configuration.battery)
     family_result = evaluate_demand_family(

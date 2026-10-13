@@ -212,6 +212,17 @@ the unmet-load metric. Manifests record
 participates in the input fingerprint so older shards cannot be resumed under
 the corrected behavior.
 
+A connected site can also have a finite import limit:
+`GridAvailabilityPolicy(mode=..., import_limit_kw=3.0)` sets
+`BatteryLoadPVScenario.grid_import_limit_kw`. While the grid is available,
+import is capped at that limit, demand above it is unmet, and grid charging
+only uses the headroom left after residual load (legacy
+`old_tpm/src_py/simulator/common/battery.py`). Outage steps keep the rules
+above, and discharging is never limited by the cap. The limit is not valid in
+`islanded` mode. When unset, behavior and request serialization are unchanged,
+so existing shards and fingerprints stay valid; a set limit enters the
+serialized request and therefore the fingerprint.
+
 Those shards retain the simulator traces needed to inspect policy behavior: PV
 generation, site load, controller-requested and physically realized battery
 power, post-step state of charge, grid availability, and unmet load. Battery

@@ -278,3 +278,91 @@ def test_evaluate_with_controller_returns_named_rejection_before_controller_exec
     assert result.step_records == []
     assert result.requested_power_kw == []
     assert result.realized_power_kw == []
+
+
+def _capped_scenario(
+    *, load_kw: list[float], cap_kw: float, requests_kw: list[float] | None = None
+) -> BatteryLoadPVScenario:
+    scenario = _battery_load_pv_scenario(num_steps=len(load_kw))
+    scenario.load.demand_kw = list(load_kw)
+    scenario.weather.global_horizontal_irradiance_w_per_m2 = [0.0] * len(load_kw)
+    scenario.grid_import_limit_kw = cap_kw
+    if requests_kw is not None:
+        scenario.dispatch_requests.requested_power_kw = list(requests_kw)
+    return scenario
+
+
+def test_grid_import_limit_leaves_load_above_the_limit_unmet() -> None:
+    scenario = _capped_scenario(load_kw=[6.0], cap_kw=3.0)
+
+    trace = scenario.evaluate_trace()
+
+    assert trace.unmet_load_kw == pytest.approx([3.0])
+    assert trace.net_grid_power_kw == pytest.approx([3.0])
+    assert trace.direction == ["import"]
+    assert trace.step_settlement == pytest.approx([-0.3])
+
+
+def test_grid_import_limit_bounds_grid_charging_to_headroom() -> None:
+    from open_energy_lab.simulator.controller_runner import evaluate_with_controller
+
+    scenario = _capped_scenario(load_kw=[2.0], cap_kw=3.0)
+
+    result = evaluate_with_controller(scenario, _LargeChargeController())
+
+    assert result.requested_power_kw == pytest.approx([5.0])
+    assert result.realized_power_kw == pytest.approx([1.0])
+    assert result.underlying_trace.unmet_load_kw == pytest.approx([0.0])
+    assert result.underlying_trace.net_grid_power_kw == pytest.approx([3.0])
+    assert result.step_records[0].constraint_events
+
+
+def test_grid_import_limit_does_not_limit_discharge() -> None:
+    from open_energy_lab.simulator.controller_runner import evaluate_with_controller
+
+    scenario = _capped_scenario(load_kw=[6.0], cap_kw=3.0)
+
+    result = evaluate_with_controller(scenario, _LargeDischargeController())
+
+    # 5 kWh stored at 95% discharge efficiency delivers 4.75 kW over one hour.
+    assert result.realized_power_kw == pytest.approx([-4.75])
+    assert result.underlying_trace.unmet_load_kw == pytest.approx([0.0])
+    assert result.underlying_trace.net_grid_power_kw == pytest.approx([1.25])
+
+
+def test_grid_import_limit_combines_with_outage_steps() -> None:
+    scenario = _capped_scenario(load_kw=[6.0, 6.0], cap_kw=3.0)
+    scenario.blackout_grid_available = [True, False]
+
+    trace = scenario.evaluate_trace()
+
+    assert trace.unmet_load_kw == pytest.approx([3.0, 6.0])
+    assert trace.net_grid_power_kw == pytest.approx([3.0, 0.0])
+    assert trace.direction == ["import", "neutral"]
+
+
+def test_grid_import_limit_runner_matches_scenario_trace() -> None:
+    from open_energy_lab.simulator.controller_runner import evaluate_with_controller
+
+    load_kw = [2.0, 6.0, 4.0]
+    scenario = _capped_scenario(load_kw=load_kw, cap_kw=3.0, requests_kw=[5.0] * 3)
+
+    expected = scenario.evaluate_trace()
+    result = evaluate_with_controller(scenario, _LargeChargeController())
+
+    assert result.realized_power_kw == pytest.approx(expected.realized_power_kw)
+    assert result.underlying_trace.unmet_load_kw == pytest.approx(expected.unmet_load_kw)
+    assert result.underlying_trace.net_grid_power_kw == pytest.approx(
+        expected.net_grid_power_kw
+    )
+    assert result.underlying_trace.step_settlement == pytest.approx(
+        expected.step_settlement
+    )
+
+
+@pytest.mark.parametrize("cap_kw", [-1.0, float("inf"), float("nan")])
+def test_grid_import_limit_must_be_finite_and_non_negative(cap_kw: float) -> None:
+    scenario = _capped_scenario(load_kw=[2.0], cap_kw=cap_kw)
+
+    with pytest.raises(ValueError, match="grid_import_limit_kw"):
+        scenario.validate()
