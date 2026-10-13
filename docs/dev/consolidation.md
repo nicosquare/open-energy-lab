@@ -585,29 +585,35 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
     compiled when the structure is supported, SPFlow otherwise (cached per
     model). `"compiled"` raises `UnsupportedSPNStructureError`, and a failed
     parity check still raises instead of falling back.
-- [ ] **B6 switch `tpm_for_sp`.** Make it depend on the workspace package
-  instead of the whole `references/oel` submodule, then drop the re-export.
-  Import changes collected so far: `open_energy_lab.tpm` -> `tpm`;
-  `optional_spflow` -> `spflow_backend`; drop `execution_mode="production"`
-  arguments (3); the B5c renames (`_learn_current_spflow_structure` and
-  `learn_current_spflow_structure` -> `learn_spflow_structure`, which returns
-  a named tuple; `fit._stabilize_leaf_parameters` ->
-  `spflow_backend.stabilize_spflow_leaf_parameters`; drop the leading
-  underscore from `_materialize_native_categorical_leaves`, the two RDC/k-means
-  fallbacks, `_spflow_operation_children`, `_bound_piecewise_auxiliaries` and
-  `_move_modules_once`); `product_mixture` is gone: the knapsack
-  `joint_model.py` moves to `tpm.native` (`TPMNativeMixtureConfig` with
-  target = event column, `initialize_native_mixture` or `build_native_mixture`,
-  `native_mixture_log_likelihood` for training and NaN-marginal queries,
-  `native_mixture_parameters` for the affine encoders; the SPFlow model is
-  the model, so no separate materialization); newsvendor code using
-  the categorical mixture replaces `model.mix`/`loc`/`log_scale`/
-  `category_logits` with `categorical_mixture_parameters` (read) and
-  `assign_categorical_mixture_parameters` (write), drops `to_spflow()` (the
-  model is SPFlow), and refits or converts `categorical-mixture-training-v1`
-  checkpoints. Refinement and `spn_binary_conditional_logs` now use the
-  compiled evaluator by default (no code change; results differ from SPFlow
-  at round-off, ~1e-11); pass `evaluator="spflow"` to reproduce old runs.
+- [x] **B6 switch `tpm_for_sp`.** tpm_for_sp depends on `sp-tpm`
+  (path source `references/oel/packages/sp-tpm`, submodule at 5864081)
+  instead of the whole `open-energy-lab` package; pandas, pvlib, h5py, pytz,
+  timezonefinder, flatbuffers and h3 leave its lock. There was no
+  `open_energy_lab.tpm` re-export left to drop. Changes: `open_energy_lab.tpm`
+  -> `tpm`, `optional_spflow` -> `spflow_backend` and the B5c renames;
+  `execution_mode` arguments removed; newsvendor categorical mixtures read and
+  write through `categorical_mixture_parameters` /
+  `assign_categorical_mixture_parameters`; campaign provenance, version
+  records and environment contracts name `sp-tpm`; import guards compare the
+  exact top-level package so `tpm` does not match `tpm_for_sp`. Live scripts
+  are migrated, `scripts/method_development/archive` is left as historical.
+  `product_mixture` is vendored verbatim (from OEL 3a5307e) into
+  `tpm_for_sp.knapsack_tpm` to keep the knapsack likelihood exact; the local
+  re-implementation differed at 7e-15. B6 found the compiled-evaluator
+  regression fixed in the B5f follow-up. Before B6, two fixes cleared the
+  failures already on tpm_for_sp `main`: the newsvendor DCC residual read
+  Pyomo's private `_domain_var`, which the sparse DCC block from 3a5307e does
+  not have (tpm_for_sp #10, 14 tests), and four contract tests required the
+  live gitlink to equal historical campaign revisions (#11; the revisions
+  stay recorded in configs and campaign records). Result (tpm_for_sp #12):
+  2585 passed, 27 skipped, 0 failed, excluding
+  `tests/integration/knapsack_baseline` (no `tpm` imports, one Gurobi test
+  already stalls on `main`).
+  - [ ] Follow-up: move the knapsack pipelines (joint model, filtered,
+    unfiltered) from the vendored `product_mixture` to `tpm.native`
+    (`TPMNativeMixtureConfig` with target = event column,
+    `build_native_mixture`, `native_mixture_log_likelihood`,
+    `native_mixture_parameters`), with a rerun.
 
 ## Rules for every PR
 
