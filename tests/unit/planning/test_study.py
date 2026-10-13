@@ -166,7 +166,8 @@ def test_grid_import_limit_is_validated_and_serialized_only_when_set() -> None:
     assert capped.grid_availability.import_limit_kw == 3.0
     assert capped.to_dict()["grid_availability"]["import_limit_kw"] == 3.0
     assert "import_limit_kw" not in uncapped.to_dict()["grid_availability"]
-    with pytest.raises(ValueError, match="import_limit_kw"):
-        GridAvailabilityPolicy(mode="always_available", import_limit_kw=-1.0)
+    for bad_limit in (-1.0, float("inf"), float("nan")):
+        with pytest.raises(ValueError, match="import_limit_kw"):
+            GridAvailabilityPolicy(mode="always_available", import_limit_kw=bad_limit)
     with pytest.raises(ValueError, match="islanded"):
         GridAvailabilityPolicy(mode="islanded", import_limit_kw=3.0)

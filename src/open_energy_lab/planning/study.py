@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import random
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
@@ -234,11 +235,10 @@ class GridAvailabilityPolicy:
         if self.import_limit_kw is not None:
             if mode == "islanded":
                 raise ValueError("import_limit_kw is not valid for islanded mode")
-            object.__setattr__(
-                self,
-                "import_limit_kw",
-                _non_negative(self.import_limit_kw, field_name="import_limit_kw"),
-            )
+            limit = _non_negative(self.import_limit_kw, field_name="import_limit_kw")
+            if not math.isfinite(limit):
+                raise ValueError("import_limit_kw must be finite")
+            object.__setattr__(self, "import_limit_kw", limit)
 
 
 @dataclass(frozen=True, slots=True)
