@@ -185,6 +185,7 @@ class GridAvailabilityPolicy:
     outage_start_probability: float | None = None
     recovery_probability: float | None = None
     supplied_traces: Mapping[int, Sequence[bool]] = field(default_factory=dict)
+    import_limit_kw: float | None = None
 
     def __post_init__(self) -> None:
         mode = str(self.mode)
@@ -230,6 +231,14 @@ class GridAvailabilityPolicy:
         if mode != "supplied" and traces:
             raise ValueError("supplied_traces are valid only for supplied mode")
         object.__setattr__(self, "supplied_traces", traces)
+        if self.import_limit_kw is not None:
+            if mode == "islanded":
+                raise ValueError("import_limit_kw is not valid for islanded mode")
+            object.__setattr__(
+                self,
+                "import_limit_kw",
+                _non_negative(self.import_limit_kw, field_name="import_limit_kw"),
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -341,6 +350,20 @@ class PlanningStudyRequest:
             for start in range(0, self.samples_per_configuration, self.batch_size)
         )
 
+    def _grid_availability_dict(self) -> dict[str, object]:
+        payload = {
+            **asdict(self.grid_availability),
+            "supplied_traces": {
+                str(key): list(value)
+                for key, value in self.grid_availability.supplied_traces.items()
+            },
+        }
+        # Omitted when unset so uncapped requests keep their earlier
+        # serialization and dataset fingerprints.
+        if payload["import_limit_kw"] is None:
+            del payload["import_limit_kw"]
+        return payload
+
     def to_dict(self) -> dict[str, object]:
         return {
             "study_id": self.study_id,
@@ -349,13 +372,7 @@ class PlanningStudyRequest:
             "samples_per_configuration": self.samples_per_configuration,
             "horizon_steps": self.horizon_steps,
             "adequacy_event": asdict(self.adequacy_event),
-            "grid_availability": {
-                **asdict(self.grid_availability),
-                "supplied_traces": {
-                    str(key): list(value)
-                    for key, value in self.grid_availability.supplied_traces.items()
-                },
-            },
+            "grid_availability": self._grid_availability_dict(),
             "controller": {
                 **asdict(self.controller),
                 "parameters": dict(self.controller.parameters),

@@ -150,3 +150,23 @@ def test_study_request_persists_hourly_local_start_step() -> None:
 def test_study_request_rejects_local_start_outside_day(value: int) -> None:
     with pytest.raises(ValueError, match="local_start_step"):
         replace(_request(), local_start_step=value)
+
+
+def test_grid_import_limit_is_validated_and_serialized_only_when_set() -> None:
+    capped = replace(
+        _request(),
+        grid_availability=GridAvailabilityPolicy(
+            mode="always_available", import_limit_kw=3
+        ),
+    )
+    uncapped = replace(
+        _request(), grid_availability=GridAvailabilityPolicy(mode="always_available")
+    )
+
+    assert capped.grid_availability.import_limit_kw == 3.0
+    assert capped.to_dict()["grid_availability"]["import_limit_kw"] == 3.0
+    assert "import_limit_kw" not in uncapped.to_dict()["grid_availability"]
+    with pytest.raises(ValueError, match="import_limit_kw"):
+        GridAvailabilityPolicy(mode="always_available", import_limit_kw=-1.0)
+    with pytest.raises(ValueError, match="islanded"):
+        GridAvailabilityPolicy(mode="islanded", import_limit_kw=3.0)

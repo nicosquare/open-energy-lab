@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -144,11 +145,23 @@ def _grid_feasible_battery_request_kw(
     site_electric_load_kw: float,
     pv_generation_kw: float,
     grid_available: bool,
+    grid_import_limit_kw: float | None = None,
 ) -> float:
-    """Limit battery power to the local residual while the grid is unavailable."""
+    """Limit battery power to the local residual or the grid import headroom.
+
+    While the grid is unavailable the battery may only absorb local PV surplus
+    and discharge into local residual load. While it is available with a
+    finite import limit, charging may only use the headroom left after the
+    residual load is served (legacy ``old_tpm`` behavior,
+    ``src_py/simulator/common/battery.py``); discharging is not limited.
+    """
 
     if grid_available:
-        return float(requested_power_kw)
+        if grid_import_limit_kw is None or requested_power_kw <= 0.0:
+            return float(requested_power_kw)
+        residual_load_kw = float(site_electric_load_kw) - float(pv_generation_kw)
+        import_headroom_kw = max(0.0, float(grid_import_limit_kw) - residual_load_kw)
+        return min(float(requested_power_kw), import_headroom_kw)
 
     residual_load_kw = float(site_electric_load_kw) - float(pv_generation_kw)
     if requested_power_kw > 0.0:
@@ -158,6 +171,50 @@ def _grid_feasible_battery_request_kw(
         local_deficit_kw = max(0.0, residual_load_kw)
         return -min(abs(float(requested_power_kw)), local_deficit_kw)
     return 0.0
+
+
+def _apply_grid_limits(
+    settlement: object,
+    *,
+    blackout_active: list[bool],
+    grid_import_limit_kw: float | None,
+    time_step_hours: float,
+    price_signal: PriceSignal,
+) -> tuple[list[float], list[float], list[str], list[float], list[float]]:
+    """Turn net-grid settlement into served grid exchange plus unmet load.
+
+    Outage steps exchange nothing with the grid, so any positive net demand is
+    unmet. Steps with the grid available import at most
+    ``grid_import_limit_kw``; demand above the limit is unmet and is not
+    settled. Returns net grid power, net grid energy, direction, step
+    settlement and unmet load, in that order.
+    """
+
+    net_grid_power_kw = list(settlement.net_grid_power_kw)
+    net_grid_energy_kwh = list(settlement.net_grid_energy_kwh)
+    direction = list(settlement.direction)
+    step_settlement = list(settlement.step_settlement)
+    unmet_load_kw = [0.0] * len(net_grid_power_kw)
+    for step_index, is_active in enumerate(blackout_active):
+        if is_active:
+            unmet_load_kw[step_index] = max(0.0, net_grid_power_kw[step_index])
+            net_grid_power_kw[step_index] = 0.0
+            net_grid_energy_kwh[step_index] = 0.0
+            direction[step_index] = "neutral"
+            step_settlement[step_index] = 0.0
+        elif (
+            grid_import_limit_kw is not None
+            and net_grid_power_kw[step_index] > grid_import_limit_kw
+        ):
+            limit_kw = float(grid_import_limit_kw)
+            unmet_load_kw[step_index] = net_grid_power_kw[step_index] - limit_kw
+            net_grid_power_kw[step_index] = limit_kw
+            net_grid_energy_kwh[step_index] = limit_kw * time_step_hours
+            direction[step_index] = "import" if limit_kw > 0.0 else "neutral"
+            step_settlement[step_index] = -(
+                net_grid_energy_kwh[step_index] * price_signal.price_at_step(step_index)
+            )
+    return net_grid_power_kw, net_grid_energy_kwh, direction, step_settlement, unmet_load_kw
 
 
 def build_controller_context_for_step(
@@ -450,6 +507,7 @@ class BatteryLoadPVScenario:
     blackout_grid_available: list[bool] | None = None
     cooling_service_balance: "CoolingServiceBalance | None" = None
     numeric_tolerance: float = DEFAULT_ABSOLUTE_TOLERANCE
+    grid_import_limit_kw: float | None = None
 
     def validate(self) -> ComponentGraph:
         if (self.dispatch_requests is None) == (self.rule_policy is None):
@@ -472,6 +530,11 @@ class BatteryLoadPVScenario:
         if self.cooling_service_balance is not None:
             if self.cooling_service_balance.time_grid != self.time_grid:
                 raise ValueError("cooling service balance must align to the scenario time grid")
+        if self.grid_import_limit_kw is not None:
+            if isinstance(self.grid_import_limit_kw, bool) or not math.isfinite(
+                float(self.grid_import_limit_kw)
+            ) or float(self.grid_import_limit_kw) < 0.0:
+                raise ValueError("grid_import_limit_kw must be finite and non-negative")
 
         if self.objective.allow_export and (
             self.objective.export_price_ratio != self.price_signal.export_price_ratio
@@ -579,6 +642,7 @@ class BatteryLoadPVScenario:
                 site_electric_load_kw=site_electric_load_kw[step_index],
                 pv_generation_kw=pv_generation_kw[step_index],
                 grid_available=not blackout_active[step_index],
+                grid_import_limit_kw=self.grid_import_limit_kw,
             )
             transition = apply_power_request(
                 component=self.battery,
@@ -604,23 +668,19 @@ class BatteryLoadPVScenario:
             price_signal=self.price_signal,
             objective=self.objective,
         )
-        unmet_load_kw: list[float] = []
-        net_grid_power_kw = list(settlement.net_grid_power_kw)
-        net_grid_energy_kwh = list(settlement.net_grid_energy_kwh)
-        direction = list(settlement.direction)
-        step_settlement = list(settlement.step_settlement)
-        if any(blackout_active):
-            for step_index, is_active in enumerate(blackout_active):
-                if is_active:
-                    unmet_load_kw.append(max(0.0, net_grid_power_kw[step_index]))
-                    net_grid_power_kw[step_index] = 0.0
-                    net_grid_energy_kwh[step_index] = 0.0
-                    direction[step_index] = "neutral"
-                    step_settlement[step_index] = 0.0
-                else:
-                    unmet_load_kw.append(0.0)
-        else:
-            unmet_load_kw = [0.0] * self.time_grid.num_steps
+        (
+            net_grid_power_kw,
+            net_grid_energy_kwh,
+            direction,
+            step_settlement,
+            unmet_load_kw,
+        ) = _apply_grid_limits(
+            settlement,
+            blackout_active=blackout_active,
+            grid_import_limit_kw=self.grid_import_limit_kw,
+            time_step_hours=self.time_grid.time_step_hours,
+            price_signal=self.price_signal,
+        )
         return BatteryLoadPVTrace(
             states=states,
             requested_power_kw=requested_power_kw,

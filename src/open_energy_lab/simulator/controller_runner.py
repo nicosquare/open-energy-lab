@@ -23,6 +23,7 @@ from .scenario import (
     BatteryLoadPVTrace,
     SimulationTrace,
     _ControllerContextInputError,
+    _apply_grid_limits,
     _grid_feasible_battery_request_kw,
     build_controller_context_for_step,
     prepare_controller_context_inputs,
@@ -147,6 +148,7 @@ def evaluate_with_controller(
                 site_electric_load_kw=site_electric_load_kw[step_index],
                 pv_generation_kw=pv_generation_kw[step_index],
                 grid_available=not blackout_active[step_index],
+                grid_import_limit_kw=scenario.grid_import_limit_kw,
             )
         transition = apply_power_request(
             component=scenario.battery,
@@ -203,23 +205,19 @@ def evaluate_with_controller(
             price_signal=scenario.price_signal,
             objective=scenario.objective,
         )
-        unmet_load_kw: list[float] = []
-        net_grid_power_kw = list(settlement.net_grid_power_kw)
-        net_grid_energy_kwh = list(settlement.net_grid_energy_kwh)
-        direction = list(settlement.direction)
-        step_settlement = list(settlement.step_settlement)
-        if any(blackout_active):
-            for step_index, is_active in enumerate(blackout_active):
-                if is_active:
-                    unmet_load_kw.append(max(0.0, net_grid_power_kw[step_index]))
-                    net_grid_power_kw[step_index] = 0.0
-                    net_grid_energy_kwh[step_index] = 0.0
-                    direction[step_index] = "neutral"
-                    step_settlement[step_index] = 0.0
-                else:
-                    unmet_load_kw.append(0.0)
-        else:
-            unmet_load_kw = [0.0] * scenario.time_grid.num_steps
+        (
+            net_grid_power_kw,
+            net_grid_energy_kwh,
+            direction,
+            step_settlement,
+            unmet_load_kw,
+        ) = _apply_grid_limits(
+            settlement,
+            blackout_active=blackout_active,
+            grid_import_limit_kw=scenario.grid_import_limit_kw,
+            time_step_hours=scenario.time_grid.time_step_hours,
+            price_signal=scenario.price_signal,
+        )
         underlying_trace = BatteryLoadPVTrace(
             states=states,
             requested_power_kw=requested_power_kw,
