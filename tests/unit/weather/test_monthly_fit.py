@@ -59,6 +59,7 @@ def test_monthly_fit_samples_each_scenario_from_one_season() -> None:
     components = artifact.base_model_parameters["monthly_components"]
 
     assert artifact.base_model_kind == "monthly-daily-block-summary"
+    assert artifact.artifact_id == "weather-artifact:two-month-test:monthly"
     assert [c["month"] for c in components] == [1, 7]
     assert [c["training_day_count"] for c in components] == [4, 4]
 
@@ -83,6 +84,7 @@ def test_default_fit_keeps_the_single_joint_model() -> None:
     )
 
     assert artifact.base_model_kind == "joint-daily-block-summary"
+    assert artifact.artifact_id == "weather-artifact:two-month-test"
     assert "monthly_components" not in artifact.base_model_parameters
 
 

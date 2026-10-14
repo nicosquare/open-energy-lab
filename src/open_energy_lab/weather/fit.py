@@ -102,7 +102,9 @@ def fit_weather_dataset(
     cloud_event_model = _fit_cloud_event_model(dataset, intervals_per_day=intervals_per_day)
 
     artifact = WeatherArtifact(
-        artifact_id=f"weather-artifact:{dataset.dataset_id}",
+        # Distinct id per model kind: planning-study fingerprints key on artifact_id.
+        artifact_id=f"weather-artifact:{dataset.dataset_id}"
+        + (":monthly" if config.monthly else ""),
         schema_version="v1",
         feature_name="007-stochastic-weather",
         created_at=created_at,
