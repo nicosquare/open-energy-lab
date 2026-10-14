@@ -203,6 +203,11 @@ days from it. A single all-year Gaussian mixes seasons, so its tails can
 produce days hotter or sunnier than any training day; on the Abu Dhabi TMY the
 all-year model put 4.5% of sampled days above the warmest training day and
 the monthly model 0.3%. Each month needs at least two complete local days.
+Monthly components also store each irradiance field's observed per-step
+maximum (`maximum_by_step`), and sampled GHI, direct and diffuse irradiance are
+capped at it, since the Gaussian otherwise exceeds clear-sky levels
+(Abu Dhabi: days sunnier than any training day fell from 2.9% to 0.2%).
+Temperature is not capped.
 The default (`monthly=False`) is unchanged, including its random stream.
 
 ## Offline Sampling Usage

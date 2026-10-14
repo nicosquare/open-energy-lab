@@ -112,7 +112,7 @@ def sample_weather_family(
         )
 
     physical_bounds_policy = _physical_bounds_policy(loaded_artifact)
-    components = [(1.0, mean_vector, _cholesky_factor(covariance_matrix))]
+    components = [(1.0, mean_vector, _cholesky_factor(covariance_matrix), {})]
     if "monthly_components" in base_parameters:
         components = []
         for component in base_parameters["monthly_components"]:
@@ -133,6 +133,7 @@ def sample_weather_family(
                             expected_size=len(component_mean),
                         )
                     ),
+                    dict(component.get("maximum_by_step", {})),
                 )
             )
     day_count = ceil((request.local_start_step + request.num_steps) / intervals_per_day)
@@ -234,7 +235,9 @@ def _sample_trace(
     artifact: WeatherArtifact,
     field_order: Sequence[str],
     intervals_per_day: int,
-    components: Sequence[tuple[float, Sequence[float], Sequence[Sequence[float]]]],
+    components: Sequence[
+        tuple[float, Sequence[float], Sequence[Sequence[float]], Mapping[str, Sequence[float]]]
+    ],
     physical_bounds_policy: Mapping[str, object],
     family_seed: int,
     scenario_index: int,
@@ -251,8 +254,8 @@ def _sample_trace(
     annotations: list[CloudEventAnnotation] = []
     # A seasonal artifact draws one component per scenario; a single-component
     # artifact draws nothing here, so its random stream is unchanged.
-    _, mean_vector, cholesky_factor = (
-        scenario_rng.choices(components, weights=[weight for weight, _, _ in components])[0]
+    _, mean_vector, cholesky_factor, maximum_by_step = (
+        scenario_rng.choices(components, weights=[component[0] for component in components])[0]
         if len(components) > 1
         else components[0]
     )
@@ -272,6 +275,11 @@ def _sample_trace(
             canonical_field_series=base_day_series,
             physical_bounds_policy=physical_bounds_policy,
         )
+        for field_name, maxima in maximum_by_step.items():
+            bounded_day_series[field_name] = tuple(
+                min(float(value), float(cap))
+                for value, cap in zip(bounded_day_series[field_name], maxima, strict=True)
+            )
         overlay_result = apply_cloud_event_overlay(
             canonical_field_series=bounded_day_series,
             cloud_event_model=artifact.cloud_event_model,

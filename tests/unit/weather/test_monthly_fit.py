@@ -32,6 +32,13 @@ def _two_month_dataset(*, july_days: int = 4) -> CanonicalWeatherDataset:
         (15.0 if stamp.month == 1 else 40.0) + (stamp.day % 3) + stamp.hour / 6
         for stamp in stamps
     ]
+    # Midday irradiance varies by day so the fitted Gaussian has spread to cap.
+    series["global_horizontal_irradiance_w_per_m2"] = [
+        ((500.0 if stamp.month == 1 else 900.0) + 40.0 * (stamp.day % 3))
+        if stamp.hour == 6
+        else 0.0
+        for stamp in stamps
+    ]
     return CanonicalWeatherDataset(
         dataset_id="two-month-test",
         latitude=24.4,
@@ -94,3 +101,32 @@ def test_monthly_fit_needs_two_complete_days_per_month() -> None:
             _two_month_dataset(july_days=1),
             fit_config=WeatherFitConfig(timestep_hours=6.0, monthly=True),
         )
+
+
+def test_monthly_samples_never_exceed_observed_irradiance() -> None:
+    artifact = fit_weather_dataset(
+        _two_month_dataset(),
+        fit_config=WeatherFitConfig(timestep_hours=6.0, monthly=True),
+    )
+    caps = {
+        component["month"]: component["maximum_by_step"][
+            "global_horizontal_irradiance_w_per_m2"
+        ]
+        for component in artifact.base_model_parameters["monthly_components"]
+    }
+    assert caps == {1: [0.0, 580.0, 0.0, 0.0], 7: [0.0, 980.0, 0.0, 0.0]}
+    assert "dry_bulb_air_temperature_c" not in (
+        artifact.base_model_parameters["monthly_components"][0]["maximum_by_step"]
+    )
+
+    family = sample_weather_family(
+        artifact,
+        request=WeatherSamplingRequest(num_steps=4, scenario_count=300, family_seed=5),
+    )
+    midday = [
+        trace.canonical_field_series["global_horizontal_irradiance_w_per_m2"][1]
+        for trace in family.sampled_traces
+    ]
+    assert max(midday) <= 980.0
+    # Samples reach the cap: without it the Gaussian exceeds it often.
+    assert any(value == 980.0 or value == 580.0 for value in midday)
