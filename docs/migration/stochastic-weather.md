@@ -194,6 +194,17 @@ This preserves the intended workflow boundary:
 - offline reload depends only on the committed JSON artifact
 - unsupported versions and missing canonical fields fail fast
 
+`WeatherFitConfig(timestep_hours=..., monthly=True)` fits one day-vector
+Gaussian per local calendar month instead of one for the whole year
+(`base_model_kind="monthly-daily-block-summary"`, components in
+`base_model_parameters["monthly_components"]`). Sampling draws one month per
+scenario, weighted by its training days, and samples all of that scenario's
+days from it. A single all-year Gaussian mixes seasons, so its tails can
+produce days hotter or sunnier than any training day; on the Abu Dhabi TMY the
+all-year model put 4.5% of sampled days above the warmest training day and
+the monthly model 0.3%. Each month needs at least two complete local days.
+The default (`monthly=False`) is unchanged, including its random stream.
+
 ## Offline Sampling Usage
 
 The current offline sampling workflow is:

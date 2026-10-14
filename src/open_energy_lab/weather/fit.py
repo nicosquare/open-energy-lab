@@ -27,6 +27,9 @@ class WeatherFitConfig:
 
     timestep_hours: float
     notes: tuple[str, ...] = field(default_factory=tuple)
+    # Fit one day-vector Gaussian per local calendar month; sampling then picks
+    # a month per scenario so seasons are not mixed into one distribution.
+    monthly: bool = False
 
 
 def fit_weather_model(
@@ -80,9 +83,8 @@ def fit_weather_dataset(
     created_at = datetime.now(tz=ZoneInfo("UTC")).strftime("%Y-%m-%dT%H:%M:%SZ")
     record_count = len(dataset.timestamp_utc)
     intervals_per_day = _intervals_per_day(dataset.timestep_hours)
-    training_matrix, training_day_count, padding_mode = _build_joint_training_matrix(
-        dataset,
-        intervals_per_day=intervals_per_day,
+    training_matrix, training_day_count, padding_mode, training_days = (
+        _build_joint_training_matrix(dataset, intervals_per_day=intervals_per_day)
     )
     numeric_field_order = tuple(
         spec.field_name for spec in iter_weather_field_specs() if spec.field_name != "timestamp_utc"
@@ -90,6 +92,13 @@ def fit_weather_dataset(
     numeric_field_summaries = _field_summaries(dataset)
     mean_vector = _mean_vector(training_matrix)
     covariance_matrix = _covariance_matrix(training_matrix, regularization=1e-8)
+    base_model_kind = "joint-daily-block-summary"
+    seasonal_parameters: dict[str, object] = {}
+    if config.monthly:
+        base_model_kind = "monthly-daily-block-summary"
+        seasonal_parameters["monthly_components"] = _monthly_components(
+            training_matrix, training_days
+        )
     cloud_event_model = _fit_cloud_event_model(dataset, intervals_per_day=intervals_per_day)
 
     artifact = WeatherArtifact(
@@ -110,7 +119,7 @@ def fit_weather_dataset(
             "last_timestamp_utc": dataset.timestamp_utc[-1],
             "local_step_count": len(dataset.local_civil_step_labels),
         },
-        base_model_kind="joint-daily-block-summary",
+        base_model_kind=base_model_kind,
         base_model_parameters={
             "intervals_per_day": intervals_per_day,
             "sampling_anchor_timestamp_utc": _sampling_anchor_timestamp_utc(
@@ -124,6 +133,7 @@ def fit_weather_dataset(
             "regularization_note": padding_mode,
             "field_summaries": numeric_field_summaries,
             "physical_bounds_policy": _physical_bounds_policy(),
+            **seasonal_parameters,
         },
         cloud_event_model=cloud_event_model,
         provenance={
@@ -166,7 +176,7 @@ def _build_joint_training_matrix(
     dataset: CanonicalWeatherDataset,
     *,
     intervals_per_day: int,
-) -> tuple[list[list[float]], int, str]:
+) -> tuple[list[list[float]], int, str, list[str]]:
     numeric_field_order = tuple(dataset.canonical_field_order[1:])
     day_rows: dict[str, list[int]] = {}
     for index, local_label in enumerate(dataset.local_civil_step_labels):
@@ -174,9 +184,11 @@ def _build_joint_training_matrix(
         day_rows.setdefault(local_day, []).append(index)
 
     training_matrix: list[list[float]] = []
-    for indices in day_rows.values():
+    training_days: list[str] = []
+    for local_day, indices in day_rows.items():
         if len(indices) != intervals_per_day:
             continue
+        training_days.append(local_day)
         vector: list[float] = []
         for field_name in numeric_field_order:
             values = dataset.field_series[field_name]
@@ -184,10 +196,31 @@ def _build_joint_training_matrix(
         training_matrix.append(vector)
 
     if training_matrix:
-        return training_matrix, len(training_matrix), "complete_local_days_only"
+        return training_matrix, len(training_matrix), "complete_local_days_only", training_days
 
     padded_vector = _build_padded_day_vector(dataset, intervals_per_day=intervals_per_day)
-    return [padded_vector], 1, "padded_single_day_from_available_record"
+    first_day = dataset.local_civil_step_labels[0].split("T", maxsplit=1)[0]
+    return [padded_vector], 1, "padded_single_day_from_available_record", [first_day]
+
+
+def _monthly_components(
+    training_matrix: list[list[float]],
+    training_days: list[str],
+) -> list[dict[str, object]]:
+    rows_by_month: dict[int, list[list[float]]] = {}
+    for row, local_day in zip(training_matrix, training_days, strict=True):
+        rows_by_month.setdefault(int(local_day[5:7]), []).append(row)
+    if any(len(rows) < 2 for rows in rows_by_month.values()):
+        raise ValueError("monthly weather fit needs at least two complete days per month")
+    return [
+        {
+            "month": month,
+            "training_day_count": len(rows),
+            "mean_vector": _mean_vector(rows),
+            "covariance_matrix": _covariance_matrix(rows, regularization=1e-8),
+        }
+        for month, rows in sorted(rows_by_month.items())
+    ]
 
 
 def _sampling_anchor_timestamp_utc(

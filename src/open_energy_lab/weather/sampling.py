@@ -112,7 +112,29 @@ def sample_weather_family(
         )
 
     physical_bounds_policy = _physical_bounds_policy(loaded_artifact)
-    cholesky_factor = _cholesky_factor(covariance_matrix)
+    components = [(1.0, mean_vector, _cholesky_factor(covariance_matrix))]
+    if "monthly_components" in base_parameters:
+        components = []
+        for component in base_parameters["monthly_components"]:
+            component_mean = _numeric_vector(
+                component.get("mean_vector"), field_name="monthly mean_vector"
+            )
+            if len(component_mean) != expected_feature_count:
+                raise ValueError(
+                    "monthly mean_vector length must equal intervals_per_day * len(field_order)"
+                )
+            components.append(
+                (
+                    float(component["training_day_count"]),
+                    component_mean,
+                    _cholesky_factor(
+                        _covariance_matrix(
+                            component.get("covariance_matrix"),
+                            expected_size=len(component_mean),
+                        )
+                    ),
+                )
+            )
     day_count = ceil((request.local_start_step + request.num_steps) / intervals_per_day)
     family_id = _family_id(
         artifact_id=loaded_artifact.artifact_id,
@@ -128,8 +150,7 @@ def sample_weather_family(
             artifact=loaded_artifact,
             field_order=field_order,
             intervals_per_day=intervals_per_day,
-            mean_vector=mean_vector,
-            cholesky_factor=cholesky_factor,
+            components=components,
             physical_bounds_policy=physical_bounds_policy,
             family_seed=request.family_seed,
             scenario_index=scenario_index,
@@ -213,8 +234,7 @@ def _sample_trace(
     artifact: WeatherArtifact,
     field_order: Sequence[str],
     intervals_per_day: int,
-    mean_vector: Sequence[float],
-    cholesky_factor: Sequence[Sequence[float]],
+    components: Sequence[tuple[float, Sequence[float], Sequence[Sequence[float]]]],
     physical_bounds_policy: Mapping[str, object],
     family_seed: int,
     scenario_index: int,
@@ -229,6 +249,13 @@ def _sample_trace(
     )
     concatenated_series = {field_name: [] for field_name in field_order}
     annotations: list[CloudEventAnnotation] = []
+    # A seasonal artifact draws one component per scenario; a single-component
+    # artifact draws nothing here, so its random stream is unchanged.
+    _, mean_vector, cholesky_factor = (
+        scenario_rng.choices(components, weights=[weight for weight, _, _ in components])[0]
+        if len(components) > 1
+        else components[0]
+    )
 
     for day_index in range(day_count):
         sampled_vector = _sample_multivariate_day(
