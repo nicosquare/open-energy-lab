@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from math import isclose
@@ -97,7 +98,10 @@ def fit_weather_dataset(
     if config.monthly:
         base_model_kind = "monthly-daily-block-summary"
         seasonal_parameters["monthly_components"] = _monthly_components(
-            training_matrix, training_days
+            training_matrix,
+            training_days,
+            field_order=numeric_field_order,
+            intervals_per_day=intervals_per_day,
         )
     cloud_event_model = _fit_cloud_event_model(dataset, intervals_per_day=intervals_per_day)
 
@@ -205,9 +209,21 @@ def _build_joint_training_matrix(
     return [padded_vector], 1, "padded_single_day_from_available_record", [first_day]
 
 
+# Sampled irradiance is capped at the month's observed per-step maximum: the
+# Gaussian otherwise exceeds clear-sky levels. Temperature is not capped.
+_CAPPED_IRRADIANCE_FIELDS = (
+    "global_horizontal_irradiance_w_per_m2",
+    "direct_beam_irradiance_w_per_m2",
+    "diffuse_horizontal_irradiance_w_per_m2",
+)
+
+
 def _monthly_components(
     training_matrix: list[list[float]],
     training_days: list[str],
+    *,
+    field_order: Sequence[str],
+    intervals_per_day: int,
 ) -> list[dict[str, object]]:
     rows_by_month: dict[int, list[list[float]]] = {}
     for row, local_day in zip(training_matrix, training_days, strict=True):
@@ -220,6 +236,15 @@ def _monthly_components(
             "training_day_count": len(rows),
             "mean_vector": _mean_vector(rows),
             "covariance_matrix": _covariance_matrix(rows, regularization=1e-8),
+            "maximum_by_step": {
+                field_name: [
+                    max(row[offset + step] for row in rows)
+                    for step in range(intervals_per_day)
+                ]
+                for position, field_name in enumerate(field_order)
+                if field_name in _CAPPED_IRRADIANCE_FIELDS
+                for offset in (position * intervals_per_day,)
+            },
         }
         for month, rows in sorted(rows_by_month.items())
     ]
