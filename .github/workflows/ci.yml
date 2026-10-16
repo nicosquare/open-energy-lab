@@ -1,8 +1,13 @@
 name: CI
 
+# Private repo: Actions minutes are billed. Run once per PR update (not also
+# on the branch push), check merges to main, and skip docs-only changes.
 on:
   push:
+    branches: [main]
+    paths-ignore: ['docs/**', 'notes/**', '**/*.md']
   pull_request:
+    paths-ignore: ['docs/**', 'notes/**', '**/*.md']
 
 permissions:
   contents: read
