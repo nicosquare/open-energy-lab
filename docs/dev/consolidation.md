@@ -630,6 +630,11 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
     predates B5d/B5f/B6, and their solves use wall-clock caps
     (1,000-3,600 s), the same machine dependence; switch to work units.
     Mind the shared-server limit (4 solves of 10 threads at a time).
+    The paper's fits (`profit50-paired-001`) are `categorical-mixture-
+    training-v1` checkpoints, which current sp-tpm rejects; they are not
+    converted. profit50 is rerun first, as a v3-style campaign, when the
+    server is lighter; the rebuttal baselines then use those fits
+    (tpm_for_sp `notes/2026-10-16-rebuttal-preparation-plan.md`).
   - [ ] Rerun or relabel the knapsack studies still built on v1 fits with
     wall-clock budgets: PWL resolution, data scaling, capacity, risk-limit
     reuse and cuts (tpm_for_sp `artifacts/knapsack_tpm/diagnostics/`).
