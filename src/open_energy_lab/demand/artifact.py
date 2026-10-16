@@ -65,6 +65,9 @@ class DemandArtifact:
     double_counting_policy: str
     provenance: dict[str, object]
     supported_sampling_modes: tuple[str, ...]
+    # Optional empirical day-level variability: whole residual days multiplied onto
+    # the expected profile instead of per-step Gaussian residuals.
+    residual_day_library: dict[str, object] | None = None
 
     def __post_init__(self) -> None:
         for name in ("artifact_id", "feature_name", "timezone_name", "double_counting_policy"):
@@ -115,11 +118,20 @@ class DemandArtifact:
             raise ValueError("supported_sampling_modes must not be empty")
         if "offline" not in self.supported_sampling_modes:
             raise ValueError("supported_sampling_modes must include 'offline'")
+        if self.residual_day_library is not None:
+            object.__setattr__(
+                self,
+                "residual_day_library",
+                _validate_residual_day_library(
+                    _mapping(self.residual_day_library, field_name="residual_day_library"),
+                    intervals_per_day=int(self.shared_residual_model["intervals_per_day"]),
+                ),
+            )
 
     def to_dict(self) -> dict[str, object]:
         """Serialize the artifact into its persisted JSON shape."""
 
-        return {
+        payload = {
             "artifact_id": self.artifact_id,
             "schema_version": self.schema_version,
             "feature_name": self.feature_name,
@@ -136,6 +148,9 @@ class DemandArtifact:
             "provenance": dict(self.provenance),
             "supported_sampling_modes": list(self.supported_sampling_modes),
         }
+        if self.residual_day_library is not None:
+            payload["residual_day_library"] = dict(self.residual_day_library)
+        return payload
 
     def write_json(self, path: str | Path) -> Path:
         """Persist the artifact as human-inspectable JSON."""
@@ -167,7 +182,10 @@ class DemandArtifact:
             "supported_sampling_modes",
         )
         _require_fields(data, required_keys, field_name="demand artifact")
-        return cls(**{key: data[key] for key in required_keys})
+        return cls(
+            **{key: data[key] for key in required_keys},
+            residual_day_library=data.get("residual_day_library"),
+        )
 
 
 def load_demand_artifact(
@@ -196,6 +214,34 @@ __all__ = [
     "load_demand_artifact",
     "validate_sampling_weather_family",
 ]
+
+
+RESIDUAL_DAY_LIBRARY_KIND = "multiplicative-residual-days"
+
+
+def _validate_residual_day_library(
+    library: dict[str, object], *, intervals_per_day: int
+) -> dict[str, object]:
+    if library.get("model_kind") != RESIDUAL_DAY_LIBRARY_KIND:
+        raise DemandArtifactValidationError(
+            f"residual_day_library model_kind must be {RESIDUAL_DAY_LIBRARY_KIND!r}"
+        )
+    if library.get("intervals_per_day") != intervals_per_day:
+        raise DemandArtifactValidationError(
+            "residual_day_library intervals_per_day must match the shared residual model"
+        )
+    days = library.get("days")
+    if not isinstance(days, Sequence) or isinstance(days, (str, bytes)) or not days:
+        raise DemandArtifactValidationError("residual_day_library days must be a non-empty sequence")
+    normalized = []
+    for index, day in enumerate(days):
+        values = _numeric_values(day, field_name=f"residual_day_library days[{index}]")
+        if len(values) != intervals_per_day or any(value < 0.0 for value in values):
+            raise DemandArtifactValidationError(
+                "residual_day_library days must have intervals_per_day non-negative values"
+            )
+        normalized.append(list(values))
+    return {**library, "days": normalized}
 
 
 def _validate_required_weather_field_order(required_weather_field_order: Sequence[str]) -> None:
