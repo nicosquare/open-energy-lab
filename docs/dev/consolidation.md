@@ -609,11 +609,33 @@ Mapped 2026-10-02; order changed so the move comes after the cleanup:
   2585 passed, 27 skipped, 0 failed, excluding
   `tests/integration/knapsack_baseline` (no `tpm` imports, one Gurobi test
   already stalls on `main`).
-  - [ ] Follow-up: move the knapsack pipelines (joint model, filtered,
-    unfiltered) from the vendored `product_mixture` to `tpm.native`
-    (`TPMNativeMixtureConfig` with target = event column,
-    `build_native_mixture`, `native_mixture_log_likelihood`,
-    `native_mixture_parameters`), with a rerun.
+  - [x] Follow-up: move the knapsack paired campaign to `tpm.native`, with
+    a rerun (tpm_for_sp #13). The joint model is `TPMNativeMixtureConfig`
+    with target = event column, trained through
+    `native_mixture_log_likelihood`; the copied `product_mixture` is gone.
+    The library's k-means initialization (v2) fit accurate models, but
+    Gurobi reached the true optimum on 1/10 datasets: it spreads the weight
+    over ~810 effective components against ~255 from v1's row-centre start.
+    The shared server also made the 1,800 s budget machine-dependent (Gurobi
+    ran at ~0.4 instead of ~1 work unit per second), so solves now stop at
+    1,800 Gurobi work units. Under that budget the v1 fits reproduce the
+    submitted results exactly (7/10 optimum, 10/10 feasible). The published
+    v3 uses `tpm.native` with v1's row-centre start (`build_native_mixture`):
+    8/10 optimum, 9/10 feasible (dataset 6's proved optimum has true risk
+    10.94%, a PWL-33 encoding error near the limit), 9/10 certificates.
+    tpm_for_sp `notes/2026-10-16-knapsack-v3-vs-submitted-paper.md` lists
+    the paper items to update.
+  - [ ] Rerun the newsvendor campaigns (canonical, profit50, capacity100) on
+    sp-tpm. Their code was migrated in B6, but the published evidence
+    predates B5d/B5f/B6, and their solves use wall-clock caps
+    (1,000-3,600 s), the same machine dependence; switch to work units.
+    Mind the shared-server limit (4 solves of 10 threads at a time).
+  - [ ] Rerun or relabel the knapsack studies still built on v1 fits with
+    wall-clock budgets: PWL resolution, data scaling, capacity, risk-limit
+    reuse and cuts (tpm_for_sp `artifacts/knapsack_tpm/diagnostics/`).
+  - [ ] Knapsack `filtered/` and `unfiltered/` keep local model copies.
+    They are historical studies outside the paper's main results: keep as
+    historical or move to `tpm.native`.
 
 ## Rules for every PR
 
