@@ -108,9 +108,12 @@ def sample_demand_family(
         local_start_step=request.local_start_step,
     )
 
+    library = loaded_artifact.residual_day_library
+    residual_days = None if library is None else library["days"]
     sampled_traces = tuple(
         _sample_trace(
             artifact=loaded_artifact,
+            residual_days=residual_days,
             weather_trace=weather_trace,
             weather_field_order=weather_field_order,
             intervals_per_day=intervals_per_day,
@@ -243,6 +246,7 @@ def _two_dimensional_cholesky(
 def _sample_trace(
     *,
     artifact: DemandArtifact,
+    residual_days: Sequence[Sequence[float]] | None,
     weather_trace: object,
     weather_field_order: Sequence[str],
     intervals_per_day: int,
@@ -263,7 +267,7 @@ def _sample_trace(
 
     if local_start_step >= intervals_per_day:
         raise ValueError("local_start_step must be smaller than intervals_per_day")
-    for _ in range(local_start_step):
+    for _ in range(0 if residual_days is not None else local_start_step):
         _sample_correlated_pair(
             rng=scenario_rng,
             cholesky_factor=cholesky_factor,
@@ -290,6 +294,13 @@ def _sample_trace(
             local_step_index=local_step_index,
             step_index=step_index,
         )
+        if residual_days is not None:
+            # One whole residual day per local day, drawn when the day starts.
+            if step_index == 0 or local_step_index == 0:
+                day = residual_days[scenario_rng.randrange(len(residual_days))]
+            non_thermal_values.append(max(0.0, non_thermal_base) * day[local_step_index])
+            cooling_values.append(max(0.0, cooling_base) * day[local_step_index])
+            continue
         correlated_noise = _sample_correlated_pair(
             rng=scenario_rng,
             cholesky_factor=cholesky_factor,

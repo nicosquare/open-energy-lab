@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 from ._aligned_history import normalize_aligned_training_history
 from ._weather_response import fit_dual_output_weather_response
-from .artifact import DemandArtifact
+from .artifact import RESIDUAL_DAY_LIBRARY_KIND, DemandArtifact
 
 
 FEATURE_NAME = "008-weather-demand-modeling"
@@ -24,8 +24,16 @@ def fit_demand_model(
     training_payload: dict[str, object],
     *,
     output_path: str | Path | None = None,
+    residual_days: list[list[float]] | None = None,
+    residual_days_provenance: dict[str, object] | None = None,
 ) -> DemandArtifact:
-    """Fit and optionally persist a first-release weather-conditioned demand artifact."""
+    """Fit and optionally persist a first-release weather-conditioned demand artifact.
+
+    ``residual_days`` (one non-negative multiplier per local step per day, e.g.
+    observed days divided by their expected profile) replaces the per-step
+    Gaussian residual: sampling multiplies each day's expected profile by one
+    whole library day. The artifact id gains ``:residual-days``.
+    """
 
     aligned_history = normalize_aligned_training_history(training_payload)
     fitted_response = fit_dual_output_weather_response(aligned_history)
@@ -43,8 +51,17 @@ def fit_demand_model(
         }
     )
 
+    library = None
+    if residual_days is not None:
+        library = {
+            "model_kind": RESIDUAL_DAY_LIBRARY_KIND,
+            "intervals_per_day": fitted_response.shared_residual_model.intervals_per_day,
+            "days": [list(map(float, day)) for day in residual_days],
+            "provenance": dict(residual_days_provenance or {}),
+        }
     artifact = DemandArtifact(
-        artifact_id=f"demand-artifact:{aligned_history.dataset_id}",
+        artifact_id=f"demand-artifact:{aligned_history.dataset_id}"
+        + (":residual-days" if library is not None else ""),
         schema_version="v1",
         feature_name=FEATURE_NAME,
         created_at=created_at,
@@ -69,6 +86,7 @@ def fit_demand_model(
         double_counting_policy=DOUBLE_COUNTING_POLICY,
         provenance=provenance,
         supported_sampling_modes=("offline",),
+        residual_day_library=library,
     )
     if output_path is not None:
         artifact.write_json(output_path)
