@@ -19,16 +19,21 @@ class AffineConditionalAttachment:
     namespace: str
 
 
-def attach_affine_log_ratio(model, decisions, records, *, namespace=''):
+def attach_affine_log_ratio(model, decisions, records, *, namespace='', encoding='pwl'):
     """Attach both queries with shared binary decisions and no solver invocation.
 
     Uses curve-preserving SOS2 interpolation, common-decision difference bounds,
     disaggregated maxima, winner-endpoint links and one-bit conditional bounds.
     Only the caller can impose an event threshold or change the objective.
+    ``encoding='nonlinear'`` replaces the exp and log PWLs by Gurobi nonlinear
+    constraints, with every bound propagated through the exact functions.
     """
     import gurobipy as gp
     import numpy as np
-    from .affine import conditional_affine_bounds, validate_affine_logsum
+    from .affine import conditional_affine_bounds, exact_affine_logsum_bounds, validate_affine_logsum
+    if encoding not in ('pwl', 'nonlinear'):
+        raise ValueError("encoding must be 'pwl' or 'nonlinear'")
+    exact = encoding == 'nonlinear'
     if set(records['queries']) != {'numerator', 'denominator'}:
         raise ValueError('Exactly numerator and denominator queries are required')
     for graph in records['queries'].values():
@@ -49,7 +54,10 @@ def attach_affine_log_ratio(model, decisions, records, *, namespace=''):
            or v.VarName == prefix+'root' for v in owned):
         raise ValueError('Attachment namespace already exists in the model')
     # Compute all bound propagation before mutating the caller model.
-    conditional = {name: conditional_affine_bounds(query) for name,query in records['queries'].items()}
+    conditional = {name: conditional_affine_bounds(query, exact=exact) for name,query in records['queries'].items()}
+    # PWL-propagated bounds can cut off exact exp/log values, so the nonlinear encoding recomputes them.
+    tightened = {name: exact_affine_logsum_bounds(query) if exact else query[-1]['tightened_bounds']
+                 for name,query in records['queries'].items()}
     assigned = {f'x_{i}': v for i,v in enumerate(decisions)}
 
     def query_attachment(name, graph):
@@ -62,7 +70,7 @@ def attach_affine_log_ratio(model, decisions, records, *, namespace=''):
         def row(expr, key):
             model.addConstr(expr, name=prefix+name+'__'+key)
         terms = [r for r in graph if r['kind']=='affine']
-        bounds = graph[-1]['tightened_bounds']
+        bounds = tightened[name]
         values = []
         for j,term in enumerate(terms):
             v = var(f't_{j}', bounds['term_lower'][j], bounds['term_upper'][j])
@@ -89,6 +97,14 @@ def attach_affine_log_ratio(model, decisions, records, *, namespace=''):
             coordinate = var(f'coordinate_{j}',(lo+500)/500,(hi+500)/500)
             row(relative==values[j]-maximum, f'relative_{j}')
             row(500*coordinate==relative+500, f'coordinate_{j}')
+            if exact:
+                output = var(r['name'], bounds['exponential_lower'][j], bounds['exponential_upper'][j])
+                model.addGenConstrNL(output, gp.nlfunc.exp(relative), name=prefix+name+'__'+r['name'])
+                expvars.append(output)
+                # A winner has relative 0 and exp 1 through the maximum rows; no endpoint link is needed.
+                if hi < 0:
+                    row(selectors[j]==0, f'cannot_win_{j}')
+                continue
             output, weights = pwl(r['name'],relative,r['xs'],r['ys'],
                                  bounds['exponential_lower'][j],bounds['exponential_upper'][j])
             expvars.append(output)
@@ -101,7 +117,11 @@ def attach_affine_log_ratio(model, decisions, records, *, namespace=''):
         total = var('total', *bounds['total'])
         row(total==gp.quicksum(expvars), 'sum_exponentials')
         r = graph[-1]
-        logarithm,_ = pwl('logarithm',total,r['xs'],r['ys'],*bounds['logarithm'])
+        if exact:
+            logarithm = var('logarithm', *bounds['logarithm'])
+            model.addGenConstrNL(logarithm, gp.nlfunc.log(total), name=prefix+name+'__logarithm')
+        else:
+            logarithm,_ = pwl('logarithm',total,r['xs'],r['ys'],*bounds['logarithm'])
         root = var('root', *bounds['root'])
         row(root==maximum+logarithm, 'root')
         copies = [[var(f'disagg_{j}_{i}',0,1) for i in range(len(decisions))] for j in range(len(terms))]

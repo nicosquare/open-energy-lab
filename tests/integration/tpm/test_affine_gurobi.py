@@ -49,3 +49,35 @@ def test_generic_attachment_shares_decisions_preserves_objective_and_all_assignm
         assert model.NumBinVars==3+4*4
         assert second.root.VarName=='another_event__root'
     finally:model.dispose();env.dispose()
+
+
+def test_nonlinear_encoding_returns_the_exact_conditional_optimum():
+    gp=pytest.importorskip('gurobipy')
+    from scipy.special import logsumexp
+    rng=np.random.default_rng(5)
+    binary=rng.normal(size=(6,5));mix=rng.normal(size=6);event=rng.normal(size=6)
+    records=compile_binary_mixture_log_ratio(binary,mix,event)
+    points=np.array(list(product((0,1),repeat=5)))
+    log_ratio={}
+    for name,query in records['queries'].items():
+        terms=[r for r in query if r['kind']=='affine']
+        log_ratio[name]=logsumexp(np.array([r['intercept'] for r in terms])+points@np.array([r['coeff'] for r in terms]).T,axis=1)
+    exact=log_ratio['numerator']-log_ratio['denominator']
+    profits=np.arange(1,6);limit=float(np.quantile(exact,.6))
+    feasible=exact>=limit
+    best=(points@profits)[feasible].max()
+    env=gp.Env(empty=True);env.setParam('OutputFlag',0);env.start()
+    model=gp.Model(env=env)
+    try:
+        decisions=[model.addVar(vtype='B',name=f'x_{i}') for i in range(5)]
+        model.setObjective(gp.quicksum(int(p)*v for p,v in zip(profits,decisions)),gp.GRB.MAXIMIZE)
+        attachment=attach_affine_log_ratio(model,decisions,records,encoding='nonlinear')
+        attachment.root.LB=limit
+        assert model.NumSOS==0
+        model.Params.MIPGap=0;model.optimize()
+        assert model.Status==gp.GRB.OPTIMAL and round(model.ObjVal)==best
+        chosen=np.rint([v.X for v in decisions]).astype(int)
+        assert exact[int(''.join(map(str,chosen)),2)]>=limit-1e-6
+        with pytest.raises(ValueError,match='encoding'):
+            attach_affine_log_ratio(model,decisions,records,namespace='other',encoding='spline')
+    finally:model.dispose();env.dispose()

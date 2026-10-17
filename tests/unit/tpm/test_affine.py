@@ -3,7 +3,7 @@ from itertools import product
 import json
 import numpy as np
 import pytest
-from tpm.affine import (compile_affine_logsum,conditional_affine_bounds,
+from tpm.affine import (compile_affine_logsum,conditional_affine_bounds,exact_affine_logsum_bounds,
     compile_binary_mixture_log_ratio,evaluate_binary_log_ratio,evaluate_affine_logsum)
 from tpm.binary_cuts import CompiledProbabilitySeparator,ConditionalFaceCertifier
 
@@ -92,3 +92,27 @@ import tpm.affine_gurobi
 import tpm.binary_cuts
 ''', str(__import__('pathlib').Path(__file__).resolve().parents[3] / 'src')], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+
+def test_exact_bounds_cover_exact_values_of_every_assignment():
+    rng=np.random.default_rng(11)
+    b=rng.normal(size=6)*3-4;a=rng.normal(size=(6,4))*3
+    graph=compile_affine_logsum(b,a)
+    points=np.array(list(product((0,1),repeat=4)))
+    terms=b+points@a.T;maximum=terms.max(1);relative=terms-maximum[:,None]
+    total=np.exp(relative).sum(1);logarithm=np.log(total)
+    values=dict(maximum=maximum,total=total,logarithm=logarithm,root=maximum+logarithm)
+    for j in range(len(b)):
+        values.update({f't_{j}':terms[:,j],f'relative_{j}':relative[:,j],f'exp_{j}':np.exp(relative[:,j])})
+    bounds=exact_affine_logsum_bounds(graph)
+    checks=dict(maximum=bounds['maximum'],total=bounds['total'],logarithm=bounds['logarithm'],root=bounds['root'])
+    for j in range(len(b)):
+        checks.update({f't_{j}':(bounds['term_lower'][j],bounds['term_upper'][j]),
+            f'relative_{j}':(bounds['relative_lower'][j],bounds['relative_upper'][j]),
+            f'exp_{j}':(bounds['exponential_lower'][j],bounds['exponential_upper'][j])})
+    for selected,limits in [(np.ones(len(points),bool),checks)]+[
+            (points[:,i]==bit,one) for i,pair in enumerate(conditional_affine_bounds(graph,exact=True))
+            for bit,one in enumerate(pair)]:
+        for name,(lo,hi) in limits.items():
+            assert np.all(values[name][selected]>=lo-1e-9),(name,lo)
+            assert np.all(values[name][selected]<=hi+1e-9),(name,hi)

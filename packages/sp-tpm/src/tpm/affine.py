@@ -18,9 +18,20 @@ def clip_table(xs, ys, lower, upper):
 
 
 def tighten_affine_logsum_bounds(intercepts, coefficients, ex, ey, lx, ly, *,
-                                 root_interval, q_cap=None, affine_max=None):
-    """Box-valid affine differences and interval propagation; no action enumeration."""
+                                 root_interval, q_cap=None, affine_max=None, exact=False):
+    """Box-valid affine differences and interval propagation; no action enumeration.
+
+    ``exact=True`` propagates through exp and log themselves instead of the PWL
+    tables (``ex``, ``ey``, ``lx``, ``ly`` are then ignored): the bounds are valid
+    for the exact functions, which PWL-propagated bounds need not be.
+    """
     b, a = np.asarray(intercepts), np.asarray(coefficients)
+    if exact:
+        expf, logf, exp_of_log = np.exp, np.log, np.exp
+    else:
+        expf = lambda v: np.interp(v, ex, ey)
+        logf = lambda v: np.interp(v, lx, ly)
+        exp_of_log = lambda v: np.interp(v, ly, lx)
     pad = 1e-8
     maximize = affine_max if affine_max is not None else lambda c: np.maximum(c, 0).sum(1)
     lower = b - maximize(-a) - pad
@@ -34,12 +45,14 @@ def tighten_affine_logsum_bounds(intercepts, coefficients, ex, ey, lx, ly, *,
         relative_upper.append(min(0., float(np.min(b[k] - b + maximize(a[k] - a))) + pad))
     big_m = np.asarray(big_m)
     rl, ru = -big_m, np.asarray(relative_upper)
-    el, eu = np.interp(rl, ex, ey), np.interp(ru, ex, ey)
+    el, eu = expf(rl), expf(ru)
     ql, qu = 1., min(float(len(b)), float(q_cap) if q_cap is not None else float(len(b)))
-    hl, hu = float(np.interp(ql, lx, ly)), float(np.interp(qu, lx, ly))
+    hl, hu = float(logf(ql)), float(logf(qu))
     zl, zu = root_interval[0] - pad, root_interval[1] + pad
 
     def inverse_lower(value):
+        if exact:
+            return math.log(value) if value > 0 else -math.inf
         if value <= ey[0]:
             return ex[0]
         j = int(np.searchsorted(ey, value, side='left'))
@@ -48,6 +61,8 @@ def tighten_affine_logsum_bounds(intercepts, coefficients, ex, ey, lx, ly, *,
         return ex[j - 1] + (value - ey[j - 1]) * (ex[j] - ex[j - 1]) / (ey[j] - ey[j - 1])
 
     def inverse_upper(value):
+        if exact:
+            return math.log(value) if value < 1 else 0.
         if value >= ey[-1]:
             return ex[-1]
         j = int(np.searchsorted(ey, value, side='right'))
@@ -63,14 +78,14 @@ def tighten_affine_logsum_bounds(intercepts, coefficients, ex, ey, lx, ly, *,
         upper = np.minimum(upper, np.minimum(maxhi, maxhi + ru + pad))
         rl = np.maximum(rl, lower - maxhi - pad)
         ru = np.minimum(ru, np.minimum(0., upper - maxlo + pad))
-        el = np.maximum(el, np.maximum(0., np.interp(rl, ex, ey) - pad))
-        eu = np.minimum(eu, np.minimum(1., np.interp(ru, ex, ey) + pad))
+        el = np.maximum(el, np.maximum(0., expf(rl) - pad))
+        eu = np.minimum(eu, np.minimum(1., expf(ru) + pad))
         ql = max(ql, float(el.sum()) - pad)
         qu = min(qu, float(eu.sum()) + pad)
-        hl = max(hl, float(np.interp(ql, lx, ly)) - pad, zl - maxhi - pad)
-        hu = min(hu, float(np.interp(qu, lx, ly)) + pad, zu - maxlo + pad)
-        ql = max(ql, float(np.interp(hl, ly, lx)) - pad)
-        qu = min(qu, float(np.interp(hu, ly, lx)) + pad)
+        hl = max(hl, float(logf(ql)) - pad, zl - maxhi - pad)
+        hu = min(hu, float(logf(qu)) + pad, zu - maxlo + pad)
+        ql = max(ql, float(exp_of_log(hl)) - pad)
+        qu = min(qu, float(exp_of_log(hu)) + pad)
         el = np.maximum(el, ql - (eu.sum() - eu) - pad)
         eu = np.minimum(eu, qu - (el.sum() - el) + pad)
         rl = np.maximum(rl, np.array([inverse_lower(max(0., v - pad)) for v in el]) - pad)
@@ -190,7 +205,16 @@ def _bound_map(bounds):
     return result
 
 
-def conditional_affine_bounds(records):
+def exact_affine_logsum_bounds(records):
+    """Tightened bounds of a compiled log-sum, propagated through exact exp and log."""
+    terms = [r for r in records if r['kind'] == 'affine']
+    log = records[-1]
+    return tighten_affine_logsum_bounds([r['intercept'] for r in terms], [r['coeff'] for r in terms],
+        None, None, None, None, root_interval=log['root_interval'],
+        q_cap=log['tightened_bounds']['q_cap'], exact=True)
+
+
+def conditional_affine_bounds(records, *, exact=False):
     """Propagate each one-bit restriction without enumerating complete decisions."""
     terms = [r for r in records if r['kind'] == 'affine']
     b = np.array([r['intercept'] for r in terms])
@@ -205,7 +229,7 @@ def conditional_affine_bounds(records):
             fixed[:, i] = 0
             bounds = tighten_affine_logsum_bounds(b+bit*a[:,i], fixed,
                 exp['evaluation_xs'], exp['evaluation_ys'], log['evaluation_xs'], log['evaluation_ys'],
-                root_interval=log['root_interval'], q_cap=log['tightened_bounds']['q_cap'])
+                root_interval=log['root_interval'], q_cap=log['tightened_bounds']['q_cap'], exact=exact)
             pair.append(_bound_map(bounds))
         result.append(pair)
     return result
