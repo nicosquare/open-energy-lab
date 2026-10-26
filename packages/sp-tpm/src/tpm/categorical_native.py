@@ -310,19 +310,32 @@ def initialize_categorical_mixture_streaming(model, rows, *, seed, iterations=20
 
 
 def categorical_mixture_step(model, optimizer, rows, *, microbatch, gradient_clip_norm,
-                             minimum_microbatch=2048, on_oom=None):
-    """One joint-MLE update; retry only an uncompleted OOM gradient accumulation."""
+                             minimum_microbatch=2048, on_oom=None, conditional_weight=0.0,
+                             conditioning_indices=(), target_index=None):
+    """One joint-MLE update; retry only an uncompleted OOM gradient accumulation.
+
+    conditional_weight > 0 adds that multiple of the conditional NLL of column target_index given
+    conditioning_indices (as spn_refinement_loss): the joint term stays whole, so the model stays generative."""
     import torch
     if (type(microbatch) is not int or microbatch < 1 or len(rows) < 1
             or type(minimum_microbatch) is not int or minimum_microbatch < 1
             or not math.isfinite(gradient_clip_norm) or gradient_clip_norm <= 0):
         raise ValueError('invalid joint-MLE update settings')
+    if not math.isfinite(conditional_weight) or conditional_weight < 0:
+        raise ValueError('conditional loss weight must be finite and nonnegative')
+    if conditional_weight and (target_index is None or target_index in conditioning_indices):
+        raise ValueError('a conditional loss needs a target column outside the conditioning columns')
+    observed=tuple(conditioning_indices)
     while True:
         optimizer.zero_grad(set_to_none=True)
         try:
-            total=0.
+            total=0.;conditional=0.
             for part in rows.split(microbatch):
                 loss=-model.log_prob(part).sum()/len(rows)
+                if conditional_weight:
+                    term=-(model.log_prob(part,observed=(*observed,target_index))
+                           -model.log_prob(part,observed=observed)).sum()/len(rows)
+                    loss=loss+conditional_weight*term;conditional+=float(term.detach())
                 if not bool(torch.isfinite(loss)):raise ValueError('nonfinite joint loss')
                 loss.backward();total+=float(loss.detach())
             break
@@ -336,7 +349,8 @@ def categorical_mixture_step(model, optimizer, rows, *, microbatch, gradient_cli
     optimizer.step();model.project()
     if any(not bool(torch.isfinite(p).all()) for p in model.parameters()):
         raise ValueError('nonfinite mixture parameters after joint update')
-    return dict(loss=total,gradient_norm=float(norm),microbatch=microbatch)
+    return dict(loss=total,gradient_norm=float(norm),microbatch=microbatch,
+                **(dict(conditional_nll=conditional) if conditional_weight else {}))
 
 
 def save_categorical_mixture_state(path, *, model, optimizer, generator, epoch_generator_state,
