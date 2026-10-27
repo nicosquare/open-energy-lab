@@ -192,3 +192,19 @@ def test_selected_inference_reload_is_separate_from_training_backend_resume(tmp_
         load_categorical_mixture_state(path,expected_config=cfg,expected_context={'source':'fixture'})
     with pytest.raises(ValueError,match='context'):
         load_categorical_mixture_for_inference(path,expected_config=cfg,expected_context={'source':'wrong'})
+
+
+def test_conditional_weight_adds_the_conditional_nll_to_the_joint():
+    cfg, rows, a=fixture();b=build_categorical_mixture(cfg);b.load_state_dict(a.state_dict())
+    oa=torch.optim.Adam(a.parameters(),lr=.003);ob=torch.optim.Adam(b.parameters(),lr=.003)
+    result=categorical_mixture_step(a,oa,rows,microbatch=4,gradient_clip_norm=10,conditional_weight=2.,
+                                    conditioning_indices=(0,),target_index=2)
+    ob.zero_grad(set_to_none=True)
+    conditional=-(b.log_prob(rows,observed=(0,2))-b.log_prob(rows,observed=(0,))).mean()
+    loss=-b.log_prob(rows).mean()+2.*conditional;loss.backward()
+    torch.nn.utils.clip_grad_norm_(b.parameters(),10,error_if_nonfinite=True);ob.step();b.project()
+    for x,y in zip(a.parameters(),b.parameters()):torch.testing.assert_close(x,y,atol=1e-12,rtol=1e-10)
+    assert math.isclose(result['conditional_nll'],float(conditional),rel_tol=1e-10)
+    assert math.isclose(result['loss'],float(loss),rel_tol=1e-10)
+    with pytest.raises(ValueError):
+        categorical_mixture_step(a,oa,rows,microbatch=4,gradient_clip_norm=10,conditional_weight=1.,conditioning_indices=(0,))
