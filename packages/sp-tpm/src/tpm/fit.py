@@ -131,6 +131,7 @@ def learn_bounded_prometheus(rows, *, feature_schema, settings, gaussian_floors,
         torch.use_deterministic_algorithms(True)
         torch.set_default_dtype(torch.float64)
         model = learn_prometheus(tensor, leaf_modules=list(build_spflow_leaf_modules(schema)), **settings)
+        model = materialize_native_categorical_leaves(model)  # K-specific learning templates -> native leaves
         for leaf in model.modules():
             values = (leaf.loc, leaf.scale) if type(leaf) is Normal else ((leaf.probs,) if type(leaf) in (Bernoulli, Categorical) else ())
             if any(not torch.isfinite(value).all() for value in values):
