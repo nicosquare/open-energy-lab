@@ -180,6 +180,25 @@ def test_bounded_prometheus_uses_typed_schema_and_reports_missing_label(tmp_path
     assert restored['progress']['consumed_rows'] == 48
 
 
+def test_bounded_prometheus_admits_categorical_features():
+    # Categorical leaves are learned through K-specific templates; the result must use native leaves for refinement.
+    import torch
+    from spflow.modules.leaves import Categorical
+    from tpm.artifact import load_tpm_artifact
+    from tpm.fit import learn_bounded_prometheus
+    specs = load_tpm_artifact(Path(__file__).resolve().parents[2] / 'fixtures/tpm/tpm_artifact_domains_v3.json').feature_specs
+    generator = torch.Generator().manual_seed(5)
+    rows = torch.cat([torch.randint(0, 3, (60, 1), generator=generator), torch.rand((60, 1), generator=generator),
+                      torch.randint(0, 2, (60, 1), generator=generator)], dim=1).double()
+    model, evidence = learn_bounded_prometheus(rows, feature_schema=(specs[2], specs[3], specs[4]),
+        settings={'min_features_slice': 2, 'min_instances_slice': 20, 'out_channels': 1,
+                  'n_clusters': 2, 'similarity': 'corr', 'affinity_mode': 'full'},
+        gaussian_floors={1: .05}, seed=0, maximum_seconds=20, maximum_modules=1000, maximum_scalar_outputs=2000)
+    categorical = [m for m in model.modules() if isinstance(m, Categorical)]
+    assert categorical and all(type(m) is Categorical for m in categorical)
+    assert abs(evidence['all_marginalized_log_mass']) <= 1e-8
+
+
 def test_conditional_queries_reject_continuous_target_and_ignore_uncertainty_values():
     import torch
     from tpm import spn_binary_conditional_logs
